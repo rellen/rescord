@@ -40,9 +40,7 @@ in
     HEX_HOME = "${config.devenv.state}/hex";
     ERL_AFLAGS = "-kernel shell_history enabled";
 
-    # Read in config/config.exs:
-    #   config :esbuild, path: System.get_env("MIX_ESBUILD_PATH")
-    #   config :tailwind, path: System.get_env("MIX_TAILWIND_PATH")
+    # Used as the esbuild/tailwind `path` in platform/config/config.exs.
     MIX_ESBUILD_PATH = lib.getExe pkgs.esbuild;
     MIX_TAILWIND_PATH = lib.getExe pkgs.tailwindcss_4;
   };
