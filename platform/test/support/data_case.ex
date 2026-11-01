@@ -18,6 +18,10 @@ defmodule Rescord.DataCase do
 
   using do
     quote do
+      # The setup checks out the SQL sandbox, so every test here needs
+      # Postgres (ADR 0006).
+      @moduletag :postgres
+
       alias Rescord.Repo
 
       import Ecto

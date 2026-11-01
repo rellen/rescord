@@ -24,11 +24,10 @@ in
   packages =
     [
       pkgs.git
-      # Phoenix asset tooling from nixpkgs. The binaries that the esbuild and
-      # tailwind hex packages download are dynamically linked and won't run on
-      # NixOS, so point the app's config at these instead (see MIX_*_PATH).
+      # esbuild bundles the JS and the classless CSS. The binary that the
+      # esbuild Hex package downloads won't run on NixOS, so the app's config
+      # points at this one instead (MIX_ESBUILD_PATH).
       pkgs.esbuild
-      pkgs.tailwindcss_4
     ]
     # Phoenix live reload: file_system's Linux backend uses inotifywait.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.inotify-tools ];
@@ -40,9 +39,8 @@ in
     HEX_HOME = "${config.devenv.state}/hex";
     ERL_AFLAGS = "-kernel shell_history enabled";
 
-    # Used as the esbuild/tailwind `path` in platform/config/config.exs.
+    # Used as the esbuild `path` in platform/config/config.exs.
     MIX_ESBUILD_PATH = lib.getExe pkgs.esbuild;
-    MIX_TAILWIND_PATH = lib.getExe pkgs.tailwindcss_4;
   };
 
   # https://devenv.sh/services/

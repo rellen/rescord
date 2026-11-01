@@ -56,9 +56,33 @@ defmodule RescordWeb do
     end
   end
 
-  def live_component do
+  @doc """
+  For a live widget (ADR 0003): function components, the helpers of
+  `shoddy_phoenix` for widgets, and the LiveView functions that act on the
+  page's socket from a hook.
+
+  There is no `live_component/0`: a stateful part of a page is a widget.
+  """
+  def widget do
     quote do
-      use Phoenix.LiveComponent
+      use Phoenix.Component
+
+      import Phoenix.LiveView,
+        only: [
+          push_event: 3,
+          push_navigate: 2,
+          push_patch: 2,
+          put_flash: 3,
+          stream: 3,
+          stream: 4,
+          stream_delete: 3,
+          stream_insert: 3,
+          stream_insert: 4
+        ]
+
+      alias RescordWeb.Widget
+      alias ShoddyPhoenix.LiveView.Subscriptions
+      alias ShoddyPhoenix.LiveView.Widgets
 
       unquote(html_helpers())
     end
@@ -86,6 +110,8 @@ defmodule RescordWeb do
       import Phoenix.HTML
       # Core UI components
       import RescordWeb.CoreComponents
+      # Control flow in templates, for three or more branches
+      import ShoddyPhoenix.ControlFlow, only: [choose: 1, switch: 1]
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

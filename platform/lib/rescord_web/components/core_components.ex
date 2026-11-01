@@ -1,30 +1,18 @@
 defmodule RescordWeb.CoreComponents do
   @moduledoc """
-  Provides core UI components.
+  The core UI components: flash messages, buttons, form inputs, the page
+  header, tables, data lists and icons.
 
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as tables, forms, and
-  inputs. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
+  The markup is semantic and classless (ADR 0004). `assets/css/app.css`
+  styles the elements, their ARIA states and a few `data-` attributes, so
+  a component sets no class. A variant that no element or ARIA state
+  expresses is a `data-` attribute, such as `data-variant="primary"` on a
+  button.
 
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
-
-    * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
-      we build on. You will use it for layout, sizing, flexbox, grid, and
-      spacing.
-
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
-
-    * [Phoenix.Component](https://phoenix-live-view.hexdocs.pm/Phoenix.Component.html) -
-      the component system used by Phoenix. Some components, such as `<.link>`
-      and `<.form>`, are defined there.
-
+  The components keep the attributes and slots of the components that
+  `mix phx.new` generates, so the output of `phx.gen.*` and of the Ash
+  generators still calls them. That output still has Tailwind classes and
+  Heroicon names, and must be restyled by hand.
   """
   use Phoenix.Component
   use Gettext, backend: RescordWeb.Gettext
@@ -32,25 +20,21 @@ defmodule RescordWeb.CoreComponents do
   alias Phoenix.LiveView.JS
 
   @doc """
-  Renders flash notices.
+  Renders a flash message.
+
+  An error is an alert; an information is a status. A click on the message
+  closes it.
 
   ## Examples
 
       <.flash kind={:info} flash={@flash} />
-      <.flash
-        id="welcome-back"
-        kind={:info}
-        phx-mounted={show("#welcome-back") |> JS.remove_attribute("hidden")}
-        hidden
-      >
-        Welcome Back!
-      </.flash>
+      <.flash id="welcome-back" kind={:info}>Welcome back!</.flash>
   """
-  attr :id, :string, doc: "the optional id of flash container"
+  attr :id, :string, doc: "the optional id of the flash message"
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
   attr :title, :string, default: nil
   attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash message"
 
   slot :inner_block, doc: "the optional inner block that renders the flash message"
 
@@ -61,33 +45,30 @@ defmodule RescordWeb.CoreComponents do
     <div
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
+      role={if @kind == :error, do: "alert", else: "status"}
+      data-flash={@kind}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role="alert"
-      class="toast toast-top toast-end z-50"
       {@rest}
     >
-      <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
-      ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
-        </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
-        </button>
-      </div>
+      <.icon :if={@kind == :info} name="information-circle" />
+      <.icon :if={@kind == :error} name="exclamation-circle" />
+      <p>
+        <strong :if={@title}>{@title}</strong>
+        {msg}
+      </p>
+      <button type="button" aria-label={gettext("close")}>
+        <.icon name="x-mark" />
+      </button>
     </div>
     """
   end
 
   @doc """
-  Renders a button with navigation support.
+  Renders a button, or a link that looks like a button.
+
+  A button is quiet unless `variant` is `"primary"` or it submits a form.
+  A link gets `data-variant`, which the stylesheet uses to draw it as a
+  button.
 
   ## Examples
 
@@ -95,28 +76,20 @@ defmodule RescordWeb.CoreComponents do
       <.button phx-click="go" variant="primary">Send!</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
-  attr :class, :any
-  attr :variant, :string, values: ~w(primary)
+  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type)
+  attr :variant, :string, default: nil, values: [nil, "primary"]
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
-
-    assigns =
-      assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
-      end)
-
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
-      <.link class={@class} {@rest}>
+      <.link data-variant={@variant || "secondary"} {@rest}>
         {render_slot(@inner_block)}
       </.link>
       """
     else
       ~H"""
-      <button class={@class} {@rest}>
+      <button data-variant={@variant} {@rest}>
         {render_slot(@inner_block)}
       </button>
       """
@@ -124,11 +97,14 @@ defmodule RescordWeb.CoreComponents do
   end
 
   @doc """
-  Renders an input with label and error messages.
+  Renders a form control with its label and its errors.
 
-  A `Phoenix.HTML.FormField` may be passed as argument,
-  which is used to retrieve the input name, id, and values.
-  Otherwise all attributes may be passed explicitly.
+  A `Phoenix.HTML.FormField` may be passed as argument, which is used to
+  retrieve the input name, id, and values. Otherwise all attributes may be
+  passed explicitly.
+
+  A control with errors gets `aria-invalid="true"` and an
+  `aria-describedby` that names the `<small>` element with its errors.
 
   ## Types
 
@@ -181,8 +157,6 @@ defmodule RescordWeb.CoreComponents do
   attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
   attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
-  attr :class, :any, default: nil, doc: "the input class to use over defaults"
-  attr :error_class, :any, default: nil, doc: "the input error class to use over defaults"
 
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
@@ -212,7 +186,7 @@ defmodule RescordWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
+    <div>
       <label for={@id}>
         <input
           type="hidden"
@@ -221,60 +195,55 @@ defmodule RescordWeb.CoreComponents do
           disabled={@rest[:disabled]}
           form={@rest[:form]}
         />
-        <span class="label">
-          <input
-            type="checkbox"
-            id={@id}
-            name={@name}
-            value="true"
-            checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
-            {@rest}
-          />{@label}
-        </span>
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && error_id(@id)}
+          {@rest}
+        />
+        {@label}
       </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
-        <select
-          id={@id}
-          name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
-          multiple={@multiple}
-          {@rest}
-        >
-          <option :if={@prompt} value="">{@prompt}</option>
-          {Phoenix.HTML.Form.options_for_select(@options, @value)}
-        </select>
-      </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+    <div>
+      <label :if={@label} for={@id}>{@label}</label>
+      <select
+        id={@id}
+        name={@name}
+        multiple={@multiple}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && error_id(@id)}
+        {@rest}
+      >
+        <option :if={@prompt} value="">{@prompt}</option>
+        {Phoenix.HTML.Form.options_for_select(@options, @value)}
+      </select>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
-        <textarea
-          id={@id}
-          name={@name}
-          class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
-          ]}
-          {@rest}
-        >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+    <div>
+      <label :if={@label} for={@id}>{@label}</label>
+      <textarea
+        id={@id}
+        name={@name}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && error_id(@id)}
+        {@rest}
+      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
@@ -282,38 +251,41 @@ defmodule RescordWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
-        <input
-          type={@type}
-          name={@name}
-          id={@id}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
-          ]}
-          {@rest}
-        />
-      </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
+    <div>
+      <label :if={@label} for={@id}>{@label}</label>
+      <input
+        type={@type}
+        name={@name}
+        id={@id}
+        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && error_id(@id)}
+        {@rest}
+      />
+      <.errors id={@id} errors={@errors} />
     </div>
     """
   end
 
-  # Helper used by inputs to generate form errors
-  defp error(assigns) do
+  defp error_id(id), do: "#{id}-error"
+
+  # The errors of a form control, which the control names in its
+  # aria-describedby.
+  attr :id, :any, required: true
+  attr :errors, :list, required: true
+
+  defp errors(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
-      {render_slot(@inner_block)}
-    </p>
+    <small :if={@errors != []} id={error_id(@id)}>
+      <.icon name="exclamation-circle" />
+      <span :for={msg <- @errors}>{msg}</span>
+    </small>
     """
   end
 
   @doc """
-  Renders a header with title.
+  Renders the header of a page: its title, an optional subtitle and
+  optional actions.
   """
   slot :inner_block, required: true
   slot :subtitle
@@ -321,22 +293,18 @@ defmodule RescordWeb.CoreComponents do
 
   def header(assigns) do
     ~H"""
-    <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
-      <div>
-        <h1 class="text-lg font-semibold leading-8">
-          {render_slot(@inner_block)}
-        </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
-          {render_slot(@subtitle)}
-        </p>
-      </div>
-      <div class="flex-none">{render_slot(@actions)}</div>
+    <header>
+      <hgroup>
+        <h1>{render_slot(@inner_block)}</h1>
+        <p :if={@subtitle != []}>{render_slot(@subtitle)}</p>
+      </hgroup>
+      <div :if={@actions != []}>{render_slot(@actions)}</div>
     </header>
     """
   end
 
   @doc """
-  Renders a table with generic styling.
+  Renders a table, with a header cell of scope `col` for each column.
 
   ## Examples
 
@@ -354,6 +322,8 @@ defmodule RescordWeb.CoreComponents do
     default: &Function.identity/1,
     doc: "the function for mapping each row before calling the :col and :action slots"
 
+  slot :caption, doc: "the optional caption of the table"
+
   slot :col, required: true do
     attr :label, :string
   end
@@ -367,30 +337,23 @@ defmodule RescordWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
+    <table>
+      <caption :if={@caption != []}>{render_slot(@caption)}</caption>
       <thead>
         <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
+          <th :for={col <- @col} scope="col">{col[:label]}</th>
+          <th :if={@action != []} scope="col">{gettext("Actions")}</th>
         </tr>
       </thead>
       <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
         <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
-          >
+          <td :for={col <- @col} phx-click={@row_click && @row_click.(row)}>
             {render_slot(col, @row_item.(row))}
           </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
+          <td :if={@action != []}>
+            <%= for action <- @action do %>
+              {render_slot(action, @row_item.(row))}
+            <% end %>
           </td>
         </tr>
       </tbody>
@@ -399,7 +362,7 @@ defmodule RescordWeb.CoreComponents do
   end
 
   @doc """
-  Renders a data list.
+  Renders a description list of titles and values.
 
   ## Examples
 
@@ -414,66 +377,99 @@ defmodule RescordWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
-        </div>
-      </li>
-    </ul>
+    <dl>
+      <div :for={item <- @item}>
+        <dt>{item.title}</dt>
+        <dd>{render_slot(item)}</dd>
+      </div>
+    </dl>
     """
   end
 
   @doc """
-  Renders a [Heroicon](https://heroicons.com).
+  Renders one of our own icons as an inline SVG of 1em.
 
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
-
-  You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
-
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in `assets/vendor/heroicons.js`.
+  An icon is decoration: it is `aria-hidden`, and the text beside it, or
+  the `aria-label` of its button, says what it means. Add an icon here
+  when a page needs one; there is no icon library. An unknown literal
+  `name` gives a compile warning.
 
   ## Examples
 
-      <.icon name="hero-x-mark" />
-      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+      <.icon name="x-mark" />
+      <.icon name="arrow-path" spin />
   """
-  attr :name, :string, required: true
-  attr :class, :any, default: "size-4"
+  attr :name, :string,
+    required: true,
+    values: ~w(arrow-path exclamation-circle information-circle x-mark)
 
-  def icon(%{name: "hero-" <> _} = assigns) do
+  attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
+  attr :rest, :global
+
+  def icon(%{name: "arrow-path"} = assigns) do
     ~H"""
-    <span class={[@name, @class]} />
+    <.svg spin={@spin} {@rest}>
+      <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "exclamation-circle"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "information-circle"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "x-mark"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </.svg>
+    """
+  end
+
+  attr :spin, :boolean, required: true
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  defp svg(assigns) do
+    ~H"""
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      data-spin={@spin}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </svg>
     """
   end
 
   ## JS Commands
 
-  def show(js \\ %JS{}, selector) do
-    JS.show(js,
-      to: selector,
-      time: 300,
-      transition:
-        {"transition-all ease-out duration-300",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
-         "opacity-100 translate-y-0 sm:scale-100"}
-    )
-  end
+  @doc "Shows the element that `selector` names."
+  def show(js \\ %JS{}, selector), do: JS.show(js, to: selector)
 
-  def hide(js \\ %JS{}, selector) do
-    JS.hide(js,
-      to: selector,
-      time: 200,
-      transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
-    )
-  end
+  @doc "Hides the element that `selector` names."
+  def hide(js \\ %JS{}, selector), do: JS.hide(js, to: selector)
 
   @doc """
   Translates an error message using gettext.

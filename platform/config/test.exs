@@ -13,7 +13,9 @@ config :ash,
 config :rescord, Rescord.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
+  # devenv sets PGHOST and PGPORT; it can move Postgres off 5432 when that port is taken.
+  hostname: System.get_env("PGHOST", "localhost"),
+  port: String.to_integer(System.get_env("PGPORT", "5432")),
   database: "rescord_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2

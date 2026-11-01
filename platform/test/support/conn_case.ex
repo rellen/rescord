@@ -19,6 +19,10 @@ defmodule RescordWeb.ConnCase do
 
   using do
     quote do
+      # The setup checks out the SQL sandbox, so every test here needs
+      # Postgres (ADR 0006).
+      @moduletag :postgres
+
       # The default endpoint for testing
       @endpoint RescordWeb.Endpoint
 

@@ -83,29 +83,16 @@ config :phoenix_live_view,
 # at the `config/runtime.exs`.
 config :rescord, Rescord.Mailer, adapter: Swoosh.Adapters.Local
 
-# Configure esbuild (the version is required)
+# esbuild bundles both app.js and the classless app.css (ADR 0004).
+# The version is required, and matches the esbuild of nixpkgs.
 config :esbuild,
   version: "0.27.2",
   # Inside devenv, use esbuild from nixpkgs; otherwise it is downloaded.
   path: System.get_env("MIX_ESBUILD_PATH"),
   rescord: [
     args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.js css/app.css --bundle --target=es2022 --outbase=. --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
-  ]
-
-# Configure tailwind (the version is required)
-config :tailwind,
-  version: "4.3.3",
-  # Inside devenv, use tailwindcss from nixpkgs; otherwise it is downloaded.
-  path: System.get_env("MIX_TAILWIND_PATH"),
-  rescord: [
-    args: ~w(
-      --input=assets/css/app.css
-      --output=priv/static/assets/css/app.css
-    ),
-    cd: Path.expand("..", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 

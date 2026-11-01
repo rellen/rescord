@@ -8,7 +8,9 @@ config :ash,
 config :rescord, Rescord.Repo,
   username: "postgres",
   password: "postgres",
-  hostname: "localhost",
+  # devenv sets PGHOST and PGPORT; it can move Postgres off 5432 when that port is taken.
+  hostname: System.get_env("PGHOST", "localhost"),
+  port: String.to_integer(System.get_env("PGPORT", "5432")),
   database: "rescord_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
@@ -29,8 +31,7 @@ config :rescord, RescordWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "dNDjC3Dii9wKVpGrelfFCHjXXpGaxcWVazbkIrPJyoNZXkzJ5KeK14M830CmSkpD",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:rescord, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:rescord, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:rescord, ~w(--sourcemap=inline --watch)]}
   ]
 
 # ## SSL Support
