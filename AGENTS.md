@@ -186,6 +186,9 @@ too.
   other dependency. After a change to the dependencies, run
   `mix usage_rules.sync` and commit `platform/AGENTS.md`; never edit that
   file between its `usage-rules` markers.
+  Read what `mix deps.get` prints, each time: it names a package with a
+  security advisory (`VULNERABLE!`) or a retired one (`RETIRED!`). Update
+  such a package, or say why it stays.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
