@@ -177,6 +177,10 @@ too.
     an address that Rescord does not know, and a fault. Do no work that
     depends on the address before the task starts. Never log a token or a
     link.
+  - Limit how often an action runs with `extensions: [AshRateLimiter]` and a
+    `rate_limit` section whose backend is `Rescord.RateLimit` (ADR 0020). Do
+    not write a counter by hand. A test of a limit counts under a key of its
+    own, so that tests share no count.
   - Policies and roles will be our own system in the manner of `ash_grant`
     (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
     as a dependency, and do not write a role into a policy by hand.
@@ -208,6 +212,7 @@ too.
 | --- | --- |
 | `platform/lib/rescord/` | domains and resources (Ash) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
+| `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |

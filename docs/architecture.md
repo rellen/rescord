@@ -252,6 +252,16 @@ as `/sign-in`.
   resource declares `temporal_safe?/1`, and uses no `before_action` or
   `after_action` hook.
 
+### Rate limits
+
+**An action gets a rate limit from AshRateLimiter, and Hammer counts in
+ETS** (ADR 0020). `Rescord.RateLimit` is the Hammer rate limiter, and the
+application starts it. A resource names it as the backend in its
+`rate_limit` section. The counts are in the memory of one node.
+
+The first use is the request for a sign-in link: a limit for each address
+on the action, inside the task of ADR 0019. The numbers are not decided.
+
 ### Policies and roles
 
 **Authorization will be our own system, in the manner of `ash_grant`.** We
@@ -307,8 +317,9 @@ from GitHub, pinned to a commit (ADR 0005).
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
 - For the sign-in: how actors reach Ash from LiveViews, how a root user, who
-  is not a member, acts in the schema of an organisation, and the limits on
-  the requests for a link and on their tasks (ADR 0019).
+  is not a member, acts in the schema of an organisation, and the numbers of
+  the limits on the requests for a link and on their tasks (ADR 0019,
+  ADR 0020).
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains

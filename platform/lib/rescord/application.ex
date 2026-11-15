@@ -16,6 +16,8 @@ defmodule Rescord.Application do
       Rescord.Repo,
       {DNSCluster, query: Application.get_env(:rescord, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Rescord.PubSub},
+      # The counts of the rate limits (ADR 0020), in a table of this node.
+      {Rescord.RateLimit, clean_period: :timer.minutes(1)},
       # Oban runs the background steps of the workflows (ADR 0010). It starts
       # after the repo, which holds its jobs, and after PubSub, so that a job
       # can publish.

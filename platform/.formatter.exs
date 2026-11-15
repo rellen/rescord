@@ -7,6 +7,7 @@
     :ash_paper_trail,
     :ash_archival,
     :ash_boundary,
+    :ash_rate_limiter,
     :ash_phoenix,
     :ash_postgres,
     :ash,

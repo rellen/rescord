@@ -69,6 +69,8 @@ defmodule Rescord.MixProject do
       {:ash, "~> 3.0"},
       {:ash_boundary, "~> 0.2.0"},
       {:cinder, "~> 0.18"},
+      {:ash_rate_limiter, "~> 2.0"},
+      {:hammer, "~> 7.5"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:usage_rules, "~> 1.3", only: [:dev]},
       {:phoenix, "~> 1.8.16"},
