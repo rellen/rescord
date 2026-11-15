@@ -20,6 +20,8 @@ and its supplies.
 | organisation | A rescue or a refuge that uses Rescord. One organisation is one tenant. |
 | user | A person who can sign in to Rescord. |
 | member | A user who belongs to one organisation. One user can be a member of many organisations. |
+| root user | A user who manages Rescord itself. A root user creates an organisation and invites its administrators. |
+| administrator | A member who manages the members and the settings of one organisation. |
 | resident | An animal that an organisation has in its care. |
 | family | A named set of residents that came together or were born together, for example a litter. |
 | parent link | A record that one resident is the mother or the father of another resident. |
@@ -86,8 +88,10 @@ These subjects are out of scope for now:
 | What is the name of one record in the medical history? | A journal entry. The journal also holds entries that are not medical. |
 | What does the journal hold about a change to a placement or a group? | Only what a member writes about it. The change itself stays in the resource that records it. |
 | How does a person sign in? | With a link that Rescord sends by email. Rescord stores no password. |
-| How does a person join an organisation? | By invitation only. An administrator of the organisation invites an email address. |
-| Who creates an organisation? | The operator of Rescord creates each organisation and invites its first administrator. |
+| How does a person join an organisation? | By invitation only. A root user invites an administrator, and an administrator invites a member. |
+| Who creates an organisation? | A root user. |
+| Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
+| Which library does the sign-in use? | AshAuthentication (ADR 0018). |
 | Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
 | Does the model fit the housing of one organisation? | No. The location tree and the placement must serve each organisation. |
 | What does a placement name? | A resident or a group. |
@@ -108,16 +112,22 @@ users. A member connects one user to one organisation.
 
 - A person signs in with a link that Rescord sends by email. Rescord stores
   no password.
-- A person joins an organisation by invitation only. An administrator of the
-  organisation invites an email address.
-- The operator of Rescord creates each organisation, and invites its first
-  administrator.
+- A person joins an organisation by invitation only.
+- A root user is a user who manages Rescord itself. A root user creates an
+  organisation, and invites its administrators.
+- An administrator invites the members of the organisation.
+- Root is a level of the user. It is not a role of a member, and it does not
+  belong to one organisation.
 - At the start a member has one of two roles: administrator or member. An
   administrator also manages the members and the settings of the
   organisation.
 
 *Proposal.* A member has one or more roles, and a role has grants. The
 section "Policies and roles" of `docs/architecture.md` describes the grants.
+
+*Proposal.* A shared resource records that a user is a root user, with a
+paper trail. The first root user comes from a command of the release. After
+that, a root user can make another user a root user.
 
 ### 5.2 Residents
 
@@ -422,5 +432,9 @@ difficulty.
    resources or keep no paper trail?
 6. A placement names a resident or a group. Where does a resident live when
    it has a placement of its own and its group has a different placement?
-7. Section 7 does not count the resources that the answers of 15 November
+7. Can an administrator make another member an administrator, or does only
+   a root user do that?
+8. Can a root user read the data of an organisation, for example its
+   residents? A root user is not a member of the organisation.
+9. Section 7 does not count the resources that the answers of 15 November
    2026 add, for example the invitation. What is the new estimate?

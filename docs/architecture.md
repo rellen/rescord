@@ -189,10 +189,13 @@ The first resource in the schema of an organisation needs
 15 November 2026). `docs/domain.md`, section 5.1, has the rules:
 
 - A person signs in with a link by email. Rescord stores no password.
-- A person joins an organisation by invitation only, from an administrator
-  of that organisation.
-- The operator of Rescord creates each organisation and invites its first
-  administrator.
+- A person joins an organisation by invitation only.
+- A root user creates each organisation and invites its administrators. An
+  administrator invites the members. Root is a level of the user, outside
+  each organisation.
+- **The sign-in uses AshAuthentication** (ADR 0018), with its strategy for
+  a link by email. The strategy makes no account for an address that it does
+  not know.
 - A member is an administrator or a member. The grants can hold more roles
   later (see "Policies and roles").
 
@@ -214,7 +217,6 @@ store, so a release sends no email today.
 organisation, for example `/o/wattle-creek/residents`. The fixed word keeps
 the name of an organisation apart from a route such as `/sign-in`.
 
-Not decided: the library for the sign-in.
 
 ### History
 
@@ -292,8 +294,9 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- For the sign-in: the library, the exact shape of the path that names an
-  organisation, and how actors reach Ash from LiveViews.
+- For the sign-in: the exact shape of the path that names an organisation,
+  how actors reach Ash from LiveViews, and what a root user can read in an
+  organisation.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
