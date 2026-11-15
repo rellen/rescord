@@ -182,6 +182,22 @@ The first resource in the schema of an organisation needs
 `Rescord.Repo.all_tenants/0`, which lists the schemas. Without it
 `mix ash.setup` stops, and so does `mix test`.
 
+### Sign-in and organisations
+
+**This is the first part of the domain that we build** (the maintainer,
+15 November 2026). `docs/domain.md`, section 5.1, has the rules:
+
+- A person signs in with a link by email. Rescord stores no password.
+- A person joins an organisation by invitation only, from an administrator
+  of that organisation.
+- The operator of Rescord creates each organisation and invites its first
+  administrator.
+- A member is an administrator or a member. The grants can hold more roles
+  later (see "Policies and roles").
+
+Not decided: the library for the sign-in, the service that sends the email,
+and how a page names its organisation (a subdomain, or a part of the path).
+
 ### History
 
 **History comes from temporal resources, AshPaperTrail and AshArchival**
@@ -258,7 +274,8 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- Authentication, and how actors reach Ash from LiveViews.
+- For the sign-in: the library, the service that sends the email, how a page
+  names its organisation, and how actors reach Ash from LiveViews.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains

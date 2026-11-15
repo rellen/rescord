@@ -84,6 +84,17 @@ These subjects are out of scope for now:
 | Can a member change a journal entry? | Yes, and the paper trail keeps the entry as it was. An addendum or a new journal entry is the preferred way. |
 | What is the name of one record in the medical history? | A journal entry. The journal also holds entries that are not medical. |
 | What does the journal hold about a change to a placement or a group? | Only what a member writes about it. The change itself stays in the resource that records it. |
+| How does a person sign in? | With a link that Rescord sends by email. Rescord stores no password. |
+| How does a person join an organisation? | By invitation only. An administrator of the organisation invites an email address. |
+| Who creates an organisation? | The operator of Rescord creates each organisation and invites its first administrator. |
+| Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
+| Does the model fit the housing of one organisation? | No. The location tree and the placement must serve each organisation. |
+| What does a placement name? | A resident or a group. |
+| Where does the description of a group come from? | Rescord calculates it from the links between residents, and a member can replace it. |
+| Which values does the status of a resident have? | Expected, in care, away for a time, and left. The departure records how and why a resident left. |
+| How does a routine repeat? | With a small set of patterns: each day at set times, on given days of the week, or after a number of days. |
+| What does a reorder level apply to? | An item in the whole organisation, and also an item in one location when the organisation gives one. |
+| Which part does the project build first? | The sign-in and the organisations. |
 
 ## 5. The root entities
 
@@ -91,6 +102,16 @@ These subjects are out of scope for now:
 
 A user is a person who can sign in to Rescord. All organisations share the
 users. A member connects one user to one organisation.
+
+- A person signs in with a link that Rescord sends by email. Rescord stores
+  no password.
+- A person joins an organisation by invitation only. An administrator of the
+  organisation invites an email address.
+- The operator of Rescord creates each organisation, and invites its first
+  administrator.
+- At the start a member has one of two roles: administrator or member. An
+  administrator also manages the members and the settings of the
+  organisation.
 
 *Proposal.* A member has one or more roles, and a role has grants. The
 section "Policies and roles" of `docs/architecture.md` describes the grants.
@@ -124,9 +145,12 @@ dimensions:
 an authority, birth in care, and transfer from another organisation. The
 departure kinds are: death, release, and transfer to another organisation.
 
-*Proposal.* A resident is in care when it has an arrival and no departure.
-Rescord calculates that fact. The status is for the other states, for example
-quarantine.
+The status of a resident has a fixed list of four values: expected, in care,
+away for a time, and left. The departure records how and why a resident left.
+
+*Proposal.* Rescord calculates three of the values. A resident is expected
+before its arrival, in care after its arrival, and left after its departure.
+A member sets the value `away for a time`.
 
 ### 5.3 Families of residents
 
@@ -143,6 +167,11 @@ Rescord records the relatives of a resident in two ways:
 A group is a set of residents that is not a family. A bonded pair, a herd, a
 flock, and a set of residents in quarantine are examples.
 
+A group has a description, for example `sisters and a male that is not a
+relative`. Rescord calculates the description from the parent links and the
+families of the members. A member can replace the description with other
+words.
+
 *Proposal.* A group has a group kind. The membership of a resident in a group
 has a start date and an end date.
 
@@ -156,11 +185,16 @@ other location.
   kind.
 - A tie records which location contains a location. A change to the
   hierarchy of an organisation thus needs no migration.
-- A placement records that a resident lives in a location from one date to
-  another date.
+- A placement records that a resident or a group lives in a location from
+  one date to another date.
+- The model does not fit the housing of one organisation. Rescord has no
+  special record for two units that an organisation joins.
 
 *Proposal.* A location cannot contain itself, directly or through other
 locations. Rescord rejects such a tie.
+
+*Proposal.* A group that uses two units has its placement in the location
+that contains both units.
 
 ### 5.6 The journal of a resident
 
@@ -223,8 +257,11 @@ When a member completes a `medicate` task, Rescord also writes a journal
 entry for the dose. It does not change the inventory.
 
 *Proposal.* A task has one or more subjects. A subject is a resident, a
-group, or a location. A routine is a task that repeats. AshWorkflow holds the
-states of a task.
+group, or a location. AshWorkflow holds the states of a task.
+
+A routine is a task that repeats. A routine repeats with one of a small set
+of patterns: each day at set times, on given days of the week, or after a
+number of days.
 
 ### 5.8 Inventory
 
@@ -244,6 +281,10 @@ that holds it.
 location or went out of it. Rescord does not store the stock level. It
 calculates the level from the stock movements. A member records each stock
 movement by hand.
+
+A reorder level is the quantity below which the organisation orders more. It
+applies to an item in the whole organisation. An organisation can also give
+an item a reorder level in one location.
 
 ## 6. Design rules
 
@@ -360,12 +401,13 @@ difficulty.
    Section 7.2 gives two ways.
 2. Which dimensions have a fixed list, and are thus enumerated types?
    Section 7.3 gives a proposal.
-3. Which values does the status of a resident have?
-4. Which other kinds of task and categories of item are necessary?
-5. How does a routine state when it repeats?
-6. Does a reorder level apply to an item in the whole organisation, or to an
-   item in one location?
-7. Can a member of one organisation see a resident that another organisation
+3. Which other kinds of task and categories of item are necessary?
+4. Can a member of one organisation see a resident that another organisation
    transferred to it?
-8. Which resources, other than a resource with a workflow, are not temporal
+5. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
+6. A placement names a resident or a group. Where does a resident live when
+   it has a placement of its own and its group has a different placement?
+7. Which service sends the email of a sign-in and of an invitation?
+8. Section 7 does not count the resources that the answers of 15 November
+   2026 add, for example the invitation. What is the new estimate?
