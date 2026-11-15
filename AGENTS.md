@@ -108,6 +108,10 @@ too.
   - Once there is authentication, every Ash call from a LiveView passes the
     actor explicitly. A refused read returns an empty result, not an error,
     so a test that reads asserts a non-empty result.
+  - Each organisation has its own schema (ADR 0011). A resource that belongs
+    to one organisation uses `multitenancy do strategy :context end`, and
+    each call for it passes the tenant. Its migration goes in
+    `priv/repo/tenant_migrations`.
   - Policies and roles will be our own system in the manner of `ash_grant`
     (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
     as a dependency, and do not write a role into a policy by hand.

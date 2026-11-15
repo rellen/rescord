@@ -131,6 +131,15 @@ workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 A signal module that two domains share has to be in a boundary that both
 can use. Where that module lives is not decided.
 
+### Tenancy
+
+**Each organisation has its own schema of PostgreSQL** (ADR 0011). An
+organisation is a rescue or a refuge, and it is one tenant. A resource that
+belongs to one organisation uses the `:context` strategy of Ash. The
+organisations, the users and the tokens of a sign-in are shared, outside
+those schemas. A member, inside the schema of an organisation, connects a
+user to it. The maintainer expects tens of organisations.
+
 ### Policies and roles
 
 **Authorization will be our own system, in the manner of `ash_grant`.** We
@@ -182,8 +191,6 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- The tenancy: one schema for each organisation, or one shared schema with
-  an organisation column (`docs/domain.md`, section 7).
 - Authentication, and how actors reach Ash from LiveViews.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
