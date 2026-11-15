@@ -96,8 +96,10 @@ too.
   - Use an Ash signal when other resources should react to an action, in
     place of a call from an `after_action` hook, and AshWorkflow for a
     process of several steps, in place of a state machine and jobs written
-    by hand (`docs/architecture.md`, "Signals and workflows"). AshWorkflow
-    is not a dependency yet, so ask before the first use.
+    by hand (`docs/architecture.md`, "Signals and workflows"). A workflow is
+    declared with `extensions: [AshWorkflow, AshOban]`, and its domain is
+    in `ash_domains` in `config/config.exs`, or Oban gets no trigger from
+    it (ADR 0010).
   - A widget that shows a resource reloads on that resource's
     `Ash.Notifier.PubSub` notification, on a topic named `<resources>:changed`.
   - Once there is authentication, every Ash call from a LiveView passes the

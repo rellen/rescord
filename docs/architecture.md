@@ -118,11 +118,12 @@ same thing by hand.
   and the triggers of `ash_oban`. Use it for such a process, in place of a
   state machine and jobs written by hand.
 
-AshWorkflow is not a dependency yet. It brings `ash_state_machine`,
-`ash_oban` and so Oban, which needs a queue and a place in the supervision
-tree. Install it with `mix igniter.install ash_workflow` when the first
-workflow arrives. Both ship usage rules: `deps/ash/usage-rules/signals.md`,
-and those of `ash_workflow` once it is installed.
+AshWorkflow is installed (ADR 0010), with `ash_state_machine`, `ash_oban` and
+Oban. Oban starts in the supervision tree with the queues `default` and
+`workflow`, and the generated triggers publish to `workflow`. A workflow is
+declared on a resource with `extensions: [AshWorkflow, AshOban]`. There is no
+workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
+`deps/ash/usage-rules/signals.md` and `deps/ash_workflow/usage-rules.md`.
 
 A signal module that two domains share has to be in a boundary that both
 can use. Where that module lives is not decided.

@@ -7,6 +7,17 @@
 # General application configuration
 import Config
 
+config :ash_oban, pro?: false
+
+config :rescord, Oban,
+  engine: Oban.Engines.Basic,
+  notifier: Oban.Notifiers.Postgres,
+  queues: [default: 10, workflow: 10],
+  lifeline: [rescue_after: {2, :hours}],
+  pruner: [max_age: {1, :day}],
+  repo: Rescord.Repo,
+  cron: [crontab: []]
+
 # These enable behaviors that will become the default in the next major
 # version of Ash. Setting them now opts your application into the new
 # behavior and ensures a seamless upgrade. See the backwards compatibility
@@ -56,7 +67,8 @@ config :spark,
 
 config :rescord,
   ecto_repos: [Rescord.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  ash_domains: []
 
 # Configure the endpoint
 config :rescord, RescordWeb.Endpoint,

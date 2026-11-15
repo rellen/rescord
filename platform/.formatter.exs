@@ -1,5 +1,9 @@
 [
   import_deps: [
+    :ash_workflow,
+    :ash_state_machine,
+    :ash_oban,
+    :oban,
     :ash_boundary,
     :ash_phoenix,
     :ash_postgres,

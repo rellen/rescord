@@ -223,6 +223,44 @@ _Boundary declarations for Ash domains, built on top of `boundary`._
 
 [ash_boundary usage rules](deps/ash_boundary/usage-rules.md)
 <!-- ash_boundary-end -->
+<!-- ash_oban-start -->
+## ash_oban usage
+_The extension for integrating Ash resources with Oban._
+
+[ash_oban usage rules](deps/ash_oban/usage-rules.md)
+<!-- ash_oban-end -->
+<!-- ash_oban:best_practices-start -->
+## ash_oban:best_practices usage
+[ash_oban:best_practices usage rules](deps/ash_oban/usage-rules/best_practices.md)
+<!-- ash_oban:best_practices-end -->
+<!-- ash_oban:debugging_and_error_handling-start -->
+## ash_oban:debugging_and_error_handling usage
+[ash_oban:debugging_and_error_handling usage rules](deps/ash_oban/usage-rules/debugging_and_error_handling.md)
+<!-- ash_oban:debugging_and_error_handling-end -->
+<!-- ash_oban:defining_triggers-start -->
+## ash_oban:defining_triggers usage
+[ash_oban:defining_triggers usage rules](deps/ash_oban/usage-rules/defining_triggers.md)
+<!-- ash_oban:defining_triggers-end -->
+<!-- ash_oban:multi_tenancy_support-start -->
+## ash_oban:multi_tenancy_support usage
+[ash_oban:multi_tenancy_support usage rules](deps/ash_oban/usage-rules/multi_tenancy_support.md)
+<!-- ash_oban:multi_tenancy_support-end -->
+<!-- ash_oban:scheduled_actions-start -->
+## ash_oban:scheduled_actions usage
+[ash_oban:scheduled_actions usage rules](deps/ash_oban/usage-rules/scheduled_actions.md)
+<!-- ash_oban:scheduled_actions-end -->
+<!-- ash_oban:setting_up_ash_oban-start -->
+## ash_oban:setting_up_ash_oban usage
+[ash_oban:setting_up_ash_oban usage rules](deps/ash_oban/usage-rules/setting_up_ash_oban.md)
+<!-- ash_oban:setting_up_ash_oban-end -->
+<!-- ash_oban:triggering_jobs_programmatically-start -->
+## ash_oban:triggering_jobs_programmatically usage
+[ash_oban:triggering_jobs_programmatically usage rules](deps/ash_oban/usage-rules/triggering_jobs_programmatically.md)
+<!-- ash_oban:triggering_jobs_programmatically-end -->
+<!-- ash_oban:working_with_actors-start -->
+## ash_oban:working_with_actors usage
+[ash_oban:working_with_actors usage rules](deps/ash_oban/usage-rules/working_with_actors.md)
+<!-- ash_oban:working_with_actors-end -->
 <!-- ash_phoenix-start -->
 ## ash_phoenix usage
 _Utilities for integrating Ash and Phoenix_
@@ -295,6 +333,21 @@ _The PostgreSQL data layer for Ash Framework_
 ## ash_postgres:multitenancy usage
 [ash_postgres:multitenancy usage rules](deps/ash_postgres/usage-rules/multitenancy.md)
 <!-- ash_postgres:multitenancy-end -->
+<!-- ash_workflow-start -->
+## ash_workflow usage
+_Declarative workflow orchestration for the Ash Framework — multi-step
+workflows combining human actions, background jobs, and time-based deadlines._
+
+[ash_workflow usage rules](deps/ash_workflow/usage-rules.md)
+<!-- ash_workflow-end -->
+<!-- ash_workflow:authorization-start -->
+## ash_workflow:authorization usage
+[ash_workflow:authorization usage rules](deps/ash_workflow/usage-rules/authorization.md)
+<!-- ash_workflow:authorization-end -->
+<!-- ash_workflow:timeouts-start -->
+## ash_workflow:timeouts usage
+[ash_workflow:timeouts usage rules](deps/ash_workflow/usage-rules/timeouts.md)
+<!-- ash_workflow:timeouts-end -->
 <!-- igniter-start -->
 ## igniter usage
 _A code generation and project patching framework_

@@ -16,6 +16,14 @@ defmodule Rescord.Application do
       Rescord.Repo,
       {DNSCluster, query: Application.get_env(:rescord, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Rescord.PubSub},
+      # Oban runs the background steps of the workflows (ADR 0010). It starts
+      # after the repo, which holds its jobs, and after PubSub, so that a job
+      # can publish.
+      {Oban,
+       AshOban.config(
+         Application.fetch_env!(:rescord, :ash_domains),
+         Application.fetch_env!(:rescord, Oban)
+       )},
       # Start a worker by calling: Rescord.Worker.start_link(arg)
       # {Rescord.Worker, arg},
       # Start to serve requests, typically the last entry

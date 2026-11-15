@@ -1,5 +1,8 @@
 import Config
 
+# Jobs are not run unless a test runs them itself.
+config :rescord, Oban, testing: :manual
+
 config :ash,
   policies: [show_policy_breakdowns?: true],
   keyset_signing_secret: "RCqjVbP5zdhSYiU+ArBvz7f6Vj0YEk2VjYm0j+PfFkI",
