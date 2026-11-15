@@ -70,6 +70,7 @@ These subjects are out of scope for now:
 | How many organisations will use Rescord? | Tens. |
 | Which tenancy does Rescord use? | One schema of PostgreSQL for each organisation (ADR 0011). |
 | Who owns the values of a dimension? | All organisations share a base list, and each organisation can add local values. |
+| Where does Rescord store a local value? | In the schema of the organisation that added it. |
 | Which facts about a resident need a history? | The name, the status, the desex status, and the weight and other measurements. |
 | Is the departure of a resident in scope? | Yes: death, release, and transfer to another organisation. |
 | What does a family record? | Both the parent links and a named set of residents. |
@@ -295,8 +296,9 @@ The maintainer asked for a design in 5NF and 6NF.
    its history. Such a table is a temporal resource: it holds the key, the
    period for which the value is valid, and the value. Section 4 names the
    attributes.
-3. A dimension that an organisation can extend is a resource. It has shared
-   values and local values.
+3. A dimension that an organisation can extend has two resources. One holds
+   the shared values, and all organisations read it. The other holds the
+   local values, in the schema of the organisation.
 4. *Proposal.* A dimension with a fixed list of values is an enumerated type,
    and it is not a resource.
 5. A relation of many to many is a tie.
@@ -327,7 +329,8 @@ This section applies the answers of section 4 and the proposals of sections
 | Journal | `JournalEntry`, `Diagnosis`, `Measurement`, `Procedure`, `Vaccination`, `Prescription`, `Dose`, `Attachment` | 8 |
 | Tasks | `Task`, `Routine`, `TaskResident`, `TaskGroup`, `TaskLocation`, `TaskAssignee`, `RoutineResident`, `RoutineGroup`, `RoutineLocation` | 9 |
 | Inventory | `Item`, `Lot`, `Supplier`, `StockMovement`, `ReorderLevel` | 5 |
-| **Total** | | **44** |
+| Lists of the organisation | one for each of the 13 dimensions of section 7.2 | 13 |
+| **Total** | | **57** |
 
 ### 7.2 The dimensions that an organisation can extend
 
@@ -335,20 +338,28 @@ There are 13: `Species`, `Breed`, `Colour`, `Temperament`, `IdentifierKind`,
 `GroupKind`, `LocationKind`, `Condition`, `MeasureKind`, `ProcedureKind`,
 `TaskKind`, `ItemCategory`, and `Unit`.
 
-The maintainer decided that each has shared values and local values. The way
-to store them is not decided. There are two ways:
+The maintainer decided that each has shared values and local values, and
+that a local value is in the schema of its organisation (ADR 0016). Each
+dimension thus has two resources:
 
-| Way to store a dimension | Resources for each organisation | Resources that all organisations share |
+| Resource | Where it is | What it holds |
 | --- | --- | --- |
-| One shared resource for each dimension. A local value names the organisation that owns it. | 44 | 16 |
-| One shared resource for the base list, and one resource in each schema for the list of the organisation. | 57 | 16 |
+| The base list | Outside the schemas. All organisations share it. | The shared values. |
+| The list of the organisation | In the schema of each organisation. | The local values of that organisation. |
 
-The 16 shared resources are the 13 dimensions, `Organisation`, `User`, and
-the token of a sign-in.
+- Each schema holds 13 lists, one for each dimension. They are in the
+  count of section 7.1.
+- All organisations share 16 resources: the 13 base lists, `Organisation`,
+  `User`, and the token of a sign-in.
+- The maintainer rejected the other way: one shared resource for each
+  dimension, where a local value names the organisation that owns it. That
+  way has 13 fewer resources in each schema. It keeps the local values of
+  all organisations in one table.
 
-*Proposal.* Use the first way. It has fewer resources, and a resident names
-one table for its species. The second way keeps each local value inside the
-schema of its organisation, at the cost of 13 more resources in each schema.
+*Proposal.* The list of an organisation holds each value that the
+organisation uses. A row of the list names a value of the base list, or it
+is a local value with a name of its own. A resident then names one table for
+its species, and that table is in the same schema.
 
 ### 7.3 The dimensions with a fixed list
 
@@ -376,29 +387,30 @@ A paper trail adds resources in two ways (ADR 0012):
 - On each other resource, the paper trail adds one version resource and one
   table.
 
-With the defaults of rule 7, each of the 44 resources has a version resource.
+With the defaults of rule 7, each of the 57 resources has a version resource.
 Only a resource with a workflow is not temporal, and thus adds a table.
 `Task` is the only such resource in this estimate.
 
 | | For each organisation |
 | --- | --- |
-| Resources, with the version resources | 88 |
-| Tables | 45 |
+| Resources, with the version resources | 114 |
+| Tables | 58 |
 
 AshArchival adds one column to a resource. It adds no resource and no table.
 
 ### 7.5 The size of the database
 
 Each table makes about 3 or 4 relations in PostgreSQL: the table, its
-indexes, and a store for long text. Thus the 45 tables of one organisation
-make about 160 relations. For 50 organisations, the database holds about
-2,250 tables and about 8,000 relations. That quantity gives PostgreSQL no
+indexes, and a store for long text. Thus the 58 tables of one organisation
+make about 200 relations. For 50 organisations, the database holds about
+2,900 tables and about 10,000 relations. That quantity gives PostgreSQL no
 difficulty.
 
 ## 8. Open points
 
-1. How does Rescord store a dimension with shared values and local values?
-   Section 7.2 gives two ways.
+1. How does a resident name a value of a dimension, when the value can be in
+   the base list or in the list of the organisation? Section 7.2 gives a
+   proposal.
 2. Which dimensions have a fixed list, and are thus enumerated types?
    Section 7.3 gives a proposal.
 3. Which other kinds of task and categories of item are necessary?
