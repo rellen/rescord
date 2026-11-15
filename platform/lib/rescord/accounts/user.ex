@@ -11,6 +11,14 @@ defmodule Rescord.Accounts.User do
   declare no change as temporal safe (ADR 0012). The history of a user is in
   its paper trail.
 
+  ## The root user
+
+  A root user manages Rescord itself, and can do anything in each
+  organisation (`docs/domain.md`, section 5.1). `root?` says that a user is
+  one. No action accepts it as input: `make_root` and `revoke_root` set it,
+  and only a root user can run them. The first root user comes from
+  `Rescord.Accounts.bootstrap_root/1`.
+
   ## The limit on the requests for a link
 
   One address gets no more than 5 links in 15 minutes (ADR 0020). The limit
@@ -65,6 +73,11 @@ defmodule Rescord.Accounts.User do
       key: &__MODULE__.address_key/1
   end
 
+  paper_trail do
+    # A version names the user who made the change.
+    belongs_to_actor :user, Rescord.Accounts.User, domain: Rescord.Accounts
+  end
+
   actions do
     defaults [:read]
 
@@ -81,6 +94,34 @@ defmodule Rescord.Accounts.User do
       get? true
       filter expr(email == ^arg(:email))
     end
+
+    read :roots do
+      description "The root users"
+      filter expr(root? == true)
+    end
+
+    create :bootstrap_root do
+      description "Makes the first root user. Only `Rescord.Accounts.bootstrap_root/1` runs it."
+      accept [:email]
+      upsert? true
+      upsert_identity :unique_email
+      upsert_fields [:root?]
+      change set_attribute(:root?, true)
+    end
+
+    update :make_root do
+      description "Makes a user a root user"
+      accept []
+      change set_attribute(:root?, true)
+    end
+
+    update :revoke_root do
+      description "Makes a root user an ordinary user. The last root user stays one."
+      accept []
+      require_atomic? false
+      validate Rescord.Accounts.Validations.NotTheLastRoot
+      change set_attribute(:root?, false)
+    end
   end
 
   policies do
@@ -88,7 +129,17 @@ defmodule Rescord.Accounts.User do
       authorize_if always()
     end
 
-    policy always() do
+    # A root user can do anything.
+    bypass actor_attribute_equals(:root?, true) do
+      authorize_if always()
+    end
+
+    # Any other user reads only their own record, and changes nothing.
+    policy action_type(:read) do
+      authorize_if expr(id == ^actor(:id))
+    end
+
+    policy action_type([:create, :update, :destroy]) do
       forbid_if always()
     end
   end
@@ -99,6 +150,15 @@ defmodule Rescord.Accounts.User do
     attribute :email, :ci_string do
       allow_nil? false
       public? true
+    end
+
+    attribute :root?, :boolean do
+      allow_nil? false
+      default false
+      public? true
+      # No action takes this as input: an action sets it.
+      writable? false
+      source :is_root
     end
   end
 

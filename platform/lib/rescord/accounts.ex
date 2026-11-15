@@ -34,9 +34,41 @@ defmodule Rescord.Accounts do
   resources do
     resource Rescord.Accounts.User do
       define :user_by_email, action: :get_by_email, args: [:email], not_found_error?: false
+      define :roots, action: :roots
+      define :make_root, action: :make_root
+      define :revoke_root, action: :revoke_root
     end
 
     resource Rescord.Accounts.Token
+  end
+
+  @doc """
+  Makes the first root user, for the email address `address`.
+
+  A person runs this one time, in IEx, when Rescord is first deployed:
+
+      Rescord.Accounts.bootstrap_root("you@example.com")
+
+  It makes the user when there is none for the address. After that the person
+  signs in with a link, as each user does.
+
+  Returns `{:error, :root_exists}` when Rescord has a root user already. From
+  then on, a root user makes another one.
+  """
+  @spec bootstrap_root(String.t()) :: {:ok, Ash.Resource.record()} | {:error, term}
+  def bootstrap_root(address) when is_binary(address) do
+    case roots(authorize?: false) do
+      {:ok, []} ->
+        User
+        |> Ash.Changeset.for_create(:bootstrap_root, %{email: address})
+        |> Ash.create(authorize?: false)
+
+      {:ok, _roots} ->
+        {:error, :root_exists}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @sign_in_tasks Rescord.Accounts.SignInTasks
