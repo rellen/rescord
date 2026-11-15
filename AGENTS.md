@@ -1,4 +1,6 @@
-| `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
+| `platform/assets/css/layers/tokens.css` | the colours, the typeface and the sizes of Scrubs (ADR 0015) |
+| `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
+| `platform/assets/css/layers/vendor.css` || `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
 | `platform/assets/css/layers/vendor.css` | the look of the markup that Cinder renders |
 | `platform/lib/rescord_web/cinder_theme.ex` | the theme of each collection: almost no class |# AGENTS.md
 
@@ -79,6 +81,21 @@ too.
     layer only for a new role.
   - Icons are our own inline SVGs in `CoreComponents.icon/1`, always
     `aria-hidden`. There is no icon library.
+  - The look is the design direction Scrubs (ADR 0015). Only
+    `assets/css/layers/tokens.css` writes a colour: read a token in every
+    other layer. A colour has one meaning: `ok` (green) is well and done,
+    `alert` (red) is what needs somebody now, `info` (blue) is information.
+    The grounds are `bg` for the page, `surface` for a card and `raised` for
+    a menu above a card. An `article` is a card.
+  - A state is a shape and a word, never the colour alone. Write
+    `<.state kind="ok">In care</.state>`, with the kind `ok`, `alert`,
+    `info` or `none`.
+  - A new pair of a colour and its ground takes a line in
+    `RescordWeb.TokensTest`, which holds each pair to WCAG AA in both
+    schemes.
+  - The typeface is Atkinson Hyperlegible, served from
+    `priv/static/fonts`. Do not load a font, a script or a stylesheet from
+    another host.
   - The layer `vendor` is the one exception (ADR 0014). It styles the markup
     that a dependency renders, which has classes that we did not write, and
     it may select such a class below the root element of the dependency.

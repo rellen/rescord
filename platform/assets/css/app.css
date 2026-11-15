@@ -17,7 +17,8 @@
  *   base        box sizing, the page, the focus ring, reduced motion
  *   elements    the default look of each HTML element
  *   layout      the landmarks of a page, and the page header
- *   components  the parts that an attribute marks: icons, flash messages
+ *   components  the parts that an attribute marks: icons, flash messages,
+ *               states, a card that scrolls a table
  *   vendor      the markup that a dependency renders, which has classes
  *               that we did not write (ADR 0014)
  *   colocated   the CSS that a component writes next to its markup

@@ -90,6 +90,17 @@ We do not write those by hand.
   stylesheet styles elements, ARIA states and roles, and a few `data-`
   attributes, in a light and a dark scheme that follow the system. There is
   no Tailwind, daisyUI or icon library.
+- **The look is the design direction Scrubs** (ADR 0015): surgical green
+  leads, on a soft mint ground, with round corners and the typeface
+  Atkinson Hyperlegible, which the application serves itself.
+  - A colour has one meaning: green is well and done, red is what needs
+    somebody now, and blue is information, a link and the keyboard focus.
+  - A state is a shape and a word, never the colour alone:
+    `<.state kind="ok">In care</.state>`.
+  - There are three grounds: the page (`bg`), a card on it (`surface`), and
+    a menu above a card (`raised`).
+  - Only `tokens.css` writes a colour, and `RescordWeb.TokensTest` holds each
+    pair of a colour and its ground to WCAG AA in both schemes.
 - **The stylesheet is one cascade layer per file, and a layer is a role**
   (ADR 0007). `assets/css/app.css` states the order of the layers and imports
   one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,

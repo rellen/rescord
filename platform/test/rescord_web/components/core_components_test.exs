@@ -82,6 +82,23 @@ defmodule RescordWeb.CoreComponentsTest do
     assert attribute(error, "button", "aria-label") == ["close"]
   end
 
+  test "a state is a shape and a word" do
+    for {kind, icons} <- [{"ok", 1}, {"alert", 1}, {"info", 1}, {"none", 0}] do
+      assigns = %{kind: kind}
+
+      doc =
+        rendered_to_string(~H"""
+        <.state kind={@kind}>In care</.state>
+        """)
+        |> parse()
+
+      assert doc |> LazyHTML.query(~s(span[data-state="#{kind}"])) |> LazyHTML.text() =~ "In care"
+
+      assert doc |> LazyHTML.query(~s(span[data-state] > svg[aria-hidden="true"])) |> Enum.count() ==
+               icons
+    end
+  end
+
   test "an icon is hidden from assistive technology" do
     doc = render_component(&icon/1, name: "x-mark") |> parse()
 

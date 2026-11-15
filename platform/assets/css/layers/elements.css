@@ -19,22 +19,23 @@ h6 {
   text-wrap: balance;
 }
 
+/* The scale is that of an application: a page holds many parts. */
 h1 {
-  font-size: clamp(1.75rem, 1.5rem + 1vw, 2.25rem);
-}
-
-h2 {
   font-size: 1.5rem;
 }
 
+h2 {
+  font-size: 1.125rem;
+}
+
 h3 {
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 h4,
 h5,
 h6 {
-  font-size: 1.05rem;
+  font-size: 0.9375rem;
 }
 
 p,
@@ -55,7 +56,7 @@ hgroup > :first-child {
 }
 
 a {
-  color: var(--accent);
+  color: var(--link);
   text-underline-offset: 0.15em;
 }
 
@@ -74,7 +75,7 @@ pre {
 code,
 kbd {
   padding: 0.1em 0.3em;
-  background: var(--surface);
+  background: var(--tint);
   border-radius: 0.25rem;
 }
 
@@ -85,7 +86,7 @@ kbd {
 pre {
   padding: 1rem;
   overflow-x: auto;
-  background: var(--surface);
+  background: var(--tint);
   border-radius: var(--radius);
 }
 
@@ -178,18 +179,17 @@ th,
 td {
   padding: 0.5rem 0.75rem;
   text-align: start;
-  vertical-align: top;
+  vertical-align: middle;
   border-block-end: 1px solid var(--border);
 }
 
 thead th {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--muted);
-  border-block-end-width: 2px;
 }
 
 tbody tr:hover {
-  background: var(--surface);
+  background: var(--tint);
 }
 
 td > :is(a, button) + :is(a, button) {
@@ -198,6 +198,31 @@ td > :is(a, button) + :is(a, button) {
 
 [phx-click] {
   cursor: pointer;
+}
+
+/* ----------------------------------------------------------------- cards */
+
+/*
+ * An article is a card: a part of a page that stands on its own, on the
+ * ground of the page. A form that a page or a section holds is one too.
+ */
+article,
+:is(main, section) > form {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+article {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  margin-block: 0 1rem;
+}
+
+article > * {
+  margin-block: 0;
 }
 
 /* ----------------------------------------------------------------- forms */
@@ -248,7 +273,7 @@ textarea {
   font: inherit;
   color: inherit;
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--field);
   border-radius: var(--radius);
 }
 
@@ -277,7 +302,8 @@ label:has(> input:is([type="checkbox"], [type="radio"])) {
 }
 
 :is(input, select, textarea)[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: var(--alert);
+  border-width: 2px;
 }
 
 /* The hint or the errors of a field follow its control. */
@@ -292,7 +318,8 @@ label:has(> input:is([type="checkbox"], [type="radio"])) {
 }
 
 :has(> [aria-invalid="true"], > label > [aria-invalid="true"]) > small {
-  color: var(--danger);
+  font-weight: 600;
+  color: var(--alert);
 }
 
 :disabled {
@@ -333,8 +360,8 @@ input:is([type="submit"], [type="button"], [type="reset"]) {
   text-decoration: none;
   cursor: pointer;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--field);
+  border-radius: var(--pill);
 }
 
 :is(button, a[data-variant], input[type="submit"]):hover {

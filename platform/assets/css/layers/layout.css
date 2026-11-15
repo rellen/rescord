@@ -12,7 +12,8 @@ main {
 }
 
 header:has(> nav) {
-  background: var(--surface);
+  color: var(--on-bar);
+  background: var(--bar);
   border-block-end: 1px solid var(--border);
 }
 
@@ -26,23 +27,52 @@ header > nav {
 
 /* The first link of the site nav is the name of the site. */
 header > nav > a:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.0625rem;
   font-weight: 700;
   color: inherit;
   text-decoration: none;
 }
 
+/* The mark beside the name is in the lead colour. */
+header > nav > a:first-child > svg {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  color: var(--accent);
+}
+
 header > nav ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
+  gap: 0.25rem;
   margin: 0 0 0 auto;
   padding: 0;
   list-style: none;
 }
 
+header > nav ul a {
+  display: block;
+  padding: 0.25rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--pill);
+}
+
+header > nav ul a:hover {
+  background: var(--tint);
+}
+
 [aria-current="page"] {
   font-weight: 600;
   text-decoration-thickness: 2px;
+}
+
+/* The page that the reader is on: bold, and on a ground of the lead colour. */
+header > nav ul [aria-current="page"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 main {
@@ -57,7 +87,7 @@ a[href="#main"] {
   inset-block-start: -100vh;
   z-index: 100;
   padding: 0.5rem 1rem;
-  background: var(--bg);
+  background: var(--raised);
   border: 2px solid var(--focus);
   border-radius: var(--radius);
 }

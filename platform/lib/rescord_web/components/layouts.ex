@@ -35,7 +35,7 @@ defmodule RescordWeb.Layouts do
 
     <header>
       <nav aria-label={gettext("Site")}>
-        <a href={~p"/"}>Rescord</a>
+        <a href={~p"/"}><.icon name="mark" /> Rescord</a>
       </nav>
     </header>
 

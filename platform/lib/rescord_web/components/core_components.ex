@@ -387,6 +387,34 @@ defmodule RescordWeb.CoreComponents do
   end
 
   @doc """
+  Renders a state as a shape and a word, never as a colour alone.
+
+  `ok` is well and done, `alert` is what needs somebody now, `info` is
+  information and what is coming, and `none` is no state yet. The stylesheet
+  gives each its colour (ADR 0015).
+
+  ## Examples
+
+      <.state kind="ok">In care</.state>
+      <.state kind="alert">Medication due</.state>
+  """
+  attr :kind, :string, required: true, values: ~w(ok alert info none)
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def state(assigns) do
+    ~H"""
+    <span data-state={@kind} {@rest}>
+      <.icon :if={@kind != "none"} name={state_icon(@kind)} />{render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  defp state_icon("ok"), do: "check"
+  defp state_icon("alert"), do: "exclamation-triangle"
+  defp state_icon("info"), do: "clock"
+
+  @doc """
   Renders one of our own icons as an inline SVG of 1em.
 
   An icon is decoration: it is `aria-hidden`, and the text beside it, or
@@ -401,7 +429,8 @@ defmodule RescordWeb.CoreComponents do
   """
   attr :name, :string,
     required: true,
-    values: ~w(arrow-path exclamation-circle information-circle x-mark)
+    values:
+      ~w(arrow-path check clock exclamation-circle exclamation-triangle information-circle mark x-mark)
 
   attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
   attr :rest, :global
@@ -410,6 +439,39 @@ defmodule RescordWeb.CoreComponents do
     ~H"""
     <.svg spin={@spin} {@rest}>
       <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "check"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "clock"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "exclamation-triangle"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+    </.svg>
+    """
+  end
+
+  # The mark of Rescord, beside its name in the site bar.
+  def icon(%{name: "mark"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <rect x="3" y="3" width="18" height="18" rx="5" /><path d="M12 8v8M8 12h8" />
     </.svg>
     """
   end
