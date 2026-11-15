@@ -25,8 +25,11 @@ and its supplies.
 | parent link | A record that one resident is the mother or the father of another resident. |
 | group | A set of residents that the organisation manages together, and that is not a family. |
 | location | A place where a resident lives, or where the organisation keeps a lot. |
-| clinical entry | One record in the medical history of a resident. |
-| addendum | A new clinical entry that names an earlier clinical entry, and adds to it. |
+| journal | The list of the journal entries of one resident. |
+| journal entry | One record that a member writes about a resident. It has a kind, for example an examination or a note about a placement. |
+| medical history | The journal entries of a resident that have a medical kind. |
+| addendum | A new journal entry that names an earlier journal entry, and adds to it. |
+| timeline | The journal entries of a resident together with the changes that Rescord records, in order of time. |
 | task | One piece of work that a member does for a resident, a group, or a location. |
 | item | A type of supply that the organisation keeps, for example one brand of dry food. |
 | lot | One delivery of an item. A lot can have an expiry date. |
@@ -51,7 +54,7 @@ These root entities are in scope:
 3. families of residents;
 4. groups of residents;
 5. locations of residents;
-6. medical histories;
+6. the journal of each resident, which holds its medical history;
 7. tasks;
 8. inventory.
 
@@ -73,12 +76,14 @@ These subjects are out of scope for now:
 | Can one user work for more than one organisation? | Yes. |
 | How does a location contain a location? | Each organisation defines its own kinds, and a location can be inside any other location. |
 | Which other dimensions does a resident have? | Identifiers, size class, coat, temperament, and desex status. |
-| What does a completed `medicate` task record? | The task, and a clinical entry for the dose. It records no stock movement. |
+| What does a completed `medicate` task record? | The task, and a journal entry for the dose. It records no stock movement. |
 | How does Rescord track the inventory? | By lot, with an expiry date, and by location. |
-| Who writes a clinical entry? | A member only. |
+| Who writes a journal entry? | A member only. |
 | Which tools keep the history? | The temporal resources of Ash, AshPaperTrail, and AshArchival (ADR 0012). |
 | Which resources are temporal and keep a paper trail? | Each resource, by default (ADR 0013). A resource with a workflow is not temporal. |
-| Can a member change a clinical entry? | Yes, and the paper trail keeps the entry as it was. An addendum or a new clinical entry is the preferred way. |
+| Can a member change a journal entry? | Yes, and the paper trail keeps the entry as it was. An addendum or a new journal entry is the preferred way. |
+| What is the name of one record in the medical history? | A journal entry. The journal also holds entries that are not medical. |
+| What does the journal hold about a change to a placement or a group? | Only what a member writes about it. The change itself stays in the resource that records it. |
 
 ## 5. The root entities
 
@@ -109,8 +114,7 @@ dimensions:
 
 - Rescord keeps a history of the name, the status, and the desex status of a
   resident. Each of the three is a temporal resource in 6NF.
-- The weight is a measurement in the medical history, so it has a history
-  already.
+- The weight is a measurement in the journal, so it has a history already.
 - An arrival records how and when a resident came to the organisation. A
   departure records how and when a resident left.
 - The age is not a dimension. Rescord calculates the age from the date of
@@ -158,30 +162,52 @@ other location.
 *Proposal.* A location cannot contain itself, directly or through other
 locations. Rescord rejects such a tie.
 
-### 5.6 Medical histories
+### 5.6 The journal of a resident
 
-The medical history of a resident is the list of its clinical entries. A
-member writes each clinical entry.
+The journal of a resident is the list of its journal entries. A member
+writes each journal entry, and each journal entry has a kind. The medical
+history of a resident is the part of its journal that has a medical kind.
 
-A member can correct a clinical entry. The paper trail keeps each version of
+A member can correct a journal entry. The paper trail keeps each version of
 the entry, and shows who corrected it and when. There are two preferred ways
-to add to a clinical entry:
+to add to a journal entry:
 
-- Write an addendum. An addendum is a new clinical entry that names the
+- Write an addendum. An addendum is a new journal entry that names the
   entry that it follows.
-- Write a new clinical entry with no such link.
+- Write a new journal entry with no such link.
 
 Use a correction only for a mistake in the entry.
 
-*Proposal.* A clinical entry has one of these kinds:
+*Proposal.* A journal entry has one of these kinds:
 
-- examination;
-- diagnosis of a condition;
-- measurement, for example the weight;
-- procedure;
-- vaccination;
-- prescription of a medication;
-- dose of a medication that a member gave.
+| Kind | Part of the medical history |
+| --- | --- |
+| examination | yes |
+| diagnosis of a condition | yes |
+| measurement, for example the weight | yes |
+| procedure | yes |
+| vaccination | yes |
+| prescription of a medication | yes |
+| dose of a medication that a member gave | yes |
+| placement | no |
+| group | no |
+| behaviour | no |
+| general | no |
+
+#### A change to a placement or a group
+
+Rescord records such a change in the resource that holds the fact. A move of
+a resident is a new version of its placement, with the date, the action, and
+the member who made it. The journal does not record the change again.
+
+- A member can write a journal entry of the kind `placement` or `group` about
+  the change, for example to give the reason for a move.
+- The timeline of a resident shows its journal entries together with the
+  changes that Rescord records, in order of time.
+
+*Proposal.* Such a journal entry names the placement or the group that it is
+about. A change can also hold a short reason on its own version, with no
+journal entry.
 
 ### 5.7 Tasks
 
@@ -193,7 +219,7 @@ there can be many more:
 - clean;
 - groom.
 
-When a member completes a `medicate` task, Rescord also writes a clinical
+When a member completes a `medicate` task, Rescord also writes a journal
 entry for the dose. It does not change the inventory.
 
 *Proposal.* A task has one or more subjects. A subject is a resident, a
@@ -257,7 +283,7 @@ This section applies the answers of section 4 and the proposals of sections
 | Residents | `Resident`, `ResidentName`, `ResidentStatus`, `ResidentDesexStatus`, `ResidentBreed`, `ResidentColour`, `ResidentTemperament`, `ResidentIdentifier`, `Arrival`, `Departure` | 10 |
 | Families and groups | `ParentLink`, `Family`, `FamilyMember`, `Group`, `GroupMember` | 5 |
 | Locations | `Location`, `LocationParent`, `Placement` | 3 |
-| Medical histories | `ClinicalEntry`, `Diagnosis`, `Measurement`, `Procedure`, `Vaccination`, `Prescription`, `Dose`, `Attachment` | 8 |
+| Journal | `JournalEntry`, `Diagnosis`, `Measurement`, `Procedure`, `Vaccination`, `Prescription`, `Dose`, `Attachment` | 8 |
 | Tasks | `Task`, `Routine`, `TaskResident`, `TaskGroup`, `TaskLocation`, `TaskAssignee`, `RoutineResident`, `RoutineGroup`, `RoutineLocation` | 9 |
 | Inventory | `Item`, `Lot`, `Supplier`, `StockMovement`, `ReorderLevel` | 5 |
 | **Total** | | **44** |
@@ -293,7 +319,7 @@ resources:
 - size class;
 - coat;
 - kin role;
-- kind of clinical entry;
+- kind of journal entry;
 - route of a medication;
 - reason for a stock movement;
 - arrival kind;
