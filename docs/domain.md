@@ -95,6 +95,7 @@ These subjects are out of scope for now:
 | Can an administrator make another member an administrator? | Yes. |
 | What can a root user do in an organisation? | Anything. A root user can read and change the data of each organisation. |
 | Which library does the sign-in use? | AshAuthentication (ADR 0018). |
+| Can the time of an answer show that an address has an account? | No. A request for a sign-in link runs in a task and answers at once, in each case (ADR 0019). |
 | Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
 | Does the model fit the housing of one organisation? | No. The location tree and the placement must serve each organisation. |
 | What does a placement name? | A resident or a group. |

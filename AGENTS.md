@@ -172,6 +172,11 @@ too.
   - A change, validation or preparation for a temporal resource is a module
     that declares `temporal_safe?/1`. Pass `as_of:` as an action option, and
     use `now()` in an expression, never the wall clock.
+  - A request for a sign-in link answers at once (ADR 0019). It starts a
+    supervised task and gives the same answer in each case: a known address,
+    an address that Rescord does not know, and a fault. Do no work that
+    depends on the address before the task starts. Never log a token or a
+    link.
   - Policies and roles will be our own system in the manner of `ash_grant`
     (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
     as a dependency, and do not write a role into a policy by hand.

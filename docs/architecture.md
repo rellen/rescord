@@ -200,6 +200,10 @@ The first resource in the schema of an organisation needs
 - **The sign-in uses AshAuthentication** (ADR 0018), with its strategy for
   a link by email. The strategy makes no account for an address that it does
   not know.
+- **A request for a sign-in link answers at once** (ADR 0019). Each way of
+  the request runs in a supervised task: a known address, an address that
+  Rescord does not know, and a fault. The answer is the same in each way, so
+  neither its words nor its time say whether an address has an account.
 - A member is an administrator or a member. The grants can hold more roles
   later (see "Policies and roles").
 
@@ -302,8 +306,9 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- For the sign-in: how actors reach Ash from LiveViews, and how a root user,
-  who is not a member, acts in the schema of an organisation.
+- For the sign-in: how actors reach Ash from LiveViews, how a root user, who
+  is not a member, acts in the schema of an organisation, and the limits on
+  the requests for a link and on their tasks (ADR 0019).
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
