@@ -1,0 +1,179 @@
+defmodule Rescord.Resource do
+  @moduledoc """
+  The base of every Ash resource of Rescord (ADR 0013).
+
+  Write `use Rescord.Resource` in place of `use Ash.Resource`. It sets the
+  defaults that `docs/architecture.md` decides, so a resource states only what
+  is its own:
+
+      defmodule Rescord.Residents.ResidentName do
+        use Rescord.Resource, domain: Rescord.Residents
+
+        postgres do
+          table "resident_names"
+        end
+
+        # attributes, actions, relationships ...
+      end
+
+  ## The defaults
+
+    * The data layer is `AshPostgres.DataLayer`, and the repo is `Rescord.Repo`.
+      The resource names its own table.
+    * The resource is in the schema of an organisation
+      (`multitenancy do strategy :context end`, ADR 0011).
+    * The resource is temporal (ADR 0012): it keeps each version of a record,
+      and each read and write happens as of one instant. The period attribute
+      is `:valid_at`.
+    * The resource keeps a paper trail. On a temporal resource the trail is on
+      the version rows (`mode :temporal_inline`), and a version resource lists
+      them. On any other resource AshPaperTrail writes to a version resource
+      with a table of its own.
+    * A destroy archives the row (AshArchival).
+
+  A section that the resource writes again adds to these defaults, and an
+  option that it sets again wins.
+
+  ## Options
+
+  Every option of `use Ash.Resource` passes through. These are ours, and each
+  must be a literal `true` or `false`:
+
+    * `temporal?` - `false` for a resource that is not temporal. Default `true`.
+    * `paper_trail?` - `false` for a resource with no paper trail. Default `true`.
+    * `archive?` - `false` for a resource whose destroy deletes the row.
+      Default `true`.
+    * `shared?` - `true` for a resource that all organisations share, outside
+      the schema of an organisation. Default `false`.
+
+  ## A resource with a workflow
+
+  AshStateMachine, and AshWorkflow which builds on it, cannot run on a temporal
+  resource: their changes are not temporal safe. `Rescord.Resource.Checks`
+  refuses to compile a resource that is temporal and has either extension. So
+  such a resource says so:
+
+      use Rescord.Resource,
+        domain: Rescord.Tasks,
+        temporal?: false,
+        extensions: [AshWorkflow, AshOban]
+
+  Its history then comes from its paper trail.
+
+  ## What the domain needs
+
+  The version resources belong to the domain of their resource. A domain adds
+  `AshPaperTrail.Domain` to its extensions, with:
+
+      paper_trail do
+        include_versions? true
+      end
+  """
+
+  @flags [temporal?: true, paper_trail?: true, archive?: true, shared?: false]
+
+  defmacro __using__(opts) do
+    {flags, opts} = split_flags(opts, __CALLER__)
+    {extensions, opts} = Keyword.pop(opts, :extensions, [])
+
+    if not is_list(extensions) do
+      raise CompileError,
+        file: __CALLER__.file,
+        line: __CALLER__.line,
+        description: "the option :extensions of use Rescord.Resource must be a literal list"
+    end
+
+    ours =
+      [Rescord.Resource.Checks] ++
+        if(flags.paper_trail?, do: [AshPaperTrail.Resource], else: []) ++
+        if(flags.archive?, do: [AshArchival.Resource], else: [])
+
+    # Spark reads the extensions while it expands `use`, so the list stays a
+    # literal: our modules, then the ones that the resource names.
+    opts =
+      opts
+      |> Keyword.put_new(:data_layer, AshPostgres.DataLayer)
+      |> Keyword.put(:extensions, ours ++ extensions)
+
+    quote do
+      use Ash.Resource, unquote(opts)
+
+      postgres do
+        repo Rescord.Repo
+      end
+
+      unquote(tenancy(flags))
+      unquote(temporal(flags))
+      unquote(paper_trail(flags))
+    end
+  end
+
+  defp split_flags(opts, caller) do
+    if not Keyword.keyword?(opts) do
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description: "use Rescord.Resource takes a literal keyword list of options"
+    end
+
+    Enum.reduce(@flags, {%{}, opts}, fn {flag, default}, {flags, opts} ->
+      {value, opts} = Keyword.pop(opts, flag, default)
+
+      if not is_boolean(value) do
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description:
+            "the option #{inspect(flag)} of use Rescord.Resource must be a literal true or false, " <>
+              "got: #{Macro.to_string(value)}"
+      end
+
+      {Map.put(flags, flag, value), opts}
+    end)
+  end
+
+  defp tenancy(%{shared?: true}), do: nil
+
+  defp tenancy(_flags) do
+    quote do
+      multitenancy do
+        strategy :context
+      end
+    end
+  end
+
+  defp temporal(%{temporal?: false}), do: nil
+
+  defp temporal(_flags) do
+    quote do
+      temporal do
+        strategy :context
+        attribute :valid_at
+      end
+    end
+  end
+
+  defp paper_trail(%{paper_trail?: false}), do: nil
+
+  # Each version row of a temporal resource is a version already, so the trail
+  # goes on those rows, and holds only the values that the change replaced.
+  defp paper_trail(%{temporal?: true}) do
+    quote do
+      paper_trail do
+        mode :temporal_inline
+        change_tracking_mode :previous_values
+        store_action_name? true
+        version_resource? true
+      end
+    end
+  end
+
+  defp paper_trail(_flags) do
+    quote do
+      paper_trail do
+        change_tracking_mode :changes_only
+        store_action_name? true
+      end
+    end
+  end
+end

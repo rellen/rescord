@@ -151,6 +151,10 @@ user to it. The maintainer expects tens of organisations.
 | Who changed a record, and how? | AshPaperTrail. On a temporal resource it stamps each version row (`mode :temporal_inline`); on any other resource it writes to a version resource. |
 | What did a removed record hold? | AshArchival turns a destroy into a mark on the row. |
 
+- **Each resource uses `Rescord.Resource`** in place of `Ash.Resource`
+  (ADR 0013). By default a resource is temporal, keeps a paper trail,
+  archives on a destroy, and is in the schema of an organisation. The
+  compiler refuses a resource that is temporal and has a workflow.
 - A fact that needs a history is a temporal resource in 6NF: the key, the
   period and one value (`docs/domain.md`, section 6).
 - Temporal resources are experimental in Ash, and need PostgreSQL 18 and

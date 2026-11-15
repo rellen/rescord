@@ -26,6 +26,7 @@ and its supplies.
 | group | A set of residents that the organisation manages together, and that is not a family. |
 | location | A place where a resident lives, or where the organisation keeps a lot. |
 | clinical entry | One record in the medical history of a resident. |
+| addendum | A new clinical entry that names an earlier clinical entry, and adds to it. |
 | task | One piece of work that a member does for a resident, a group, or a location. |
 | item | A type of supply that the organisation keeps, for example one brand of dry food. |
 | lot | One delivery of an item. A lot can have an expiry date. |
@@ -76,6 +77,8 @@ These subjects are out of scope for now:
 | How does Rescord track the inventory? | By lot, with an expiry date, and by location. |
 | Who writes a clinical entry? | A member only. |
 | Which tools keep the history? | The temporal resources of Ash, AshPaperTrail, and AshArchival (ADR 0012). |
+| Which resources are temporal and keep a paper trail? | Each resource, by default (ADR 0013). A resource with a workflow is not temporal. |
+| Can a member change a clinical entry? | Yes, and the paper trail keeps the entry as it was. An addendum or a new clinical entry is the preferred way. |
 
 ## 5. The root entities
 
@@ -160,6 +163,16 @@ locations. Rescord rejects such a tie.
 The medical history of a resident is the list of its clinical entries. A
 member writes each clinical entry.
 
+A member can correct a clinical entry. The paper trail keeps each version of
+the entry, and shows who corrected it and when. There are two preferred ways
+to add to a clinical entry:
+
+- Write an addendum. An addendum is a new clinical entry that names the
+  entry that it follows.
+- Write a new clinical entry with no such link.
+
+Use a correction only for a mistake in the entry.
+
 *Proposal.* A clinical entry has one of these kinds:
 
 - examination;
@@ -222,15 +235,14 @@ The maintainer asked for a design in 5NF and 6NF.
 5. A relation of many to many is a tie.
 6. Rescord stores a fact one time and calculates the other values. The age,
    the stock level, and the relatives of a resident are examples.
-7. A temporal resource keeps its paper trail on its own rows. Each version
+7. Each resource is a temporal resource and keeps a paper trail, unless the
+   resource states the opposite. `Rescord.Resource` sets these defaults
+   (ADR 0013).
+8. A temporal resource keeps its paper trail on its own rows. Each version
    then says which action made it, and who did so.
-8. Rescord deletes no row that a member removes. It archives the row.
-9. A resource with a workflow, such as a task, is not a temporal resource.
-   ADR 0012 gives the reason.
-
-*Proposal.* These resources are temporal resources: `ResidentName`,
-`ResidentStatus`, `ResidentDesexStatus`, `Placement`, and `GroupMember`. Each
-states a fact about a resident that is valid for a period.
+9. Rescord deletes no row that a member removes. It archives the row.
+10. A resource with a workflow, such as a task, is not a temporal resource.
+    The compiler refuses a resource that is both. ADR 0012 gives the reason.
 
 ## 7. Estimate of the resources
 
@@ -297,22 +309,24 @@ A paper trail adds resources in two ways (ADR 0012):
 - On each other resource, the paper trail adds one version resource and one
   table.
 
-The count depends on which resources keep a paper trail:
+With the defaults of rule 7, each of the 44 resources has a version resource.
+Only a resource with a workflow is not temporal, and thus adds a table.
+`Task` is the only such resource in this estimate.
 
-| Paper trail on | Resources for each organisation | Tables for each organisation |
-| --- | --- | --- |
-| the 5 temporal resources only | 49 | 44 |
-| each of the 44 resources | 88 | 83 |
+| | For each organisation |
+| --- | --- |
+| Resources, with the version resources | 88 |
+| Tables | 45 |
 
 AshArchival adds one column to a resource. It adds no resource and no table.
 
 ### 7.5 The size of the database
 
 Each table makes about 3 or 4 relations in PostgreSQL: the table, its
-indexes, and a store for long text. Thus the 44 to 83 tables of one
-organisation make about 150 to 290 relations. For 50 organisations, the
-database holds 2,200 to 4,150 tables, and no more than about 14,500
-relations. That quantity gives PostgreSQL no difficulty.
+indexes, and a store for long text. Thus the 45 tables of one organisation
+make about 160 relations. For 50 organisations, the database holds about
+2,250 tables and about 8,000 relations. That quantity gives PostgreSQL no
+difficulty.
 
 ## 8. Open points
 
@@ -327,8 +341,5 @@ relations. That quantity gives PostgreSQL no difficulty.
    item in one location?
 7. Can a member of one organisation see a resident that another organisation
    transferred to it?
-8. Which resources are temporal resources? Section 6 gives a proposal.
-9. Which resources keep a paper trail? Section 7.4 gives the two ends of the
-   range.
-10. Does a clinical entry change after a member writes it, or does a
-    correction make a new clinical entry?
+8. Which resources, other than a resource with a workflow, are not temporal
+   resources or keep no paper trail?

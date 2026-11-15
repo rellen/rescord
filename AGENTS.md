@@ -112,13 +112,19 @@ too.
     to one organisation uses `multitenancy do strategy :context end`, and
     each call for it passes the tenant. Its migration goes in
     `priv/repo/tenant_migrations`.
-  - History (ADR 0012). A fact that needs a history is a temporal resource,
-    with `paper_trail do mode :temporal_inline end`. Any other resource that
-    needs a trail uses AshPaperTrail in its default mode. A resource that a
-    member can remove uses AshArchival. A resource with a workflow is never
-    temporal. A change, validation or preparation for a temporal resource
-    is a module that declares `temporal_safe?/1`; pass `as_of:` as an
-    action option, and use `now()` in an expression, never the wall clock.
+  - Write `use Rescord.Resource, domain: ...`, never `use Ash.Resource`
+    (ADR 0013). It makes the resource temporal, with a paper trail, a
+    destroy that archives, and the schema of an organisation. State only the
+    table, the attributes, the actions and the relationships. Change a
+    default with `temporal?: false`, `paper_trail?: false`, `archive?: false`
+    or `shared?: true`.
+  - A resource with a workflow states `temporal?: false`, or it does not
+    compile (ADR 0012).
+  - A domain adds `AshPaperTrail.Domain` to its extensions, with
+    `paper_trail do include_versions? true end`.
+  - A change, validation or preparation for a temporal resource is a module
+    that declares `temporal_safe?/1`. Pass `as_of:` as an action option, and
+    use `now()` in an expression, never the wall clock.
   - Policies and roles will be our own system in the manner of `ash_grant`
     (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
     as a dependency, and do not write a role into a policy by hand.
@@ -146,6 +152,7 @@ too.
 | Path | Contents |
 | --- | --- |
 | `platform/lib/rescord/` | domains and resources (Ash) |
+| `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |

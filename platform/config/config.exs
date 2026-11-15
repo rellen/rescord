@@ -62,10 +62,35 @@ config :spark,
         :identities
       ]
     ],
+    # `use Rescord.Resource` is a resource too (ADR 0013). The formatter needs
+    # the extensions that it adds, and the same order of sections.
+    "Rescord.Resource": [
+      type: Ash.Resource,
+      extensions: [AshPaperTrail.Resource, AshArchival.Resource],
+      section_order: [
+        :postgres,
+        :resource,
+        :code_interface,
+        :actions,
+        :policies,
+        :pub_sub,
+        :preparations,
+        :changes,
+        :validations,
+        :multitenancy,
+        :attributes,
+        :relationships,
+        :calculations,
+        :aggregates,
+        :identities
+      ]
+    ],
     "Ash.Domain": [section_order: [:resources, :policies, :authorization, :domain, :execution]]
   ]
 
 config :rescord,
+  # `use Rescord.Resource` stands for `use Ash.Resource` (ADR 0013).
+  base_resources: [Rescord.Resource],
   ecto_repos: [Rescord.Repo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: []
