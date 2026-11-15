@@ -136,13 +136,17 @@ section "Policies and roles" of `docs/architecture.md` describes the grants.
 The first root user comes from a script that a person runs in IEx when
 Rescord is first deployed. No page makes the first root user.
 
-*Proposal.* A shared resource records that a user is a root user, with a
-paper trail. After the first one, a root user can make another user a root
-user.
+The record of a user says that the user is a root user, and its paper trail
+keeps each change. After the first one, a root user can make another user a
+root user. The last root user stays one.
 
-*Proposal.* The script calls one function of Rescord with an email address.
-A release has no Mix, so the function is in a module of the application,
-and a person calls it from the remote shell of the release.
+The script calls `Rescord.Accounts.bootstrap_root/1` with an email address.
+A release has no Mix, so a person calls the function from the remote shell
+of the release. The function does nothing when Rescord has a root user.
+
+An invitation makes the user and the member, and sends an email that says
+where to sign in. The email has no token: the person asks for a sign-in
+link.
 
 ### 5.2 Residents
 

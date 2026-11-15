@@ -1,0 +1,337 @@
+defmodule Rescord.Accounts.OrganisationTest do
+  @moduledoc """
+  Holds the rules of the organisations, their members and the grants
+  (`docs/domain.md`, section 5.1):
+
+    * a root user creates an organisation, which makes its schema;
+    * a root user invites an administrator, and an administrator invites a
+      member and can make a member an administrator;
+    * a person sees only the organisations where they are a member;
+    * a root user can do anything.
+
+  A new organisation makes a schema, with a table that names the users. That
+  takes a lock on the users, and two tests that do so at one time stop each
+  other. So a test that creates an organisation does not run beside others.
+  """
+
+  use Rescord.DataCase, async: false
+
+  import Rescord.AccountsFixtures
+  import Swoosh.TestAssertions
+
+  alias Rescord.Accounts
+  alias Rescord.Accounts.{Grants, Member, Organisation}
+
+  setup do
+    {:ok, root: root!()}
+  end
+
+  describe "an organisation" do
+    test "comes from a root user, with a schema of its own", %{root: root} do
+      organisation = organisation!(root)
+
+      assert %{rows: [[1]]} =
+               Repo.query!(
+                 "select count(*)::int from information_schema.tables where table_schema = $1 and table_name = 'members'",
+                 [Organisation.schema(organisation)]
+               )
+
+      assert Organisation.schema(organisation) in Repo.all_tenants()
+    end
+
+    test "does not come from a user who is not a root user, or from nobody" do
+      for actor <- [user!(), nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.create_organisation(%{name: "A", short_name: "a-refuge"}, actor: actor)
+      end
+    end
+
+    test "has a short name of small letters, digits and hyphens, that no other one has", %{
+      root: root
+    } do
+      for short_name <- ["Wattle", "wattle creek", "-wattle", "wattle-", "wattle--creek", ""] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.create_organisation(%{name: "A", short_name: short_name}, actor: root)
+      end
+
+      first = organisation!(root)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Accounts.create_organisation(%{name: "B", short_name: first.short_name},
+                 actor: root
+               )
+    end
+  end
+
+  describe "an invitation" do
+    setup %{root: root} do
+      {:ok, organisation: organisation!(root, "Wattle Creek")}
+    end
+
+    test "from a root user makes an administrator, a user for the address, and an email", %{
+      root: root,
+      organisation: organisation
+    } do
+      address = unique_address()
+
+      {member, user} = member!(organisation, :administrator, root, address)
+
+      assert member.role == :administrator
+      assert member.user_id == user.id
+      refute user.root?
+
+      assert_email_sent(fn email ->
+        assert email.to == [{"", address}]
+        assert email.subject =~ "Wattle Creek"
+        assert email.text_body =~ to_string(root.email)
+        assert email.text_body =~ RescordWeb.SignInLink.page()
+        # An invitation has no token: the person asks for a link.
+        refute email.text_body =~ "token"
+        true
+      end)
+    end
+
+    test "uses the user that an address has already", %{root: root, organisation: organisation} do
+      user = user!()
+
+      {member, found} =
+        member!(organisation, :member, root, String.upcase(to_string(user.email)))
+
+      assert found.id == user.id
+      assert member.user_id == user.id
+    end
+
+    test "from an administrator makes a member, and not an administrator", %{
+      root: root,
+      organisation: organisation
+    } do
+      {_member, administrator} = member!(organisation, :administrator, root)
+
+      {member, _user} = member!(organisation, :member, administrator)
+      assert member.role == :member
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.invite_administrator(unique_address(),
+                 actor: administrator,
+                 tenant: organisation
+               )
+    end
+
+    test "does not come from a member, from a user outside the organisation, or from nobody",
+         %{root: root, organisation: organisation} do
+      {_member, member} = member!(organisation, :member, root)
+
+      for actor <- [member, user!(), nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.invite_member(unique_address(), actor: actor, tenant: organisation)
+      end
+    end
+
+    test "does not make a second member for a user", %{root: root, organisation: organisation} do
+      address = unique_address()
+      member!(organisation, :member, root, address)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Accounts.invite_member(address, actor: root, tenant: organisation)
+
+      assert Exception.message(error) =~ "is a member of the organisation already"
+    end
+
+    test "does not take a role or a user as input", %{root: root, organisation: organisation} do
+      for extra <- [%{role: :administrator}, %{user_id: root.id}] do
+        assert_raise Ash.Error.Invalid, fn ->
+          Member
+          |> Ash.Changeset.for_create(
+            :invite_member,
+            Map.merge(%{email: unique_address()}, extra),
+            actor: root,
+            tenant: organisation
+          )
+          |> Ash.create!()
+        end
+      end
+    end
+  end
+
+  describe "the members of an organisation" do
+    setup %{root: root} do
+      organisation = organisation!(root)
+      {_, administrator} = member!(organisation, :administrator, root)
+      {member, user} = member!(organisation, :member, administrator)
+
+      {:ok, organisation: organisation, administrator: administrator, member: member, user: user}
+    end
+
+    test "are there for each member, with their addresses", context do
+      for actor <- [context.administrator, context.user, context.root] do
+        members = Accounts.members!(actor: actor, tenant: context.organisation, load: [:email])
+
+        assert length(members) == 2
+        assert to_string(context.user.email) in Enum.map(members, &to_string(&1.email))
+      end
+    end
+
+    test "are not there for a user of another organisation, or for nobody", context do
+      other = organisation!(context.root)
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for actor <- [outsider, user!(), nil] do
+        assert Accounts.members!(actor: actor, tenant: context.organisation) == []
+      end
+
+      # Positive control: the outsider does read their own organisation.
+      assert [_one] = Accounts.members!(actor: outsider, tenant: other)
+    end
+
+    test "an administrator makes a member an administrator, and a member cannot", context do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.make_administrator(context.member,
+                 actor: context.user,
+                 tenant: context.organisation
+               )
+
+      assert {:ok, promoted} =
+               Accounts.make_administrator(context.member,
+                 actor: context.administrator,
+                 tenant: context.organisation
+               )
+
+      assert promoted.role == :administrator
+    end
+
+    test "only a root user makes an administrator a member again", context do
+      {:ok, promoted} =
+        Accounts.make_administrator(context.member,
+          actor: context.administrator,
+          tenant: context.organisation
+        )
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.make_member(promoted,
+                 actor: context.administrator,
+                 tenant: context.organisation
+               )
+
+      assert {:ok, %{role: :member}} =
+               Accounts.make_member(promoted, actor: context.root, tenant: context.organisation)
+    end
+
+    test "an administrator removes a member, and not another administrator", context do
+      {other_administrator, _user} = member!(context.organisation, :administrator, context.root)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.remove_member(other_administrator,
+                 actor: context.administrator,
+                 tenant: context.organisation
+               )
+
+      assert :ok =
+               Accounts.remove_member(context.member,
+                 actor: context.administrator,
+                 tenant: context.organisation
+               )
+
+      assert Accounts.organisation_for(context.user, context.organisation.short_name) == :error
+
+      # The row stays, archived, and the person can be invited again.
+      assert %{rows: [[1]]} =
+               Repo.query!(
+                 "select count(*)::int from \"#{Organisation.schema(context.organisation)}\".members where archived_at is not null"
+               )
+
+      assert {_member, again} =
+               member!(
+                 context.organisation,
+                 :member,
+                 context.administrator,
+                 to_string(context.user.email)
+               )
+
+      assert again.id == context.user.id
+    end
+
+    test "a member removes nobody", context do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.remove_member(context.member,
+                 actor: context.user,
+                 tenant: context.organisation
+               )
+    end
+
+    test "a version of a member names who made the change", context do
+      {:ok, _} =
+        Accounts.make_administrator(context.member,
+          actor: context.administrator,
+          tenant: context.organisation
+        )
+
+      versions =
+        Member.Version
+        |> Ash.read!(tenant: context.organisation, authorize?: false)
+        |> Enum.filter(&(&1.version_source_id == context.member.id))
+
+      assert [:invite_member, :make_administrator] ==
+               versions |> Enum.map(& &1.version_action_name) |> Enum.sort()
+
+      assert Enum.all?(versions, &(&1.user_id == context.administrator.id))
+    end
+  end
+
+  describe "the organisations of a user" do
+    test "are the ones where the user is a member, and each one for a root user", %{root: root} do
+      mine = organisation!(root, "Mine")
+      other = organisation!(root, "Other")
+      {_, user} = member!(mine, :member, root)
+
+      assert [found] = Accounts.organisations_for(user)
+      assert found.id == mine.id
+
+      assert Enum.map(Accounts.organisations_for(root), & &1.id) |> Enum.sort() ==
+               Enum.sort([mine.id, other.id])
+
+      assert Accounts.organisations_for(user!()) == []
+    end
+
+    test "open by their short name for a member and for a root user, and for nobody else", %{
+      root: root
+    } do
+      organisation = organisation!(root)
+      {member, user} = member!(organisation, :member, root)
+
+      assert {:ok, found, found_member} = Accounts.organisation_for(user, organisation.short_name)
+      assert found.id == organisation.id
+      assert found_member.id == member.id
+
+      assert {:ok, _organisation, nil} = Accounts.organisation_for(root, organisation.short_name)
+
+      # No such organisation, and one that the user cannot open, look the same.
+      assert Accounts.organisation_for(user!(), organisation.short_name) == :error
+      assert Accounts.organisation_for(user, "no-such-refuge") == :error
+    end
+  end
+
+  describe "the grants" do
+    test "name only resources and actions that exist" do
+      for role <- Grants.roles(), {resource, action, scope} <- Grants.grants(role) do
+        assert Ash.Resource.Info.action(resource, action),
+               "#{inspect(resource)} has no action #{action}"
+
+        # The scope has a filter.
+        assert Grants.filter(resource, scope) != nil
+      end
+    end
+
+    test "give a member less than an administrator" do
+      assert Grants.grants(:member) -- Grants.grants(:administrator) == []
+      assert length(Grants.grants(:administrator)) > length(Grants.grants(:member))
+      assert Grants.grants(:nobody) == []
+    end
+
+    test "give nobody the invitation of an administrator: that is for a root user" do
+      for role <- Grants.roles() do
+        assert Grants.scope(role, Member, :invite_administrator) == :none
+        assert Grants.scope(role, Member, :make_member) == :none
+      end
+    end
+  end
+end

@@ -64,6 +64,13 @@ header > nav ul a:hover {
   background: var(--tint);
 }
 
+/* Words in the site nav that are not a link: the address of the user. */
+header > nav ul span {
+  display: block;
+  padding: 0.25rem 0.75rem;
+  color: var(--muted);
+}
+
 [aria-current="page"] {
   font-weight: 600;
   text-decoration-thickness: 2px;

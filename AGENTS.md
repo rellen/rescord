@@ -181,9 +181,19 @@ too.
     `rate_limit` section whose backend is `Rescord.RateLimit` (ADR 0020). Do
     not write a counter by hand. A test of a limit counts under a key of its
     own, so that tests share no count.
-  - Policies and roles will be our own system in the manner of `ash_grant`
-    (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
-    as a dependency, and do not write a role into a policy by hand.
+  - Policies and roles are our own system in the manner of `ash_grant`
+    (ADR 0021). The policy of a resource of an organisation is a bypass for
+    a root user and then the one check `Rescord.Accounts.Checks.Granted`.
+    Give a role an action with one line in `Rescord.Accounts.Grants`. Never
+    write a role into a policy, and do not add `ash_grant` as a dependency.
+  - No action takes as input an attribute that decides who can do what:
+    `root?` of a user, the role and the user of a member. Mark such an
+    attribute `writable? false`, and set it in a named action.
+  - A page below `/o/:organisation` is in the live session `:organisation`,
+    whose hook assigns ``, ``, `` and
+    ``. Pass the user as the actor and the organisation as the tenant
+    of each call. Show a form or a button only when
+    `Rescord.Accounts.role_can?/3` says so.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the
   server sends to it with zod when its shape matters; zod is not a dependency
   yet, so ask before the first use (`docs/architecture.md`, "Code in the
@@ -201,6 +211,12 @@ too.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
+  - A test that creates an organisation is `async: false`: a new schema
+    takes a lock on the users, and two at one time stop each other
+    (ADR 0022).
+  - `Rescord.AccountsFixtures` makes a user, a root user, an organisation
+    and a member, and signs a connection in.
+  - For a rule about who can do what, change the rule and see a test fail.
 - **Atoms.** Never create atoms from text that a client sends.
 - **Branches.** Work is on `main` for now (the maintainer, 15 November 2026).
   Commit there and push `main`, with no pull request. A session whose own
@@ -211,6 +227,7 @@ too.
 | Path | Contents |
 | --- | --- |
 | `platform/lib/rescord/` | domains and resources (Ash) |
+| `platform/lib/rescord/accounts/` | users, the sign-in, organisations, members, grants |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord_web/live/` | page LiveViews |

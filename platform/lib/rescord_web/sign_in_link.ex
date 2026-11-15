@@ -12,4 +12,7 @@ defmodule RescordWeb.SignInLink do
   def for_token(token) when is_binary(token) do
     url(~p"/sign-in/link?#{[token: token]}")
   end
+
+  @doc "The address of the page where a person asks for a sign-in link."
+  def page, do: url(~p"/sign-in")
 end

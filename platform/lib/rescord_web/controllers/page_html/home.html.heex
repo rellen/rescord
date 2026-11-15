@@ -4,4 +4,16 @@
     <:subtitle :if={@current_user}>You are signed in as {@current_user.email}.</:subtitle>
     <:subtitle :if={!@current_user}>Sign in to go on.</:subtitle>
   </.header>
+
+  <section :if={@current_user}>
+    <h2>Your organisations</h2>
+    <p :if={@organisations == []}>
+      You are not a member of an organisation. An administrator of a refuge can invite you.
+    </p>
+    <ul :if={@organisations != []}>
+      <li :for={organisation <- @organisations}>
+        <a href={~p"/o/#{organisation.short_name}"}>{organisation.name}</a>
+      </li>
+    </ul>
+  </section>
 </Layouts.app>

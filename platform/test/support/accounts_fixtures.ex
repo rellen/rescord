@@ -17,6 +17,44 @@ defmodule Rescord.AccountsFixtures do
     Ash.Seed.seed!(Accounts.User, %{email: address})
   end
 
+  @doc "Makes a root user."
+  def root!(address \\ unique_address()) do
+    Ash.Seed.seed!(Accounts.User, %{email: address, root?: true})
+  end
+
+  @doc "A root user creates an organisation, which makes its schema."
+  def organisation!(root, name \\ "Wattle Creek") do
+    short_name = "refuge-#{System.unique_integer([:positive])}"
+    Accounts.create_organisation!(%{name: name, short_name: short_name}, actor: root)
+  end
+
+  @doc "Invites a person to an organisation, and returns the member with its user."
+  def member!(organisation, role, inviter, address \\ unique_address()) do
+    invite =
+      case role do
+        :administrator -> &Accounts.invite_administrator!/2
+        :member -> &Accounts.invite_member!/2
+      end
+
+    member = invite.(address, actor: inviter, tenant: organisation)
+    user = Accounts.user_by_email!(address, authorize?: false)
+    {member, user}
+  end
+
+  @doc """
+  Gives a connection the session of a user who is signed in, with a token
+  that Rescord stores, as the page of a sign-in link does.
+  """
+  def sign_in(conn, user) do
+    {:ok, token, _claims} = AshAuthentication.Jwt.token_for_user(user)
+
+    conn
+    |> Plug.Test.init_test_session(%{})
+    |> AshAuthentication.Plug.Helpers.store_in_session(
+      Ash.Resource.put_metadata(user, :token, token)
+    )
+  end
+
   @doc "Waits until each task of a request for a sign-in link has ended."
   def wait_for_sign_in_tasks(timeout \\ 5_000) do
     deadline = System.monotonic_time(:millisecond) + timeout

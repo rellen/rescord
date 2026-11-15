@@ -17,6 +17,16 @@ defmodule Rescord.Repo do
     false
   end
 
+  # The schemas of the organisations (ADR 0011), for the tenant migrations.
+  # The table is not there before its own migration runs.
+  @impl true
+  def all_tenants do
+    case query("select 'org_' || id::text from organisations") do
+      {:ok, %{rows: rows}} -> List.flatten(rows)
+      {:error, %Postgrex.Error{postgres: %{code: :undefined_table}}} -> []
+    end
+  end
+
   @impl true
   def min_pg_version do
     %Version{major: 18, minor: 0, patch: 0}

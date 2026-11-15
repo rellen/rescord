@@ -145,6 +145,10 @@ config :ash_authentication, return_error_on_invalid_magic_link_token?: true
 # it cannot name (ADR 0009). This names the function to call with the token.
 config :rescord, :sign_in_link_url, {RescordWeb.SignInLink, :for_token}
 
+# The same, for the address of the page where a person asks for a link. The
+# email of an invitation names it.
+config :rescord, :sign_in_page_url, {RescordWeb.SignInLink, :page}
+
 # The sender of each email. A release sets its own in config/runtime.exs.
 config :rescord, :mail_from, {"Rescord", "rescord@localhost"}
 

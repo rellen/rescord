@@ -133,7 +133,8 @@ We do not write those by hand.
 
 ## Ash
 
-There is no domain yet. When there is one:
+The first domain is `Rescord.Accounts`: the users, the organisations and
+their members (ADR 0022). For each domain:
 
 - each domain uses `AshBoundary`, and the web layer calls resources through
   the code interfaces on their domain (see "Boundaries");
@@ -185,8 +186,8 @@ The first resource in the schema of an organisation needs
 
 ### Sign-in and organisations
 
-**This is the first part of the domain that we build** (the maintainer,
-15 November 2026). `docs/domain.md`, section 5.1, has the rules:
+**This is the first part of the domain, and it is built** (ADR 0018 to ADR
+0022). `docs/domain.md`, section 5.1, has the rules:
 
 - A person signs in with a link by email. Rescord stores no password.
 - A person joins an organisation by invitation only.
@@ -264,8 +265,13 @@ on the action, inside the task of ADR 0019. The numbers are not decided.
 
 ### Policies and roles
 
-**Authorization will be our own system, in the manner of `ash_grant`.** We
-write it in this repository; `ash_grant` is the model and not a dependency.
+**Authorization is our own system, in the manner of `ash_grant`.** We write
+it in this repository; `ash_grant` is the model and not a dependency.
+
+It starts small (ADR 0021). A member is an administrator or a member.
+`Rescord.Accounts.Grants` holds the grants of each role and the filter of
+each scope, in code. The policy of a resource of an organisation is the one
+check `Rescord.Accounts.Checks.Granted`, after a bypass for a root user.
 
 What we take from the model (`ash_grant` 0.22):
 
@@ -280,11 +286,9 @@ What we take from the model (`ash_grant` 0.22):
 A root user is outside the grants: a root user can do anything in each
 organisation (`docs/domain.md`, section 5.1).
 
-Not decided yet, and each is a decision for an ADR when the work starts:
-how a grant is written (`ash_grant` uses a string,
-`resource:instance:action:scope`), where roles and their grants are stored,
-whether a grant can name one record or a group of fields, and how the system
-is tested without a database. The rule above stays whatever the answer: a
+Not decided yet: how a second domain adds its grants, when the roles and
+their grants move to the database, and whether a grant can name one record
+or a group of fields. The rule above stays whatever the answer: a
 refused read is empty and not an error, so a test that reads asserts a
 non-empty result.
 
@@ -316,10 +320,8 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- For the sign-in: how actors reach Ash from LiveViews, how a root user, who
-  is not a member, acts in the schema of an organisation, and the numbers of
-  the limits on the requests for a link and on their tasks (ADR 0019,
-  ADR 0020).
+- For the sign-in: the mailer of a release, and how the limit of a client
+  finds the real address behind a proxy (ADR 0022).
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains

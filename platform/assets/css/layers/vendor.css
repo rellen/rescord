@@ -89,6 +89,7 @@
 
 [data-key="container_class"] {
   position: relative;
+  margin-block-end: 1.5rem;
 }
 
 [data-key="controls_class"] {

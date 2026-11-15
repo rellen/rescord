@@ -29,6 +29,17 @@ defmodule RescordWeb.Router do
     get "/sign-in/link", SignInController, :link
     post "/sign-in/link", SignInController, :confirm
     delete "/sign-out", SignInController, :delete
+
+    # The pages of a root user.
+    live_session :root, on_mount: [{RescordWeb.UserAuth, :require_root}] do
+      live "/root", RootLive
+    end
+
+    # The pages of one organisation, which the path names (ADR 0011).
+    live_session :organisation, on_mount: [{RescordWeb.UserAuth, :require_organisation}] do
+      live "/o/:organisation", OrganisationLive
+      live "/o/:organisation/members", MembersLive
+    end
   end
 
   # Other scopes may use custom stacks.

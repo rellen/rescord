@@ -100,6 +100,11 @@ defmodule Rescord.Accounts.User do
       filter expr(root? == true)
     end
 
+    create :for_invitation do
+      description "Makes the user of an invitation. Only an invitation runs it."
+      accept [:email]
+    end
+
     create :bootstrap_root do
       description "Makes the first root user. Only `Rescord.Accounts.bootstrap_root/1` runs it."
       accept [:email]

@@ -217,6 +217,12 @@ _A declarative, extensible framework for building Elixir applications._
 ## ash:testing usage
 [ash:testing usage rules](deps/ash/usage-rules/testing.md)
 <!-- ash:testing-end -->
+<!-- ash_authentication-start -->
+## ash_authentication usage
+_Authentication extension for the Ash Framework._
+
+[ash_authentication usage rules](deps/ash_authentication/usage-rules.md)
+<!-- ash_authentication-end -->
 <!-- ash_boundary-start -->
 ## ash_boundary usage
 _Boundary declarations for Ash domains, built on top of `boundary`._

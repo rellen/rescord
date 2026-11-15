@@ -1,0 +1,291 @@
+defmodule RescordWeb.OrganisationPagesTest do
+  @moduledoc """
+  Holds the pages of the organisations and of the root user: who can open
+  each page, and what each role sees and can do on it.
+
+  Each test creates an organisation, so the tests do not run beside others
+  (see `Rescord.Accounts.OrganisationTest`).
+  """
+
+  use RescordWeb.ConnCase, async: false
+
+  import Phoenix.LiveViewTest
+  import Rescord.AccountsFixtures
+  import Swoosh.TestAssertions
+
+  alias Rescord.Accounts
+
+  setup do
+    root = root!()
+    organisation = organisation!(root, "Wattle Creek")
+    {_, administrator} = member!(organisation, :administrator, root)
+    {_, member} = member!(organisation, :member, administrator)
+
+    # The emails of those invitations are not what a test looks at.
+    flush_emails()
+
+    {:ok, root: root, organisation: organisation, administrator: administrator, member: member}
+  end
+
+  defp flush_emails do
+    receive do
+      {:email, _email} -> flush_emails()
+    after
+      0 -> :ok
+    end
+  end
+
+  defp open(conn, user, path) do
+    {:ok, view, _html} = conn |> sign_in(user) |> live(path)
+    {view, render_async(view)}
+  end
+
+  describe "the home page" do
+    test "lists the organisations of a member, and no link to the root page", context do
+      html = context.conn |> sign_in(context.member) |> get(~p"/") |> html_response(200)
+
+      assert html =~ "Wattle Creek"
+      assert html =~ ~p"/o/#{context.organisation.short_name}"
+      refute html =~ ~s(href="/root")
+    end
+
+    test "tells a user with no organisation that they have none", context do
+      html = context.conn |> sign_in(user!()) |> get(~p"/") |> html_response(200)
+
+      assert html =~ "You are not a member of an organisation"
+      refute html =~ "Wattle Creek"
+    end
+
+    test "gives a root user each organisation and the root page", context do
+      html = context.conn |> sign_in(context.root) |> get(~p"/") |> html_response(200)
+
+      assert html =~ "Wattle Creek"
+      assert html =~ ~s(href="/root")
+    end
+  end
+
+  describe "the root page" do
+    test "opens only for a root user", context do
+      for user <- [context.administrator, context.member, user!()] do
+        assert {:error, {:redirect, %{to: "/"}}} =
+                 context.conn |> sign_in(user) |> live(~p"/root")
+      end
+
+      assert {:error, {:redirect, %{to: "/"}}} = live(context.conn, ~p"/root")
+
+      {_view, html} = open(context.conn, context.root, ~p"/root")
+      assert html =~ "Wattle Creek"
+    end
+
+    test "creates an organisation, and says what is wrong with a short name", context do
+      {view, _html} = open(context.conn, context.root, ~p"/root")
+
+      html =
+        view
+        |> form("#new-organisation", organisation: %{name: "Banksia", short_name: "Banksia Road"})
+        |> render_submit()
+
+      assert html =~ ~s(role="alert")
+      assert html =~ "Short name"
+
+      view
+      |> form("#new-organisation", organisation: %{name: "Banksia", short_name: "banksia-road"})
+      |> render_submit()
+
+      assert render_async(view) =~ "banksia-road"
+
+      assert {:ok, %{name: "Banksia"}} =
+               Accounts.organisation_by_short_name("banksia-road", actor: context.root)
+    end
+
+    test "makes a user a root user, and says so for an address with no user", context do
+      {view, _html} = open(context.conn, context.root, ~p"/root")
+      user = user!()
+
+      html = view |> form("#new-root", root: %{email: unique_address()}) |> render_submit()
+      assert html =~ "No user has the address"
+
+      html = view |> form("#new-root", root: %{email: to_string(user.email)}) |> render_submit()
+      assert html =~ "is a root user now"
+      assert length(Accounts.roots!(authorize?: false)) == 2
+    end
+  end
+
+  describe "the pages of an organisation" do
+    test "open for its members and for a root user, with what each one is there", context do
+      path = ~p"/o/#{context.organisation.short_name}"
+
+      for {user, words} <- [
+            {context.member, "You are a member"},
+            {context.administrator, "You are an administrator"},
+            {context.root, "You are a root user"}
+          ] do
+        {_view, html} = open(context.conn, user, path)
+        assert html =~ "Wattle Creek"
+        assert html =~ words
+      end
+    end
+
+    test "do not open for a user of another organisation, and look like no page", context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for path <- [
+            ~p"/o/#{context.organisation.short_name}",
+            ~p"/o/#{context.organisation.short_name}/members",
+            ~p"/o/no-such-refuge"
+          ] do
+        assert {:error, {:redirect, %{to: "/"}}} =
+                 context.conn |> sign_in(outsider) |> live(path)
+
+        assert {:error, {:redirect, %{to: "/"}}} = live(context.conn, path)
+      end
+    end
+  end
+
+  describe "the members page" do
+    test "shows the members to a member, with no form and no button", context do
+      {_view, html} =
+        open(context.conn, context.member, ~p"/o/#{context.organisation.short_name}/members")
+
+      assert html =~ to_string(context.administrator.email)
+      assert html =~ to_string(context.member.email)
+      assert html =~ "Administrator"
+
+      refute html =~ "Invite a person"
+      refute html =~ "Make administrator"
+      refute html =~ ~s(phx-click="remove")
+    end
+
+    test "lets an administrator invite a member, but not choose a role", context do
+      {view, html} =
+        open(
+          context.conn,
+          context.administrator,
+          ~p"/o/#{context.organisation.short_name}/members"
+        )
+
+      assert html =~ "Invite a person"
+      refute html =~ ~s(name="invite[role]")
+
+      address = unique_address()
+      view |> form("#invite", invite: %{email: address}) |> render_submit()
+
+      assert render_async(view) =~ address
+      assert_email_sent(fn email -> email.to == [{"", address}] end)
+
+      assert [invited] =
+               Accounts.members!(tenant: context.organisation, authorize?: false, load: [:email])
+               |> Enum.filter(&(to_string(&1.email) == address))
+
+      assert invited.role == :member
+    end
+
+    test "refuses an administrator who asks for the role that the form did not offer", context do
+      {view, _html} =
+        open(
+          context.conn,
+          context.administrator,
+          ~p"/o/#{context.organisation.short_name}/members"
+        )
+
+      address = unique_address()
+
+      html =
+        render_submit(view, "invite", %{
+          "invite" => %{"email" => address, "role" => "administrator"}
+        })
+
+      assert html =~ ~s(role="alert")
+      assert_no_email_sent()
+      assert Accounts.user_by_email!(address, authorize?: false) == nil
+    end
+
+    test "lets an administrator make a member an administrator, and remove a member", context do
+      {another, _user} = member!(context.organisation, :member, context.administrator)
+      path = ~p"/o/#{context.organisation.short_name}/members"
+      {view, html} = open(context.conn, context.administrator, path)
+
+      assert html =~ "Make administrator"
+
+      render_click(view, "make_administrator", %{"id" => another.id})
+      render_async(view)
+
+      assert %{role: :administrator} =
+               Accounts.member!(another.id, tenant: context.organisation, authorize?: false)
+
+      # The administrator cannot remove the one who is an administrator now.
+      html = render_click(view, "remove", %{"id" => another.id})
+      assert html =~ ~s(role="alert")
+
+      assert Accounts.member!(another.id, tenant: context.organisation, authorize?: false)
+
+      {:ok, _organisation, plain_member} =
+        Accounts.organisation_for(context.member, context.organisation.short_name)
+
+      render_click(view, "remove", %{"id" => plain_member.id})
+      render_async(view)
+
+      assert Accounts.member!(plain_member.id, tenant: context.organisation, authorize?: false) ==
+               nil
+    end
+
+    test "does nothing for a member who sends an event that the page did not offer", context do
+      path = ~p"/o/#{context.organisation.short_name}/members"
+      {view, _html} = open(context.conn, context.member, path)
+
+      {:ok, _organisation, own} =
+        Accounts.organisation_for(context.member, context.organisation.short_name)
+
+      html = render_click(view, "make_administrator", %{"id" => own.id})
+      assert html =~ ~s(role="alert")
+
+      html = render_submit(view, "invite", %{"invite" => %{"email" => unique_address()}})
+      assert html =~ ~s(role="alert")
+
+      assert %{role: :member} =
+               Accounts.member!(own.id, tenant: context.organisation, authorize?: false)
+
+      assert_no_email_sent()
+    end
+
+    test "lets a root user invite an administrator", context do
+      {view, html} =
+        open(context.conn, context.root, ~p"/o/#{context.organisation.short_name}/members")
+
+      assert html =~ ~s(name="invite[role]")
+
+      address = unique_address()
+
+      view
+      |> form("#invite", invite: %{email: address, role: "administrator"})
+      |> render_submit()
+
+      assert [invited] =
+               Accounts.members!(tenant: context.organisation, authorize?: false, load: [:email])
+               |> Enum.filter(&(to_string(&1.email) == address))
+
+      assert invited.role == :administrator
+    end
+  end
+
+  test "a person who is invited signs in with a link, and finds the organisation", context do
+    address = unique_address()
+
+    Accounts.invite_member!(address, actor: context.administrator, tenant: context.organisation)
+    flush_emails()
+
+    # The limit of a client counts an address of the network.
+    conn = %{context.conn | remote_ip: {10, 9, 9, rem(System.unique_integer([:positive]), 250)}}
+
+    post(conn, ~p"/sign-in", %{"email" => address})
+    wait_for_sign_in_tasks()
+    assert_received {:email, email}
+
+    signed_in = post(conn, ~p"/sign-in/link", %{"token" => token_in(email)})
+    html = signed_in |> recycle() |> get(~p"/") |> html_response(200)
+
+    assert html =~ "Wattle Creek"
+    assert html =~ address
+  end
+end

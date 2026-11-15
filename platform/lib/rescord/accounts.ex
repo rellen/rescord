@@ -21,7 +21,9 @@ defmodule Rescord.Accounts do
 
   require Logger
 
-  alias Rescord.Accounts.User
+  require Ash.Query
+
+  alias Rescord.Accounts.{Grants, Member, Organisation, User}
 
   boundary do
     deps [Rescord]
@@ -40,6 +42,27 @@ defmodule Rescord.Accounts do
     end
 
     resource Rescord.Accounts.Token
+
+    resource Rescord.Accounts.Organisation do
+      define :organisations, action: :read
+      define :create_organisation, action: :create
+      define :rename_organisation, action: :rename
+
+      define :organisation_by_short_name,
+        action: :by_short_name,
+        args: [:short_name],
+        not_found_error?: false
+    end
+
+    resource Rescord.Accounts.Member do
+      define :members, action: :read
+      define :member, action: :read, get_by: [:id], not_found_error?: false
+      define :invite_member, action: :invite_member, args: [:email]
+      define :invite_administrator, action: :invite_administrator, args: [:email]
+      define :make_administrator, action: :make_administrator
+      define :make_member, action: :make_member
+      define :remove_member, action: :remove
+    end
   end
 
   @doc """
@@ -69,6 +92,88 @@ defmodule Rescord.Accounts do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  @doc """
+  The organisations that a user can open: each one for a root user, and for
+  another user the ones where they are a member.
+
+  A member is in the schema of its organisation, so this looks in each
+  schema. That is one query for each organisation.
+  """
+  @spec organisations_for(Ash.Resource.record()) :: [Ash.Resource.record()]
+  def organisations_for(%User{} = user) do
+    all = Organisation |> Ash.Query.sort(:name) |> Ash.read!(authorize?: false)
+
+    if user.root?, do: all, else: Enum.filter(all, &member_of(user, &1))
+  end
+
+  @doc """
+  Opens the organisation with a short name for a user.
+
+  Returns the organisation and the member of the user in it. A root user who
+  is not a member gets `nil` for the member. Returns `:error` when there is
+  no such organisation, or when the user cannot open it: the two look the
+  same from outside.
+  """
+  @spec organisation_for(Ash.Resource.record(), term) ::
+          {:ok, Ash.Resource.record(), Ash.Resource.record() | nil} | :error
+  def organisation_for(%User{} = user, short_name) when is_binary(short_name) do
+    with %Organisation{} = organisation <-
+           organisation_by_short_name!(short_name, authorize?: false),
+         member = member_of(user, organisation),
+         true <- user.root? or not is_nil(member) do
+      {:ok, organisation, member}
+    else
+      _no -> :error
+    end
+  end
+
+  def organisation_for(_user, _short_name), do: :error
+
+  @doc """
+  What a user is in an organisation: `:root`, or the role of their member.
+  """
+  @spec role_in(Ash.Resource.record(), Ash.Resource.record() | nil) ::
+          :root | :administrator | :member | nil
+  def role_in(%User{root?: true}, _member), do: :root
+  def role_in(%User{}, %Member{role: role}), do: role
+  def role_in(_user, _member), do: nil
+
+  @doc """
+  Whether a role can run an action on the members: on one member, or at all.
+  A page asks this to decide what to show. The policy decides when the action
+  runs.
+  """
+  @spec role_can?(atom | nil, atom, Ash.Resource.record() | nil) :: boolean
+  def role_can?(role, action, member \\ nil)
+  def role_can?(:root, _action, _member), do: true
+  def role_can?(role, action, nil), do: Grants.scope(role, Member, action) != :none
+
+  def role_can?(role, action, %Member{} = member),
+    do: Grants.allows?(role, Member, action, member)
+
+  @doc "The messages of an error of an action, for a person to read."
+  @spec error_messages(term) :: [String.t()]
+  def error_messages(%{errors: errors}) when is_list(errors) do
+    Enum.map(errors, fn
+      %{field: field, message: message} when not is_nil(field) and is_binary(message) ->
+        "#{field |> to_string() |> String.replace("_", " ") |> String.capitalize()} #{message}"
+
+      %Ash.Error.Forbidden.Policy{} ->
+        "You cannot do that"
+
+      error ->
+        Exception.message(error)
+    end)
+  end
+
+  def error_messages(_error), do: ["That did not work"]
+
+  defp member_of(%User{id: user_id}, %Organisation{} = organisation) do
+    Member
+    |> Ash.Query.filter(user_id == ^user_id)
+    |> Ash.read_one!(tenant: organisation, authorize?: false)
   end
 
   @sign_in_tasks Rescord.Accounts.SignInTasks
