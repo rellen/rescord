@@ -4,6 +4,8 @@
     :ash_state_machine,
     :ash_oban,
     :oban,
+    :ash_paper_trail,
+    :ash_archival,
     :ash_boundary,
     :ash_phoenix,
     :ash_postgres,

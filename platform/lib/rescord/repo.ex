@@ -5,7 +5,8 @@ defmodule Rescord.Repo do
   @impl true
   def installed_extensions do
     # Add extensions here, and the migration generator will install them.
-    ["ash-functions"]
+    # A temporal resource needs btree_gist for its primary key (ADR 0012).
+    ["ash-functions", "btree_gist"]
   end
 
   # Don't open unnecessary transactions

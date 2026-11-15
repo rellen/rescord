@@ -34,6 +34,9 @@ and its supplies.
 | shared value | A value of a dimension that all organisations can use. |
 | local value | A value of a dimension that one organisation added for its own use. |
 | tie | A table that connects two or more entities. |
+| temporal resource | A resource of Ash that keeps each version of a record, with the period for which the version is valid. |
+| paper trail | A record of each change to a resource, with the member who made the change. AshPaperTrail keeps it. |
+| archive | To mark a record as removed and keep its row. AshArchival does this. |
 | resource | An Ash resource. One resource maps to one table of the database. |
 | 5NF | Fifth normal form. The keys of a table in this form imply each way to divide the table with no loss of data. |
 | 6NF | Sixth normal form. A table in this form holds a key and no more than one other attribute. |
@@ -72,6 +75,7 @@ These subjects are out of scope for now:
 | What does a completed `medicate` task record? | The task, and a clinical entry for the dose. It records no stock movement. |
 | How does Rescord track the inventory? | By lot, with an expiry date, and by location. |
 | Who writes a clinical entry? | A member only. |
+| Which tools keep the history? | The temporal resources of Ash, AshPaperTrail, and AshArchival (ADR 0012). |
 
 ## 5. The root entities
 
@@ -101,7 +105,7 @@ dimensions:
 | identifier kind | microchip, ear tag, leg band, tattoo | one for each identifier |
 
 - Rescord keeps a history of the name, the status, and the desex status of a
-  resident. Each of the three is a table in 6NF.
+  resident. Each of the three is a temporal resource in 6NF.
 - The weight is a measurement in the medical history, so it has a history
   already.
 - An arrival records how and when a resident came to the organisation. A
@@ -208,8 +212,9 @@ The maintainer asked for a design in 5NF and 6NF.
 
 1. Each table is in 5NF.
 2. An attribute gets a table of its own, in 6NF, when the organisation needs
-   its history. Such a table holds the key, the time from which the value
-   applies, and the value. Section 4 names the attributes.
+   its history. Such a table is a temporal resource: it holds the key, the
+   period for which the value is valid, and the value. Section 4 names the
+   attributes.
 3. A dimension that an organisation can extend is a resource. It has shared
    values and local values.
 4. *Proposal.* A dimension with a fixed list of values is an enumerated type,
@@ -217,6 +222,15 @@ The maintainer asked for a design in 5NF and 6NF.
 5. A relation of many to many is a tie.
 6. Rescord stores a fact one time and calculates the other values. The age,
    the stock level, and the relatives of a resident are examples.
+7. A temporal resource keeps its paper trail on its own rows. Each version
+   then says which action made it, and who did so.
+8. Rescord deletes no row that a member removes. It archives the row.
+9. A resource with a workflow, such as a task, is not a temporal resource.
+   ADR 0012 gives the reason.
+
+*Proposal.* These resources are temporal resources: `ResidentName`,
+`ResidentStatus`, `ResidentDesexStatus`, `Placement`, and `GroupMember`. Each
+states a fact about a resident that is valid for a period.
 
 ## 7. Estimate of the resources
 
@@ -273,13 +287,32 @@ resources:
 - arrival kind;
 - departure kind.
 
-### 7.4 The size of the database
+### 7.4 The resources that a paper trail adds
 
-Each resource makes about 3 or 4 relations in PostgreSQL: the table, its
-indexes, and a store for long text. Thus the 44 resources of one organisation
-make about 150 relations. For 50 organisations, the database holds about
-2,200 tables and about 7,500 relations. That quantity gives PostgreSQL no
-difficulty.
+A paper trail adds resources in two ways (ADR 0012):
+
+- On a temporal resource, the paper trail is on the rows of the resource. A
+  version resource lists the versions, and it reads the same table. It thus
+  adds one resource and no table.
+- On each other resource, the paper trail adds one version resource and one
+  table.
+
+The count depends on which resources keep a paper trail:
+
+| Paper trail on | Resources for each organisation | Tables for each organisation |
+| --- | --- | --- |
+| the 5 temporal resources only | 49 | 44 |
+| each of the 44 resources | 88 | 83 |
+
+AshArchival adds one column to a resource. It adds no resource and no table.
+
+### 7.5 The size of the database
+
+Each table makes about 3 or 4 relations in PostgreSQL: the table, its
+indexes, and a store for long text. Thus the 44 to 83 tables of one
+organisation make about 150 to 290 relations. For 50 organisations, the
+database holds 2,200 to 4,150 tables, and no more than about 14,500
+relations. That quantity gives PostgreSQL no difficulty.
 
 ## 8. Open points
 
@@ -294,3 +327,8 @@ difficulty.
    item in one location?
 7. Can a member of one organisation see a resident that another organisation
    transferred to it?
+8. Which resources are temporal resources? Section 6 gives a proposal.
+9. Which resources keep a paper trail? Section 7.4 gives the two ends of the
+   range.
+10. Does a clinical entry change after a member writes it, or does a
+    correction make a new clinical entry?

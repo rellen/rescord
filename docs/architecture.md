@@ -140,6 +140,27 @@ organisations, the users and the tokens of a sign-in are shared, outside
 those schemas. A member, inside the schema of an organisation, connects a
 user to it. The maintainer expects tens of organisations.
 
+### History
+
+**History comes from temporal resources, AshPaperTrail and AshArchival**
+(ADR 0012).
+
+| Question | Tool |
+| --- | --- |
+| What was true on a past date? | A temporal resource keeps each version of a record with its period, and a read or a write happens as of one instant. |
+| Who changed a record, and how? | AshPaperTrail. On a temporal resource it stamps each version row (`mode :temporal_inline`); on any other resource it writes to a version resource. |
+| What did a removed record hold? | AshArchival turns a destroy into a mark on the row. |
+
+- A fact that needs a history is a temporal resource in 6NF: the key, the
+  period and one value (`docs/domain.md`, section 6).
+- Temporal resources are experimental in Ash, and need PostgreSQL 18 and
+  `btree_gist`, which the repo installs.
+- A resource with a workflow cannot be temporal: AshStateMachine, AshOban and
+  AshWorkflow declare no change as temporal safe. We tested this.
+- A change, validation or preparation of ours that runs on a temporal
+  resource declares `temporal_safe?/1`, and uses no `before_action` or
+  `after_action` hook.
+
 ### Policies and roles
 
 **Authorization will be our own system, in the manner of `ash_grant`.** We

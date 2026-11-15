@@ -112,6 +112,13 @@ too.
     to one organisation uses `multitenancy do strategy :context end`, and
     each call for it passes the tenant. Its migration goes in
     `priv/repo/tenant_migrations`.
+  - History (ADR 0012). A fact that needs a history is a temporal resource,
+    with `paper_trail do mode :temporal_inline end`. Any other resource that
+    needs a trail uses AshPaperTrail in its default mode. A resource that a
+    member can remove uses AshArchival. A resource with a workflow is never
+    temporal. A change, validation or preparation for a temporal resource
+    is a module that declares `temporal_safe?/1`; pass `as_of:` as an
+    action option, and use `now()` in an expression, never the wall clock.
   - Policies and roles will be our own system in the manner of `ash_grant`
     (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
     as a dependency, and do not write a role into a policy by hand.

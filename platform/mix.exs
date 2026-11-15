@@ -57,6 +57,8 @@ defmodule Rescord.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:ash_archival, "~> 2.0"},
+      {:ash_paper_trail, "~> 0.8"},
       {:ash_state_machine, "~> 0.2"},
       {:ash_oban, "~> 0.2"},
       {:oban, "~> 2.0"},
