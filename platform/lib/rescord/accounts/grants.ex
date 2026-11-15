@@ -10,9 +10,27 @@ defmodule Rescord.Accounts.Grants do
 
   A root user is outside the grants: a root user can do anything.
 
-  The roles and their grants are in this module for now. When an organisation
+  The roles and their grants are in code for now. When an organisation
   needs roles of its own, they move to the database (ADR 0021).
+
+  ## The grants of another domain
+
+  This module holds the grants for the members. Another domain holds its own
+  grants, in a module that is a source of grants (ADR 0024): it has
+  `grants/0`, a map from a role to its grants, and `filter/2`, the filter of
+  each scope of its own other than `:all`. The configuration names the
+  sources, in `config :rescord, :grant_sources`. This module thus names no
+  resource of another domain, and that domain can use the check
+  `Rescord.Accounts.Checks.Granted`.
   """
+
+  @doc "The grants of each role, for the resources of one domain."
+  @callback grants() :: %{optional(atom) => [{module, atom, atom}]}
+
+  @doc "The filter of a scope of a resource of the domain, other than `:all`."
+  @callback filter(module, atom) :: Ash.Expr.t() | boolean | nil
+
+  @optional_callbacks filter: 2
 
   require Ash.Expr
 
@@ -34,13 +52,23 @@ defmodule Rescord.Accounts.Grants do
     ]
   }
 
+  # The sources of the other domains. A module name is an atom, so this is
+  # no use of those domains when this module compiles.
+  @sources Application.compile_env(:rescord, :grant_sources, [])
+
+  @doc "The sources of grants of the other domains."
+  @spec sources() :: [module]
+  def sources, do: @sources
+
   @doc "The roles that have grants."
   @spec roles() :: [role]
   def roles, do: Map.keys(@grants)
 
   @doc "The grants of a role, each as `{resource, action, scope}`."
   @spec grants(role) :: [{module, atom, scope}]
-  def grants(role), do: Map.get(@grants, role, [])
+  def grants(role) do
+    Map.get(@grants, role, []) ++ Enum.flat_map(@sources, &Map.get(&1.grants(), role, []))
+  end
 
   @doc """
   The scope in which `role` can run `action` of `resource`, or `:none`.
@@ -74,4 +102,10 @@ defmodule Rescord.Accounts.Grants do
   @spec filter(module, scope) :: Ash.Expr.t() | boolean
   def filter(_resource, :all), do: true
   def filter(Member, :members), do: Ash.Expr.expr(role == :member)
+
+  def filter(resource, scope) do
+    Enum.find_value(@sources, fn source ->
+      if function_exported?(source, :filter, 2), do: source.filter(resource, scope)
+    end)
+  end
 end

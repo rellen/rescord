@@ -27,6 +27,8 @@ defmodule Rescord.Accounts do
 
   boundary do
     deps [Rescord]
+    # Another domain holds its own grants, and uses the check (ADR 0024).
+    exports [Rescord.Accounts.Grants, Rescord.Accounts.Checks.Granted]
   end
 
   paper_trail do
@@ -152,6 +154,15 @@ defmodule Rescord.Accounts do
 
   def role_can?(role, action, %Member{} = member),
     do: Grants.allows?(role, Member, action, member)
+
+  @doc """
+  Whether a role can run an action of a resource at all. Another domain asks
+  this about a resource of its own, to decide what a page shows. The policy
+  decides when the action runs.
+  """
+  @spec granted?(atom | nil, module, atom) :: boolean
+  def granted?(:root, _resource, _action), do: true
+  def granted?(role, resource, action), do: Grants.scope(role, resource, action) != :none
 
   @doc "The messages of an error of an action, for a person to read."
   @spec error_messages(term) :: [String.t()]
