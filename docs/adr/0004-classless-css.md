@@ -1,6 +1,6 @@
 # ADR 0004: Semantic HTML with a classless stylesheet
 
-Status: accepted (chosen by the maintainer: "strive for classless"); the single file is amended by ADR 0007
+Status: accepted (chosen by the maintainer: "strive for classless"); amended by ADR 0007 (one file per layer) and ADR 0008 (AGENTS.md)
 
 ## Context
 
@@ -12,7 +12,9 @@ leak into the markup.
 ## Decision
 
 - Remove Tailwind, daisyUI and Heroicons, with their dependencies, config and
-  watcher, and the generated `AGENTS.md`. `CLAUDE.md` holds the conventions.
+  watcher, and the generated `AGENTS.md`. `CLAUDE.md` holds the conventions
+  (since ADR 0008, the file is `AGENTS.md`, and `usage_rules` writes
+  `platform/AGENTS.md`).
 - One hand-written stylesheet, `assets/css/app.css`, which esbuild bundles
   next to `app.js`. It styles elements, ARIA states and roles (for example
   `[aria-invalid="true"]`, `[aria-current="page"]`), and a few `data-`

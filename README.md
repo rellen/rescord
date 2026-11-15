@@ -21,6 +21,6 @@ mix setup                 # deps, database (ash.setup), assets
 iex -S mix phx.server     # http://localhost:4000
 ```
 
-Conventions are in [`CLAUDE.md`](CLAUDE.md), the design in
+Conventions are in [`AGENTS.md`](AGENTS.md), the design in
 [`docs/architecture.md`](docs/architecture.md), and each decision in
 [`docs/adr/`](docs/adr/).

@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 The Mix project is `platform/`. Code paths in this file are relative to it
 (`lib/rescord_web/widget.ex` means `platform/lib/rescord_web/widget.ex`), and
@@ -13,6 +13,12 @@ This file covers conventions and commands. It does not repeat the design.
 - `docs/adr/` records each decision, one file each. Write a new ADR
   (`NNNN-title.md`: status, context, decision, consequences, a few lines each)
   for any decision you make that neither place covers.
+- `platform/AGENTS.md` holds the usage rules of the dependencies: some
+  inline, and a link to the rest (ADR 0008). Read the rules of a package
+  before you use it, and search its documentation with
+  `mix usage_rules.search_docs`. Where a rule there differs from this file,
+  this file wins. The examples there use Tailwind classes and `hero-` icon
+  names, and they only discourage LiveComponents; none of that applies here.
 
 ## Commands
 
@@ -26,6 +32,7 @@ mix setup                         # deps, database (ash.setup), assets, seeds
 mix test                          # sets up the test database first
 iex -S mix phx.server             # http://localhost:4000
 mix precommit                     # compile --warnings-as-errors, unlock unused deps, format, test
+mix usage_rules.sync              # write platform/AGENTS.md again, after a change to the deps
 ```
 
 Before every commit, run `mix precommit`, and also
@@ -89,7 +96,9 @@ too.
   commit with `ref:` (ADR 0005). `shoddy_phoenix` is for the web layer only.
   Use them where they fit, and name any helper or workaround that could go
   back into them, in your reply and in the commit. Ask before you add any
-  other dependency.
+  other dependency. After a change to the dependencies, run
+  `mix usage_rules.sync` and commit `platform/AGENTS.md`; never edit that
+  file between its `usage-rules` markers.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
@@ -109,5 +118,6 @@ too.
 | `platform/lib/rescord_web/components/` | function components and layouts |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |
 | `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
+| `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |

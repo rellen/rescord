@@ -120,6 +120,16 @@ from GitHub, pinned to a commit (ADR 0005).
   adds it, so that the maintainer can move it upstream, and then replace
   the local copy with the library's.
 
+## Guidance for agents
+
+- `AGENTS.md`, at the repository root, holds Rescord's conventions. It is
+  written by hand, and it wins over any other guidance.
+- `platform/AGENTS.md` holds the usage rules that the dependencies ship.
+  `mix usage_rules.sync` writes it from the `usage_rules` key of
+  `platform/mix.exs`: the rules of `usage_rules` itself, of Elixir and of OTP
+  inline, and a link to the rules of each other dependency. Run the task
+  after a change to the dependencies (ADR 0008).
+
 ## Open questions
 
 - What Rescord does, and so its domains and pages.

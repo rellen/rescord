@@ -10,6 +10,7 @@ defmodule Rescord.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      usage_rules: usage_rules(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       consolidate_protocols: Mix.env() != :dev
@@ -36,6 +37,21 @@ defmodule Rescord.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
+  # What `mix usage_rules.sync` writes into platform/AGENTS.md (ADR 0008).
+  # The file is inside the Mix project because the links that the task
+  # writes are relative to it.
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: [
+        # Inlined: how to search the docs, and the built-in Elixir and OTP rules.
+        :usage_rules,
+        # Linked: the rules of every other dependency that ships them.
+        {~r/^(?!usage_rules$)/, link: :markdown}
+      ]
+    ]
+  end
+
   # Specifies your project dependencies.
   #
   # Type `mix help deps` for examples and options.
@@ -46,6 +62,7 @@ defmodule Rescord.MixProject do
       {:ash_postgres, "~> 2.0"},
       {:ash, "~> 3.0"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
+      {:usage_rules, "~> 1.3", only: [:dev]},
       {:phoenix, "~> 1.8.16"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
