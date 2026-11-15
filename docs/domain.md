@@ -91,6 +91,7 @@ These subjects are out of scope for now:
 | How does a person join an organisation? | By invitation only. A root user invites an administrator, and an administrator invites a member. |
 | Who creates an organisation? | A root user. |
 | Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
+| Where does the first root user come from? | From a script that a person runs in IEx when Rescord is first deployed. |
 | Which library does the sign-in use? | AshAuthentication (ADR 0018). |
 | Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
 | Does the model fit the housing of one organisation? | No. The location tree and the placement must serve each organisation. |
@@ -125,9 +126,16 @@ users. A member connects one user to one organisation.
 *Proposal.* A member has one or more roles, and a role has grants. The
 section "Policies and roles" of `docs/architecture.md` describes the grants.
 
+The first root user comes from a script that a person runs in IEx when
+Rescord is first deployed. No page makes the first root user.
+
 *Proposal.* A shared resource records that a user is a root user, with a
-paper trail. The first root user comes from a command of the release. After
-that, a root user can make another user a root user.
+paper trail. After the first one, a root user can make another user a root
+user.
+
+*Proposal.* The script calls one function of Rescord with an email address.
+A release has no Mix, so the function is in a module of the application,
+and a person calls it from the remote shell of the release.
 
 ### 5.2 Residents
 

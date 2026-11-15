@@ -193,6 +193,8 @@ The first resource in the schema of an organisation needs
 - A root user creates each organisation and invites its administrators. An
   administrator invites the members. Root is a level of the user, outside
   each organisation.
+- The first root user comes from a script that a person runs in IEx when
+  Rescord is first deployed.
 - **The sign-in uses AshAuthentication** (ADR 0018), with its strategy for
   a link by email. The strategy makes no account for an address that it does
   not know.
