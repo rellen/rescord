@@ -23,13 +23,15 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/rescord"
+// The hooks that Cinder writes next to its markup (ADR 0014).
+import {hooks as cinderHooks} from "phoenix-colocated/cinder"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, ...cinderHooks},
 })
 
 // Show progress bar on live navigation and form submits

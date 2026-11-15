@@ -348,6 +348,12 @@ workflows combining human actions, background jobs, and time-based deadlines._
 ## ash_workflow:timeouts usage
 [ash_workflow:timeouts usage rules](deps/ash_workflow/usage-rules/timeouts.md)
 <!-- ash_workflow:timeouts-end -->
+<!-- cinder-start -->
+## cinder usage
+_Tables, lists and grids of Ash resources in Phoenix LiveView, with filtering, sorting, search and pagination._
+
+[cinder usage rules](deps/cinder/usage-rules.md)
+<!-- cinder-end -->
 <!-- igniter-start -->
 ## igniter usage
 _A code generation and project patching framework_

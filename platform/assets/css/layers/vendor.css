@@ -1,0 +1,467 @@
+/*
+ * Layer vendor: the markup that a dependency renders (ADR 0014).
+ *
+ * We do not write that markup, so it is the one place where an element has a
+ * class, and this is the one file that may select a class. It selects only a
+ * class that the dependency writes into its markup itself, or a mark that
+ * our theme has to give it, and only below the root element of that
+ * dependency. Everything else here selects an attribute, as in the other
+ * layers.
+ */
+
+/* ---------------------------------------------------------------- cinder */
+
+/*
+ * Cinder renders with `RescordWeb.CinderTheme`, which has almost no class.
+ * It marks most parts with a `data-key` attribute, and the look of a part
+ * hangs on that. The elements inside already have the look of the elements layer.
+ */
+
+/* The classes of Cinder that carry behaviour, and not only a look. */
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .hidden {
+  display: none;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .invisible {
+  visibility: hidden;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Cinder dims what it shows while it loads the next result. */
+:is(.cinder-table, .cinder-list, .cinder-grid) :is(.opacity-75, .animate-pulse) {
+  opacity: 0.6;
+}
+
+/*
+ * The hook of Cinder sets `data-cinder-partial` while a field holds a value
+ * that the browser cannot read, such as half a date. The button that clears
+ * the field shows then, although the server knows of no value.
+ */
+[data-key="filter_container_class"][data-cinder-partial] [data-key="filter_clear_all_class"],
+[data-cinder-filter][data-cinder-partial] [data-key="filter_clear_button_class"] {
+  visibility: visible;
+}
+
+/* Cinder names its icons after Heroicons. We draw the four that it uses. */
+:is(.cinder-table, .cinder-list, .cinder-grid)
+  :is(.hero-chevron-up, .hero-chevron-down, .hero-chevron-up-down, .hero-chevron-right) {
+  display: inline-block;
+  inline-size: 0.625em;
+  block-size: 0.625em;
+  background: currentColor;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .hero-chevron-up {
+  clip-path: polygon(50% 15%, 100% 85%, 0 85%);
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .hero-chevron-down {
+  clip-path: polygon(0 15%, 100% 15%, 50% 85%);
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .hero-chevron-right {
+  clip-path: polygon(15% 0, 85% 50%, 15% 100%);
+}
+
+/* Not sorted: an arrow each way, dimmed. */
+:is(.cinder-table, .cinder-list, .cinder-grid) .hero-chevron-up-down {
+  clip-path: polygon(50% 0, 100% 40%, 0 40%, 50% 0, 50% 100%, 0 60%, 100% 60%, 50% 100%);
+  opacity: 0.45;
+}
+
+/* An SVG of Cinder states no size. */
+[data-key="container_class"] svg {
+  flex: none;
+  inline-size: 1em;
+  block-size: 1em;
+}
+
+/* The filters. */
+
+[data-key="container_class"] {
+  position: relative;
+}
+
+[data-key="controls_class"] {
+  margin-block-end: 1rem;
+}
+
+[data-key="filter_container_class"] {
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+[data-key="filter_header_class"] {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 0.5rem;
+}
+
+[data-key="filter_title_class"] {
+  font-weight: 600;
+}
+
+[data-key="filter_count_class"] {
+  margin-inline-start: 0.5rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+[data-key="filter_inputs_class"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+
+[data-cinder-filter] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+[data-cinder-filter] > :first-child {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+:is([data-key="filter_clear_button_class"], [data-key="filter_clear_all_class"]) {
+  padding: 0.125rem 0.5rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+}
+
+/* A filter with a list of choices: a button, and a list below it. */
+
+[data-key="filter_select_container_class"] {
+  position: relative;
+}
+
+[data-key="filter_select_input_class"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  inline-size: 100%;
+  font-weight: 400;
+  text-align: start;
+}
+
+[data-key="filter_select_dropdown_class"] {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline: 0;
+  z-index: 10;
+  max-block-size: 16rem;
+  margin-block-start: 0.25rem;
+  padding: 0.25rem;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 0.15);
+}
+
+[data-key="filter_select_option_class"] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+[data-key="filter_select_option_class"]:is(:hover, :focus-within) {
+  background: var(--surface);
+}
+
+[data-key="filter_select_option_class"]:has(:checked) {
+  background: var(--info-surface);
+}
+
+/* The result. */
+
+[data-key="table_wrapper_class"] {
+  overflow-x: auto;
+}
+
+[data-key="th_class"] > [phx-click] {
+  white-space: nowrap;
+  user-select: none;
+}
+
+[data-key="sort_indicator_class"] {
+  margin-inline-start: 0.25rem;
+}
+
+/* A choice that is not made yet reads as a placeholder. */
+:is(.cinder-table, .cinder-list, .cinder-grid) .placeholder {
+  color: var(--muted);
+}
+
+/* The search field holds its icon. */
+
+:has(> [data-key="search_input_class"]) {
+  position: relative;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+:has(> div > [data-key="search_input_class"]) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+[data-key="search_input_class"] {
+  padding-inline-start: 2.25rem;
+}
+
+[data-key="search_input_class"] + div {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0.75rem;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* A filter with two or three choices, and a filter from one value to another. */
+
+[data-key="filter_radio_group_container_class"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  min-block-size: 2.5rem;
+  align-items: center;
+}
+
+[data-key="filter_radio_group_option_class"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+[data-key="filter_range_container_class"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+[data-key="filter_range_input_group_class"] {
+  flex: 1 1 8.5rem;
+  min-inline-size: 0;
+}
+
+[data-key="filter_range_separator_class"] {
+  color: var(--muted);
+}
+
+/* Two dates need the width of two fields, where the page has it. */
+@media (min-width: 40rem) {
+  [data-key="filter_input_wrapper_class"]:has([data-key="filter_range_container_class"]) {
+    grid-column: span 2;
+  }
+}
+
+/* The sort buttons of a list and of a grid. */
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .sort-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-start: 0.75rem;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .sort-controls > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .sort-controls button {
+  padding: 0.25rem 0.75rem;
+  font-weight: 400;
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) .sort-controls button.active {
+  font-weight: 600;
+  border-color: var(--accent);
+}
+
+/* A list and a grid. What an item holds is our markup. */
+
+[data-key="list_item_class"] {
+  padding-block: 0.75rem;
+  border-block-end: 1px solid var(--border);
+}
+
+[data-key="grid_container_class"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+/* A row or an item that the user selected. */
+:is(.cinder-table, .cinder-list, .cinder-grid) .selected,
+:is(.cinder-table, .cinder-list, .cinder-grid) tr.selected > td {
+  background: var(--info-surface);
+}
+
+/* Nothing to show, an error, and the wait for a result. */
+
+[data-key="empty_class"] {
+  padding: 2rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+[data-key="error_container_class"] {
+  padding: 0.75rem 1rem;
+  color: var(--danger);
+  background: var(--danger-surface);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+[data-key="loading_overlay_class"] {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+
+[data-key="loading_container_class"] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+
+[data-key="loading_spinner_class"] {
+  animation: spin 1s linear infinite;
+}
+
+[data-key="loading_spinner_circle_class"] {
+  opacity: 0.25;
+}
+
+/* The pages. */
+
+[data-key="pagination_wrapper_class"] {
+  margin-block-start: 1rem;
+}
+
+[data-key="pagination_container_class"],
+[data-key="pagination_container_class"] > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+}
+
+[data-key="pagination_container_class"] {
+  justify-content: space-between;
+}
+
+:is([data-key="pagination_info_class"], [data-key="page_size_label_class"]) {
+  color: var(--muted);
+}
+
+[data-key="page_size_container_class"] > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+:has(> [data-key="page_size_dropdown_class"]) {
+  position: relative;
+}
+
+:is([data-key="page_size_dropdown_class"], [data-key="pagination_button_class"]) {
+  padding: 0.25rem 0.625rem;
+  font-weight: 400;
+}
+
+[data-key="page_size_dropdown_container_class"] {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  z-index: 50;
+  min-inline-size: 100%;
+  margin-block-start: 0.25rem;
+  padding: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 0.15);
+}
+
+[data-key="page_size_option_class"] {
+  display: flex;
+  inline-size: 100%;
+  padding: 0.25rem 0.5rem;
+  font-weight: 400;
+  background: none;
+  border: none;
+}
+
+[data-key="page_size_option_class"].selected {
+  font-weight: 600;
+  background: var(--info-surface);
+}
+
+[data-key="pagination_nav_class"] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+[data-key="pagination_current_class"] {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+/* The buttons of an action on the selected rows. */
+
+:is(.cinder-table, .cinder-list, .cinder-grid) button.primary {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+:is(.cinder-table, .cinder-list, .cinder-grid) button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}

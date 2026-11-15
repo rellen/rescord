@@ -134,6 +134,9 @@ config :esbuild,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
+# Cinder renders with our theme, which has almost no class (ADR 0014).
+config :cinder, default_theme: RescordWeb.CinderTheme
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

@@ -1,4 +1,6 @@
-# AGENTS.md
+| `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
+| `platform/assets/css/layers/vendor.css` | the look of the markup that Cinder renders |
+| `platform/lib/rescord_web/cinder_theme.ex` | the theme of each collection: almost no class |# AGENTS.md
 
 The Mix project is `platform/`. Code paths in this file are relative to it
 (`lib/rescord_web/widget.ex` means `platform/lib/rescord_web/widget.ex`), and
@@ -70,15 +72,40 @@ too.
   `data-` attributes. Never write a `class` attribute or a class selector.
   A variant that no element or ARIA state expresses is a `data-` attribute.
   - The stylesheet is one cascade layer per file, and a layer is a role
-    (ADR 0007): `tokens`, `base`, `elements`, `layout`, `components`. Put a
-    rule in the file of its layer under `assets/css/layers/`, never in
+    (ADR 0007): `tokens`, `base`, `elements`, `layout`, `components`, `vendor`.
+    Put a rule in the file of its layer under `assets/css/layers/`, never in
     `assets/css/app.css`, which only states the order of the layers and
     imports them. A new component is a section of `components.css`; add a
     layer only for a new role.
   - Icons are our own inline SVGs in `CoreComponents.icon/1`, always
     `aria-hidden`. There is no icon library.
+  - The layer `vendor` is the one exception (ADR 0014). It styles the markup
+    that a dependency renders, which has classes that we did not write, and
+    it may select such a class below the root element of the dependency.
+    Our own markup still has no class, inside a slot of Cinder too.
   - The output of `phx.gen.*` and of the Ash generators has Tailwind classes
     and Heroicon names. Restyle it by hand before you commit it.
+- **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
+  a list or a grid with filters, a sort, a search and pages. Do not write
+  those by hand.
+  - Pass `query={...}` from the code interface of the domain
+    (`Rescord.Residents.query_to_residents(%{}, tenant: tenant)`, with
+    `as_of:` for a past date), never `resource={...}`. Pass `actor` and
+    `tenant` too.
+  - Do not pass `theme`, and do not pass `class` to a slot. The theme is
+    `RescordWeb.CinderTheme`, from the configuration, and the look is in
+    `assets/css/layers/vendor.css`, which selects the `data-key` of a part.
+  - Cinder has a LiveComponent inside. That does not change "No
+    LiveComponents":
+    we write none.
+  - After a change to the version of Cinder, run `RescordWeb.CinderTest` and
+    look at a collection in a browser. The test fails for a class of Cinder
+    that `vendor.css` does not know.
+  - Change the version of Cinder by hand in `mix.exs`. Do not run
+    `mix igniter.install cinder`, which sets Tailwind up, or
+    `mix cinder.upgrade`, which edits the Tailwind configuration.
+  - The sort of a table column does not work from the keyboard (ADR 0014).
+    Say so when you add a table whose sort matters.
 - **Boundaries** (ADR 0009). The `:boundary` compiler checks which module
   may use which, and a broken rule fails `mix precommit`.
   - A new domain uses `use Ash.Domain, extensions: [AshBoundary]`, and names

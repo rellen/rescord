@@ -62,6 +62,28 @@ A part with state is a live widget, unless it needs its own process, and then
 it is a nested LiveView (`live_render/3`). A widget with no `:handle_params`
 hook also works inside a nested LiveView.
 
+### Collections
+
+**A collection of records is shown with Cinder** (ADR 0014): a table, a list
+or a grid, with filters, a sort, a search and pages, built from an Ash query.
+We do not write those by hand.
+
+- A page passes `query={...}`, which the code interface of a domain builds
+  (`query_to_<name>/2`) with the tenant and, for a past date, `as_of`. It
+  also passes the actor and the tenant to `Cinder.collection`. So the web
+  layer uses no `Ash` module.
+- Cinder renders through a LiveComponent of its own. That is its business:
+  we still write none.
+- `RescordWeb.CinderTheme` is the theme of each collection, and it has
+  almost no class. The layer `vendor` of the stylesheet styles the parts of
+  Cinder by their `data-key` attribute.
+- A widget that shows a collection tells Cinder to load again with
+  `Cinder.Refresh.refresh_table/2`, when the notification of the resource
+  arrives.
+- The markup of Cinder has gaps in accessibility, which ADR 0014 lists. The
+  sort of a table column does not work from the keyboard. We mean to give
+  those changes back to Cinder.
+
 ### Markup and CSS
 
 - **The markup is semantic and the CSS is classless** (ADR 0004). The
@@ -71,10 +93,15 @@ hook also works inside a nested LiveView.
 - **The stylesheet is one cascade layer per file, and a layer is a role**
   (ADR 0007). `assets/css/app.css` states the order of the layers and imports
   one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,
-  `layout`, `components`, and then `colocated` for the CSS that a component
-  writes next to its markup. A later layer wins over an earlier one whatever
+  `layout`, `components`, `vendor`, and then `colocated` for the CSS that a
+  component writes next to its markup. A later layer wins over an earlier one whatever
   the specificity; inside a layer, specificity and order decide as usual.
   esbuild bundles the files with `app.js`.
+- **The layer `vendor` is the one exception to classless** (ADR 0014). It
+  styles the markup that a dependency renders, which today is Cinder. That
+  markup has classes that we did not write, and `vendor.css` may select such
+  a class, below the root element of the dependency. No other file selects a
+  class, and our own markup has none.
 - `CoreComponents` keeps the API of the components that `mix phx.new`
   generates, so generated code still calls them, but renders classless
   markup.
@@ -139,6 +166,10 @@ belongs to one organisation uses the `:context` strategy of Ash. The
 organisations, the users and the tokens of a sign-in are shared, outside
 those schemas. A member, inside the schema of an organisation, connects a
 user to it. The maintainer expects tens of organisations.
+
+The first resource in the schema of an organisation needs
+`Rescord.Repo.all_tenants/0`, which lists the schemas. Without it
+`mix ash.setup` stops, and so does `mix test`.
 
 ### History
 
@@ -224,6 +255,8 @@ from GitHub, pinned to a commit (ADR 0005).
 - CI, and how a cloud session (which runs as root, where devenv's PostgreSQL
   cannot start) gets a toolchain and a database.
 - Whether to keep the Swoosh mailer that the generator added.
+- The gaps in the accessibility of Cinder (ADR 0014): who gives the changes
+  back, and what a table does for a keyboard until then.
 - Whether a hook that a component writes next to its markup
   (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
   is a file under `assets/js/`. Nobody has checked.

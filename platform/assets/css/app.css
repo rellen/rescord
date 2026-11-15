@@ -2,9 +2,10 @@
  * Rescord's stylesheet is classless (ADR 0004).
  *
  * It styles HTML elements, ARIA states and roles, and a few `data-`
- * attributes for variants. It never selects a class. Write semantic markup
- * and the page is styled; reach for a `data-` attribute only for a variant
- * that no element or ARIA state expresses.
+ * attributes for variants. It never selects a class, outside the layer
+ * `vendor`. Write semantic markup and the page is styled; reach for a
+ * `data-` attribute only for a variant that no element or ARIA state
+ * expresses.
  *
  * Colours follow the system's light or dark scheme through `light-dark()`.
  *
@@ -17,6 +18,8 @@
  *   elements    the default look of each HTML element
  *   layout      the landmarks of a page, and the page header
  *   components  the parts that an attribute marks: icons, flash messages
+ *   vendor      the markup that a dependency renders, which has classes
+ *               that we did not write (ADR 0014)
  *   colocated   the CSS that a component writes next to its markup
  *               (Phoenix.LiveView.ColocatedCSS)
  *
@@ -26,11 +29,12 @@
  * Put a new rule in the file of its layer. Add a layer only for a new role.
  */
 
-@layer tokens, base, elements, layout, components, colocated;
+@layer tokens, base, elements, layout, components, vendor, colocated;
 
 @import "./layers/tokens.css" layer(tokens);
 @import "./layers/base.css" layer(base);
 @import "./layers/elements.css" layer(elements);
 @import "./layers/layout.css" layer(layout);
 @import "./layers/components.css" layer(components);
+@import "./layers/vendor.css" layer(vendor);
 @import "phoenix-colocated/rescord/colocated.css" layer(colocated);
