@@ -83,7 +83,8 @@ config :phoenix_live_view,
 # at the `config/runtime.exs`.
 config :rescord, Rescord.Mailer, adapter: Swoosh.Adapters.Local
 
-# esbuild bundles both app.js and the classless app.css (ADR 0004).
+# esbuild bundles both app.js and the classless app.css, which imports one
+# file per cascade layer (ADR 0004, ADR 0007).
 # The version is required, and matches the esbuild of nixpkgs.
 config :esbuild,
   version: "0.27.2",

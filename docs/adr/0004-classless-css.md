@@ -1,6 +1,6 @@
 # ADR 0004: Semantic HTML with a classless stylesheet
 
-Status: accepted (chosen by the maintainer: "strive for classless")
+Status: accepted (chosen by the maintainer: "strive for classless"); the single file is amended by ADR 0007
 
 ## Context
 

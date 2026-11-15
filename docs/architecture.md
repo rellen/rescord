@@ -1,8 +1,9 @@
 # Rescord architecture
 
 This document records the decisions that shape the code. Each decision has
-an ADR in `docs/adr/` with its reasons. What Rescord does is not decided yet,
-so this document covers the platform that it will be built on.
+an ADR in `docs/adr/` with its reasons, unless the maintainer gave it here
+directly. What Rescord does is not decided yet, so this document covers the
+platform that it will be built on.
 
 ## The repository
 
@@ -24,19 +25,52 @@ config reads `PGHOST` and `PGPORT`, which devenv sets. See ADR 0001.
 
 ## The web layer
 
-- **Pages are compositions of live widgets** (ADR 0003). A widget is a
-  stateful part of a page that lives in the page's LiveView process: its state
-  is a struct in the page's assigns, its events and messages reach it through
-  lifecycle hooks, and it renders with a pure function component. A page
-  LiveView only routes and lays out. There are no LiveComponents.
-- **The markup is semantic and the CSS is classless** (ADR 0004). One
-  stylesheet, `assets/css/app.css`, styles elements, ARIA states and roles,
-  and a few `data-` attributes, in a light and a dark scheme that follow the
-  system. esbuild bundles it with `app.js`. There is no Tailwind, daisyUI or
-  icon library.
+### The parts of a page
+
+**We avoid LiveComponents.** A page is built from these four parts, and
+`RescordWeb` has no `live_component/0`:
+
+| Part | Use it for |
+| --- | --- |
+| LiveView | a page. It owns the route and the layout, and composes the other parts. |
+| Function component | markup with no state of its own. This is the default for any part of a page. |
+| Live widget | a stateful part of a page that lives in the page's process (ADR 0003): its state is a struct in the page's assigns, its events and messages reach it through lifecycle hooks, and it renders with a function component. |
+| Nested LiveView | a stateful part that needs a process of its own: one that must not take the page down when it crashes, or that outlives a part of the page. It costs a process, and it shares no assigns with the page. |
+
+Reach for them in that order. A part with no state is a function component.
+A part with state is a live widget, unless it needs its own process, and then
+it is a nested LiveView (`live_render/3`). A widget with no `:handle_params`
+hook also works inside a nested LiveView.
+
+### Markup and CSS
+
+- **The markup is semantic and the CSS is classless** (ADR 0004). The
+  stylesheet styles elements, ARIA states and roles, and a few `data-`
+  attributes, in a light and a dark scheme that follow the system. There is
+  no Tailwind, daisyUI or icon library.
+- **The stylesheet is one cascade layer per file, and a layer is a role**
+  (ADR 0007). `assets/css/app.css` states the order of the layers and imports
+  one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,
+  `layout`, `components`, and then `colocated` for the CSS that a component
+  writes next to its markup. A later layer wins over an earlier one whatever
+  the specificity; inside a layer, specificity and order decide as usual.
+  esbuild bundles the files with `app.js`.
 - `CoreComponents` keeps the API of the components that `mix phx.new`
   generates, so generated code still calls them, but renders classless
   markup.
+
+### Code in the browser
+
+- **Browser-side hooks are written in TypeScript.** esbuild bundles
+  TypeScript with no other tool, but it only removes the types: a type check
+  needs `tsc`, which is not set up yet. There is no hook yet:
+  `assets/js/app.js` is the generator's file, and it becomes TypeScript when
+  the first hook arrives.
+- **A hook may parse the data that the server sends with zod**, so that the
+  shape of a `push_event` payload or of a `data-` attribute is checked where
+  it enters the browser, and typed from there on. zod is not a dependency
+  yet. It would be the first npm dependency, so the project then gets a
+  `package.json` and a way to install it inside devenv.
 
 ## Ash
 
@@ -48,16 +82,52 @@ There is no domain yet. When there is one:
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
 
+### Policies and roles
+
+**Authorization will be our own system, in the manner of `ash_grant`.** We
+write it in this repository; `ash_grant` is the model and not a dependency.
+
+What we take from the model (`ash_grant` 0.22):
+
+- A role does not appear in a policy. A resolver turns an actor into a list
+  of **grants**, and the policies of a resource are generated from, or check,
+  those grants.
+- A grant names a resource, an action and a **scope**. A scope is a named
+  Ash `expr()` on the resource, such as `own` or `published`, so a grant
+  becomes a native Ash policy check and a row filter.
+- A refusal wins over a grant.
+
+Not decided yet, and each is a decision for an ADR when the work starts:
+how a grant is written (`ash_grant` uses a string,
+`resource:instance:action:scope`), where roles and their grants are stored,
+whether a grant can name one record or a group of fields, and how the system
+is tested without a database. The rule above stays whatever the answer: a
+refused read is empty and not an error, so a test that reads asserts a
+non-empty result.
+
 ## Libraries
 
-`shoddy` (helpers for results, options and collections) and `shoddy_phoenix`
-(LiveView helpers, the widget plumbing among them) come from GitHub, pinned
-to a commit (ADR 0005).
+**We use `shoddy` and `shoddy_phoenix`, and we look for ways to give
+patterns back to them.** They are the maintainer's libraries: `shoddy` has
+helpers for results, options and collections, and `shoddy_phoenix` has the
+LiveView helpers, the plumbing of the live widgets among them. Both come
+from GitHub, pinned to a commit (ADR 0005).
+
+- Use a function of theirs where it says the same thing in fewer words.
+- When Rescord writes a helper that is not about Rescord, such as
+  `RescordWeb.Widget`'s bookkeeping, or works around a gap in a library, that
+  is a candidate for the library. Say so in the reply or the commit that
+  adds it, so that the maintainer can move it upstream, and then replace
+  the local copy with the library's.
 
 ## Open questions
 
 - What Rescord does, and so its domains and pages.
 - Authentication, and how actors reach Ash from LiveViews.
+- The design of the grants: see "Policies and roles".
 - CI, and how a cloud session (which runs as root, where devenv's PostgreSQL
   cannot start) gets a toolchain and a database.
 - Whether to keep the Swoosh mailer that the generator added.
+- Whether a hook that a component writes next to its markup
+  (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
+  is a file under `assets/js/`. Nobody has checked.

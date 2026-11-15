@@ -34,11 +34,16 @@ too.
 
 ## Conventions
 
+- **No LiveComponents.** A page is built from LiveViews, function components,
+  live widgets and nested LiveViews, in that order of preference
+  (`docs/architecture.md`, "The parts of a page"). `RescordWeb` has no
+  `live_component/0`. A part with no state is a function component. A part
+  with state is a live widget, unless it needs a process of its own, and then
+  it is a nested LiveView.
 - **Pages are compositions of live widgets** (ADR 0003). A stateful part of a
   page is a widget in `lib/rescord_web/widgets/`, built as the `shoddy_phoenix`
   guide "Build a widget with lifecycle hooks" shows, with `RescordWeb.Widget`
-  for the bookkeeping. There are no LiveComponents, and `RescordWeb` has no
-  `live_component/0`.
+  for the bookkeeping.
   - A widget module starts with `use RescordWeb, :widget` and
     `use ShoddyPhoenix.LiveView.Events, prefix: "<name>"`. Its state is a
     struct with a `:key`, its events are written with `event/1` and carry a
@@ -51,9 +56,15 @@ too.
     widget took.
 - **HTML is semantic and CSS is classless** (ADR 0004). Use landmarks, headings
   in order, `<th scope>`, labels for every control, and ARIA where it adds
-  meaning. `assets/css/app.css` styles elements, ARIA states and roles, and a
-  few `data-` attributes. Never write a `class` attribute or a class selector.
+  meaning. The stylesheet styles elements, ARIA states and roles, and a few
+  `data-` attributes. Never write a `class` attribute or a class selector.
   A variant that no element or ARIA state expresses is a `data-` attribute.
+  - The stylesheet is one cascade layer per file, and a layer is a role
+    (ADR 0007): `tokens`, `base`, `elements`, `layout`, `components`. Put a
+    rule in the file of its layer under `assets/css/layers/`, never in
+    `assets/css/app.css`, which only states the order of the layers and
+    imports them. A new component is a section of `components.css`; add a
+    layer only for a new role.
   - Icons are our own inline SVGs in `CoreComponents.icon/1`, always
     `aria-hidden`. There is no icon library.
   - The output of `phx.gen.*` and of the Ash generators has Tailwind classes
@@ -67,9 +78,18 @@ too.
   - Once there is authentication, every Ash call from a LiveView passes the
     actor explicitly. A refused read returns an empty result, not an error,
     so a test that reads asserts a non-empty result.
+  - Policies and roles will be our own system in the manner of `ash_grant`
+    (`docs/architecture.md`, "Policies and roles"). Do not add `ash_grant`
+    as a dependency, and do not write a role into a policy by hand.
+- **Browser code.** Write a browser-side hook in TypeScript. Parse what the
+  server sends to it with zod when its shape matters; zod is not a dependency
+  yet, so ask before the first use (`docs/architecture.md`, "Code in the
+  browser").
 - **Dependencies.** `shoddy` and `shoddy_phoenix` come from GitHub, pinned to a
   commit with `ref:` (ADR 0005). `shoddy_phoenix` is for the web layer only.
-  Ask before you add any other dependency.
+  Use them where they fit, and name any helper or workaround that could go
+  back into them, in your reply and in the commit. Ask before you add any
+  other dependency.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
@@ -87,6 +107,7 @@ too.
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts |
-| `platform/assets/css/app.css` | the classless stylesheet |
+| `platform/assets/css/app.css` | the order of the CSS layers, and their imports |
+| `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |

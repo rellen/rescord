@@ -1,0 +1,94 @@
+/* Layer layout: the landmarks of a page, the site nav, the skip link and the page header. */
+
+/* ------------------------------------------------------------- landmarks */
+
+/*
+ * The page's landmarks centre their content with padding, so no wrapper
+ * element is needed. The site header is the one that holds a nav.
+ */
+header:has(> nav),
+main {
+  padding-inline: max(var(--gutter), (100% - var(--measure)) / 2);
+}
+
+header:has(> nav) {
+  background: var(--surface);
+  border-block-end: 1px solid var(--border);
+}
+
+header > nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  min-block-size: 3.5rem;
+}
+
+/* The first link of the site nav is the name of the site. */
+header > nav > a:first-child {
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+
+header > nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+[aria-current="page"] {
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+}
+
+main {
+  display: block;
+  padding-block: 2rem 4rem;
+}
+
+/* The skip link shows only while it has the focus. */
+a[href="#main"] {
+  position: absolute;
+  inset-inline-start: 1rem;
+  inset-block-start: -100vh;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border: 2px solid var(--focus);
+  border-radius: var(--radius);
+}
+
+a[href="#main"]:focus {
+  inset-block-start: 1rem;
+}
+
+/* ----------------------------------------------------------- page header */
+
+/* A header inside main is the page's title, with its actions beside it. */
+main > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 1.5rem;
+}
+
+hgroup > :is(h1, h2, h3) {
+  margin-block-end: 0;
+}
+
+hgroup > p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+main > header > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

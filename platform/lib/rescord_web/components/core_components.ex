@@ -3,11 +3,11 @@ defmodule RescordWeb.CoreComponents do
   The core UI components: flash messages, buttons, form inputs, the page
   header, tables, data lists and icons.
 
-  The markup is semantic and classless (ADR 0004). `assets/css/app.css`
-  styles the elements, their ARIA states and a few `data-` attributes, so
-  a component sets no class. A variant that no element or ARIA state
-  expresses is a `data-` attribute, such as `data-variant="primary"` on a
-  button.
+  The markup is semantic and classless (ADR 0004). The stylesheet under
+  `assets/css/` styles the elements, their ARIA states and a few `data-`
+  attributes, so a component sets no class. A variant that no element or
+  ARIA state expresses is a `data-` attribute, such as
+  `data-variant="primary"` on a button.
 
   The components keep the attributes and slots of the components that
   `mix phx.new` generates, so the output of `phx.gen.*` and of the Ash
