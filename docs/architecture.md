@@ -21,7 +21,8 @@ The repository root holds no `mix.exs`. Mix runs in `platform/`.
 ## The toolchain
 
 devenv provides Elixir 1.20.5 on Erlang/OTP 29, an elixir-ls built against
-them, PostgreSQL 18, and esbuild, all from one pinned nixpkgs. PostgreSQL
+them, PostgreSQL 18, esbuild, and the driver of Playwright with the headless
+shell of Chromium (ADR 0023), all from one pinned nixpkgs. PostgreSQL
 runs as a devenv process on `127.0.0.1:5432` with a `postgres`/`postgres`
 superuser, which is the login that Phoenix's generated config uses. The
 config reads `PGHOST` and `PGPORT`, which devenv sets. See ADR 0001.
@@ -130,6 +131,24 @@ We do not write those by hand.
   it enters the browser, and typed from there on. zod is not a dependency
   yet. It would be the first npm dependency, so the project then gets a
   `package.json` and a way to install it inside devenv.
+
+### Browser tests
+
+`RescordWeb.FeatureCase` drives a real Chromium against the real server, with
+`PhoenixTest.Playwright` (ADR 0023). The first test signs a member in: the
+form, the email, the link, the button, a page of an organisation, and the
+sign-out.
+
+- The driver and the browser come from nixpkgs, through `devenv.nix`. The
+  project has no npm package. Outside the devenv shell, `mix test` leaves the
+  browser tests out and says so.
+- The tests run a server on port 4002, and build the assets first.
+- In the tests only, a request and a LiveView of the browser use the database
+  transaction of the test: the endpoint has the plug
+  `Phoenix.Ecto.SQL.Sandbox`, and `RescordWeb.LiveSandbox` is the first hook
+  of each live session.
+- A request test holds each rule. A browser test holds what only a browser
+  shows.
 
 ## Ash
 

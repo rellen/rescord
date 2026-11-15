@@ -10,6 +10,26 @@ let
   # The exact patch version (1.20.5) is pinned by devenv.lock.
   beam = pkgs.beam.packages.erlang_29;
   elixir = beam.elixir_1_20;
+
+  # The browser tests drive a real Chromium through Playwright (ADR 0023).
+  # phoenix_test_playwright looks for the driver in
+  # <assets dir>/node_modules/playwright. This directory gives it the driver
+  # of nixpkgs, so the project needs no npm package.
+  playwrightAssets = pkgs.runCommand "playwright-assets" { } ''
+    mkdir -p $out/node_modules
+    ln -s ${pkgs.playwright-driver} $out/node_modules/playwright
+  '';
+
+  # The browser is from the same nixpkgs as the driver, so the two are one
+  # version. A test runs with no window, and Playwright uses the headless
+  # shell of Chromium for that. To see the browser (`headless: false`), set
+  # `withChromium = true` here.
+  playwrightBrowsers = pkgs.playwright-driver.selectBrowsers {
+    withChromium = false;
+    withFirefox = false;
+    withWebkit = false;
+    withFfmpeg = false;
+  };
 in
 {
   # https://devenv.sh/languages/
@@ -41,6 +61,11 @@ in
 
     # Used as the esbuild `path` in platform/config/config.exs.
     MIX_ESBUILD_PATH = lib.getExe pkgs.esbuild;
+
+    # Read by platform/config/test.exs and by Playwright (ADR 0023).
+    PLAYWRIGHT_ASSETS_DIR = "${playwrightAssets}";
+    PLAYWRIGHT_BROWSERS_PATH = "${playwrightBrowsers}";
+    PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
   };
 
   # https://devenv.sh/services/
@@ -68,5 +93,6 @@ in
     elixir --version | grep --color=auto "Elixir ${elixir.version}"
     wait_for_port 5432
     psql -U postgres -h 127.0.0.1 -d postgres -c 'select version()' | grep --color=auto "PostgreSQL 18"
+    test -x "$PLAYWRIGHT_ASSETS_DIR/node_modules/playwright/cli.js"
   '';
 }

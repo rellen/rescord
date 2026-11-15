@@ -20,8 +20,13 @@ if System.get_env("PHX_SERVER") do
   config :rescord, RescordWeb.Endpoint, server: true
 end
 
-config :rescord, RescordWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+# Not in the tests: the server of the tests keeps the port of config/test.exs
+# (ADR 0023). This file runs last, so without the condition the tests would
+# take port 4000, which is the port of `mix phx.server`.
+if config_env() != :test do
+  config :rescord, RescordWeb.Endpoint,
+    http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+end
 
 if config_env() == :dev do
   # Reload browser tabs when matching files change.

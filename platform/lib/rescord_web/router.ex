@@ -3,6 +3,15 @@ defmodule RescordWeb.Router do
 
   import RescordWeb.UserAuth, only: [fetch_current_user: 2]
 
+  # In the tests only: a LiveView of a browser test uses the database
+  # transaction of that test (ADR 0023). This hook is the first one of each
+  # live session, because the hook after it reads the database.
+  @sandbox_hooks (if Application.compile_env(:rescord, :sql_sandbox) do
+                    [RescordWeb.LiveSandbox]
+                  else
+                    []
+                  end)
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -31,12 +40,13 @@ defmodule RescordWeb.Router do
     delete "/sign-out", SignInController, :delete
 
     # The pages of a root user.
-    live_session :root, on_mount: [{RescordWeb.UserAuth, :require_root}] do
+    live_session :root, on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}] do
       live "/root", RootLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
-    live_session :organisation, on_mount: [{RescordWeb.UserAuth, :require_organisation}] do
+    live_session :organisation,
+      on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_organisation}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
     end

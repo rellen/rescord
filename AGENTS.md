@@ -36,7 +36,7 @@ auto-activation).
 devenv up -d                      # PostgreSQL 18 in the background
 cd platform
 mix setup                         # deps, database (ash.setup), assets, seeds
-mix test                          # sets up the test database first
+mix test                          # sets up the test database, builds the assets, runs a server on port 4002
 iex -S mix phx.server             # http://localhost:4000
 mix precommit                     # compile --warnings-as-errors, unlock unused deps, format, test
 mix usage_rules.sync              # write platform/AGENTS.md again, after a change to the deps
@@ -217,6 +217,21 @@ too.
   - `Rescord.AccountsFixtures` makes a user, a root user, an organisation
     and a member, and signs a connection in.
   - For a rule about who can do what, change the rule and see a test fail.
+  - **A browser test** uses `RescordWeb.FeatureCase` and is in
+    `platform/test/rescord_web/features/` (ADR 0023). It drives a real
+    Chromium with `PhoenixTest.Playwright`. Write one for what only a
+    browser shows: a control that a person finds by its words, the script of
+    a page, a session that reaches a LiveView. Hold each rule with a request
+    test too, which is faster.
+    - The devenv shell has the driver and the browser. Outside it, `mix test`
+      leaves the browser tests out and says so in its first lines. Do not
+      report a run as complete when it says that.
+    - A browser test that reads an email, or that creates an organisation,
+      is `async: false`.
+    - After a click that opens a LiveView, call `assert_connected/1` before
+      the test presses a control of that page.
+    - Never add an npm package for the browser tests: the driver is the one
+      of nixpkgs.
 - **Atoms.** Never create atoms from text that a client sends.
 - **Branches.** Work is on `main` for now (the maintainer, 15 November 2026).
   Commit there and push `main`, with no pull request. A session whose own
@@ -235,6 +250,7 @@ too.
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
+| `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |
 | `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |

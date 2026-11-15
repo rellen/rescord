@@ -11,9 +11,17 @@ defmodule RescordWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  # `:user_agent` carries the database transaction of a browser test to a
+  # LiveView (ADR 0023). Outside the tests nothing reads it.
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [connect_info: [:user_agent, session: @session_options]],
+    longpoll: [connect_info: [:user_agent, session: @session_options]]
+
+  # In the tests only: a request of the browser of a browser test uses the
+  # database transaction of that test.
+  if Application.compile_env(:rescord, :sql_sandbox) do
+    plug Phoenix.Ecto.SQL.Sandbox
+  end
 
   # Serve at "/" the static files from "priv/static" directory.
   #

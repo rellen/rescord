@@ -84,6 +84,9 @@ defmodule Rescord.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
+      # The browser tests (ADR 0023).
+      {:phoenix_test, "~> 0.14.0", only: :test, runtime: false},
+      {:phoenix_test_playwright, "~> 0.19.0", only: :test, runtime: false},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).
@@ -112,7 +115,8 @@ defmodule Rescord.MixProject do
       setup: ["deps.get", "ash.setup", "assets.setup", "assets.build", "run priv/repo/seeds.exs"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ash.setup --quiet", "test"],
+      # A browser test loads app.js and app.css, so the tests build them first.
+      test: ["ash.setup --quiet", "assets.build", "test"],
       "assets.setup": ["esbuild.install --if-missing"],
       "assets.build": ["compile", "esbuild rescord"],
       "assets.deploy": [

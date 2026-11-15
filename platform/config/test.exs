@@ -27,12 +27,13 @@ config :rescord, Rescord.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+# The tests run a server on port 4002, for the browser tests. Two runs of
+# `mix test` at one time cannot both have that port.
 config :rescord, RescordWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "9iDnT6galUTuMetbw7HGDpETn9kOplPWofCu2/hsMdMN7kGHzrwJ4iTte0GffAyG",
-  server: false
+  # A browser test needs a real server (ADR 0023).
+  server: true
 
 # In test we don't send emails
 config :rescord, Rescord.Mailer, adapter: Swoosh.Adapters.Test
@@ -53,3 +54,23 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# The browser tests (ADR 0023). A request of the browser, and a LiveView that
+# it opens, use the database transaction of the test.
+config :rescord, :sql_sandbox, true
+
+# The driver of Playwright is in <assets dir>/node_modules/playwright. devenv
+# sets PLAYWRIGHT_ASSETS_DIR to the driver of nixpkgs. PLAYWRIGHT_CHROMIUM
+# names a Chromium for a machine whose browser is not the one of the driver.
+chromium =
+  case System.get_env("PLAYWRIGHT_CHROMIUM") do
+    nil -> []
+    path -> [executable_path: path]
+  end
+
+config :phoenix_test,
+  otp_app: :rescord,
+  endpoint: RescordWeb.Endpoint,
+  playwright:
+    [assets_dir: System.get_env("PLAYWRIGHT_ASSETS_DIR", "assets"), browser: :chromium] ++
+      chromium
