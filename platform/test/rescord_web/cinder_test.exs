@@ -21,7 +21,7 @@ defmodule RescordWeb.CinderTest do
 
   # The classes that do something. Without a rule the page breaks: a list of
   # choices that never closes, a button that always shows.
-  @behaviour_classes ~w(hidden invisible sr-only opacity-75 animate-pulse)
+  @behaviour_classes ~w(hidden invisible sr-only)
 
   # The names of the icons, which `vendor.css` draws.
   @icons ~w(hero-chevron-up hero-chevron-down hero-chevron-up-down hero-chevron-right)
@@ -33,12 +33,17 @@ defmodule RescordWeb.CinderTest do
   # out by its `data-key`, or by its place, so these have no rule. The grid
   # is one of them: `grid_columns` of Cinder does nothing here, and the grid
   # takes as many columns as fit.
+  #
+  # `opacity-75` and `animate-pulse` dim a part while a result loads. They
+  # have no rule on purpose: dimmed text falls below a contrast of 4.5:1, and
+  # the overlay of Cinder already says that a result loads.
   @layout_classes ~w(
     absolute contents cursor-pointer flex flex-1 inline-flex inset-y-0
     items-center justify-between left-0 pl-3 pointer-events-none relative
     select-none space-x-2 space-x-6 truncate z-10 !flex !flex-col
     w-4 h-4 ml-2 top-full right-0 mt-1 z-50
     grid-cols-1 md:grid-cols-2 lg:grid-cols-3
+    opacity-75 animate-pulse
     group/cinder-filter group/cinder-filters
     group-data-[cinder-partial]/cinder-filter:visible
     group-data-[cinder-partial]/cinder-filters:visible

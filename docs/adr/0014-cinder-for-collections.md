@@ -48,9 +48,11 @@ We tried it before we decided, in a copy of the application:
     into its markup itself, or a mark of the theme, and only below the root
     element of Cinder.
   - It gives a rule to each class of Cinder that carries behaviour
-    (`hidden`, `invisible`, `sr-only`, the loading state), and it draws the
-    four icons that Cinder names. The Tailwind classes that only lay a part
-    out get no rule.
+    (`hidden`, `invisible`, `sr-only`), and it draws the four icons that
+    Cinder names. The Tailwind classes that only lay a part out get no rule.
+  - It does not dim a part while a result loads, although Cinder asks for
+    that: dimmed text falls below a contrast of 4.5:1. The overlay of Cinder
+    says that a result loads.
 - The markup that we write stays classless, inside a slot of Cinder too.
 - A page passes `query={...}` from the code interface of a domain, with the
   actor and the tenant, and never `resource={...}`.

@@ -39,11 +39,6 @@
   border: 0;
 }
 
-/* Cinder dims what it shows while it loads the next result. */
-:is(.cinder-table, .cinder-list, .cinder-grid) :is(.opacity-75, .animate-pulse) {
-  opacity: 0.6;
-}
-
 /*
  * The hook of Cinder sets `data-cinder-partial` while a field holds a value
  * that the browser cannot read, such as half a date. The button that clears
@@ -75,10 +70,12 @@
   clip-path: polygon(15% 0, 85% 50%, 15% 100%);
 }
 
-/* Not sorted: an arrow each way, dimmed. */
+/*
+ * Not sorted: an arrow each way. The shape says it, and not a dimmer colour,
+ * which would take the icon below a contrast of 3:1.
+ */
 :is(.cinder-table, .cinder-list, .cinder-grid) .hero-chevron-up-down {
   clip-path: polygon(50% 0, 100% 40%, 0 40%, 50% 0, 50% 100%, 0 60%, 100% 60%, 50% 100%);
-  opacity: 0.45;
 }
 
 /* An SVG of Cinder states no size. */
@@ -196,6 +193,16 @@
 
 [data-key="filter_select_option_class"]:has(:checked) {
   background: var(--info-surface);
+  font-weight: 600;
+}
+
+/*
+ * The radio button of a choice is not shown, and the background of the
+ * chosen one differs too little to say it alone. A mark says it.
+ */
+[data-key="filter_select_option_class"]:has(:checked)::after {
+  margin-inline-start: auto;
+  content: "\2713" / "";
 }
 
 /* The result. */
@@ -360,7 +367,10 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--muted);
+  padding: 0.5rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 [data-key="loading_spinner_class"] {
