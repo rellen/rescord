@@ -6,6 +6,7 @@
     :oban,
     :ash_paper_trail,
     :ash_archival,
+    :ash_authentication,
     :ash_boundary,
     :ash_rate_limiter,
     :ash_phoenix,

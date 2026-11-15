@@ -70,6 +70,21 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
+  # The secret that signs a sign-in token. A blank value is as bad as none.
+  token_signing_secret =
+    case System.get_env("TOKEN_SIGNING_SECRET", "") |> String.trim() do
+      "" ->
+        raise """
+        environment variable TOKEN_SIGNING_SECRET is missing.
+        You can generate one by calling: mix phx.gen.secret
+        """
+
+      secret ->
+        secret
+    end
+
+  config :rescord, token_signing_secret: token_signing_secret
+
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

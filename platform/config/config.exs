@@ -93,7 +93,7 @@ config :rescord,
   base_resources: [Rescord.Resource],
   ecto_repos: [Rescord.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: []
+  ash_domains: [Rescord.Accounts]
 
 # Configure the endpoint
 config :rescord, RescordWeb.Endpoint,
@@ -136,6 +136,20 @@ config :esbuild,
 
 # Cinder renders with our theme, which has almost no class (ADR 0014).
 config :cinder, default_theme: RescordWeb.CinderTheme
+
+# The sign-in (ADR 0018, ADR 0019). A link that does not work returns an
+# error, and not an empty result.
+config :ash_authentication, return_error_on_invalid_magic_link_token?: true
+
+# The core builds the address of a sign-in link through the web layer, which
+# it cannot name (ADR 0009). This names the function to call with the token.
+config :rescord, :sign_in_link_url, {RescordWeb.SignInLink, :for_token}
+
+# The sender of each email. A release sets its own in config/runtime.exs.
+config :rescord, :mail_from, {"Rescord", "rescord@localhost"}
+
+# A token is a credential: Phoenix keeps it out of the log of a request.
+config :phoenix, :filter_parameters, ["password", "token"]
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

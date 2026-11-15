@@ -2,6 +2,7 @@
   "ash_functions_version": 7,
   "installed": [
     "ash-functions",
-    "btree_gist"
+    "btree_gist",
+    "citext"
   ]
 }

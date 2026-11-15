@@ -1,0 +1,8 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    This link does not work
+    <:subtitle>A link works one time, for 15 minutes.</:subtitle>
+  </.header>
+
+  <p><a href={~p"/sign-in"}>Ask for a new link</a>.</p>
+</Layouts.app>

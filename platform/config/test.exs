@@ -8,6 +8,10 @@ config :ash,
   keyset_signing_secret: "RCqjVbP5zdhSYiU+ArBvz7f6Vj0YEk2VjYm0j+PfFkI",
   disable_async?: true
 
+# The secret that signs a sign-in token, for the tests only.
+config :rescord,
+  token_signing_secret: "VDTYZSc078CDlK1BowcxqaEqUjVYsKD9V8fnz9wwyYrAsRYDWwZLvr8fATXrUJCM"
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

@@ -1,0 +1,16 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Sign in to Rescord
+    <:subtitle>Press the button to finish.</:subtitle>
+  </.header>
+
+  <section>
+    <form action={~p"/sign-in/link"} method="post">
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <input type="hidden" name="token" value={@token} />
+      <footer>
+        <.button type="submit">Sign in</.button>
+      </footer>
+    </form>
+  </section>
+</Layouts.app>

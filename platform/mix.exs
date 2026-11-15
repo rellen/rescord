@@ -69,6 +69,9 @@ defmodule Rescord.MixProject do
       {:ash, "~> 3.0"},
       {:ash_boundary, "~> 0.2.0"},
       {:cinder, "~> 0.18"},
+      {:ash_authentication, "~> 4.15"},
+      # Ash needs a SAT solver for its policies. This one is plain Elixir.
+      {:simple_sat, "~> 0.1"},
       {:ash_rate_limiter, "~> 2.0"},
       {:hammer, "~> 7.5"},
       {:igniter, "~> 0.6", only: [:dev, :test]},

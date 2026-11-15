@@ -1,6 +1,8 @@
 defmodule RescordWeb.Router do
   use RescordWeb, :router
 
+  import RescordWeb.UserAuth, only: [fetch_current_user: 2]
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,6 +10,7 @@ defmodule RescordWeb.Router do
     plug :put_root_layout, html: {RescordWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :fetch_current_user
   end
 
   pipeline :api do
@@ -18,6 +21,14 @@ defmodule RescordWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    # The sign-in by a link in an email (ADR 0018).
+    get "/sign-in", SignInController, :new
+    post "/sign-in", SignInController, :create
+    get "/sign-in/sent", SignInController, :sent
+    get "/sign-in/link", SignInController, :link
+    post "/sign-in/link", SignInController, :confirm
+    delete "/sign-out", SignInController, :delete
   end
 
   # Other scopes may use custom stacks.

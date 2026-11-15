@@ -7,7 +7,7 @@ defmodule Rescord.Application do
 
   # The application starts both the core and the web layer, so it is a
   # boundary of its own, outside the core (ADR 0009).
-  use Boundary, top_level?: true, deps: [Rescord, RescordWeb]
+  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, RescordWeb]
 
   @impl true
   def start(_type, _args) do
@@ -26,8 +26,11 @@ defmodule Rescord.Application do
          Application.fetch_env!(:rescord, :ash_domains),
          Application.fetch_env!(:rescord, Oban)
        )},
-      # Start a worker by calling: Rescord.Worker.start_link(arg)
-      # {Rescord.Worker, arg},
+      # AshAuthentication removes the tokens that have expired (ADR 0018).
+      {AshAuthentication.Supervisor, otp_app: :rescord},
+      # The tasks of the requests for a sign-in link (ADR 0019). The limit stops
+      # a flood of requests from starting a flood of tasks.
+      {Task.Supervisor, name: Rescord.Accounts.sign_in_tasks(), max_children: 100},
       # Start to serve requests, typically the last entry
       RescordWeb.Endpoint
     ]

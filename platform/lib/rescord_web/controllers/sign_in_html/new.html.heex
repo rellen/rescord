@@ -1,0 +1,24 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Sign in
+    <:subtitle>Type your email address, and Rescord sends you a link to sign in.</:subtitle>
+  </.header>
+
+  <section>
+    <form action={~p"/sign-in"} method="post">
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <.input
+        id="sign-in-email"
+        name="email"
+        type="email"
+        label="Email address"
+        value=""
+        required
+        autocomplete="email"
+      />
+      <footer>
+        <.button type="submit">Send me a link</.button>
+      </footer>
+    </form>
+  </section>
+</Layouts.app>

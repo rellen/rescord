@@ -1,6 +1,7 @@
-<Layouts.app flash={@flash}>
+<Layouts.app flash={@flash} current_user={@current_user}>
   <.header>
     Rescord
-    <:subtitle>Nothing to see here yet.</:subtitle>
+    <:subtitle :if={@current_user}>You are signed in as {@current_user.email}.</:subtitle>
+    <:subtitle :if={!@current_user}>Sign in to go on.</:subtitle>
   </.header>
 </Layouts.app>

@@ -1,0 +1,13 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Look in your email
+    <:subtitle>
+      If the address has an account, a link to sign in is on its way.
+    </:subtitle>
+  </.header>
+
+  <p>The link works one time, for 15 minutes.</p>
+  <p>
+    No email? Look at the address and the spam folder, then <a href={~p"/sign-in"}>ask for another link</a>.
+  </p>
+</Layouts.app>

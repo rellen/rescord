@@ -6,7 +6,8 @@ defmodule Rescord.Repo do
   def installed_extensions do
     # Add extensions here, and the migration generator will install them.
     # A temporal resource needs btree_gist for its primary key (ADR 0012).
-    ["ash-functions", "btree_gist"]
+    # The email address of a user compares without case, which needs citext.
+    ["ash-functions", "btree_gist", "citext"]
   end
 
   # Don't open unnecessary transactions

@@ -27,6 +27,8 @@ defmodule RescordWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
 
+  attr :current_user, :map, default: nil, doc: "the user who is signed in, if any"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -36,6 +38,15 @@ defmodule RescordWeb.Layouts do
     <header>
       <nav aria-label={gettext("Site")}>
         <a href={~p"/"}><.icon name="mark" /> Rescord</a>
+        <ul>
+          <li :if={@current_user}>{@current_user.email}</li>
+          <li :if={@current_user}>
+            <.link href={~p"/sign-out"} method="delete">{gettext("Sign out")}</.link>
+          </li>
+          <li :if={!@current_user}>
+            <a href={~p"/sign-in"}>{gettext("Sign in")}</a>
+          </li>
+        </ul>
       </nav>
     </header>
 

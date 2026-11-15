@@ -4,6 +4,10 @@ config :ash,
   policies: [show_policy_breakdowns?: true],
   keyset_signing_secret: "BMcrYu6U68R9W/lJTEusH/vw7I4jnTTHrj97SUZPJWE"
 
+# The secret that signs a sign-in token, for development only.
+config :rescord,
+  token_signing_secret: "ISkI40irndLUS8kJZwyrFJBbypjWWjbtJX0neXLZIyf/pW9jZCpj74IjUzp8OK51"
+
 # Configure your database
 config :rescord, Rescord.Repo,
   username: "postgres",
