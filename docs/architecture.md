@@ -247,6 +247,29 @@ fixed first part keeps the name of an organisation apart from a route such
 as `/sign-in`.
 
 
+### Lists and residents
+
+`Rescord.Lists` and `Rescord.Residents` are the first domains of an
+organisation, and their resources are the first temporal resources with a
+table (ADR 0025).
+
+- **A list.** Each dimension that an organisation can extend has a base
+  list, which all organisations share, and a list in the schema of each
+  organisation. A row of that list names a shared value, or it is a local
+  value. A resident names a row of the list of its organisation.
+- **A resident** holds what it has one of. Its name and its desex status are
+  each a resource with one value, so each has a history. Its breeds, colours
+  and temperaments are ties. `register` and `revise` take those as
+  arguments, and one change writes them with the resident.
+- **The status is a calculation** from the arrival, the departure and an
+  absence, at the instant of the read. Rescord stores no status.
+- **A read as of a past instant** takes `as_of:` in the options of a function
+  of the domain.
+- **A tenant migration needs a repair.** ash_postgres 2.15.2 writes the
+  period foreign key of a temporal resource with two faults.
+  `Rescord.TenantMigrations.repair!/0` repairs them, and a test fails while
+  a migration has one.
+
 ### History
 
 **History comes from temporal resources, AshPaperTrail and AshArchival**
@@ -305,8 +328,12 @@ What we take from the model (`ash_grant` 0.22):
 A root user is outside the grants: a root user can do anything in each
 organisation (`docs/domain.md`, section 5.1).
 
-Not decided yet: how a second domain adds its grants, when the roles and
-their grants move to the database, and whether a grant can name one record
+A domain other than the accounts holds its own grants, in a module that the
+configuration names (ADR 0024): `Rescord.Lists.Grants` and
+`Rescord.Residents.Grants`. A domain that is not in `:grant_sources` has no
+grants.
+
+Not decided yet: when the roles and their grants move to the database, and whether a grant can name one record
 or a group of fields. The rule above stays whatever the answer: a
 refused read is empty and not an error, so a test that reads asserts a
 non-empty result.
@@ -338,7 +365,8 @@ from GitHub, pinned to a commit (ADR 0005).
 
 ## Open questions
 
-- The open points of `docs/domain.md`, and so the domains and the pages.
+- The open points of `docs/domain.md`, and so the domains and the pages
+  that come after the residents.
 - For the sign-in: the mailer of a release, and how the limit of a client
   finds the real address behind a proxy (ADR 0022).
 - The design of the grants: see "Policies and roles".

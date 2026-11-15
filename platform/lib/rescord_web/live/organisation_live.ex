@@ -3,8 +3,8 @@ defmodule RescordWeb.OrganisationLive do
   The first page of an organisation, at `/o/<short name>`.
 
   The live session opens it only for a member of the organisation and for a
-  root user. It says who the person is here. The pages of the residents and
-  the tasks come later.
+  root user. It says who the person is here, and leads to the residents, the
+  lists and the members.
   """
 
   use RescordWeb, :live_view
@@ -29,7 +29,11 @@ defmodule RescordWeb.OrganisationLive do
         <:subtitle>{role_words(@role)}</:subtitle>
       </.header>
 
-      <p><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a>.</p>
+      <ul>
+        <li><a href={~p"/o/#{@organisation.short_name}/residents"}>See the residents</a></li>
+        <li><a href={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</a></li>
+        <li><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a></li>
+      </ul>
     </Layouts.app>
     """
   end

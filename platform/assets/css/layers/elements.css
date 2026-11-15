@@ -368,9 +368,10 @@ input:is([type="submit"], [type="button"], [type="reset"]) {
   border-color: var(--accent);
 }
 
+/* `:is(a, button)` gives the variant the weight of `a[data-variant]` above. */
 button[type="submit"],
 input[type="submit"],
-[data-variant="primary"] {
+:is(a, button)[data-variant="primary"] {
   color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);

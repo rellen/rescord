@@ -99,6 +99,8 @@ defmodule RescordWeb.RootLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
+      <p><a href={~p"/root/lists"}>See the shared lists of values</a>.</p>
+
       <section aria-labelledby="organisations-heading">
         <h2 id="organisations-heading">Organisations</h2>
 

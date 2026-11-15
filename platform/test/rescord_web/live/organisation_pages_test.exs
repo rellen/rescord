@@ -85,7 +85,7 @@ defmodule RescordWeb.OrganisationPagesTest do
         |> form("#new-organisation", organisation: %{name: "Banksia", short_name: "Banksia Road"})
         |> render_submit()
 
-      assert html =~ ~s(role="alert")
+      assert has_element?(view, "main p[role=alert]")
       assert html =~ "Short name"
 
       view
@@ -191,12 +191,11 @@ defmodule RescordWeb.OrganisationPagesTest do
 
       address = unique_address()
 
-      html =
-        render_submit(view, "invite", %{
-          "invite" => %{"email" => address, "role" => "administrator"}
-        })
+      render_submit(view, "invite", %{
+        "invite" => %{"email" => address, "role" => "administrator"}
+      })
 
-      assert html =~ ~s(role="alert")
+      assert has_element?(view, "main p[role=alert]")
       assert_no_email_sent()
       assert Accounts.user_by_email!(address, authorize?: false) == nil
     end
@@ -215,8 +214,8 @@ defmodule RescordWeb.OrganisationPagesTest do
                Accounts.member!(another.id, tenant: context.organisation, authorize?: false)
 
       # The administrator cannot remove the one who is an administrator now.
-      html = render_click(view, "remove", %{"id" => another.id})
-      assert html =~ ~s(role="alert")
+      render_click(view, "remove", %{"id" => another.id})
+      assert has_element?(view, "main p[role=alert]")
 
       assert Accounts.member!(another.id, tenant: context.organisation, authorize?: false)
 
@@ -237,11 +236,11 @@ defmodule RescordWeb.OrganisationPagesTest do
       {:ok, _organisation, own} =
         Accounts.organisation_for(context.member, context.organisation.short_name)
 
-      html = render_click(view, "make_administrator", %{"id" => own.id})
-      assert html =~ ~s(role="alert")
+      render_click(view, "make_administrator", %{"id" => own.id})
+      assert has_element?(view, "main p[role=alert]")
 
-      html = render_submit(view, "invite", %{"invite" => %{"email" => unique_address()}})
-      assert html =~ ~s(role="alert")
+      render_submit(view, "invite", %{"invite" => %{"email" => unique_address()}})
+      assert has_element?(view, "main p[role=alert]")
 
       assert %{role: :member} =
                Accounts.member!(own.id, tenant: context.organisation, authorize?: false)

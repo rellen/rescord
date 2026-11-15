@@ -44,6 +44,12 @@ defmodule RescordWeb.Layouts do
             <a href={~p"/o/#{@organisation.short_name}"}>{@organisation.name}</a>
           </li>
           <li :if={@organisation}>
+            <a href={~p"/o/#{@organisation.short_name}/residents"}>{gettext("Residents")}</a>
+          </li>
+          <li :if={@organisation}>
+            <a href={~p"/o/#{@organisation.short_name}/lists"}>{gettext("Lists")}</a>
+          </li>
+          <li :if={@organisation}>
             <a href={~p"/o/#{@organisation.short_name}/members"}>{gettext("Members")}</a>
           </li>
           <li :if={@current_user && @current_user.root?}>

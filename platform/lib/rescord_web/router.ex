@@ -42,6 +42,7 @@ defmodule RescordWeb.Router do
     # The pages of a root user.
     live_session :root, on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}] do
       live "/root", RootLive
+      live "/root/lists", ListsLive, :shared
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
@@ -49,6 +50,11 @@ defmodule RescordWeb.Router do
       on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_organisation}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
+      live "/o/:organisation/lists", ListsLive, :organisation
+      live "/o/:organisation/residents", ResidentsLive
+      live "/o/:organisation/residents/new", ResidentFormLive, :new
+      live "/o/:organisation/residents/:id", ResidentLive
+      live "/o/:organisation/residents/:id/edit", ResidentFormLive, :edit
     end
   end
 

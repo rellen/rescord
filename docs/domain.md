@@ -106,6 +106,10 @@ These subjects are out of scope for now:
 | Which part does the project build first? | The sign-in and the organisations. |
 | Which service sends the email of a sign-in and of an invitation? | Postmark, through SMTP. |
 | How does a page name its organisation? | In the path, and not in a subdomain. The path starts with `/o/` and the short name of the organisation. |
+| How does a resident name a value of a dimension? | The list of the organisation holds each value that the organisation uses. A resident names a row of that list (ADR 0025). |
+| How does a resident get its status? | Rescord calculates it from the arrival, the departure and an absence. A member sets only `away for a time`. |
+| Which dimensions have a fixed list? | The eight of section 7.3. The size class and the coat are lists that an organisation can extend. |
+| Which part does the project build second? | The residents: all of section 5.2. |
 
 ## 5. The root entities
 
@@ -160,29 +164,47 @@ dimensions:
 | breed | kelpie, domestic short hair | one or more |
 | colour | black, tan, tabby | one or more |
 | size class | small, medium, large | one |
-| coat | short, long, wire, no coat | one |
+| coat | short, long, wire, rough with rosettes | one |
 | temperament | shy, reactive to dogs, needs an experienced handler | zero or more |
 | desex status | entire, desexed, not known | one, with a history |
 | identifier kind | microchip, ear tag, leg band, tattoo | one for each identifier |
 
 - Rescord keeps a history of the name, the status, and the desex status of a
-  resident. Each of the three is a temporal resource in 6NF.
+  resident. The name and the desex status are each a temporal resource in
+  6NF. The history of the status comes from the resources that Rescord
+  calculates it from.
+- The species, the breed, the colour, the size class, the coat, the
+  temperament and the identifier kind are lists that an organisation can
+  extend. The sex and the desex status are fixed lists.
 - The weight is a measurement in the journal, so it has a history already.
 - An arrival records how and when a resident came to the organisation. A
   departure records how and when a resident left.
 - The age is not a dimension. Rescord calculates the age from the date of
   birth.
 
-*Proposal.* The arrival kinds are: surrender by an owner, stray, seizure by
-an authority, birth in care, and transfer from another organisation. The
+The arrival kinds are: surrender by an owner, stray, seizure by an
+authority, birth in care, and transfer from another organisation. The
 departure kinds are: death, release, and transfer to another organisation.
+The code has these lists (ADR 0025). The maintainer has not changed them.
 
 The status of a resident has a fixed list of four values: expected, in care,
 away for a time, and left. The departure records how and why a resident left.
 
-*Proposal.* Rescord calculates three of the values. A resident is expected
-before its arrival, in care after its arrival, and left after its departure.
-A member sets the value `away for a time`.
+Rescord calculates the status at the instant of a read, and does not store
+it:
+
+1. A resident with a departure has left.
+2. A resident with no arrival is expected.
+3. A resident with an absence at that instant is away for a time.
+4. A resident is in care in each other case.
+
+An absence is the record that a member makes for the value `away for a
+time`. Its period is the time away. An arrival and a departure are facts
+that happened, so their dates are not after today.
+
+Rescord has these parts of this section (ADR 0025): the resident and each of
+its dimensions, the name and the desex status with their history, the
+identifiers, the arrival, the departure and the absence, and pages for them.
 
 ### 5.3 Families of residents
 
@@ -330,8 +352,8 @@ The maintainer asked for a design in 5NF and 6NF.
 3. A dimension that an organisation can extend has two resources. One holds
    the shared values, and all organisations read it. The other holds the
    local values, in the schema of the organisation.
-4. *Proposal.* A dimension with a fixed list of values is an enumerated type,
-   and it is not a resource.
+4. A dimension with a fixed list of values is an enumerated type, and it is
+   not a resource. Section 7.3 lists them.
 5. A relation of many to many is a tie.
 6. Rescord stores a fact one time and calculates the other values. The age,
    the stock level, and the relatives of a resident are examples.
@@ -354,20 +376,21 @@ This section applies the answers of section 4 and the proposals of sections
 | Area | Resources | Count |
 | --- | --- | --- |
 | Access | `Member`, `Role`, `MemberRole`, `Grant` | 4 |
-| Residents | `Resident`, `ResidentName`, `ResidentStatus`, `ResidentDesexStatus`, `ResidentBreed`, `ResidentColour`, `ResidentTemperament`, `ResidentIdentifier`, `Arrival`, `Departure` | 10 |
+| Residents | `Resident`, `ResidentName`, `Absence`, `ResidentDesexStatus`, `ResidentBreed`, `ResidentColour`, `ResidentTemperament`, `ResidentIdentifier`, `Arrival`, `Departure` | 10 |
 | Families and groups | `ParentLink`, `Family`, `FamilyMember`, `Group`, `GroupMember` | 5 |
 | Locations | `Location`, `LocationParent`, `Placement` | 3 |
 | Journal | `JournalEntry`, `Diagnosis`, `Measurement`, `Procedure`, `Vaccination`, `Prescription`, `Dose`, `Attachment` | 8 |
 | Tasks | `Task`, `Routine`, `TaskResident`, `TaskGroup`, `TaskLocation`, `TaskAssignee`, `RoutineResident`, `RoutineGroup`, `RoutineLocation` | 9 |
 | Inventory | `Item`, `Lot`, `Supplier`, `StockMovement`, `ReorderLevel` | 5 |
-| Lists of the organisation | one for each of the 13 dimensions of section 7.2 | 13 |
-| **Total** | | **57** |
+| Lists of the organisation | one for each of the 15 dimensions of section 7.2 | 15 |
+| **Total** | | **59** |
 
 ### 7.2 The dimensions that an organisation can extend
 
-There are 13: `Species`, `Breed`, `Colour`, `Temperament`, `IdentifierKind`,
-`GroupKind`, `LocationKind`, `Condition`, `MeasureKind`, `ProcedureKind`,
-`TaskKind`, `ItemCategory`, and `Unit`.
+There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
+`Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
+`MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
+Rescord has the first seven, which describe a resident.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each
@@ -376,31 +399,35 @@ dimension thus has two resources:
 | Resource | Where it is | What it holds |
 | --- | --- | --- |
 | The base list | Outside the schemas. All organisations share it. | The shared values. |
-| The list of the organisation | In the schema of each organisation. | The local values of that organisation. |
+| The list of the organisation | In the schema of each organisation. | Each value that the organisation uses: a shared value by reference, or a local value. |
 
-- Each schema holds 13 lists, one for each dimension. They are in the
+- Each schema holds 15 lists, one for each dimension. They are in the
   count of section 7.1.
-- All organisations share 16 resources: the 13 base lists, `Organisation`,
+- All organisations share 18 resources: the 15 base lists, `Organisation`,
   `User`, and the token of a sign-in.
 - The maintainer rejected the other way: one shared resource for each
   dimension, where a local value names the organisation that owns it. That
-  way has 13 fewer resources in each schema. It keeps the local values of
+  way has 15 fewer resources in each schema. It keeps the local values of
   all organisations in one table.
 
-*Proposal.* The list of an organisation holds each value that the
-organisation uses. A row of the list names a value of the base list, or it
-is a local value with a name of its own. A resident then names one table for
-its species, and that table is in the same schema.
+The list of an organisation holds each value that the organisation uses
+(ADR 0025). A row of the list names a value of the base list, or it is a
+local value with a name of its own. It is never both. A resident thus names
+one table for its species, and that table is in the same schema.
+
+- A root user adds a shared value to a base list, and can give it a new
+  name.
+- An administrator adds a shared value to the list of the organisation, and
+  adds a local value. An administrator can give a local value a new name.
+- No person can remove a value yet.
 
 ### 7.3 The dimensions with a fixed list
 
-*Proposal.* These 10 dimensions are enumerated types, and they are not
-resources:
+These 8 dimensions are enumerated types, and they are not resources. The
+maintainer decided that the size class and the coat are not among them:
 
 - sex;
 - desex status;
-- size class;
-- coat;
 - kin role;
 - kind of journal entry;
 - route of a medication;
@@ -418,38 +445,46 @@ A paper trail adds resources in two ways (ADR 0012):
 - On each other resource, the paper trail adds one version resource and one
   table.
 
-With the defaults of rule 7, each of the 57 resources has a version resource.
+With the defaults of rule 7, each of the 59 resources has a version resource.
 Only a resource with a workflow is not temporal, and thus adds a table.
 `Task` is the only such resource in this estimate.
 
 | | For each organisation |
 | --- | --- |
-| Resources, with the version resources | 114 |
-| Tables | 58 |
+| Resources, with the version resources | 118 |
+| Tables | 60 |
 
 AshArchival adds one column to a resource. It adds no resource and no table.
 
 ### 7.5 The size of the database
 
 Each table makes about 3 or 4 relations in PostgreSQL: the table, its
-indexes, and a store for long text. Thus the 58 tables of one organisation
+indexes, and a store for long text. Thus the 60 tables of one organisation
 make about 200 relations. For 50 organisations, the database holds about
-2,900 tables and about 10,000 relations. That quantity gives PostgreSQL no
+3,000 tables and about 10,000 relations. That quantity gives PostgreSQL no
 difficulty.
 
 ## 8. Open points
 
-1. How does a resident name a value of a dimension, when the value can be in
-   the base list or in the list of the organisation? Section 7.2 gives a
-   proposal.
-2. Which dimensions have a fixed list, and are thus enumerated types?
-   Section 7.3 gives a proposal.
-3. Which other kinds of task and categories of item are necessary?
-4. Can a member of one organisation see a resident that another organisation
+1. Which other kinds of task and categories of item are necessary?
+2. Can a member of one organisation see a resident that another organisation
    transferred to it?
-5. Which resources, other than a resource with a workflow, are not temporal
+3. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
-6. A placement names a resident or a group. Where does a resident live when
+4. A placement names a resident or a group. Where does a resident live when
    it has a placement of its own and its group has a different placement?
-7. Section 7 does not count the resources that the answers of 15 November
-   2026 add, for example the invitation. What is the new estimate?
+5. Section 7 does not count the resources that the answers of 15 November
+   2026 add, for example the organisation. What is the new estimate?
+6. Section 5.2 gives a resident one breed or more, one colour or more, one
+   size class and one coat. Rescord does not refuse a resident that has
+   none, because a member can know little about a resident that is expected.
+   When must a resident have them?
+7. In which time zone is an organisation? Rescord does not know. It thus
+   accepts a date of an arrival or a departure that is one day after the
+   date in UTC, and it cannot say what today is for an organisation.
+8. How does an organisation remove a value from a list, when a resident can
+   name the value?
+9. Can a member record a fact as of a past instant, for example an absence
+   that started in the morning? Each write is as of the instant of the
+   write now.
+10. How does a member remove a resident that was recorded by mistake?

@@ -184,7 +184,7 @@ too.
   - Policies and roles are our own system in the manner of `ash_grant`
     (ADR 0021). The policy of a resource of an organisation is a bypass for
     a root user and then the one check `Rescord.Accounts.Checks.Granted`.
-    Give a role an action with one line in `Rescord.Accounts.Grants`. Never
+    Give a role an action with one line in the grants of its domain (ADR 0024). Never
     write a role into a policy, and do not add `ash_grant` as a dependency.
   - No action takes as input an attribute that decides who can do what:
     `root?` of a user, the role and the user of a member. Mark such an
@@ -232,6 +232,31 @@ too.
       the test presses a control of that page.
     - Never add an npm package for the browser tests: the driver is the one
       of nixpkgs.
+- **A resource of an organisation** (ADR 0025).
+  - It is temporal by default. Each change, validation and preparation that
+    you write for it declares `temporal_safe?/1`, and reads the instant of
+    the action and not the clock.
+  - A relationship between two temporal resources names its period keys:
+    `temporal_keys {:valid_at, :valid_at}`.
+  - After `mix ash.codegen` makes a tenant migration, run
+    `mix run --no-start -e "Rescord.TenantMigrations.repair!()"`, and copy
+    nothing by hand. `mix test` fails while a tenant migration has a fault.
+  - A fact that can come again for the same record, such as a tie, uses
+    `archive?: false`: its removal ends its period. An archived row with an
+    open period would refuse the same fact later.
+  - The domain holds its grants in a module of its own, and
+    `config :rescord, :grant_sources` names it (ADR 0024). Without that,
+    each member is refused.
+  - A test reads as of a past instant where the history matters.
+- **A page with a form.** A page that stays open after a write keeps what
+  the person typed, so open the page again after a write
+  (`push_navigate` to its own path). In a page test, look for the alert of
+  the page with `has_element?(view, "main p[role=alert]")`: the layout
+  always holds a hidden element with `role="alert"`, so a search of the
+  text for that role finds one on each page.
+- **Words for a value.** A page never shows an atom. A fixed list has a word
+  for each value in a module such as `RescordWeb.ResidentWords`, and a test
+  holds the words to the type.
 - **Atoms.** Never create atoms from text that a client sends.
 - **Branches.** Work is on `main` for now (the maintainer, 15 November 2026).
   Commit there and push `main`, with no pull request. A session whose own
@@ -243,6 +268,9 @@ too.
 | --- | --- |
 | `platform/lib/rescord/` | domains and resources (Ash) |
 | `platform/lib/rescord/accounts/` | users, the sign-in, organisations, members, grants |
+| `platform/lib/rescord/lists/` | the lists of values: a base list and a list of the organisation for each dimension |
+| `platform/lib/rescord/residents/` | the residents and the facts about them |
+| `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord_web/live/` | page LiveViews |

@@ -55,6 +55,36 @@ defmodule RescordWeb.FeatureCase do
   end
 
   @doc """
+  Signs a person in as a person does: asks for a link on the sign-in page,
+  takes the link from the email, and presses the button.
+  """
+  def sign_in_with_link(session, address) do
+    import PhoenixTest
+
+    session
+    |> PhoenixTest.Playwright.visit("/sign-in", [])
+    |> fill_in("Email address", with: address)
+    |> PhoenixTest.Playwright.click_button(nil, "Send me a link", [])
+    |> assert_has("h1", text: "Look in your email")
+
+    Rescord.AccountsFixtures.wait_for_sign_in_tasks()
+
+    link =
+      receive do
+        {:email, %Swoosh.Email{to: [{_name, ^address}], text_body: body}} ->
+          [link] = Regex.run(~r{http\S+/sign-in/link\?token=\S+}, body)
+          link
+      after
+        1_000 -> raise "no sign-in email for #{address}"
+      end
+
+    session
+    |> PhoenixTest.Playwright.visit(link, [])
+    |> PhoenixTest.Playwright.click_button(nil, "Sign in", [])
+    |> assert_has("hgroup p", text: "You are signed in as #{address}.")
+  end
+
+  @doc """
   Waits until a LiveView page has its socket. `visit` and a click return
   before that, and the page does not answer an event until then.
   """

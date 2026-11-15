@@ -1,0 +1,266 @@
+defmodule RescordWeb.ResidentFormLive do
+  @moduledoc """
+  The form of a resident: a new one at `/o/<short name>/residents/new`, and
+  a change at `/o/<short name>/residents/<id>/edit`.
+
+  The form sends each fact of the resident in one action, `register` or
+  `revise`. It offers the values of the lists of the organisation. A new
+  resident can have an arrival, or it is expected.
+
+  The page reads only the fields that it knows from what the browser sends,
+  and makes no atom from it.
+  """
+
+  use RescordWeb, :live_view
+
+  alias Rescord.{Lists, Residents}
+  alias RescordWeb.ResidentWords
+
+  # A dimension of which a resident has one value, and its field.
+  @one [species: "species_id", size_class: "size_class_id", coat: "coat_id"]
+  # A dimension of which a resident has more than one value, and its field.
+  @many [breed: "breed_ids", colour: "colour_ids", temperament: "temperament_ids"]
+
+  @impl true
+  def mount(params, _session, socket) do
+    socket = assign(socket, problems: [], lists: lists(socket))
+
+    case socket.assigns.live_action do
+      :new ->
+        {:ok,
+         socket
+         |> assign(page_title: "New resident", resident: nil)
+         |> assign_form(%{"sex" => "unknown", "desex_status" => "unknown"})}
+
+      :edit ->
+        case Residents.resident_with_facts(params["id"], options(socket)) do
+          {:ok, %{} = resident} ->
+            {:ok,
+             socket
+             |> assign(page_title: "Change #{resident.name || "a resident"}", resident: resident)
+             |> assign_form(fields_of(resident))}
+
+          _no_resident ->
+            {:ok,
+             socket
+             |> put_flash(:error, "There is no such resident.")
+             |> redirect(to: ~p"/o/#{socket.assigns.organisation.short_name}/residents")}
+        end
+    end
+  end
+
+  defp options(socket) do
+    [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
+  end
+
+  # The values of each list of the organisation, as `{label, id}`.
+  defp lists(socket) do
+    for {key, _field} <- @one ++ @many, into: %{} do
+      {:ok, values} = Lists.values(key, options(socket))
+      {key, Enum.map(values, &{to_string(&1.label), &1.id})}
+    end
+  end
+
+  defp assign_form(socket, fields) do
+    assign(socket, form: to_form(fields, as: :resident), fields: fields)
+  end
+
+  defp fields_of(resident) do
+    %{
+      "name" => resident.name || "",
+      "species_id" => resident.species_id,
+      "sex" => Atom.to_string(resident.sex),
+      "desex_status" => Atom.to_string(resident.desex_status),
+      "born_on" => if(resident.born_on, do: Date.to_iso8601(resident.born_on), else: ""),
+      "born_on_estimated" => to_string(resident.born_on_estimated?),
+      "size_class_id" => resident.size_class_id || "",
+      "coat_id" => resident.coat_id || "",
+      "breed_ids" => Enum.map(resident.resident_breeds, & &1.breed_id),
+      "colour_ids" => Enum.map(resident.resident_colours, & &1.colour_id),
+      "temperament_ids" => Enum.map(resident.resident_temperaments, & &1.temperament_id)
+    }
+  end
+
+  @impl true
+  def handle_event("save", %{"resident" => fields}, socket) when is_map(fields) do
+    facts = facts(fields)
+
+    result =
+      case socket.assigns.resident do
+        nil ->
+          fields |> arrival() |> Map.merge(facts) |> Residents.register_resident(options(socket))
+
+        resident ->
+          Residents.revise_resident(resident, facts, options(socket))
+      end
+
+    case result do
+      {:ok, resident} ->
+        {:noreply,
+         push_navigate(socket,
+           to: ~p"/o/#{socket.assigns.organisation.short_name}/residents/#{resident.id}"
+         )}
+
+      {:error, error} ->
+        {:noreply,
+         socket
+         |> assign(problems: Rescord.Accounts.error_messages(error))
+         |> assign_form(fields)}
+    end
+  end
+
+  # Ignore an event that this page does not know.
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The facts that both actions take.
+  defp facts(fields) do
+    %{
+      name: text(fields["name"]),
+      species_id: text(fields["species_id"]),
+      sex: text(fields["sex"]),
+      desex_status: text(fields["desex_status"]),
+      born_on: text(fields["born_on"]),
+      born_on_estimated?: fields["born_on_estimated"] == "true",
+      size_class_id: text(fields["size_class_id"]),
+      coat_id: text(fields["coat_id"]),
+      breed_ids: ids(fields["breed_ids"]),
+      colour_ids: ids(fields["colour_ids"]),
+      temperament_ids: ids(fields["temperament_ids"])
+    }
+  end
+
+  # The arrival of a new resident. With no kind and no date, it is expected.
+  defp arrival(fields) do
+    %{
+      arrival_kind: text(fields["arrival_kind"]),
+      arrived_on: text(fields["arrived_on"]),
+      arrival_note: text(fields["arrival_note"])
+    }
+  end
+
+  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
+  defp text(_other), do: nil
+
+  # A group of check boxes with none set sends no field.
+  defp ids(values) when is_list(values), do: Enum.filter(values, &is_binary/1)
+  defp ids(_none), do: []
+
+  defp chosen?(fields, field, id), do: id in List.wrap(fields[field])
+
+  @impl true
+  def render(assigns) do
+    assigns =
+      assign(assigns, many: [breed: "Breed", colour: "Colour", temperament: "Temperament"])
+
+    ~H"""
+    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+      <nav aria-label="Breadcrumb">
+        <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
+      </nav>
+
+      <.header>
+        {@page_title}
+        <:subtitle :if={is_nil(@resident)}>
+          Each fact but the species can come later.
+        </:subtitle>
+      </.header>
+
+      <p :for={problem <- @problems} role="alert">{problem}</p>
+
+      <p :if={@lists.species == []} role="status">
+        The list of species is empty, and a resident needs a species. An administrator adds
+        values on <.link navigate={~p"/o/#{@organisation.short_name}/lists"}>the lists page</.link>.
+      </p>
+
+      <.form for={@form} id="resident" phx-submit="save">
+        <fieldset>
+          <legend>The resident</legend>
+          <.input field={@form[:name]} type="text" label="Name" maxlength="80" />
+          <.input
+            field={@form[:species_id]}
+            type="select"
+            label="Species"
+            prompt="Choose"
+            options={@lists.species}
+            required
+          />
+          <.input field={@form[:sex]} type="select" label="Sex" options={ResidentWords.options(:sex)} />
+          <.input
+            field={@form[:desex_status]}
+            type="select"
+            label="Desex status"
+            options={ResidentWords.options(:desex)}
+          />
+          <.input field={@form[:born_on]} type="date" label="Date of birth" />
+          <.input
+            field={@form[:born_on_estimated]}
+            type="checkbox"
+            label="The date of birth is an estimate"
+          />
+          <.input
+            field={@form[:size_class_id]}
+            type="select"
+            label="Size class"
+            prompt="Not recorded"
+            options={@lists.size_class}
+          />
+          <.input
+            field={@form[:coat_id]}
+            type="select"
+            label="Coat"
+            prompt="Not recorded"
+            options={@lists.coat}
+          />
+        </fieldset>
+
+        <fieldset :for={{key, legend} <- @many}>
+          <legend>{legend}</legend>
+          <p :if={@lists[key] == []}>The list is empty.</p>
+          <label :for={{label, id} <- @lists[key]}>
+            <input
+              type="checkbox"
+              name={"resident[#{key}_ids][]"}
+              value={id}
+              checked={chosen?(@fields, "#{key}_ids", id)}
+            />
+            {label}
+          </label>
+        </fieldset>
+
+        <fieldset :if={is_nil(@resident)}>
+          <legend>The arrival</legend>
+          <p>Leave the arrival empty for a resident that you expect.</p>
+          <.input
+            field={@form[:arrival_kind]}
+            type="select"
+            label="How the resident came"
+            prompt="Not here yet"
+            options={ResidentWords.options(:arrival)}
+          />
+          <.input field={@form[:arrived_on]} type="date" label="Date of the arrival" />
+          <.input field={@form[:arrival_note]} type="text" label="Note about the arrival" />
+        </fieldset>
+
+        <footer>
+          <.button type="submit" variant="primary">
+            {if @resident, do: "Save the changes", else: "Record the resident"}
+          </.button>
+          <.link
+            navigate={
+              if @resident,
+                do: ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}",
+                else: ~p"/o/#{@organisation.short_name}/residents"
+            }
+            data-variant="secondary"
+          >
+            Cancel
+          </.link>
+        </footer>
+      </.form>
+    </Layouts.app>
+    """
+  end
+end
