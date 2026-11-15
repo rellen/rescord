@@ -11,7 +11,7 @@ defmodule Rescord.MixProject do
       aliases: aliases(),
       deps: deps(),
       usage_rules: usage_rules(),
-      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      compilers: [:boundary, :phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       consolidate_protocols: Mix.env() != :dev
     ]
@@ -61,6 +61,7 @@ defmodule Rescord.MixProject do
       {:ash_phoenix, "~> 2.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash, "~> 3.0"},
+      {:ash_boundary, "~> 0.2.0"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:usage_rules, "~> 1.3", only: [:dev]},
       {:phoenix, "~> 1.8.16"},

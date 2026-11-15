@@ -23,6 +23,23 @@ runs as a devenv process on `127.0.0.1:5432` with a `postgres`/`postgres`
 superuser, which is the login that Phoenix's generated config uses. The
 config reads `PGHOST` and `PGPORT`, which devenv sets. See ADR 0001.
 
+## Boundaries
+
+**The compiler checks which module may use which** (ADR 0009), with
+`boundary` and `ash_boundary`. A broken rule is a warning, and the gate
+compiles with warnings as errors.
+
+| Boundary | Holds | May use |
+| --- | --- | --- |
+| `Rescord` | the core: the repo, the mailer, plain modules | no Phoenix, no `shoddy_phoenix`, not the web layer |
+| each Ash domain | its resources; those with a `define` on the domain are public | the boundaries in the `deps` of its `boundary` block |
+| `RescordWeb` | the web layer | the core's exports, and the public part of each domain in its `deps`; not `Ash` itself |
+| `Rescord.Application` | the supervision tree | the core and the web layer |
+
+Each domain uses `extensions: [AshBoundary]`, which declares its boundary
+from the domain. The web layer reaches data only through the code interface
+of a domain.
+
 ## The web layer
 
 ### The parts of a page
@@ -76,11 +93,39 @@ hook also works inside a nested LiveView.
 
 There is no domain yet. When there is one:
 
-- the web layer calls resources through the code interfaces on their domain;
+- each domain uses `AshBoundary`, and the web layer calls resources through
+  the code interfaces on their domain (see "Boundaries");
 - changes reach the pages through `Ash.Notifier.PubSub` notifications, which
   the widgets that show a resource subscribe to;
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
+
+### Signals and workflows
+
+**We use Ash signals and AshWorkflow where they fit**, before we write the
+same thing by hand.
+
+- **Ash signals** are part of Ash. A signal module declares typed signals, an
+  action emits one with `emit`, and another resource listens with
+  `signals_in`. Use a signal when other resources should react to an action
+  and the resource that acts should not know them, in place of a call from an
+  `after_action` hook. The emitter gets nothing back, so call a code
+  interface when the action needs an answer. A signal is not for PubSub:
+  what a page hears after a commit is still a notifier's work.
+- **AshWorkflow** declares a process of several steps on a resource: steps
+  that run in the background, steps that wait for a person, deadlines and
+  reminders. It generates the states and transitions of `ash_state_machine`
+  and the triggers of `ash_oban`. Use it for such a process, in place of a
+  state machine and jobs written by hand.
+
+AshWorkflow is not a dependency yet. It brings `ash_state_machine`,
+`ash_oban` and so Oban, which needs a queue and a place in the supervision
+tree. Install it with `mix igniter.install ash_workflow` when the first
+workflow arrives. Both ship usage rules: `deps/ash/usage-rules/signals.md`,
+and those of `ash_workflow` once it is installed.
+
+A signal module that two domains share has to be in a boundary that both
+can use. Where that module lives is not decided.
 
 ### Policies and roles
 
@@ -135,6 +180,9 @@ from GitHub, pinned to a commit (ADR 0005).
 - What Rescord does, and so its domains and pages.
 - Authentication, and how actors reach Ash from LiveViews.
 - The design of the grants: see "Policies and roles".
+- Whether a domain checks its relationships into other domains
+  (`check [aliases: true]`), and where a signal module that two domains
+  share lives (ADR 0009, "Signals and workflows").
 - CI, and how a cloud session (which runs as root, where devenv's PostgreSQL
   cannot start) gets a toolchain and a database.
 - Whether to keep the Swoosh mailer that the generator added.

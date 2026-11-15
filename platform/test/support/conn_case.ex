@@ -17,6 +17,9 @@ defmodule RescordWeb.ConnCase do
 
   use ExUnit.CaseTemplate
 
+  # A test support module may use any boundary, and any test may use it (ADR 0009).
+  use Boundary, top_level?: true, check: [in: false, out: false]
+
   using do
     quote do
       # The setup checks out the SQL sandbox, so every test here needs

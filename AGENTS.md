@@ -76,10 +76,28 @@ too.
     `aria-hidden`. There is no icon library.
   - The output of `phx.gen.*` and of the Ash generators has Tailwind classes
     and Heroicon names. Restyle it by hand before you commit it.
+- **Boundaries** (ADR 0009). The `:boundary` compiler checks which module
+  may use which, and a broken rule fails `mix precommit`.
+  - A new domain uses `use Ash.Domain, extensions: [AshBoundary]`, and names
+    what it uses in its `boundary` block, `deps [Rescord]` when a resource
+    names `Rescord.Repo`. Then add the domain to the `deps` of `RescordWeb`
+    in `lib/rescord_web.ex`.
+  - The core, under `lib/rescord/`, uses no Phoenix and no `shoddy_phoenix`.
+    The web layer uses no `Ash` module unless `RescordWeb` names that module
+    in `deps`.
+  - Do not silence a boundary warning by widening `deps` or `exports` until
+    you know that the reference is right. Never add `use Boundary` to a
+    domain: `AshBoundary` declares it.
 - **Ash.**
   - Call a resource through the code interface on its domain
     (`define :open_alarms, action: :open` inside the domain's `resources`
-    block), not with `Ash.read/2` from the web layer.
+    block), not with `Ash.read/2` from the web layer. The `define` is also
+    what makes the resource public to the web layer.
+  - Use an Ash signal when other resources should react to an action, in
+    place of a call from an `after_action` hook, and AshWorkflow for a
+    process of several steps, in place of a state machine and jobs written
+    by hand (`docs/architecture.md`, "Signals and workflows"). AshWorkflow
+    is not a dependency yet, so ask before the first use.
   - A widget that shows a resource reloads on that resource's
     `Ash.Notifier.PubSub` notification, on a topic named `<resources>:changed`.
   - Once there is authentication, every Ash call from a LiveView passes the

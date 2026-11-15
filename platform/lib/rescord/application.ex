@@ -5,6 +5,10 @@ defmodule Rescord.Application do
 
   use Application
 
+  # The application starts both the core and the web layer, so it is a
+  # boundary of its own, outside the core (ADR 0009).
+  use Boundary, top_level?: true, deps: [Rescord, RescordWeb]
+
   @impl true
   def start(_type, _args) do
     children = [

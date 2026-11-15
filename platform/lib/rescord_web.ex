@@ -15,7 +15,21 @@ defmodule RescordWeb do
   Do NOT define functions inside the quoted expressions
   below. Instead, define additional modules and import
   those modules here.
+
+  ## The boundary of the web layer
+
+  This module is also the boundary of the web layer (ADR 0009). The web
+  layer may use the core's exports and the exports of each Ash domain in
+  `deps`. It may not use `:ash` itself: a call such as `Ash.read!/1` does
+  not compile. Call a domain's code interface instead, and add the domain to
+  `deps` below. To use one module of Ash, such as an error struct, add that
+  module to `deps`.
   """
+
+  use Boundary,
+    deps: [Rescord],
+    exports: [Endpoint, Telemetry],
+    check: [aliases: true, apps: [:ash]]
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
 
