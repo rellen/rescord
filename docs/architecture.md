@@ -193,7 +193,8 @@ The first resource in the schema of an organisation needs
 - A root user creates each organisation and invites its administrators. An
   administrator invites the members, and can make another member an
   administrator. Root is a level of the user, outside each organisation.
-- A root user can read the data of each organisation.
+- A root user can do anything in each organisation. No grant limits a root
+  user (see "Policies and roles").
 - The first root user comes from a script that a person runs in IEx when
   Rescord is first deployed.
 - **The sign-in uses AshAuthentication** (ADR 0018), with its strategy for
@@ -262,6 +263,9 @@ What we take from the model (`ash_grant` 0.22):
   becomes a native Ash policy check and a row filter.
 - A refusal wins over a grant.
 
+A root user is outside the grants: a root user can do anything in each
+organisation (`docs/domain.md`, section 5.1).
+
 Not decided yet, and each is a decision for an ADR when the work starts:
 how a grant is written (`ash_grant` uses a string,
 `resource:instance:action:scope`), where roles and their grants are stored,
@@ -299,7 +303,7 @@ from GitHub, pinned to a commit (ADR 0005).
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
 - For the sign-in: how actors reach Ash from LiveViews, and how a root user,
-  who is not a member, reads the schema of an organisation.
+  who is not a member, acts in the schema of an organisation.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
