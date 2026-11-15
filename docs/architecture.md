@@ -80,9 +80,10 @@ We do not write those by hand.
 - A widget that shows a collection tells Cinder to load again with
   `Cinder.Refresh.refresh_table/2`, when the notification of the resource
   arrives.
-- The markup of Cinder has gaps in accessibility, which ADR 0014 lists. The
-  sort of a table column does not work from the keyboard. We mean to give
-  those changes back to Cinder.
+- The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
+  work around the first one (ADR 0017): `assets/js/cinder_tables.ts` makes
+  the sort of a table column a button for the keyboard, and gives the header
+  cell `aria-sort`. The other gaps stay for now.
 
 ### Markup and CSS
 
@@ -121,9 +122,9 @@ We do not write those by hand.
 
 - **Browser-side hooks are written in TypeScript.** esbuild bundles
   TypeScript with no other tool, but it only removes the types: a type check
-  needs `tsc`, which is not set up yet. There is no hook yet:
-  `assets/js/app.js` is the generator's file, and it becomes TypeScript when
-  the first hook arrives.
+  needs `tsc`, which is not set up yet. The first module is
+  `assets/js/cinder_tables.ts` (ADR 0017). `assets/js/app.js` is still the
+  generator's file, and it imports the module.
 - **A hook may parse the data that the server sends with zod**, so that the
   shape of a `push_event` payload or of a `data-` attribute is checked where
   it enters the browser, and typed from there on. zod is not a dependency
@@ -195,8 +196,25 @@ The first resource in the schema of an organisation needs
 - A member is an administrator or a member. The grants can hold more roles
   later (see "Policies and roles").
 
-Not decided: the library for the sign-in, the service that sends the email,
-and how a page names its organisation (a subdomain, or a part of the path).
+- **The email goes through Postmark, with the SMTP adapter of Swoosh** (the
+  maintainer, 15 November 2026). The adapter needs the package `gen_smtp`.
+  Postmark takes SMTP at `smtp.postmarkapp.com` on port 587 with STARTTLS.
+  The name and the password are the API token of the Postmark server, or the
+  two keys of an SMTP token. They come from the environment at run time, and
+  never from a file in the repository.
+- **A page names its organisation in the path** (the maintainer, 15
+  November 2026), and not in a subdomain. One host and one certificate serve
+  each organisation.
+
+The mailer is not set up for production yet. `config/config.exs` names the
+local adapter of Swoosh for each environment, and `config/prod.exs` stops its
+store, so a release sends no email today.
+
+*Proposal.* The path starts with a fixed word and then the short name of the
+organisation, for example `/o/wattle-creek/residents`. The fixed word keeps
+the name of an organisation apart from a route such as `/sign-in`.
+
+Not decided: the library for the sign-in.
 
 ### History
 
@@ -274,17 +292,16 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- For the sign-in: the library, the service that sends the email, how a page
-  names its organisation, and how actors reach Ash from LiveViews.
+- For the sign-in: the library, the exact shape of the path that names an
+  organisation, and how actors reach Ash from LiveViews.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
   share lives (ADR 0009, "Signals and workflows").
 - CI, and how a cloud session (which runs as root, where devenv's PostgreSQL
   cannot start) gets a toolchain and a database.
-- Whether to keep the Swoosh mailer that the generator added.
-- The gaps in the accessibility of Cinder (ADR 0014): who gives the changes
-  back, and what a table does for a keyboard until then.
+- The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice
+  filter and the pages.
 - Whether a hook that a component writes next to its markup
   (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
   is a file under `assets/js/`. Nobody has checked.

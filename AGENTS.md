@@ -121,8 +121,11 @@ too.
   - Change the version of Cinder by hand in `mix.exs`. Do not run
     `mix igniter.install cinder`, which sets Tailwind up, or
     `mix cinder.upgrade`, which edits the Tailwind configuration.
-  - The sort of a table column does not work from the keyboard (ADR 0014).
-    Say so when you add a table whose sort matters.
+  - `assets/js/cinder_tables.ts` makes the sort of a table column work from
+    the keyboard (ADR 0017). It reads the markup of Cinder, and
+    `RescordWeb.CinderTest` holds the two together. Do not take the two
+    `dom` callbacks out of `assets/js/app.js`: without them a sort control
+    loses the focus.
 - **Boundaries** (ADR 0009). The `:boundary` compiler checks which module
   may use which, and a broken rule fails `mix precommit`.
   - A new domain uses `use Ash.Domain, extensions: [AshBoundary]`, and names
@@ -201,6 +204,7 @@ too.
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts |
+| `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |
 | `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |

@@ -136,6 +136,65 @@ defmodule RescordWeb.CinderTest do
     end
   end
 
+  describe "the sort of a table column" do
+    # `assets/js/cinder_tables.ts` makes the sort control a button, and gives
+    # the header cell `aria-sort` (ADR 0017). It finds both by the markup of
+    # Cinder, and reads the direction from the class of the icon.
+    @control ~s([data-key="th_class"] > [phx-click="toggle_sort"])
+
+    defp sort_icons(html) do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(~s(#{@control}[phx-value-key="name"] [class*="hero-chevron"]))
+      |> Enum.flat_map(&LazyHTML.attribute(&1, "class"))
+      |> Enum.flat_map(&String.split/1)
+      |> Enum.filter(&String.starts_with?(&1, "hero-chevron"))
+    end
+
+    test "is the element, and has the icons, that cinder_tables.ts reads" do
+      {:ok, view, _html} = live_isolated(build_conn(), Live, session: %{"shape" => "table"})
+      html = render_async(view)
+
+      # The fixture has two columns that sort.
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.query(@control) |> Enum.count() == 2
+      assert sort_icons(html) == ["hero-chevron-up-down"]
+
+      control = element(view, ~s(#{@control}[phx-value-key="name"]))
+
+      render_click(control)
+      assert view |> render_async() |> sort_icons() == ["hero-chevron-up"]
+
+      render_click(control)
+      assert view |> render_async() |> sort_icons() == ["hero-chevron-down"]
+    end
+
+    test "cinder_tables.ts names that element and those icons, and app.js calls it" do
+      module = File.read!("assets/js/cinder_tables.ts")
+
+      for text <- [
+            ~s('[data-key="th_class"]'),
+            ~s('[phx-click="toggle_sort"]'),
+            ~s(".hero-chevron-up"),
+            ~s(".hero-chevron-down")
+          ] do
+        assert module =~ text, "cinder_tables.ts does not name #{text}"
+      end
+
+      # The code of app.js, with no comment line.
+      code =
+        "assets/js/app.js"
+        |> File.read!()
+        |> String.split("\n")
+        |> Enum.reject(&String.starts_with?(String.trim_leading(&1), "//"))
+        |> Enum.join("\n")
+
+      # Without the first, a patch takes the focus off a sort control.
+      assert code =~ "onBeforeElUpdated: (from, to) => keepCinderTables(from, to)"
+      assert code =~ "onPatchEnd: () => enhanceCinderTables()"
+      assert code =~ "listenToCinderTables()"
+    end
+  end
+
   describe "vendor.css" do
     test "has a rule for each class of Cinder that carries behaviour, and for each icon" do
       css = vendor_css()

@@ -96,6 +96,8 @@ These subjects are out of scope for now:
 | How does a routine repeat? | With a small set of patterns: each day at set times, on given days of the week, or after a number of days. |
 | What does a reorder level apply to? | An item in the whole organisation, and also an item in one location when the organisation gives one. |
 | Which part does the project build first? | The sign-in and the organisations. |
+| Which service sends the email of a sign-in and of an invitation? | Postmark, through SMTP. |
+| How does a page name its organisation? | In the path, and not in a subdomain. |
 
 ## 5. The root entities
 
@@ -420,6 +422,5 @@ difficulty.
    resources or keep no paper trail?
 6. A placement names a resident or a group. Where does a resident live when
    it has a placement of its own and its group has a different placement?
-7. Which service sends the email of a sign-in and of an invitation?
-8. Section 7 does not count the resources that the answers of 15 November
+7. Section 7 does not count the resources that the answers of 15 November
    2026 add, for example the invitation. What is the new estimate?

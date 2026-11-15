@@ -517,3 +517,19 @@
 [data-key="grid_container_class"] article {
   margin: 0;
 }
+
+/*
+ * `assets/js/cinder_tables.ts` makes the sort control of a column a button
+ * (ADR 0017). It is as wide as its words, so the focus ring is around them.
+ */
+[data-key="th_class"] > [role="button"] {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+/* The column that is sorted reads darker than the others. */
+[data-key="th_class"][aria-sort] {
+  color: var(--text);
+}

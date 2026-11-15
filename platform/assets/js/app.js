@@ -25,6 +25,8 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/rescord"
 // The hooks that Cinder writes next to its markup (ADR 0014).
 import {hooks as cinderHooks} from "phoenix-colocated/cinder"
+// The sort of a table column of Cinder, for a keyboard (ADR 0017).
+import {enhance as enhanceCinderTables, keep as keepCinderTables, listen as listenToCinderTables} from "./cinder_tables"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -32,7 +34,15 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
   hooks: {...colocatedHooks, ...cinderHooks},
+  // LiveView patches a table from markup that has none of our attributes.
+  dom: {
+    onBeforeElUpdated: (from, to) => keepCinderTables(from, to),
+    onPatchEnd: () => enhanceCinderTables(),
+  },
 })
+
+listenToCinderTables()
+enhanceCinderTables()
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
