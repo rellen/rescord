@@ -191,8 +191,9 @@ The first resource in the schema of an organisation needs
 - A person signs in with a link by email. Rescord stores no password.
 - A person joins an organisation by invitation only.
 - A root user creates each organisation and invites its administrators. An
-  administrator invites the members. Root is a level of the user, outside
-  each organisation.
+  administrator invites the members, and can make another member an
+  administrator. Root is a level of the user, outside each organisation.
+- A root user can read the data of each organisation.
 - The first root user comes from a script that a person runs in IEx when
   Rescord is first deployed.
 - **The sign-in uses AshAuthentication** (ADR 0018), with its strategy for
@@ -215,9 +216,10 @@ The mailer is not set up for production yet. `config/config.exs` names the
 local adapter of Swoosh for each environment, and `config/prod.exs` stops its
 store, so a release sends no email today.
 
-*Proposal.* The path starts with a fixed word and then the short name of the
-organisation, for example `/o/wattle-creek/residents`. The fixed word keeps
-the name of an organisation apart from a route such as `/sign-in`.
+The path starts with `/o/` and then the short name of the organisation, for
+example `/o/wattle-creek/residents` (the maintainer, 15 November 2026). The
+fixed first part keeps the name of an organisation apart from a route such
+as `/sign-in`.
 
 
 ### History
@@ -296,9 +298,8 @@ from GitHub, pinned to a commit (ADR 0005).
 ## Open questions
 
 - The open points of `docs/domain.md`, and so the domains and the pages.
-- For the sign-in: the exact shape of the path that names an organisation,
-  how actors reach Ash from LiveViews, and what a root user can read in an
-  organisation.
+- For the sign-in: how actors reach Ash from LiveViews, and how a root user,
+  who is not a member, reads the schema of an organisation.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains

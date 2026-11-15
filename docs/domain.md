@@ -92,6 +92,8 @@ These subjects are out of scope for now:
 | Who creates an organisation? | A root user. |
 | Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
 | Where does the first root user come from? | From a script that a person runs in IEx when Rescord is first deployed. |
+| Can an administrator make another member an administrator? | Yes. |
+| Can a root user read the data of an organisation? | Yes. |
 | Which library does the sign-in use? | AshAuthentication (ADR 0018). |
 | Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
 | Does the model fit the housing of one organisation? | No. The location tree and the placement must serve each organisation. |
@@ -102,7 +104,7 @@ These subjects are out of scope for now:
 | What does a reorder level apply to? | An item in the whole organisation, and also an item in one location when the organisation gives one. |
 | Which part does the project build first? | The sign-in and the organisations. |
 | Which service sends the email of a sign-in and of an invitation? | Postmark, through SMTP. |
-| How does a page name its organisation? | In the path, and not in a subdomain. |
+| How does a page name its organisation? | In the path, and not in a subdomain. The path starts with `/o/` and the short name of the organisation. |
 
 ## 5. The root entities
 
@@ -116,7 +118,10 @@ users. A member connects one user to one organisation.
 - A person joins an organisation by invitation only.
 - A root user is a user who manages Rescord itself. A root user creates an
   organisation, and invites its administrators.
-- An administrator invites the members of the organisation.
+- An administrator invites the members of the organisation, and can make
+  another member an administrator.
+- A root user can read the data of each organisation, although a root user
+  is not a member of it.
 - Root is a level of the user. It is not a role of a member, and it does not
   belong to one organisation.
 - At the start a member has one of two roles: administrator or member. An
@@ -128,6 +133,9 @@ section "Policies and roles" of `docs/architecture.md` describes the grants.
 
 The first root user comes from a script that a person runs in IEx when
 Rescord is first deployed. No page makes the first root user.
+
+*Proposal.* A root user changes no data of an organisation, other than its
+administrators.
 
 *Proposal.* A shared resource records that a user is a root user, with a
 paper trail. After the first one, a root user can make another user a root
@@ -440,9 +448,5 @@ difficulty.
    resources or keep no paper trail?
 6. A placement names a resident or a group. Where does a resident live when
    it has a placement of its own and its group has a different placement?
-7. Can an administrator make another member an administrator, or does only
-   a root user do that?
-8. Can a root user read the data of an organisation, for example its
-   residents? A root user is not a member of the organisation.
-9. Section 7 does not count the resources that the answers of 15 November
+7. Section 7 does not count the resources that the answers of 15 November
    2026 add, for example the invitation. What is the new estimate?
