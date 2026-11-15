@@ -1,9 +1,12 @@
 # Rescord architecture
 
+Rescord is a management system for an animal rescue or an animal refuge.
+`docs/domain.md` describes the domain: the root entities, the scope, the
+design rules and an estimate of the resources for each organisation.
+
 This document records the decisions that shape the code. Each decision has
 an ADR in `docs/adr/` with its reasons, unless the maintainer gave it here
-directly. What Rescord does is not decided yet, so this document covers the
-platform that it will be built on.
+directly. It covers the platform; no part of the domain is built yet.
 
 ## The repository
 
@@ -178,7 +181,9 @@ from GitHub, pinned to a commit (ADR 0005).
 
 ## Open questions
 
-- What Rescord does, and so its domains and pages.
+- The open points of `docs/domain.md`, and so the domains and the pages.
+- The tenancy: one schema for each organisation, or one shared schema with
+  an organisation column (`docs/domain.md`, section 7).
 - Authentication, and how actors reach Ash from LiveViews.
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains

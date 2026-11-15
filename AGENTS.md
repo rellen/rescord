@@ -8,6 +8,9 @@ This file covers conventions and commands. It does not repeat the design.
 
 ## Read first
 
+- `docs/domain.md` says what Rescord is for: the root entities, the scope,
+  the design rules and the open points. It follows ASD-STE100 Simplified
+  Technical English; keep it so when you change it.
 - `docs/architecture.md` holds the decisions that shape the code, and is the
   source of truth. When the code and it disagree, fix one of them.
 - `docs/adr/` records each decision, one file each. Write a new ADR

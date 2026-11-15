@@ -1,5 +1,8 @@
 # rescord
 
+A management system for an animal rescue or an animal refuge. See
+[`docs/domain.md`](docs/domain.md) for the domain.
+
 The Phoenix + Ash application (`:rescord`) lives in [`platform/`](platform/).
 
 ## Development
