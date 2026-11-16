@@ -139,19 +139,25 @@ defmodule RescordWeb.ResidentLive do
   end
 
   def handle_event("start_absence", %{"absence" => params}, socket) when is_map(params) do
-    %{
-      resident_id: socket.assigns.resident.id,
-      reason: params["reason"],
-      expected_back_on: blank_to_nil(params["expected_back_on"])
-    }
-    |> Residents.start_absence(options(socket))
-    |> after_write(socket)
+    at(socket, params["at"], fn options ->
+      Residents.start_absence(
+        %{
+          resident_id: socket.assigns.resident.id,
+          reason: params["reason"],
+          expected_back_on: blank_to_nil(params["expected_back_on"])
+        },
+        options
+      )
+    end)
   end
 
-  def handle_event("finish_absence", _params, socket) do
+  def handle_event("finish_absence", params, socket) do
     case socket.assigns.resident.absence do
-      nil -> {:noreply, socket}
-      absence -> absence |> Residents.finish_absence(options(socket)) |> after_write(socket)
+      nil ->
+        {:noreply, socket}
+
+      absence ->
+        at(socket, get_in(params, ["back", "at"]), &Residents.finish_absence(absence, &1))
     end
   end
 
@@ -248,6 +254,16 @@ defmodule RescordWeb.ResidentLive do
   # Opens the page again after a write, or shows what was wrong. A new page
   # reads the resident again, and its forms are empty: a form that stays on
   # the page keeps what the person typed.
+  # Runs a write at the time that the member gave, which is a local time of
+  # the organisation and never after now, or at this instant with no time.
+  defp at(socket, text, write) do
+    case Rescord.Accounts.instant(socket.assigns.organisation, text) do
+      {:ok, nil} -> socket |> options() |> write.() |> after_write(socket)
+      {:ok, instant} -> ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
+      {:error, words} -> {:noreply, assign(socket, problems: [words])}
+    end
+  end
+
   defp after_write(result, socket, words \\ nil) do
     case result do
       {:error, error} ->
@@ -390,9 +406,16 @@ defmodule RescordWeb.ResidentLive do
               {ResidentWords.date(@resident.absence.expected_back_on)}
             </:item>
           </.list>
-          <p :if={can?(@role, :absence, :finish)}>
-            <.button phx-click="finish_absence">Mark as back</.button>
-          </p>
+          <form :if={can?(@role, :absence, :finish)} id="back" phx-submit="finish_absence">
+            <.input
+              id="back-at"
+              name="back[at]"
+              type="datetime-local"
+              label="When it came back, if not now"
+              value=""
+            />
+            <.button type="submit">Mark as back</.button>
+          </form>
         </div>
 
         <details
@@ -403,6 +426,11 @@ defmodule RescordWeb.ResidentLive do
           <.form for={@absence_form} id="absence" phx-submit="start_absence">
             <.input field={@absence_form[:reason]} type="text" label="Where and why" required />
             <.input field={@absence_form[:expected_back_on]} type="date" label="Expected back" />
+            <.input
+              field={@absence_form[:at]}
+              type="datetime-local"
+              label="When it went away, if not now"
+            />
             <footer><.button type="submit">Mark as away</.button></footer>
           </.form>
         </details>

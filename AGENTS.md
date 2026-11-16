@@ -255,7 +255,10 @@ too.
   - A test reads as of a past instant where the history matters.
 - **A page with a form.** A page that stays open after a write keeps what
   the person typed, so open the page again after a write
-  (`push_navigate` to its own path). In a page test, look for the alert of
+  (`push_navigate` to its own path). `<.problems list={@problems} />` says
+  what an action refused. Draw it in the form that the person sent when
+  that form is far down the page, and below the header in each other case.
+  In a page test, look for the alert of
   the page with `has_element?(view, "main p[role=alert]")`: the layout
   always holds a hidden element with `role="alert"`, so a search of the
   text for that role finds one on each page.
@@ -303,6 +306,7 @@ too.
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/inventory/` | the items, the lots, the suppliers, the stock movements and the reorder levels |
 | `platform/lib/rescord/tasks/` | the tasks, their states and their subjects; the routines, their patterns and the job that makes their tasks |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |

@@ -295,6 +295,11 @@ table (ADR 0025).
   `generated_until` on the routine says up to which instant its tasks exist,
   so no task is made two times. `Rescord.Tasks.Pattern` gives the days of a
   pattern with no database and no clock.
+- **The inventory** (ADR 0034) has items, lots, suppliers, stock movements
+  and reorder levels. Rescord stores no level:
+  `Rescord.Inventory.stock/1` adds the stock movements of each lot in each
+  place. A movement out takes no more than the level, and a count writes
+  the difference.
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

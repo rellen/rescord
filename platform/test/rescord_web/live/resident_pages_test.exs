@@ -376,6 +376,63 @@ defmodule RescordWeb.ResidentPagesTest do
       resident.status
     end
 
+    # A time some seconds ago, as a member types it: a local time of the
+    # organisation.
+    defp ago(context, seconds) do
+      DateTime.utc_now()
+      |> DateTime.add(-seconds, :second)
+      |> DateTime.shift_zone!(context.organisation.time_zone)
+      |> DateTime.to_naive()
+      |> NaiveDateTime.truncate(:second)
+      |> NaiveDateTime.to_iso8601()
+    end
+
+    defp status_at(context, instant) do
+      {:ok, resident} =
+        Residents.resident_with_facts(context.resident.id, [as_of: instant] ++ context.options)
+
+      resident.status
+    end
+
+    test "takes the time that the resident went away and came back", context do
+      conn = context.conn
+      {view, _html} = open(conn, context.path)
+
+      {view, _html} =
+        submit(view, conn, "#arrival",
+          arrival: %{kind: "stray", arrived_on: Date.to_iso8601(Date.utc_today())}
+        )
+
+      before = DateTime.utc_now()
+      Process.sleep(2100)
+
+      # The member says that the resident went away a second ago.
+      {view, _html} =
+        submit(view, conn, "#absence", absence: %{reason: "At the clinic", at: ago(context, 1)})
+
+      away = DateTime.utc_now()
+      assert status_at(context, before) == :in_care
+      assert status_of(context) == :away
+      Process.sleep(3100)
+
+      # And that it came back a second ago.
+      {view, _html} = submit(view, conn, "#back", back: %{at: ago(context, 1)})
+
+      assert status_at(context, away) == :away
+      assert status_of(context) == :in_care
+
+      # A time after now is refused.
+      tomorrow =
+        context.organisation |> Rescord.Accounts.today() |> Date.add(1) |> Date.to_iso8601()
+
+      view
+      |> form("#absence", absence: %{reason: "A weekend", at: tomorrow <> "T08:00"})
+      |> render_submit()
+
+      assert has_element?(view, "main p[role=alert]", "The time cannot be after now")
+      assert status_of(context) == :in_care
+    end
+
     test "follows the stay: the arrival, an absence, and the departure", context do
       conn = context.conn
       {view, html} = open(conn, context.path)

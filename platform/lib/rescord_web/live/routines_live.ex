@@ -32,6 +32,7 @@ defmodule RescordWeb.RoutinesLive do
      assign(socket,
        page_title: "Routines",
        problems: [],
+       refused_form?: false,
        kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
        residents: residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort(),
        groups: groups |> Enum.map(&{Residents.group_name(&1), &1.id}) |> Enum.sort(),
@@ -219,7 +220,13 @@ defmodule RescordWeb.RoutinesLive do
 
       {:error, error} ->
         {:noreply,
-         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
+         socket
+         |> assign(
+           problems: Accounts.error_messages(error),
+           # The form is on the page of a person who can start or change a routine.
+           refused_form?: socket.assigns.can_start? or not is_nil(socket.assigns.editing)
+         )
+         |> assign_form(fields)}
     end
   end
 
@@ -250,7 +257,8 @@ defmodule RescordWeb.RoutinesLive do
       routine ->
         case action.(routine) do
           {:error, error} ->
-            {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+            {:noreply,
+             assign(socket, problems: Accounts.error_messages(error), refused_form?: false)}
 
           _done ->
             {:noreply, push_navigate(socket, to: path(socket))}
@@ -280,7 +288,7 @@ defmodule RescordWeb.RoutinesLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems :if={not @refused_form?} list={@problems} />
 
       <section :if={@editing} aria-labelledby="edit-heading">
         <h2 id="edit-heading">Change the routine {@editing.title}</h2>
@@ -397,12 +405,15 @@ defmodule RescordWeb.RoutinesLive do
   attr :groups, :list, required: true
   attr :locations, :list, required: true
   attr :members, :list, required: true
+  attr :problems, :list, required: true
+  attr :refused_form?, :boolean, required: true
   attr :rest, :global
 
   # The form of a routine: a new one, or one that a member changes.
   defp routine_form(assigns) do
     ~H"""
     <.form for={@form} id="routine" phx-change="shape" phx-submit="save">
+      <.problems :if={@refused_form?} list={@problems} />
       <p :if={@prescription} id="routine-prescription">
         Each task of this routine writes a dose of {@prescription.medication} ({@prescription.dose}) for {@prescription.resident_name} to the journal, when a member
         completes it.

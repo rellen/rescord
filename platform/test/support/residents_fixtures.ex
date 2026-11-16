@@ -26,8 +26,9 @@ defmodule Rescord.ResidentsFixtures do
           condition: ["Respiratory infection"],
           measure_kind: ["Weight", "Temperature"],
           procedure_kind: ["Desexing"],
-          unit: ["g"],
-          task_kind: ["Feed", "Medicate", "Clean"]
+          unit: ["g", "kg", "bag"],
+          task_kind: ["Feed", "Medicate", "Clean"],
+          item_category: ["Food", "Bedding", "Medication"]
         ],
         into: %{} do
       values =

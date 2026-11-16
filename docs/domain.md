@@ -387,6 +387,13 @@ A reorder level is the quantity below which the organisation orders more. It
 applies to an item in the whole organisation. An organisation can also give
 an item a reorder level in one location.
 
+Rescord has the inventory (ADR 0034). A movement out takes no more than the
+level of the lot in that place. A member who finds another number on the
+shelf records a count, and Rescord writes the difference. A place is a
+location, or no place in particular. A lot expires soon in the 30 days
+before its expiry date. Stock that is past its expiry date does not count
+against a reorder level.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.
@@ -437,7 +444,7 @@ This section applies the answers of section 4 and the proposals of sections
 There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
 `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
 `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has each one but `ItemCategory`.
+Rescord has each one.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each
@@ -512,6 +519,42 @@ make about 200 relations. For 50 organisations, the database holds about
 3,000 tables and about 10,000 relations. That quantity gives PostgreSQL no
 difficulty.
 
+### 7.6 The resources that Rescord has
+
+Rescord has each part of section 3. This table counts the resources of the
+code on 16 November 2026. It is smaller than the estimate of section 7.1.
+
+| Area | Resources | Count |
+| --- | --- | --- |
+| Access | `Member` | 1 |
+| Residents | the 10 of section 7.1 | 10 |
+| Families and groups | the 5 of section 7.1 | 5 |
+| Locations | the 3 of section 7.1 | 3 |
+| Journal | the 8 of section 7.1 but `Attachment` | 7 |
+| Tasks | `Task`, `TaskSubject`, `Routine` | 3 |
+| Inventory | the 5 of section 7.1 | 5 |
+| Lists of the organisation | one for each of the 15 dimensions | 15 |
+| **Total** | | **49** |
+
+The differences from the estimate:
+
+- A role is an attribute of the member, and the grants of a role are in the
+  code (ADR 0024). The estimate had 3 resources for them.
+- A journal entry has no attachment yet.
+- One resource, `TaskSubject`, says what a task is for (ADR 0032). The
+  estimate had one for each kind of subject. A task names one member, with
+  no resource for that. A routine names its subjects in lists of ids
+  (ADR 0033).
+
+`Member`, `Task`, `TaskSubject` and `Routine` are not temporal, so each has
+a table for its versions. Thus each organisation has 98 resources with the
+version resources, and 53 tables. All organisations share 18 resources, as
+section 7.2 says.
+
+Rescord has 10 enumerated types: the 8 of section 7.3, the status of a
+resident, and the pattern of a routine. The state of a task is a state of
+its state machine.
+
 ## 8. Open points
 
 1. Which other kinds of task and categories of item are necessary?
@@ -519,15 +562,25 @@ difficulty.
    transferred to it?
 3. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
-4. Section 7 does not count the resources that the answers of 15 November
-   2026 add, for example the organisation. What is the new estimate?
+4. Section 7.6 counts the resources that Rescord has: 49 in the schema of
+   each organisation, where the estimate had 59. Is a part that the estimate
+   has and Rescord does not have necessary: roles and grants as records, an
+   attachment of a journal entry, more than one member for a task?
 5. A routine makes its tasks a number of days ahead, and one routine can
    have a number of its own, for example for a vaccination each 12 months.
    This document reads the answer of the maintainer in that way. Is that
    correct? And is "after a number of days" also a number of days after a
    member completed the last task?
-6. A placement and a journal entry have a time that a member gives for
-   when the thing happened. The code does not have that time yet for an
-   absence and a change to a group.
+6. A stock movement has a time that a member gives for when it happened,
+   as a placement, a journal entry, an absence and a change to a group
+   have. The maintainer did not name the inventory in that answer. Is that
+   correct?
 7. Does a measure kind have one unit? A member can record a weight in
    another unit by mistake.
+8. The inventory refuses a use of more stock than its record has, and a
+   member records a count first. Is that correct, or must the level go below
+   zero?
+9. A lot expires soon in the 30 days before its expiry date. Must an
+   organisation set that number?
+10. Each member starts and changes a routine, and only an administrator
+    adds an item or a supplier. Is that the correct division?

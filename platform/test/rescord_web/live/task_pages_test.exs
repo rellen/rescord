@@ -216,7 +216,7 @@ defmodule RescordWeb.TaskPagesTest do
         |> form("#task", task: %{title: "A task", date: "", time: "09:15"})
         |> render_submit()
 
-      assert has_element?(view, "main p[role=alert]", "The time is not a date and a time")
+      assert has_element?(view, "#new-task p[role=alert]", "The time is not a date and a time")
       assert html =~ ~s(value="A task")
     end
   end

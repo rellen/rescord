@@ -205,14 +205,15 @@ defmodule Rescord.RoutinesTest do
     test "is in one shape", context do
       routine =
         start!(context, %{
-          times: [~T[18:00:00], ~T[08:00:00], ~T[18:00:00]],
+          times: [~T[12:00:00], ~T[18:00:00], ~T[08:00:00], ~T[18:00:00]],
           weekdays: [3, 1],
           every: 5
         })
 
       # Each time one time, in order. A daily routine has no days of the
       # week and no number.
-      assert %{times: [~T[08:00:00], ~T[18:00:00]], weekdays: [], every: nil} = routine
+      assert %{times: [~T[08:00:00], ~T[12:00:00], ~T[18:00:00]], weekdays: [], every: nil} =
+               routine
 
       weekly = start!(context, %{pattern: :weekly, weekdays: [5, 1, 5], every: 2})
       assert %{weekdays: [1, 5], every: nil} = weekly
@@ -416,6 +417,20 @@ defmodule Rescord.RoutinesTest do
       {:ok, resumed} = Tasks.resume_routine(paused, context.options)
       refute resumed.paused
       assert Enum.map(tasks(resumed, context), & &1.due_at) == before
+    end
+  end
+
+  describe "a change to a routine that is paused" do
+    test "makes no task, and the routine has the new facts when it starts again", context do
+      routine = start!(context)
+      {:ok, paused} = Tasks.pause_routine(routine, context.options)
+
+      {:ok, revised} = Tasks.revise_routine(paused, %{title: "Hay only"}, context.options)
+      assert revised.paused
+      assert tasks(revised, context) == []
+
+      {:ok, resumed} = Tasks.resume_routine(revised, context.options)
+      assert [%{title: "Hay only"} | _] = tasks(resumed, context)
     end
   end
 

@@ -34,7 +34,8 @@ defmodule RescordWeb do
       Rescord.Residents,
       Rescord.Locations,
       Rescord.Journal,
-      Rescord.Tasks
+      Rescord.Tasks,
+      Rescord.Inventory
     ],
     exports: [Endpoint, Telemetry],
     check: [aliases: true, apps: [:ash]]

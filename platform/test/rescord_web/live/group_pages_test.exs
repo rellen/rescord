@@ -115,6 +115,58 @@ defmodule RescordWeb.GroupPagesTest do
       {:ok, group: group, path: context.base <> "/groups/#{group.id}"}
     end
 
+    test "takes the time that a resident joined the group and left it", context do
+      names = fn instant ->
+        {:ok, group} =
+          Residents.group_with_facts(context.group.id, [as_of: instant] ++ context.options)
+
+        Enum.map(group.members, & &1.resident.name)
+      end
+
+      # A time some seconds ago, as a member types it.
+      ago = fn seconds ->
+        DateTime.utc_now()
+        |> DateTime.add(-seconds, :second)
+        |> DateTime.shift_zone!(context.organisation.time_zone)
+        |> DateTime.to_naive()
+        |> NaiveDateTime.truncate(:second)
+        |> NaiveDateTime.to_iso8601()
+      end
+
+      {view, _html} = open(context.conn, context.path)
+      before = DateTime.utc_now()
+      Process.sleep(2100)
+
+      {view, _html} =
+        submit(view, context.conn, "#member",
+          member: %{resident_id: context.basil.id, at: ago.(1)}
+        )
+
+      joined = DateTime.utc_now()
+      assert names.(before) == ["Fern", "Sage"]
+      assert names.(joined) == ["Basil", "Fern", "Sage"]
+      Process.sleep(3100)
+
+      {:ok, %{members: members}} = Residents.group_with_facts(context.group.id, context.options)
+      basil = Enum.find(members, &(&1.resident.name == "Basil"))
+
+      {view, _html} = submit(view, context.conn, "#leave-#{basil.id}", leave: %{at: ago.(1)})
+
+      assert names.(joined) == ["Basil", "Fern", "Sage"]
+      assert names.(DateTime.utc_now()) == ["Fern", "Sage"]
+
+      # A time after now is refused.
+      tomorrow =
+        context.organisation |> Rescord.Accounts.today() |> Date.add(1) |> Date.to_iso8601()
+
+      view
+      |> form("#member", member: %{resident_id: context.basil.id, at: tomorrow <> "T08:00"})
+      |> render_submit()
+
+      assert has_element?(view, "main p[role=alert]", "The time cannot be after now")
+      assert names.(DateTime.utc_now()) == ["Fern", "Sage"]
+    end
+
     test "adds a member and takes one out, and the words follow", context do
       {view, html} = open(context.conn, context.path)
       assert html =~ "Fern and Sage"
@@ -130,12 +182,12 @@ defmodule RescordWeb.GroupPagesTest do
       {:ok, %{members: members}} = Residents.group_with_facts(context.group.id, context.options)
       fern = Enum.find(members, &(&1.resident.name == "Fern"))
 
-      {view, html} = press(view, context.conn, "leave", %{"id" => fern.id})
+      {view, html} = press(view, context.conn, "leave", %{"member_id" => fern.id})
       assert html =~ "Basil and Sage"
       assert html =~ "No relation is recorded"
 
       # A member that is not one of this group does nothing.
-      render_click(view, "leave", %{"id" => Ash.UUID.generate()})
+      render_click(view, "leave", %{"member_id" => Ash.UUID.generate()})
       refute has_element?(view, "main p[role=alert]")
       assert render(view) =~ "Basil and Sage"
     end

@@ -104,7 +104,8 @@ config :rescord,
     Rescord.Residents,
     Rescord.Locations,
     Rescord.Journal,
-    Rescord.Tasks
+    Rescord.Tasks,
+    Rescord.Inventory
   ],
   # Each domain other than the accounts holds its own grants (ADR 0024).
   grant_sources: [
@@ -112,7 +113,8 @@ config :rescord,
     Rescord.Residents.Grants,
     Rescord.Locations.Grants,
     Rescord.Journal.Grants,
-    Rescord.Tasks.Grants
+    Rescord.Tasks.Grants,
+    Rescord.Inventory.Grants
   ]
 
 # Configure the endpoint

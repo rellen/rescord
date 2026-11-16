@@ -415,6 +415,21 @@ defmodule RescordWeb.CoreComponents do
   defp state_icon("info"), do: "clock"
 
   @doc """
+  Says what an action refused, each problem in a paragraph with the role
+  `alert`. A page draws it below its header, or in the form that the person
+  sent when that form is far down the page.
+
+      <.problems list={@problems} />
+  """
+  attr :list, :list, required: true, doc: "the problems, each in words for a person"
+
+  def problems(assigns) do
+    ~H"""
+    <p :for={problem <- @list} role="alert">{problem}</p>
+    """
+  end
+
+  @doc """
   Renders one of our own icons as an inline SVG of 1em.
 
   An icon is decoration: it is `aria-hidden`, and the text beside it, or

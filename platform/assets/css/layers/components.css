@@ -222,16 +222,36 @@ article[data-place] > span[data-state] {
  * and not a box in a box.
  */
 article > details:not([open]),
-td > details:not([open]) {
+td > details:not([open]),
+li > details:not([open]) {
   padding: 0;
   background: none;
   border: 0;
 }
 
-/* In a cell of a table, the closed action is beside the buttons. */
-td > details:not([open]) {
+/* In a cell of a table and in an item of a list, the closed action is
+   beside the words. */
+td > details:not([open]),
+li > details:not([open]) {
   display: inline-block;
   margin: 0;
+}
+
+/* What an action refused. The page says it beside the form that the person
+   sent, or below the header. */
+main p[role="alert"] {
+  padding: 0.75rem 1rem;
+  background: var(--alert-surface);
+  border: 1px solid var(--alert);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius);
+}
+
+/* A list in a cell is plain lines: the places of a lot. */
+td > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* A second line of a cell: the kind of a task, a note. */
@@ -241,7 +261,8 @@ td > small {
 }
 
 article > details:not([open]) > summary,
-td > details:not([open]) > summary {
+td > details:not([open]) > summary,
+li > details:not([open]) > summary {
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--link);

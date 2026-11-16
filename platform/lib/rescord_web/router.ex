@@ -55,6 +55,9 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/tasks", TasksLive
       live "/o/:organisation/routines", RoutinesLive, :index
       live "/o/:organisation/routines/:id/edit", RoutinesLive, :edit
+      live "/o/:organisation/inventory", InventoryLive
+      live "/o/:organisation/inventory/suppliers", SuppliersLive
+      live "/o/:organisation/inventory/:id", ItemLive
       live "/o/:organisation/housing", HousingLive
       live "/o/:organisation/housing/:id", LocationLive
       live "/o/:organisation/groups", GroupsLive

@@ -27,7 +27,8 @@ defmodule Rescord.VersionsTest do
             Rescord.Residents,
             Rescord.Locations,
             Rescord.Journal,
-            Rescord.Tasks
+            Rescord.Tasks,
+            Rescord.Inventory
           ],
           resource <- Ash.Domain.Info.resources(domain),
           AshPaperTrail.Resource in Spark.extensions(resource) do

@@ -205,7 +205,7 @@ defmodule RescordWeb.RoutinePagesTest do
 
       assert has_element?(
                view,
-               "main p[role=alert]",
+               "#routine p[role=alert]",
                "Weekdays needs one day of the week or more"
              )
 

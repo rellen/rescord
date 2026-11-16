@@ -79,18 +79,21 @@ defmodule RescordWeb.GroupLive do
   end
 
   @impl true
-  def handle_event("join", %{"member" => %{"resident_id" => resident_id}}, socket)
+  def handle_event("join", %{"member" => %{"resident_id" => resident_id} = fields}, socket)
       when is_binary(resident_id) do
-    %{resident_id: text(resident_id), group_id: socket.assigns.group.id}
-    |> Residents.join_group(options(socket))
-    |> after_write(socket)
+    at(socket, fields["at"], fn options ->
+      Residents.join_group(
+        %{resident_id: text(resident_id), group_id: socket.assigns.group.id},
+        options
+      )
+    end)
   end
 
-  def handle_event("leave", %{"id" => id}, socket) when is_binary(id) do
+  def handle_event("leave", %{"member_id" => id} = params, socket) when is_binary(id) do
     # Only a member of this group: the page has them in hand.
     case Enum.find(socket.assigns.group.members, &(&1.id == id)) do
       nil -> {:noreply, socket}
-      member -> member |> Residents.leave_group(options(socket)) |> after_write(socket)
+      member -> at(socket, get_in(params, ["leave", "at"]), &Residents.leave_group(member, &1))
     end
   end
 
@@ -124,6 +127,16 @@ defmodule RescordWeb.GroupLive do
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # Runs a write at the time that the member gave, which is a local time of
+  # the organisation and never after now, or at this instant with no time.
+  defp at(socket, text, write) do
+    case Rescord.Accounts.instant(socket.assigns.organisation, text) do
+      {:ok, nil} -> socket |> options() |> write.() |> after_write(socket)
+      {:ok, instant} -> ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
+      {:error, words} -> {:noreply, assign(socket, problems: [words])}
+    end
+  end
 
   # Opens the page again after a write, so that its forms are empty.
   defp after_write({:error, error}, socket),
@@ -203,14 +216,22 @@ defmodule RescordWeb.GroupLive do
             <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{member.resident_id}"}>
               {member.resident.name || "No name yet"}
             </.link>
-            <.button
-              :if={can?(@role, :group_member, :leave)}
-              phx-click="leave"
-              phx-value-id={member.id}
-              aria-label={"Take #{member.resident.name || "the resident with no name"} out of the group"}
-            >
-              Take out
-            </.button>
+            <details :if={can?(@role, :group_member, :leave)} id={"leave-details-#{member.id}"}>
+              <summary>Take out</summary>
+              <form id={"leave-#{member.id}"} phx-submit="leave">
+                <input type="hidden" name="member_id" value={member.id} />
+                <.input
+                  id={"leave-#{member.id}-at"}
+                  name="leave[at]"
+                  type="datetime-local"
+                  label={"When #{member.resident.name || "the resident with no name"} left the group, if not now"}
+                  value=""
+                />
+                <.button type="submit">
+                  Take {member.resident.name || "the resident with no name"} out of the group
+                </.button>
+              </form>
+            </details>
           </li>
         </ul>
 
@@ -224,6 +245,11 @@ defmodule RescordWeb.GroupLive do
               prompt="Choose"
               options={@others}
               required
+            />
+            <.input
+              field={@join_form[:at]}
+              type="datetime-local"
+              label="When it joined the group, if not now"
             />
             <footer><.button type="submit">Add to the group</.button></footer>
           </.form>

@@ -30,6 +30,7 @@ defmodule RescordWeb.TasksLive do
      assign(socket,
        page_title: "Tasks",
        problems: [],
+       refused_form?: false,
        kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
        residents: residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort(),
        groups: groups |> Enum.map(&{Residents.group_name(&1), &1.id}) |> Enum.sort(),
@@ -120,11 +121,19 @@ defmodule RescordWeb.TasksLive do
        )}
     else
       {:error, words} when is_binary(words) ->
-        {:noreply, socket |> assign(problems: [words]) |> assign_form(fields)}
+        {:noreply,
+         socket
+         |> assign(problems: [words], refused_form?: socket.assigns.can_plan?)
+         |> assign_form(fields)}
 
       {:error, error} ->
         {:noreply,
-         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
+         socket
+         |> assign(
+           problems: Accounts.error_messages(error),
+           refused_form?: socket.assigns.can_plan?
+         )
+         |> assign_form(fields)}
     end
   end
 
@@ -160,7 +169,9 @@ defmodule RescordWeb.TasksLive do
           # The tasks are read again: another member can be the reason.
           {:error, error} ->
             {:noreply,
-             socket |> assign(problems: Accounts.error_messages(error)) |> assign_tasks()}
+             socket
+             |> assign(problems: Accounts.error_messages(error), refused_form?: false)
+             |> assign_tasks()}
         end
     end
   end
@@ -200,7 +211,7 @@ defmodule RescordWeb.TasksLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems :if={not @refused_form?} list={@problems} />
 
       <section :if={@earlier != []} aria-labelledby="earlier-heading">
         <h2 id="earlier-heading">Still due from earlier days</h2>
@@ -231,6 +242,7 @@ defmodule RescordWeb.TasksLive do
 
       <details :if={@can_plan?} id="new-task">
         <summary>New task</summary>
+        <.problems :if={@refused_form?} list={@problems} />
         <.form for={@form} id="task" phx-submit="plan">
           <.input field={@form[:title]} type="text" label="What to do" maxlength="120" required />
           <.input
@@ -312,7 +324,7 @@ defmodule RescordWeb.TasksLive do
               <small :if={task.skip_reason}>Skipped: {task.skip_reason}</small>
             </td>
             <td>{for_words(task)}</td>
-            <td>{who(task, @members)}</td>
+            <td>{who(task, @members, @user)}</td>
             <td>
               <.state kind={TaskWords.phase_kind(Tasks.phase(task, @now))}>
                 {TaskWords.phase(Tasks.phase(task, @now))}
@@ -388,11 +400,11 @@ defmodule RescordWeb.TasksLive do
     end
   end
 
-  defp who(%{assignee_id: nil}, _members), do: "Anybody"
+  defp who(%{assignee_id: nil}, _members, _user), do: "Anybody"
 
-  defp who(%{assignee_id: id}, members) do
-    Enum.find_value(members, "A person who is not a member now", fn {email, user_id} ->
-      if user_id == id, do: email
-    end)
+  # A root user is not a member, and reads a task that they took as their own.
+  defp who(%{assignee_id: id}, members, user) do
+    Enum.find_value(members, fn {email, user_id} -> if user_id == id, do: email end) ||
+      if(id == user.id, do: to_string(user.email), else: "A person who is not a member now")
   end
 end
