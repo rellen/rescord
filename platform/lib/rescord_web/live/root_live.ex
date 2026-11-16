@@ -23,7 +23,7 @@ defmodule RescordWeb.RootLive do
   end
 
   defp assign_organisation_form(socket, params) do
-    assign(socket, organisation_form: to_form(params, as: :organisation))
+    assign(socket, organisation_form: typed_form(params, as: :organisation))
   end
 
   defp assign_roots(socket) do

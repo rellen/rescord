@@ -161,8 +161,10 @@ defmodule RescordWeb.RoutinesLive do
   end
 
   defp assign_form(socket, fields) do
+    fields = typed_fields(fields)
+
     assign(socket,
-      form: to_form(fields, as: :routine),
+      form: typed_form(fields, as: :routine),
       pattern: fields["pattern"],
       weekdays: List.wrap(fields["weekdays"])
     )
@@ -172,27 +174,27 @@ defmodule RescordWeb.RoutinesLive do
   # a pattern that it does not know is an error, and no atom.
   defp facts(fields) do
     %{
-      title: text(fields["title"]),
-      note: text(fields["note"]),
-      kind_id: text(fields["kind_id"]),
-      assignee_id: text(fields["assignee_id"]),
-      pattern: text(fields["pattern"]),
-      every: text(fields["every"]),
+      title: non_blank(fields["title"]),
+      note: non_blank(fields["note"]),
+      kind_id: non_blank(fields["kind_id"]),
+      assignee_id: non_blank(fields["assignee_id"]),
+      pattern: non_blank(fields["pattern"]),
+      every: non_blank(fields["every"]),
       weekdays: fields["weekdays"] |> List.wrap() |> Enum.filter(&is_binary/1),
       times: for(field <- @time_fields, time = time(fields[field]), do: time),
-      starts_on: text(fields["starts_on"]),
-      ends_on: text(fields["ends_on"]),
-      days_ahead: text(fields["days_ahead"]),
-      resident_ids: List.wrap(text(fields["resident_id"])),
-      group_ids: List.wrap(text(fields["group_id"])),
-      location_ids: List.wrap(text(fields["location_id"]))
+      starts_on: non_blank(fields["starts_on"]),
+      ends_on: non_blank(fields["ends_on"]),
+      days_ahead: non_blank(fields["days_ahead"]),
+      resident_ids: List.wrap(non_blank(fields["resident_id"])),
+      group_ids: List.wrap(non_blank(fields["group_id"])),
+      location_ids: List.wrap(non_blank(fields["location_id"]))
     }
   end
 
   # A time of a form is `08:00`. A value that is no time stays as it is, and
   # Ash refuses it.
   defp time(value) do
-    case text(value) do
+    case non_blank(value) do
       nil -> nil
       <<_hour::binary-size(2), ":", _minute::binary-size(2)>> = short -> short <> ":00"
       other -> other

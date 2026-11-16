@@ -49,11 +49,11 @@ defmodule RescordWeb.InventoryLive do
   @impl true
   def handle_event("add", %{"item" => fields}, socket) when is_map(fields) do
     attributes = %{
-      name: text(fields["name"]),
-      category_id: text(fields["category_id"]),
-      unit_id: text(fields["unit_id"]),
-      reorder_level: text(fields["reorder_level"]),
-      note: text(fields["note"])
+      name: non_blank(fields["name"]),
+      category_id: non_blank(fields["category_id"]),
+      unit_id: non_blank(fields["unit_id"]),
+      reorder_level: non_blank(fields["reorder_level"]),
+      note: non_blank(fields["note"])
     }
 
     case Inventory.add_item(attributes, options(socket)) do
@@ -64,7 +64,7 @@ defmodule RescordWeb.InventoryLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
-           form: to_form(fields, as: :item)
+           form: typed_form(fields, as: :item)
          )}
     end
   end

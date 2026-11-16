@@ -1,5 +1,5 @@
 defmodule RescordWeb.InputTest do
-  @moduledoc "Holds what a page reads from the fields of a form."
+  @moduledoc "Holds what a page draws again from the fields of a form."
 
   use ExUnit.Case, async: true
 

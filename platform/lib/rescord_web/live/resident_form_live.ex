@@ -81,7 +81,9 @@ defmodule RescordWeb.ResidentFormLive do
   end
 
   defp assign_form(socket, fields) do
-    assign(socket, form: to_form(fields, as: :resident), fields: fields)
+    fields = typed_fields(fields)
+
+    assign(socket, form: typed_form(fields, as: :resident), fields: fields)
   end
 
   defp fields_of(resident) do
@@ -137,14 +139,14 @@ defmodule RescordWeb.ResidentFormLive do
   # The facts that both actions take.
   defp facts(fields) do
     %{
-      name: text(fields["name"]),
-      species_id: text(fields["species_id"]),
-      sex: text(fields["sex"]),
-      desex_status: text(fields["desex_status"]),
-      born_on: text(fields["born_on"]),
+      name: non_blank(fields["name"]),
+      species_id: non_blank(fields["species_id"]),
+      sex: non_blank(fields["sex"]),
+      desex_status: non_blank(fields["desex_status"]),
+      born_on: non_blank(fields["born_on"]),
       born_on_estimated: fields["born_on_estimated"] == "true",
-      size_class_id: text(fields["size_class_id"]),
-      coat_id: text(fields["coat_id"]),
+      size_class_id: non_blank(fields["size_class_id"]),
+      coat_id: non_blank(fields["coat_id"]),
       breed_ids: ids(fields["breed_ids"]),
       colour_ids: ids(fields["colour_ids"]),
       temperament_ids: ids(fields["temperament_ids"])
@@ -154,9 +156,9 @@ defmodule RescordWeb.ResidentFormLive do
   # The arrival of a new resident. With no kind and no date, it is expected.
   defp arrival(fields) do
     %{
-      arrival_kind: text(fields["arrival_kind"]),
-      arrived_on: text(fields["arrived_on"]),
-      arrival_note: text(fields["arrival_note"])
+      arrival_kind: non_blank(fields["arrival_kind"]),
+      arrived_on: non_blank(fields["arrived_on"]),
+      arrival_note: non_blank(fields["arrival_note"])
     }
   end
 

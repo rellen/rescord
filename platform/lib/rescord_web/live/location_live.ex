@@ -78,7 +78,7 @@ defmodule RescordWeb.LocationLive do
   @impl true
   def handle_event("place", %{"placement" => fields}, socket) when is_map(fields) do
     subject =
-      case {text(fields["resident_id"]), text(fields["group_id"])} do
+      case {non_blank(fields["resident_id"]), non_blank(fields["group_id"])} do
         {nil, nil} -> {:error, "Choose a resident or a group"}
         {id, nil} -> {:ok, {:resident, id}}
         {nil, id} -> {:ok, {:group, id}}
@@ -110,9 +110,9 @@ defmodule RescordWeb.LocationLive do
 
   def handle_event("revise", %{"location" => fields}, socket) when is_map(fields) do
     attributes = %{
-      name: text(fields["name"]),
-      kind_id: text(fields["kind_id"]),
-      capacity: text(fields["capacity"])
+      name: non_blank(fields["name"]),
+      kind_id: non_blank(fields["kind_id"]),
+      capacity: non_blank(fields["capacity"])
     }
 
     socket.assigns.node.location
@@ -122,7 +122,7 @@ defmodule RescordWeb.LocationLive do
 
   def handle_event("move", %{"move" => %{"parent_id" => parent_id}}, socket) do
     socket.assigns.node.location
-    |> Locations.move_location(text(parent_id), options(socket))
+    |> Locations.move_location(non_blank(parent_id), options(socket))
     |> after_write(socket)
   end
 

@@ -262,7 +262,10 @@ too.
   - A test reads as of a past instant where the history matters.
 - **A page with a form.** A page that stays open after a write keeps what
   the person typed, so open the page again after a write
-  (`push_navigate` to its own path). `<.problems list={@problems} />` says
+  (`push_navigate` to its own path). Read each field of the form with
+  `non_blank/1` of `Shoddy.Strings`, which each LiveView imports: it
+  returns `nil` for a blank field and for a value that is not text.
+  `<.problems list={@problems} />` says
   what an action refused. Draw it in the form that the person sent when
   that form is far down the page, and below the header in each other case.
   In a page test, look for the alert of
@@ -337,7 +340,6 @@ too.
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
-| `platform/lib/rescord_web/input.ex` | what a page reads from the fields of a form |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |

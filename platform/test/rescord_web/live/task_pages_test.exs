@@ -208,6 +208,23 @@ defmodule RescordWeb.TaskPagesTest do
       assert DateTime.compare(task.due_at, expected) == :eq
     end
 
+    test "reads a field that is not text, from a forged event, as no value", context do
+      {view, _html} = open(context.conn, context.path)
+
+      render_submit(view, "plan", %{
+        "task" => %{
+          "title" => ["a list"],
+          "note" => %{"a" => "map"},
+          "date" => Date.to_iso8601(context.today),
+          "time" => "09:15"
+        }
+      })
+
+      # The page is still there, and it says that the title is required.
+      assert has_element?(view, "main p[role=alert]", "Title is required")
+      assert {:ok, []} = Tasks.day(context.today, context.options)
+    end
+
     test "says what is wrong, and keeps what the member typed", context do
       {view, _html} = open(context.conn, context.path)
 

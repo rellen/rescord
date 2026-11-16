@@ -48,10 +48,10 @@ defmodule RescordWeb.HousingLive do
   @impl true
   def handle_event("add", %{"location" => fields}, socket) when is_map(fields) do
     attributes = %{
-      name: text(fields["name"]),
-      kind_id: text(fields["kind_id"]),
-      capacity: text(fields["capacity"]),
-      parent_id: text(fields["parent_id"])
+      name: non_blank(fields["name"]),
+      kind_id: non_blank(fields["kind_id"]),
+      capacity: non_blank(fields["capacity"]),
+      parent_id: non_blank(fields["parent_id"])
     }
 
     case Locations.add_location(attributes, options(socket)) do
@@ -63,7 +63,7 @@ defmodule RescordWeb.HousingLive do
         {:noreply,
          assign(socket,
            problems: Rescord.Accounts.error_messages(error),
-           form: to_form(fields, as: :location)
+           form: typed_form(fields, as: :location)
          )}
     end
   end

@@ -32,7 +32,11 @@ defmodule RescordWeb.SuppliersLive do
   defp path(socket), do: ~p"/o/#{socket.assigns.organisation.short_name}/inventory/suppliers"
 
   defp facts(fields) do
-    %{name: text(fields["name"]), contact: text(fields["contact"]), note: text(fields["note"])}
+    %{
+      name: non_blank(fields["name"]),
+      contact: non_blank(fields["contact"]),
+      note: non_blank(fields["note"])
+    }
   end
 
   @impl true
@@ -45,7 +49,7 @@ defmodule RescordWeb.SuppliersLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
-           form: to_form(fields, as: :supplier)
+           form: typed_form(fields, as: :supplier)
          )}
     end
   end

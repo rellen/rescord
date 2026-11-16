@@ -113,7 +113,7 @@ defmodule RescordWeb.ResidentLive do
       resident_id: socket.assigns.resident.id,
       kind: params["kind"],
       arrived_on: params["arrived_on"],
-      note: text(params["note"])
+      note: non_blank(params["note"])
     }
     |> Residents.record_arrival(options(socket))
     |> after_write(socket, "The arrival is recorded.")
@@ -124,7 +124,7 @@ defmodule RescordWeb.ResidentLive do
       resident_id: socket.assigns.resident.id,
       kind: params["kind"],
       departed_on: params["departed_on"],
-      note: text(params["note"])
+      note: non_blank(params["note"])
     }
     |> Residents.record_departure(options(socket))
     |> after_write(socket, "The departure is recorded.")
@@ -146,7 +146,7 @@ defmodule RescordWeb.ResidentLive do
         %{
           resident_id: socket.assigns.resident.id,
           reason: params["reason"],
-          expected_back_on: text(params["expected_back_on"])
+          expected_back_on: non_blank(params["expected_back_on"])
         },
         options
       )
@@ -166,7 +166,7 @@ defmodule RescordWeb.ResidentLive do
   def handle_event("add_identifier", %{"identifier" => params}, socket) when is_map(params) do
     %{
       resident_id: socket.assigns.resident.id,
-      kind_id: text(params["kind_id"]),
+      kind_id: non_blank(params["kind_id"]),
       value: params["value"]
     }
     |> Residents.add_identifier(options(socket))
@@ -176,7 +176,7 @@ defmodule RescordWeb.ResidentLive do
   def handle_event("record_parent", %{"parent" => params}, socket) when is_map(params) do
     %{
       resident_id: socket.assigns.resident.id,
-      parent_id: text(params["parent_id"]),
+      parent_id: non_blank(params["parent_id"]),
       role: params["role"]
     }
     |> Residents.record_parent(options(socket))
@@ -193,7 +193,7 @@ defmodule RescordWeb.ResidentLive do
   # A family that is there, or a new one with the name that the person gave.
   def handle_event("add_to_family", %{"family" => params}, socket) when is_map(params) do
     family =
-      case {text(params["family_id"]), text(params["name"])} do
+      case {non_blank(params["family_id"]), non_blank(params["name"])} do
         {nil, nil} -> {:error, :nothing}
         {nil, name} -> Residents.name_family(name, options(socket))
         {id, _name} -> {:ok, %{id: id}}

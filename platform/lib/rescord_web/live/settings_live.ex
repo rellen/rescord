@@ -55,7 +55,7 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
-           form: to_form(params, as: :settings)
+           form: typed_form(params, as: :settings)
          )}
     end
   end
@@ -83,7 +83,7 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
-           ahead_form: to_form(params, as: :ahead)
+           ahead_form: typed_form(params, as: :ahead)
          )}
     end
   end

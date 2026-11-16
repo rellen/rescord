@@ -120,14 +120,14 @@ defmodule RescordWeb.ItemLive do
 
     Enum.reduce(@forms, socket, fn {name, key}, socket ->
       fields = Map.get(filled, name) || Map.get(start, name, %{})
-      assign(socket, key, to_form(fields, as: name))
+      assign(socket, key, typed_form(fields, as: name))
     end)
   end
 
   # A source of a form as the lot and the place of a movement.
   defp source(value) when is_binary(value) do
     case String.split(value, "|", parts: 2) do
-      [lot_id, place] when lot_id != "" -> %{lot_id: lot_id, location_id: text(place)}
+      [lot_id, place] when lot_id != "" -> %{lot_id: lot_id, location_id: non_blank(place)}
       _other -> %{lot_id: nil, location_id: nil}
     end
   end
@@ -146,22 +146,22 @@ defmodule RescordWeb.ItemLive do
   def handle_event("receive", %{"receive" => fields}, socket) when is_map(fields) do
     common = fn instant ->
       %{
-        quantity: text(fields["quantity"]),
-        location_id: text(fields["location_id"]),
+        quantity: non_blank(fields["quantity"]),
+        location_id: non_blank(fields["location_id"]),
         happened_at: instant
       }
     end
 
     write(socket, :receive, fields, fn instant, options ->
-      case text(fields["lot_id"]) do
+      case non_blank(fields["lot_id"]) do
         nil ->
           instant
           |> common.()
           |> Map.merge(%{
             item_id: socket.assigns.item.id,
-            code: text(fields["code"]),
-            expires_on: text(fields["expires_on"]),
-            supplier_id: text(fields["supplier_id"])
+            code: non_blank(fields["code"]),
+            expires_on: non_blank(fields["expires_on"]),
+            supplier_id: non_blank(fields["supplier_id"])
           })
           |> Inventory.receive_lot(options)
 
@@ -186,15 +186,15 @@ defmodule RescordWeb.ItemLive do
             fields["source"]
             |> source()
             |> Map.merge(%{
-              quantity: text(fields["quantity"]),
-              note: text(fields["note"]),
+              quantity: non_blank(fields["quantity"]),
+              note: non_blank(fields["note"]),
               happened_at: instant
             })
 
           # A move also names the place that the stock goes to.
           movement =
             if form == :move,
-              do: Map.put(movement, :to_location_id, text(fields["to_location_id"])),
+              do: Map.put(movement, :to_location_id, non_blank(fields["to_location_id"])),
               else: movement
 
           of_this_item(socket, movement, &apply(Inventory, action, [&1, options]))
@@ -210,10 +210,10 @@ defmodule RescordWeb.ItemLive do
       of_this_item(
         socket,
         %{
-          lot_id: text(fields["lot_id"]),
-          location_id: text(fields["location_id"]),
-          counted: text(fields["counted"]),
-          note: text(fields["note"]),
+          lot_id: non_blank(fields["lot_id"]),
+          location_id: non_blank(fields["location_id"]),
+          counted: non_blank(fields["counted"]),
+          note: non_blank(fields["note"]),
           happened_at: instant
         },
         &Inventory.count_stock(&1, options)
@@ -226,11 +226,11 @@ defmodule RescordWeb.ItemLive do
       Inventory.revise_item(
         socket.assigns.item,
         %{
-          name: text(fields["name"]),
-          category_id: text(fields["category_id"]),
-          unit_id: text(fields["unit_id"]),
-          reorder_level: text(fields["reorder_level"]),
-          note: text(fields["note"])
+          name: non_blank(fields["name"]),
+          category_id: non_blank(fields["category_id"]),
+          unit_id: non_blank(fields["unit_id"]),
+          reorder_level: non_blank(fields["reorder_level"]),
+          note: non_blank(fields["note"])
         },
         options
       )
@@ -239,7 +239,7 @@ defmodule RescordWeb.ItemLive do
 
   def handle_event("set_level", %{"reorder" => fields}, socket) when is_map(fields) do
     write(socket, :reorder, fields, fn _instant, options ->
-      case text(fields["location_id"]) do
+      case non_blank(fields["location_id"]) do
         nil ->
           {:error, "Choose the location of the reorder level"}
 
@@ -247,7 +247,7 @@ defmodule RescordWeb.ItemLive do
           Inventory.set_reorder_level(
             socket.assigns.item.id,
             location_id,
-            text(fields["quantity"]),
+            non_blank(fields["quantity"]),
             options
           )
       end

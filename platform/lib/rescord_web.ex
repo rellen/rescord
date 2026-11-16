@@ -75,8 +75,12 @@ defmodule RescordWeb do
     quote do
       use Phoenix.LiveView
 
-      # The text of a field of a form, or nil for a blank one.
-      import RescordWeb.Input, only: [text: 1]
+      # The text of a field of a form, or nil for a blank one or for a value
+      # that is not text, which a forged event can send.
+      import Shoddy.Strings, only: [non_blank: 1]
+
+      # A form drawn again from what the browser sent keeps only text.
+      import RescordWeb.Input, only: [typed_form: 2, typed_fields: 1]
 
       unquote(html_helpers())
     end

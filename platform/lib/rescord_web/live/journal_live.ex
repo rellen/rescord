@@ -82,8 +82,10 @@ defmodule RescordWeb.JournalLive do
   end
 
   defp assign_form(socket, fields) do
+    fields = typed_fields(fields)
+
     assign(socket,
-      form: to_form(fields, as: :entry),
+      form: typed_form(fields, as: :entry),
       kind: JournalWords.kind_of(fields["kind"]) || :general
     )
   end
@@ -101,9 +103,9 @@ defmodule RescordWeb.JournalLive do
            |> Map.merge(%{
              resident_id: socket.assigns.resident.id,
              kind: JournalWords.kind_of(fields["kind"]),
-             note: text(fields["note"]),
+             note: non_blank(fields["note"]),
              happened_at: instant,
-             follows_id: text(fields["follows_id"])
+             follows_id: non_blank(fields["follows_id"])
            })
            |> Journal.write_entry(options(socket)) do
       {:noreply, push_navigate(socket, to: path(socket))}
@@ -159,7 +161,7 @@ defmodule RescordWeb.JournalLive do
         {:noreply, socket}
 
       entry ->
-        changes = Map.put(facts(fields), :note, text(fields["note"]))
+        changes = Map.put(facts(fields), :note, non_blank(fields["note"]))
 
         case Journal.correct_entry(entry, changes, options(socket)) do
           {:ok, _entry} -> {:noreply, push_navigate(socket, to: path(socket))}
@@ -192,7 +194,7 @@ defmodule RescordWeb.JournalLive do
           prescription_id: "prescription_id",
           amount: "amount"
         ],
-        value = text(fields[field]),
+        value = non_blank(fields[field]),
         not is_nil(value),
         into: %{} do
       {key, value}

@@ -85,7 +85,7 @@ defmodule RescordWeb.GroupLive do
       when is_binary(resident_id) do
     at(socket, fields["at"], fn options ->
       Residents.join_group(
-        %{resident_id: text(resident_id), group_id: socket.assigns.group.id},
+        %{resident_id: non_blank(resident_id), group_id: socket.assigns.group.id},
         options
       )
     end)
@@ -101,9 +101,9 @@ defmodule RescordWeb.GroupLive do
 
   def handle_event("revise", %{"group" => fields}, socket) when is_map(fields) do
     attributes = %{
-      name: text(fields["name"]),
-      kind_id: text(fields["kind_id"]),
-      description: text(fields["description"])
+      name: non_blank(fields["name"]),
+      kind_id: non_blank(fields["kind_id"]),
+      description: non_blank(fields["description"])
     }
 
     socket.assigns.group

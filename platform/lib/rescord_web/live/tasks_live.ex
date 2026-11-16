@@ -83,7 +83,7 @@ defmodule RescordWeb.TasksLive do
 
   defp assign_form(socket, fields \\ nil) do
     fields = fields || %{"date" => Date.to_iso8601(socket.assigns.day), "time" => "08:00"}
-    assign(socket, form: to_form(fields, as: :task))
+    assign(socket, form: typed_form(fields, as: :task))
   end
 
   defp path(socket) do
@@ -104,14 +104,14 @@ defmodule RescordWeb.TasksLive do
          {:ok, _task} <-
            Tasks.plan_task(
              %{
-               title: text(fields["title"]),
-               note: text(fields["note"]),
+               title: non_blank(fields["title"]),
+               note: non_blank(fields["note"]),
                due_at: due_at,
-               kind_id: text(fields["kind_id"]),
-               assignee_id: text(fields["assignee_id"]),
-               resident_ids: List.wrap(text(fields["resident_id"])),
-               group_ids: List.wrap(text(fields["group_id"])),
-               location_ids: List.wrap(text(fields["location_id"]))
+               kind_id: non_blank(fields["kind_id"]),
+               assignee_id: non_blank(fields["assignee_id"]),
+               resident_ids: List.wrap(non_blank(fields["resident_id"])),
+               group_ids: List.wrap(non_blank(fields["group_id"])),
+               location_ids: List.wrap(non_blank(fields["location_id"]))
              },
              options(socket)
            ) do
@@ -149,7 +149,7 @@ defmodule RescordWeb.TasksLive do
     do: act(socket, id, &Tasks.reopen_task(&1, options(socket)))
 
   def handle_event("skip", %{"task_id" => id, "skip" => %{"reason" => reason}}, socket),
-    do: act(socket, id, &Tasks.skip_task(&1, %{skip_reason: text(reason)}, options(socket)))
+    do: act(socket, id, &Tasks.skip_task(&1, %{skip_reason: non_blank(reason)}, options(socket)))
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
