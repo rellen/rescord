@@ -96,9 +96,9 @@ config :rescord,
   base_resources: [Rescord.Resource],
   ecto_repos: [Rescord.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [Rescord.Accounts, Rescord.Lists, Rescord.Residents],
+  ash_domains: [Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations],
   # Each domain other than the accounts holds its own grants (ADR 0024).
-  grant_sources: [Rescord.Lists.Grants, Rescord.Residents.Grants]
+  grant_sources: [Rescord.Lists.Grants, Rescord.Residents.Grants, Rescord.Locations.Grants]
 
 # Configure the endpoint
 config :rescord, RescordWeb.Endpoint,

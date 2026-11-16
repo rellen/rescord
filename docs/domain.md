@@ -267,8 +267,13 @@ other location.
 - The model does not fit the housing of one organisation. Rescord has no
   special record for two units that an organisation joins.
 
-*Proposal.* A location cannot contain itself, directly or through other
-locations. Rescord rejects such a tie.
+A location cannot contain itself, directly or through other locations.
+Rescord rejects such a tie.
+
+A resident with a placement of its own lives there while it lasts. In each
+other case it lives with its group. A location can have a capacity, and a
+placement over it is permitted: the page says so. Rescord has this section
+(ADR 0029).
 
 *Proposal.* A group that uses two units has its placement in the location
 that contains both units.
@@ -414,7 +419,7 @@ This section applies the answers of section 4 and the proposals of sections
 There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
 `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
 `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has the first eight.
+Rescord has the first nine.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each
@@ -501,5 +506,6 @@ difficulty.
 5. A routine makes its tasks a number of days ahead. Can one routine have a
    number of its own, for example a vaccination each 12 months? This
    document reads the answer of the maintainer in that way.
-6. The code does not have this answer of 16 November 2026 yet: a time that
-   a member gives for when a thing happened.
+6. A placement has a time that a member gives for when it happened. The
+   code does not have that time yet for an absence, a change to a group,
+   and a journal entry.

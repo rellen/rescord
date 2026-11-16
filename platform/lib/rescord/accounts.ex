@@ -201,6 +201,36 @@ defmodule Rescord.Accounts do
     |> DateTime.to_date()
   end
 
+  @doc """
+  The instant that a member gives for when a thing happened, from the text
+  of a form: a local date and time in the organisation, such as
+  `2026-11-16T08:30`. Returns `{:ok, nil}` for no text, which is now.
+
+  The instant is never after now (`docs/domain.md`, section 4). A time that
+  the clocks of the zone skip, or have two times, is refused: the person
+  gives another minute.
+  """
+  @spec instant(Ash.Resource.record() | String.t(), term) ::
+          {:ok, DateTime.t() | nil} | {:error, String.t()}
+  def instant(_tenant, text) when text in [nil, ""], do: {:ok, nil}
+
+  def instant(tenant, text) when is_binary(text) do
+    text = if String.length(text) == 16, do: text <> ":00", else: text
+
+    with {:ok, naive} <- NaiveDateTime.from_iso8601(text),
+         {:ok, local} <- DateTime.from_naive(naive, time_zone_of(tenant), Tz.TimeZoneDatabase),
+         instant = DateTime.shift_zone!(local, "Etc/UTC", Tz.TimeZoneDatabase),
+         true <- DateTime.compare(instant, DateTime.utc_now()) != :gt do
+      {:ok, instant}
+    else
+      false -> {:error, "The time cannot be after now"}
+      _not_a_time -> {:error, "The time is not a date and a time of this time zone"}
+    end
+  end
+
+  def instant(_tenant, _other),
+    do: {:error, "The time is not a date and a time of this time zone"}
+
   @doc "The date in an organisation now."
   @spec today(Ash.Resource.record() | String.t()) :: Date.t()
   def today(tenant), do: local_date(tenant, DateTime.utc_now())
@@ -219,7 +249,11 @@ defmodule Rescord.Accounts do
   def error_messages(%{errors: errors}) when is_list(errors) do
     Enum.map(errors, fn
       %{field: field, message: message} when not is_nil(field) and is_binary(message) ->
-        "#{field |> to_string() |> String.replace("_", " ") |> String.capitalize()} #{message}"
+        "#{field_words(field)} #{message}"
+
+      # A value that is necessary and is not there has no message of its own.
+      %Ash.Error.Changes.Required{field: field} when not is_nil(field) ->
+        "#{field_words(field)} is required"
 
       %Ash.Error.Forbidden.Policy{} ->
         "You cannot do that"
@@ -230,6 +264,15 @@ defmodule Rescord.Accounts do
   end
 
   def error_messages(_error), do: ["That did not work"]
+
+  # `:arrived_on` reads `Arrived on`, and `:kind_id` reads `Kind`.
+  defp field_words(field) do
+    field
+    |> to_string()
+    |> String.replace_suffix("_id", "")
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 
   defp member_of(%User{id: user_id}, %Organisation{} = organisation) do
     Member

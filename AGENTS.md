@@ -280,7 +280,8 @@ too.
 | `platform/lib/rescord/` | domains and resources (Ash) |
 | `platform/lib/rescord/accounts/` | users, the sign-in, organisations, members, grants |
 | `platform/lib/rescord/lists/` | the lists of values: a base list and a list of the organisation for each dimension |
-| `platform/lib/rescord/residents/` | the residents and the facts about them |
+| `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
+| `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |

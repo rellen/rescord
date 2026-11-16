@@ -40,6 +40,7 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.Base.Temperament
     resource Rescord.Lists.Base.IdentifierKind
     resource Rescord.Lists.Base.GroupKind
+    resource Rescord.Lists.Base.LocationKind
 
     resource Rescord.Lists.Species
     resource Rescord.Lists.Breed
@@ -49,6 +50,7 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.Temperament
     resource Rescord.Lists.IdentifierKind
     resource Rescord.Lists.GroupKind
+    resource Rescord.Lists.LocationKind
   end
 
   # The key of each dimension, its name for a person, and its two resources.
@@ -60,7 +62,8 @@ defmodule Rescord.Lists do
     {:coat, "Coat", Base.Coat, Rescord.Lists.Coat},
     {:temperament, "Temperament", Base.Temperament, Rescord.Lists.Temperament},
     {:identifier_kind, "Identifier kind", Base.IdentifierKind, Rescord.Lists.IdentifierKind},
-    {:group_kind, "Group kind", Base.GroupKind, Rescord.Lists.GroupKind}
+    {:group_kind, "Group kind", Base.GroupKind, Rescord.Lists.GroupKind},
+    {:location_kind, "Location kind", Base.LocationKind, Rescord.Lists.LocationKind}
   ]
 
   @doc "The dimensions, each as `{key, name}`, in the order of a page."

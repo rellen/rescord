@@ -12,7 +12,7 @@ defmodule RescordWeb.GroupLive do
 
   use RescordWeb, :live_view
 
-  alias Rescord.{Lists, Residents}
+  alias Rescord.{Lists, Locations, Residents}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -29,6 +29,7 @@ defmodule RescordWeb.GroupLive do
          page_title: Residents.group_name(group),
          problems: [],
          group: group,
+         home: home(group.id, options),
          others:
            residents
            |> Enum.reject(&MapSet.member?(inside, &1.id))
@@ -53,6 +54,11 @@ defmodule RescordWeb.GroupLive do
          |> put_flash(:error, "There is no such group.")
          |> redirect(to: ~p"/o/#{socket.assigns.organisation.short_name}/groups")}
     end
+  end
+
+  defp home(group_id, options) do
+    {:ok, placement} = Locations.group_home(group_id, options)
+    placement
   end
 
   # The kinds that the form offers, and the kind of the group when it is retired.
@@ -149,6 +155,13 @@ defmodule RescordWeb.GroupLive do
         <h2 id="about-heading">About</h2>
         <.list>
           <:item title="Kind">{if @group.kind, do: @group.kind.label, else: "Not recorded"}</:item>
+          <:item title="Lives in">
+            <.link
+              :if={@home}
+              navigate={~p"/o/#{@organisation.short_name}/housing/#{@home.location_id}"}
+            >{@home.location.name}</.link>
+            <span :if={is_nil(@home)}>No place in the housing yet</span>
+          </:item>
           <:item title="How they are related">
             {Residents.words(@group) || "No relation is recorded"}
             <small :if={@group.description}>(the words of a member)</small>

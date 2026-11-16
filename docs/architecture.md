@@ -265,6 +265,14 @@ table (ADR 0025).
   `Sisters and an unrelated male` (ADR 0028). `Rescord.Residents.Kinship`
   calculates them from the parent links and the families. Rescord stores no
   other relation.
+- **The housing is a tree** (ADR 0029). `Rescord.Locations` has a location,
+  the tie that puts it inside another, and a placement of a resident or a
+  group. A resident lives in its own placement, or with its group.
+  `Rescord.Locations.tree/1` gives the page each location with who lives
+  there and the count.
+- **A member can say when a move happened.** `Rescord.Accounts.instant/2`
+  turns the local time of a form into an instant that is not after now,
+  and the write takes it as `as_of:`.
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

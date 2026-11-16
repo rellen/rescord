@@ -13,7 +13,7 @@ defmodule RescordWeb.ResidentLive do
 
   use RescordWeb, :live_view
 
-  alias Rescord.{Lists, Residents}
+  alias Rescord.{Lists, Locations, Residents}
   alias RescordWeb.ResidentWords
 
   @impl true
@@ -49,7 +49,8 @@ defmodule RescordWeb.ResidentLive do
          page_title: resident.name || "A resident with no name",
          names: Residents.name_history(resident.id, options(socket)),
          desex_statuses: Residents.desex_history(resident.id, options(socket)),
-         relations: Residents.relations(resident.id, options(socket))
+         relations: Residents.relations(resident.id, options(socket)),
+         homes: homes(resident.id, options(socket))
        )
        |> assign_choices()}
     else
@@ -78,6 +79,11 @@ defmodule RescordWeb.ResidentLive do
       parent_form: to_form(%{"parent_id" => "", "role" => "mother"}, as: :parent),
       family_form: to_form(%{"family_id" => "", "name" => ""}, as: :family)
     )
+  end
+
+  defp homes(resident_id, options) do
+    {:ok, homes} = Locations.home(resident_id, options)
+    homes
   end
 
   defp assign_forms(socket) do
@@ -262,6 +268,7 @@ defmodule RescordWeb.ResidentLive do
   # a line break inside a link is a space that the browser underlines.
   defp resident_path(organisation, id), do: ~p"/o/#{organisation.short_name}/residents/#{id}"
   defp group_path(organisation, id), do: ~p"/o/#{organisation.short_name}/groups/#{id}"
+  defp location_path(organisation, id), do: ~p"/o/#{organisation.short_name}/housing/#{id}"
 
   defp name(resident), do: resident.name || "No name yet"
 
@@ -313,6 +320,20 @@ defmodule RescordWeb.ResidentLive do
 
       <section aria-labelledby="stay-heading">
         <h2 id="stay-heading">Stay</h2>
+
+        <h3>Where it lives</h3>
+        <p :if={@homes == []}>
+          The resident has no place in the housing. A member gives it one on <.link navigate={
+            ~p"/o/#{@organisation.short_name}/housing"
+          }>the housing page</.link>.
+        </p>
+        <ul :if={@homes != []}>
+          <li :for={home <- @homes}>
+            <.link navigate={location_path(@organisation, home.location.id)}>{home.location.name}</.link>
+            <span :if={home.with == :own}>(a placement of its own)</span>
+            <span :if={home.with != :own}>(with {Residents.group_name(home.with)})</span>
+          </li>
+        </ul>
 
         <.list :if={@resident.arrival}>
           <:item title="Arrival">

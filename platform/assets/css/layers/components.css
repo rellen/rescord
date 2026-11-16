@@ -142,3 +142,74 @@ span[data-state="none"] {
 [data-scroll] tbody tr:last-child > td {
   border-block-end: none;
 }
+
+/* --------------------------------------------------------------- housing */
+
+/*
+ * The housing is a tree of locations. Each location is a card, and the
+ * locations inside it are a grid of smaller cards in that card. The grid
+ * takes as many columns as fit, so the same markup serves each shape of
+ * housing (ADR 0029).
+ */
+[data-places] {
+  display: grid;
+  /* A column is never wider than the card that holds the grid. */
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: 0.625rem;
+  margin-block: 0.625rem 0;
+}
+
+[data-places] > article {
+  min-width: 0;
+  margin: 0;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg);
+}
+
+/* A location with locations inside it takes the whole row, so that the
+   ones inside have room. The locations with nothing inside share a row. */
+[data-places] > article:has([data-places]) {
+  grid-column: 1 / -1;
+}
+
+/* A card inside a card inside a card is on the surface again, so that each
+   level is apart from the one around it. */
+[data-places] [data-places] > article {
+  background: var(--surface);
+}
+
+[data-places] [data-places] [data-places] > article {
+  background: var(--bg);
+}
+
+article[data-place] > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+article[data-place] > header > :is(h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-size: 1rem;
+}
+
+article[data-place] > header > small {
+  color: var(--muted);
+}
+
+article[data-place] > ul {
+  margin-block: 0.375rem 0;
+  padding-inline-start: 1.125rem;
+}
+
+/* A location with nobody in it. */
+article[data-place="free"] {
+  border-style: dashed;
+}
+
+/* A state in a card is as wide as its words, and not as wide as the card. */
+article[data-place] > span[data-state] {
+  justify-self: start;
+}
