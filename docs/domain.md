@@ -343,12 +343,26 @@ there can be many more:
 When a member completes a `medicate` task, Rescord also writes a journal
 entry for the dose. It does not change the inventory.
 
-*Proposal.* A task has one or more subjects. A subject is a resident, a
-group, or a location. AshWorkflow holds the states of a task.
+A task has zero subjects or more. A subject is a resident, a group, or a
+location. A task is due, done or skipped, and AshStateMachine holds the
+states (ADR 0032). A task that names a prescription writes the journal entry
+for the dose when a member completes it.
 
 A routine is a task that repeats. A routine repeats with one of a small set
 of patterns: each day at set times, on given days of the week, or after a
 number of days.
+
+Rescord has the routine (ADR 0033). A routine has one of four patterns: each
+day; on given days of the week; every number of days; every number of
+months. It has from 1 to 12 times of the day, in the time zone of the
+organisation. Rescord makes the tasks of a routine a number of days ahead:
+14 at first, which an administrator changes in the settings. A routine can
+have a number of its own, up to 400, for a thing of the calendar such as a
+check each year. A member also plans a task that does not repeat for any
+day.
+
+"After a number of days" is every number of days from the first day of the
+routine. It is not a number of days after a member completed the last task.
 
 ### 5.8 Inventory
 
@@ -423,7 +437,7 @@ This section applies the answers of section 4 and the proposals of sections
 There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
 `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
 `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has each one but `TaskKind` and `ItemCategory`.
+Rescord has each one but `ItemCategory`.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each
@@ -507,9 +521,11 @@ difficulty.
    resources or keep no paper trail?
 4. Section 7 does not count the resources that the answers of 15 November
    2026 add, for example the organisation. What is the new estimate?
-5. A routine makes its tasks a number of days ahead. Can one routine have a
-   number of its own, for example a vaccination each 12 months? This
-   document reads the answer of the maintainer in that way.
+5. A routine makes its tasks a number of days ahead, and one routine can
+   have a number of its own, for example for a vaccination each 12 months.
+   This document reads the answer of the maintainer in that way. Is that
+   correct? And is "after a number of days" also a number of days after a
+   member completed the last task?
 6. A placement and a journal entry have a time that a member gives for
    when the thing happened. The code does not have that time yet for an
    absence and a change to a group.

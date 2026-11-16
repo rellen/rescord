@@ -2,10 +2,11 @@ defmodule RescordWeb.SettingsLive do
   @moduledoc """
   The settings of an organisation, at `/o/<short name>/settings`.
 
-  The one setting is the time zone (ADR 0026). It says what today is for the
-  organisation: a date of an arrival is not after today, and the age of a
-  resident counts to today. Each member reads the setting. An administrator
-  and a root user change it.
+  The time zone (ADR 0026) says what today is for the organisation: a date
+  of an arrival is not after today, and the age of a resident counts to
+  today. The number of days ahead (ADR 0033) says how far ahead the tasks of
+  the routines exist. Each member reads the settings. An administrator and a
+  root user change them.
 
   The page opens again after a change, so that each part of it reads the
   organisation again.
@@ -13,8 +14,8 @@ defmodule RescordWeb.SettingsLive do
 
   use RescordWeb, :live_view
 
-  alias Rescord.Accounts
-  alias RescordWeb.ResidentWords
+  alias Rescord.{Accounts, Tasks}
+  alias RescordWeb.{ResidentWords, TaskWords}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -28,7 +29,9 @@ defmodule RescordWeb.SettingsLive do
        can_change?: can_change?,
        today: Accounts.today(organisation),
        time_zones: if(can_change?, do: Accounts.time_zones(), else: []),
-       form: to_form(%{"time_zone" => organisation.time_zone}, as: :settings)
+       form: to_form(%{"time_zone" => organisation.time_zone}, as: :settings),
+       ahead_form:
+         to_form(%{"task_days_ahead" => to_string(organisation.task_days_ahead)}, as: :ahead)
      )}
   end
 
@@ -51,6 +54,34 @@ defmodule RescordWeb.SettingsLive do
          assign(socket,
            problems: Accounts.error_messages(error),
            form: to_form(params, as: :settings)
+         )}
+    end
+  end
+
+  def handle_event("save_ahead", %{"ahead" => %{"task_days_ahead" => days} = params}, socket)
+      when is_binary(days) do
+    organisation = socket.assigns.organisation
+
+    case Accounts.set_organisation_task_days_ahead(organisation, days,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, organisation} ->
+        # The routines get their tasks up to the new day now, and not in an hour.
+        Tasks.generate(organisation)
+
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           "The tasks of the routines exist #{TaskWords.days(organisation.task_days_ahead)} ahead now."
+         )
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply,
+         assign(socket,
+           problems: Accounts.error_messages(error),
+           ahead_form: to_form(params, as: :ahead)
          )}
     end
   end
@@ -95,6 +126,29 @@ defmodule RescordWeb.SettingsLive do
             <option :for={zone <- @time_zones} value={zone}></option>
           </datalist>
           <footer><.button type="submit">Save the time zone</.button></footer>
+        </.form>
+      </section>
+
+      <section aria-labelledby="ahead-heading">
+        <h2 id="ahead-heading">Tasks of the routines</h2>
+        <.list>
+          <:item title="The tasks exist">{TaskWords.days(@organisation.task_days_ahead)} ahead</:item>
+        </.list>
+        <p>
+          Rescord makes the tasks of each routine this number of days ahead. A routine can have
+          a number of its own. A smaller number here removes no task that exists.
+        </p>
+
+        <.form :if={@can_change?} for={@ahead_form} id="ahead" phx-submit="save_ahead">
+          <.input
+            field={@ahead_form[:task_days_ahead]}
+            type="number"
+            label="Days ahead, from 1 to 400"
+            min="1"
+            max="400"
+            required
+          />
+          <footer><.button type="submit">Save the days ahead</.button></footer>
         </.form>
       </section>
     </Layouts.app>

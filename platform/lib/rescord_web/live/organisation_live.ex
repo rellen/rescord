@@ -30,6 +30,8 @@ defmodule RescordWeb.OrganisationLive do
       </.header>
 
       <ul>
+        <li><a href={~p"/o/#{@organisation.short_name}/tasks"}>See the tasks of today</a></li>
+        <li><a href={~p"/o/#{@organisation.short_name}/routines"}>See the routines</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/residents"}>See the residents</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/groups"}>See the groups</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/housing"}>See the housing</a></li>

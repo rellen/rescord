@@ -265,6 +265,19 @@ too.
   turns an instant into its date there. A test that needs two different
   dates at one instant uses two zones that are far apart, and no clock of
   its own.
+- **An action that changes a state has a filter on that state**
+  (`change filter(expr(state == :due))`, ADR 0032). The state machine reads
+  the record that the caller has in hand, which can be old. The filter
+  refuses the second of two members with `Ash.Error.Changes.StaleRecord`.
+- **Code that runs with no person**, such as a job, calls a function of the
+  domain that passes `authorize?: false`. An action that only Rescord runs
+  is in no list of grants, so the policy refuses each role (ADR 0033). A
+  function that depends on the time takes `now` as an argument, so that a
+  test gives it.
+- **A resource with a state machine** is not temporal (`temporal?: false`).
+  It names a record of a temporal resource by a plain id, with
+  `define_attribute? false` and `temporal_keys {nil, :valid_at}` on the
+  relationship: the database can hold no key between the two (ADR 0032).
 - **A `<details>` has an id** (ADR 0031). A form that a person does not
   always need is in a `<details>` that is closed at first. Without an id it
   closes when the page says what is wrong, with what the person typed.
@@ -290,6 +303,7 @@ too.
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/tasks/` | the tasks, their states and their subjects; the routines, their patterns and the job that makes their tasks |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |

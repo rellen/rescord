@@ -51,6 +51,10 @@ defmodule Rescord.Accounts do
       define :rename_organisation, action: :rename
       define :set_organisation_time_zone, action: :set_time_zone, args: [:time_zone]
 
+      define :set_organisation_task_days_ahead,
+        action: :set_task_days_ahead,
+        args: [:task_days_ahead]
+
       define :organisation_by_short_name,
         action: :by_short_name,
         args: [:short_name],
@@ -96,6 +100,22 @@ defmodule Rescord.Accounts do
         {:error, error}
     end
   end
+
+  @doc """
+  Each organisation, for a job that works for all of them. It asks no
+  policy: no person is there.
+  """
+  @spec all_organisations() :: [Ash.Resource.record()]
+  def all_organisations, do: Organisation |> Ash.Query.sort(:name) |> Ash.read!(authorize?: false)
+
+  @doc """
+  The organisation of a tenant: the organisation itself, or the name of its
+  schema, as an action has it. Code that asks for the local time many times
+  reads the organisation one time with this.
+  """
+  @spec organisation_of(Ash.Resource.record() | String.t()) :: Ash.Resource.record()
+  def organisation_of(%Organisation{} = organisation), do: organisation
+  def organisation_of("org_" <> id), do: Ash.get!(Organisation, id, authorize?: false)
 
   @doc """
   The organisations that a user can open: each one for a root user, and for
@@ -189,9 +209,7 @@ defmodule Rescord.Accounts do
   @spec time_zone_of(Ash.Resource.record() | String.t()) :: String.t()
   def time_zone_of(%Organisation{time_zone: zone}), do: zone
 
-  def time_zone_of("org_" <> id) do
-    Organisation |> Ash.get!(id, authorize?: false) |> Map.fetch!(:time_zone)
-  end
+  def time_zone_of("org_" <> _id = schema), do: organisation_of(schema).time_zone
 
   @doc "The date in an organisation at an instant: its local date."
   @spec local_date(Ash.Resource.record() | String.t(), DateTime.t()) :: Date.t()
@@ -215,26 +233,77 @@ defmodule Rescord.Accounts do
   def instant(_tenant, text) when text in [nil, ""], do: {:ok, nil}
 
   def instant(tenant, text) when is_binary(text) do
-    text = if String.length(text) == 16, do: text <> ":00", else: text
-
-    with {:ok, naive} <- NaiveDateTime.from_iso8601(text),
-         {:ok, local} <- DateTime.from_naive(naive, time_zone_of(tenant), Tz.TimeZoneDatabase),
-         instant = DateTime.shift_zone!(local, "Etc/UTC", Tz.TimeZoneDatabase),
+    with {:ok, instant} <- local_instant(tenant, text),
          true <- DateTime.compare(instant, DateTime.utc_now()) != :gt do
       {:ok, instant}
     else
       false -> {:error, "The time cannot be after now"}
-      _not_a_time -> {:error, "The time is not a date and a time of this time zone"}
+      {:error, words} -> {:error, words}
     end
   end
 
   def instant(_tenant, _other),
     do: {:error, "The time is not a date and a time of this time zone"}
 
+  @doc """
+  The instant of a local date and time of an organisation, from the text of
+  a form, such as `2026-11-16T08:30`. The instant can be after now: a plan
+  is for the future. `instant/2` is for a thing that happened.
+  """
+  @spec local_instant(Ash.Resource.record() | String.t(), term) ::
+          {:ok, DateTime.t()} | {:error, String.t()}
+  def local_instant(tenant, text) when is_binary(text) do
+    text = if String.length(text) == 16, do: text <> ":00", else: text
+
+    with {:ok, naive} <- NaiveDateTime.from_iso8601(text),
+         {:ok, local} <- DateTime.from_naive(naive, time_zone_of(tenant), Tz.TimeZoneDatabase) do
+      {:ok, DateTime.shift_zone!(local, "Etc/UTC", Tz.TimeZoneDatabase)}
+    else
+      _not_a_time -> {:error, "The time is not a date and a time of this time zone"}
+    end
+  end
+
+  def local_instant(_tenant, _other),
+    do: {:error, "The time is not a date and a time of this time zone"}
+
+  @doc """
+  The instant of a date and a time of the day in an organisation. There is
+  always one: for a time that the clocks skip, it is the first instant after
+  the gap, and for a time that comes two times, the first one. A routine
+  finds the instant of each of its tasks with this.
+  """
+  @spec local_instant(Ash.Resource.record() | String.t(), Date.t(), Time.t()) :: DateTime.t()
+  def local_instant(tenant, %Date{} = date, %Time{} = time),
+    do: instant_at(date, time, time_zone_of(tenant))
+
   @doc "An instant as the date and the time in an organisation."
   @spec local_time(Ash.Resource.record() | String.t(), DateTime.t()) :: DateTime.t()
   def local_time(tenant, %DateTime{} = instant),
     do: DateTime.shift_zone!(instant, time_zone_of(tenant), Tz.TimeZoneDatabase)
+
+  @doc """
+  One day of an organisation as two instants: the start of the day, and the
+  start of the next day. A day with a change of the clocks is not 24 hours.
+  """
+  @spec day_range(Ash.Resource.record() | String.t(), Date.t()) :: {DateTime.t(), DateTime.t()}
+  def day_range(tenant, %Date{} = date) do
+    zone = time_zone_of(tenant)
+    {start_of_day(date, zone), start_of_day(Date.add(date, 1), zone)}
+  end
+
+  # The first instant of a date in a zone. When the clocks skip midnight, it
+  # is the first time after the gap, and when midnight comes two times, the
+  # first one.
+  defp start_of_day(date, zone), do: instant_at(date, ~T[00:00:00], zone)
+
+  defp instant_at(date, time, zone) do
+    case DateTime.new(date, time, zone, Tz.TimeZoneDatabase) do
+      {:ok, local} -> local
+      {:ambiguous, first, _second} -> first
+      {:gap, _before, later} -> later
+    end
+    |> DateTime.shift_zone!("Etc/UTC", Tz.TimeZoneDatabase)
+  end
 
   @doc "The date in an organisation now."
   @spec today(Ash.Resource.record() | String.t()) :: Date.t()
@@ -253,8 +322,8 @@ defmodule Rescord.Accounts do
   @spec error_messages(term) :: [String.t()]
   def error_messages(%{errors: errors}) when is_list(errors) do
     Enum.map(errors, fn
-      %{field: field, message: message} when not is_nil(field) and is_binary(message) ->
-        "#{field_words(field)} #{message}"
+      %{field: field, message: message} = error when not is_nil(field) and is_binary(message) ->
+        "#{field_words(field)} #{with_values(message, Map.get(error, :vars))}"
 
       # A value that is necessary and is not there has no message of its own.
       %Ash.Error.Changes.Required{field: field} when not is_nil(field) ->
@@ -263,12 +332,35 @@ defmodule Rescord.Accounts do
       %Ash.Error.Forbidden.Policy{} ->
         "You cannot do that"
 
+      # The record changed after the page read it.
+      %Ash.Error.Changes.StaleRecord{} ->
+        "Somebody changed this a moment ago. The page shows it as it is now"
+
       error ->
         Exception.message(error)
     end)
   end
 
   def error_messages(_error), do: ["That did not work"]
+
+  # A message of Ash can name a value of the rule, as in `must be more than
+  # or equal to %{min}`. The values are beside the message.
+  defp with_values(message, values) when is_list(values) or is_map(values) do
+    Enum.reduce(values, message, fn
+      {key, value}, text when is_atom(key) or is_binary(key) ->
+        String.replace(text, "%{#{key}}", value_words(value))
+
+      _other, text ->
+        text
+    end)
+  end
+
+  defp with_values(message, _values), do: message
+
+  # A list is not text here: `to_string/1` reads a list of numbers as letters.
+  defp value_words(value) when is_binary(value), do: value
+  defp value_words(value) when is_number(value) or is_atom(value), do: to_string(value)
+  defp value_words(value), do: inspect(value)
 
   # `:arrived_on` reads `Arrived on`, and `:kind_id` reads `Kind`.
   defp field_words(field) do

@@ -44,7 +44,8 @@ defmodule Rescord.ListsTest do
                  :condition,
                  :measure_kind,
                  :procedure_kind,
-                 :unit
+                 :unit,
+                 :task_kind
                ]
     end
 

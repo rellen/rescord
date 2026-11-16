@@ -59,6 +59,11 @@ defmodule Rescord.Accounts.Organisation do
       validate Rescord.Accounts.Validations.KnownTimeZone
     end
 
+    update :set_task_days_ahead do
+      description "Changes how many days ahead the tasks of the routines exist"
+      accept [:task_days_ahead]
+    end
+
     update :rename do
       accept [:name]
     end
@@ -70,9 +75,9 @@ defmodule Rescord.Accounts.Organisation do
       authorize_if always()
     end
 
-    # An administrator changes the time zone of their own organisation
-    # (ADR 0026). Nobody else has a policy here.
-    policy action(:set_time_zone) do
+    # An administrator changes the settings of their own organisation
+    # (ADR 0026 and ADR 0033). Nobody else has a policy here.
+    policy action([:set_time_zone, :set_task_days_ahead]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
     end
   end
@@ -99,6 +104,14 @@ defmodule Rescord.Accounts.Organisation do
       public? true
       constraints max_length: 64
       description "The name of the time zone of the organisation, for example Australia/Brisbane"
+    end
+
+    attribute :task_days_ahead, :integer do
+      allow_nil? false
+      default 14
+      public? true
+      constraints min: 1, max: 400
+      description "How many days ahead the tasks of the routines exist"
     end
   end
 

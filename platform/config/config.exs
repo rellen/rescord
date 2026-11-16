@@ -16,7 +16,9 @@ config :rescord, Oban,
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Rescord.Repo,
-  cron: [crontab: []]
+  # The tasks of the routines, each hour (ADR 0033). A day starts at a
+  # different hour in each time zone.
+  cron: [crontab: [{"7 * * * *", Rescord.Tasks.Workers.GenerateTasks}]]
 
 # These enable behaviors that will become the default in the next major
 # version of Ash. Setting them now opts your application into the new
@@ -101,14 +103,16 @@ config :rescord,
     Rescord.Lists,
     Rescord.Residents,
     Rescord.Locations,
-    Rescord.Journal
+    Rescord.Journal,
+    Rescord.Tasks
   ],
   # Each domain other than the accounts holds its own grants (ADR 0024).
   grant_sources: [
     Rescord.Lists.Grants,
     Rescord.Residents.Grants,
     Rescord.Locations.Grants,
-    Rescord.Journal.Grants
+    Rescord.Journal.Grants,
+    Rescord.Tasks.Grants
   ]
 
 # Configure the endpoint

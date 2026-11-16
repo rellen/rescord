@@ -205,6 +205,53 @@ defmodule RescordWeb.OrganisationPagesTest do
     end
   end
 
+  describe "the days ahead of the tasks, on the settings page" do
+    test "are 14 at first, and a member reads them with no form", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      {view, _html} = open(context.conn, context.member, path)
+
+      assert has_element?(view, "dd", "14 days ahead")
+      refute has_element?(view, "#ahead")
+
+      # An event that the page did not offer is refused.
+      render_submit(view, "save_ahead", %{"ahead" => %{"task_days_ahead" => "30"}})
+      assert has_element?(view, "main p[role=alert]")
+      schema = Rescord.Accounts.Organisation.schema(context.organisation)
+      assert Accounts.organisation_of(schema).task_days_ahead == 14
+    end
+
+    test "are changed by an administrator, and the routines get their tasks at once", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      conn = sign_in(context.conn, context.administrator)
+      options = [actor: context.administrator, tenant: context.organisation]
+      today = Accounts.today(context.organisation)
+
+      Rescord.Tasks.start_routine!(
+        %{title: "Hay", pattern: :daily, times: [~T[08:00:00]], starts_on: today},
+        options
+      )
+
+      far = Date.add(today, 20)
+      assert {:ok, []} = Rescord.Tasks.day(far, options)
+
+      {:ok, view, _html} = live(conn, path)
+
+      html = view |> form("#ahead", ahead: %{task_days_ahead: "0"}) |> render_submit()
+      assert has_element?(view, "main p[role=alert]")
+      assert html =~ "Task days ahead must be greater than or equal to 1"
+
+      {:ok, view, html} =
+        view
+        |> form("#ahead", ahead: %{task_days_ahead: "21"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert html =~ "The tasks of the routines exist 21 days ahead now."
+      assert has_element?(view, "dd", "21 days ahead")
+      assert {:ok, [%{title: "Hay"}]} = Rescord.Tasks.day(far, options)
+    end
+  end
+
   describe "the members page" do
     test "shows the members to a member, with no form and no button", context do
       {_view, html} =

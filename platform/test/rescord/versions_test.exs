@@ -22,7 +22,13 @@ defmodule Rescord.VersionsTest do
     resident!(lists, [actor: root, tenant: organisation], %{breed_ids: [lists.breed.rex]})
 
     resources =
-      for domain <- [Rescord.Lists, Rescord.Residents, Rescord.Locations, Rescord.Journal],
+      for domain <- [
+            Rescord.Lists,
+            Rescord.Residents,
+            Rescord.Locations,
+            Rescord.Journal,
+            Rescord.Tasks
+          ],
           resource <- Ash.Domain.Info.resources(domain),
           AshPaperTrail.Resource in Spark.extensions(resource) do
         resource

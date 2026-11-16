@@ -103,6 +103,18 @@ defmodule Rescord.Journal do
     end
   end
 
+  @doc """
+  The journal entry of a prescription, or `nil`. A task that gives a dose
+  finds the resident of its prescription with it.
+  """
+  def entry_of_prescription(prescription_id, opts \\ []) do
+    case Ash.get(Rescord.Journal.Prescription, prescription_id, [not_found_error?: false] ++ opts) do
+      {:ok, nil} -> {:ok, nil}
+      {:ok, prescription} -> entry(prescription.entry_id, opts)
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @doc "Whether a kind of entry is a part of the medical history."
   defdelegate medical?(kind), to: EntryKind
 

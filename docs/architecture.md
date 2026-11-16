@@ -183,6 +183,9 @@ same thing by hand.
   and the triggers of `ash_oban`. Use it for such a process, in place of a
   state machine and jobs written by hand.
 
+A task uses AshStateMachine alone (ADR 0032): it has one step, which waits
+for a person.
+
 AshWorkflow is installed (ADR 0010), with `ash_state_machine`, `ash_oban` and
 Oban. Oban starts in the supervision tree with the queues `default` and
 `workflow`, and the generated triggers publish to `workflow`. A workflow is
@@ -280,6 +283,18 @@ table (ADR 0025).
   of each medical kind. The time that a thing happened is an attribute of
   the entry. The author and an administrator correct an entry, through a
   grant with the scope `own`.
+- **A task** (ADR 0032) is due, done or skipped. It is not temporal, and it
+  names a resident, a group or a location by a plain id. A task that names a
+  prescription writes the dose to the journal when a member completes it.
+  `Rescord.Tasks.day/2` gives the tasks of a day of the organisation.
+- **A routine** (ADR 0033) is a task that repeats. It makes its tasks a
+  number of days ahead: the setting `task_days_ahead` of the organisation,
+  or the number of the routine. `Rescord.Tasks.Changes.SyncTasks` makes
+  them when the routine starts or changes, and Oban runs
+  `Rescord.Tasks.Workers.GenerateTasks` each hour for the later days.
+  `generated_until` on the routine says up to which instant its tasks exist,
+  so no task is made two times. `Rescord.Tasks.Pattern` gives the days of a
+  pattern with no database and no clock.
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

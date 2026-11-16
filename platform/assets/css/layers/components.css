@@ -221,13 +221,27 @@ article[data-place] > span[data-state] {
  * correction of a journal entry. While it is closed it is one quiet line,
  * and not a box in a box.
  */
-article > details:not([open]) {
+article > details:not([open]),
+td > details:not([open]) {
   padding: 0;
   background: none;
   border: 0;
 }
 
-article > details:not([open]) > summary {
+/* In a cell of a table, the closed action is beside the buttons. */
+td > details:not([open]) {
+  display: inline-block;
+  margin: 0;
+}
+
+/* A second line of a cell: the kind of a task, a note. */
+td > small {
+  display: block;
+  color: var(--muted);
+}
+
+article > details:not([open]) > summary,
+td > details:not([open]) > summary {
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--link);

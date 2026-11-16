@@ -13,7 +13,7 @@ defmodule RescordWeb.JournalLive do
 
   use RescordWeb, :live_view
 
-  alias Rescord.{Accounts, Journal, Lists, Residents}
+  alias Rescord.{Accounts, Journal, Lists, Residents, Tasks}
   alias RescordWeb.JournalWords
 
   @lists [:condition, :measure_kind, :procedure_kind, :unit]
@@ -34,7 +34,9 @@ defmodule RescordWeb.JournalLive do
          problems: [],
          authors: Map.new(members, &{&1.user_id, to_string(&1.email)}),
          lists: lists(options),
-         can_write?: Journal.role_can_write?(socket.assigns.role)
+         can_write?: Journal.role_can_write?(socket.assigns.role),
+         can_plan?: Tasks.role_can?(socket.assigns.role, :plan),
+         today: Accounts.today(socket.assigns.organisation)
        )
        |> assign_form(%{"kind" => "general"})}
     else
@@ -110,6 +112,40 @@ defmodule RescordWeb.JournalLive do
       {:error, error} ->
         {:noreply,
          socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
+    end
+  end
+
+  # Plans a task for one dose of a prescription of this journal. A member
+  # who completes that task writes the dose to the journal.
+  def handle_event("plan_dose", %{"entry_id" => id, "dose" => fields}, socket)
+      when is_binary(id) and is_map(fields) do
+    entry = Enum.find(socket.assigns.entries, &(&1.id == id and &1.prescription))
+
+    with %{} <- entry,
+         {:ok, due_at} <-
+           Accounts.local_instant(
+             socket.assigns.organisation,
+             "#{fields["date"]}T#{fields["time"]}"
+           ),
+         {:ok, _task} <-
+           Tasks.plan_task(
+             %{
+               title: "Medicate: #{entry.prescription.medication}",
+               note: entry.prescription.dose,
+               due_at: due_at,
+               prescription_id: entry.prescription.id,
+               resident_ids: [socket.assigns.resident.id]
+             },
+             options(socket)
+           ) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "The dose is in the tasks of that day.")
+       |> push_navigate(to: path(socket))}
+    else
+      nil -> {:noreply, socket}
+      {:error, words} when is_binary(words) -> {:noreply, assign(socket, problems: [words])}
+      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
     end
   end
 
@@ -383,6 +419,36 @@ defmodule RescordWeb.JournalLive do
             />
             <footer><.button type="submit">Save the correction</.button></footer>
           </form>
+        </details>
+
+        <details :if={entry.prescription && @can_plan?} id={"dose-details-#{entry.id}"}>
+          <summary>Plan a dose</summary>
+          <p>The dose is a task. The member who completes it writes the dose to this journal.</p>
+          <form id={"plan-dose-#{entry.id}"} phx-submit="plan_dose">
+            <input type="hidden" name="entry_id" value={entry.id} />
+            <.input
+              id={"plan-dose-#{entry.id}-date"}
+              name="dose[date]"
+              type="date"
+              label="Day"
+              value={Date.to_iso8601(@today)}
+              required
+            />
+            <.input
+              id={"plan-dose-#{entry.id}-time"}
+              name="dose[time]"
+              type="time"
+              label="Time"
+              value="08:00"
+              required
+            />
+            <footer><.button type="submit">Plan the dose</.button></footer>
+          </form>
+          <p>
+            <.link navigate={
+              ~p"/o/#{@organisation.short_name}/routines?prescription=#{entry.prescription.id}"
+            }>Plan the doses as a routine</.link>
+          </p>
         </details>
 
         <details :if={@can_write?} id={"add-details-#{entry.id}"}>

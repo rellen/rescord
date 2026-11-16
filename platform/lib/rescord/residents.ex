@@ -202,13 +202,19 @@ defmodule Rescord.Residents do
   def words(%Group{} = group), do: Ash.Resource.get_metadata(group, :words)
 
   @doc """
-  A name for a group that `group_with_facts/2` loaded: its own name, or the
-  names of its members.
+  A name for a group with its members and their names loaded: its own name,
+  or the names of its members in the order of the names. The order does not
+  depend on the order of the read.
   """
   def group_name(%Group{name: name}) when is_binary(name), do: name
 
   def group_name(%Group{members: members}) do
-    case Enum.map(members, &(&1.resident.name || "a resident with no name")) do
+    names =
+      members
+      |> Enum.sort_by(&(&1.resident.name || ""))
+      |> Enum.map(&(&1.resident.name || "a resident with no name"))
+
+    case names do
       [] -> "A group with no members"
       [one] -> one
       names -> Enum.join(Enum.drop(names, -1), ", ") <> " and " <> List.last(names)
