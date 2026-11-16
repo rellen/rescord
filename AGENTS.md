@@ -265,6 +265,13 @@ too.
   turns an instant into its date there. A test that needs two different
   dates at one instant uses two zones that are far apart, and no clock of
   its own.
+- **A `<details>` has an id** (ADR 0031). A form that a person does not
+  always need is in a `<details>` that is closed at first. Without an id it
+  closes when the page says what is wrong, with what the person typed.
+- **A refusal has one shape.** A change or a validation that adds an error
+  for a person with no sign-in gives that person `invalid` where the policy
+  gives `forbidden`. Let the policy refuse: do nothing in the change when
+  there is no actor.
 - **Words for a value.** A page never shows an atom. A fixed list has a word
   for each value in a module such as `RescordWeb.ResidentWords`, and a test
   holds the words to the type.
@@ -282,6 +289,7 @@ too.
 | `platform/lib/rescord/lists/` | the lists of values: a base list and a list of the organisation for each dimension |
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
+| `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |

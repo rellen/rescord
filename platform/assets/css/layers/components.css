@@ -213,3 +213,22 @@ article[data-place="free"] {
 article[data-place] > span[data-state] {
   justify-self: start;
 }
+
+/* --------------------------------------------------------------- journal */
+
+/*
+ * A card can offer an action that is closed at first, for example the
+ * correction of a journal entry. While it is closed it is one quiet line,
+ * and not a box in a box.
+ */
+article > details:not([open]) {
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+article > details:not([open]) > summary {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--link);
+}

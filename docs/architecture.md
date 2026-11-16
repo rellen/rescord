@@ -126,6 +126,9 @@ We do not write those by hand.
   needs `tsc`, which is not set up yet. The first module is
   `assets/js/cinder_tables.ts` (ADR 0017). `assets/js/app.js` is still the
   generator's file, and it imports the module.
+- **A `<details>` keeps its state** when LiveView draws the page again
+  (ADR 0031): `assets/js/details.ts` carries it over, and each `<details>`
+  of a page has an id.
 - **A hook may parse the data that the server sends with zod**, so that the
   shape of a `push_event` payload or of a `data-` attribute is checked where
   it enters the browser, and typed from there on. zod is not a dependency
@@ -273,6 +276,10 @@ table (ADR 0025).
 - **A member can say when a move happened.** `Rescord.Accounts.instant/2`
   turns the local time of a form into an instant that is not after now,
   and the write takes it as `as_of:`.
+- **The journal** (ADR 0030). `Rescord.Journal` has the entry and the facts
+  of each medical kind. The time that a thing happened is an attribute of
+  the entry. The author and an administrator correct an entry, through a
+  grant with the scope `own`.
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

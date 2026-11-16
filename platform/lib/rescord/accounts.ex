@@ -231,6 +231,11 @@ defmodule Rescord.Accounts do
   def instant(_tenant, _other),
     do: {:error, "The time is not a date and a time of this time zone"}
 
+  @doc "An instant as the date and the time in an organisation."
+  @spec local_time(Ash.Resource.record() | String.t(), DateTime.t()) :: DateTime.t()
+  def local_time(tenant, %DateTime{} = instant),
+    do: DateTime.shift_zone!(instant, time_zone_of(tenant), Tz.TimeZoneDatabase)
+
   @doc "The date in an organisation now."
   @spec today(Ash.Resource.record() | String.t()) :: Date.t()
   def today(tenant), do: local_date(tenant, DateTime.utc_now())

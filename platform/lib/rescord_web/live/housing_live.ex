@@ -89,7 +89,7 @@ defmodule RescordWeb.HousingLive do
       <p :if={@tree == []}>There is no location yet.</p>
       <.place :for={node <- @tree} node={node} organisation={@organisation} level={2} />
 
-      <details :if={@can_add?}>
+      <details :if={@can_add?} id="new-location">
         <summary>New location</summary>
         <.form for={@form} id="location" phx-submit="add">
           <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />

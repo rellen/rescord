@@ -29,7 +29,7 @@ defmodule Rescord.ListsTest do
   defp names(values), do: Enum.map(values, &to_string(&1.name))
 
   describe "the dimensions" do
-    test "are the seven that describe a resident, and the kinds of a group and a location" do
+    test "are the ones that Rescord has so far, in the order of a page" do
       assert Keyword.keys(Lists.dimensions()) ==
                [
                  :species,
@@ -40,7 +40,11 @@ defmodule Rescord.ListsTest do
                  :temperament,
                  :identifier_kind,
                  :group_kind,
-                 :location_kind
+                 :location_kind,
+                 :condition,
+                 :measure_kind,
+                 :procedure_kind,
+                 :unit
                ]
     end
 

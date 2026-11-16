@@ -27,6 +27,7 @@ import {hooks as colocatedHooks} from "phoenix-colocated/rescord"
 import {hooks as cinderHooks} from "phoenix-colocated/cinder"
 // The sort of a table column of Cinder, for a keyboard (ADR 0017).
 import {enhance as enhanceCinderTables, keep as keepCinderTables, listen as listenToCinderTables} from "./cinder_tables"
+import {keepOpen as keepDetailsOpen} from "./details"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -36,7 +37,10 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {...colocatedHooks, ...cinderHooks},
   // LiveView patches a table from markup that has none of our attributes.
   dom: {
-    onBeforeElUpdated: (from, to) => keepCinderTables(from, to),
+    onBeforeElUpdated: (from, to) => {
+      keepCinderTables(from, to)
+      keepDetailsOpen(from, to)
+    },
     onPatchEnd: () => enhanceCinderTables(),
   },
 })

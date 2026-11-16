@@ -1,0 +1,111 @@
+defmodule RescordWeb.JournalWords do
+  @moduledoc """
+  The words that a page uses for the journal: the kind of an entry, the
+  route of a medication, and the facts of an entry in one line.
+
+  A page never shows the atom of a value. `RescordWeb.JournalWordsTest`
+  holds the lists to the types.
+  """
+
+  alias RescordWeb.ResidentWords
+
+  @kinds [
+    examination: "Examination",
+    diagnosis: "Diagnosis",
+    measurement: "Measurement",
+    procedure: "Procedure",
+    vaccination: "Vaccination",
+    prescription: "Prescription",
+    dose: "Dose given",
+    placement: "Placement",
+    group: "Group",
+    behaviour: "Behaviour",
+    general: "General"
+  ]
+
+  @routes [
+    oral: "by mouth",
+    topical: "on the skin",
+    injection: "by injection",
+    eye: "in the eye",
+    ear: "in the ear",
+    other: "by another route"
+  ]
+
+  def kind(value), do: Keyword.fetch!(@kinds, value)
+  def route(value), do: Keyword.fetch!(@routes, value)
+
+  @doc "The options of a select, each as `{word, value}`."
+  def options(:kind), do: Enum.map(@kinds, fn {value, word} -> {word, Atom.to_string(value)} end)
+
+  def options(:route),
+    do:
+      Enum.map(@routes, fn {value, word} -> {String.capitalize(word), Atom.to_string(value)} end)
+
+  @doc "The values of a list, for the test that holds the words to the types."
+  def values(:kind), do: Keyword.keys(@kinds)
+  def values(:route), do: Keyword.keys(@routes)
+
+  @doc """
+  The kind of an entry for the text of a form, or `nil`. This makes no atom
+  from the text.
+  """
+  def kind_of(text) when is_binary(text) do
+    Enum.find_value(@kinds, fn {value, _word} -> if Atom.to_string(value) == text, do: value end)
+  end
+
+  def kind_of(_text), do: nil
+
+  @doc "A local date and time in words: `16 November 2026, 08:30`."
+  def time(%DateTime{} = local), do: Calendar.strftime(local, "%-d %B %Y, %H:%M")
+
+  @doc "The facts of an entry in one line, or `nil` for an entry with words only."
+  def facts(%{measurement: %{} = measurement}) do
+    unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""
+    "#{measurement.measure_kind.label}: #{number(measurement.value)}#{unit}"
+  end
+
+  def facts(%{diagnosis: %{} = diagnosis}), do: "Condition: #{diagnosis.condition.label}"
+  def facts(%{procedure: %{} = procedure}), do: "Procedure: #{procedure.procedure_kind.label}"
+  def facts(%{vaccination: %{} = vaccination}), do: "Vaccine: #{vaccination.vaccine}"
+
+  def facts(%{prescription: %{} = prescription}) do
+    [
+      prescription.medication,
+      prescription.dose,
+      prescription.route && route(prescription.route),
+      days(prescription.starts_on, prescription.ends_on)
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(", ")
+  end
+
+  def facts(%{dose: %{} = dose}) do
+    of = if match?(%{medication: _}, dose.prescription), do: dose.prescription.medication
+    [of, dose.amount] |> Enum.reject(&is_nil/1) |> Enum.join(": ") |> nil_if_empty()
+  end
+
+  def facts(_entry), do: nil
+
+  defp nil_if_empty(""), do: nil
+  defp nil_if_empty(text), do: text
+
+  defp days(nil, nil), do: nil
+  defp days(from, nil), do: "from #{ResidentWords.date(from)}"
+  defp days(nil, to), do: "to #{ResidentWords.date(to)}"
+  defp days(from, to), do: "#{ResidentWords.date(from)} to #{ResidentWords.date(to)}"
+
+  @doc "A number with a comma for each thousand, and no zeros after the point: `1,095`."
+  def number(%Decimal{} = value) do
+    [whole | rest] =
+      value |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.split(".")
+
+    grouped =
+      whole
+      |> String.reverse()
+      |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
+      |> String.reverse()
+
+    Enum.join([grouped | rest], ".")
+  end
+end

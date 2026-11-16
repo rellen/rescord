@@ -13,7 +13,7 @@ defmodule RescordWeb.ResidentLive do
 
   use RescordWeb, :live_view
 
-  alias Rescord.{Lists, Locations, Residents}
+  alias Rescord.{Journal, Lists, Locations, Residents}
   alias RescordWeb.ResidentWords
 
   @impl true
@@ -50,7 +50,8 @@ defmodule RescordWeb.ResidentLive do
          names: Residents.name_history(resident.id, options(socket)),
          desex_statuses: Residents.desex_history(resident.id, options(socket)),
          relations: Residents.relations(resident.id, options(socket)),
-         homes: homes(resident.id, options(socket))
+         homes: homes(resident.id, options(socket)),
+         measurements: measurements(resident.id, options(socket))
        )
        |> assign_choices()}
     else
@@ -79,6 +80,12 @@ defmodule RescordWeb.ResidentLive do
       parent_form: to_form(%{"parent_id" => "", "role" => "mother"}, as: :parent),
       family_form: to_form(%{"family_id" => "", "name" => ""}, as: :family)
     )
+  end
+
+  # The newest measurement of each kind, for example the weight.
+  defp measurements(resident_id, options) do
+    {:ok, latest} = Journal.latest_measurements(resident_id, options)
+    latest
   end
 
   defp homes(resident_id, options) do
@@ -272,6 +279,15 @@ defmodule RescordWeb.ResidentLive do
 
   defp name(resident), do: resident.name || "No name yet"
 
+  # `1,095 g, 16 November 2026`.
+  defp measurement_words(entry, organisation) do
+    measurement = entry.measurement
+    unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""
+    date = Rescord.Accounts.local_date(organisation, entry.happened_at)
+
+    "#{RescordWeb.JournalWords.number(measurement.value)}#{unit}, #{ResidentWords.date(date)}"
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -346,7 +362,11 @@ defmodule RescordWeb.ResidentLive do
           </:item>
         </.list>
 
-        <details :if={is_nil(@resident.arrival) and can?(@role, :arrival, :record)} open>
+        <details
+          :if={is_nil(@resident.arrival) and can?(@role, :arrival, :record)}
+          id="arrival-details"
+          open
+        >
           <summary>Record the arrival</summary>
           <.form for={@arrival_form} id="arrival" phx-submit="record_arrival">
             <.input
@@ -375,7 +395,10 @@ defmodule RescordWeb.ResidentLive do
           </p>
         </div>
 
-        <details :if={@resident.status == :in_care and can?(@role, :absence, :start)}>
+        <details
+          :if={@resident.status == :in_care and can?(@role, :absence, :start)}
+          id="absence-details"
+        >
           <summary>Mark as away for a time</summary>
           <.form for={@absence_form} id="absence" phx-submit="start_absence">
             <.input field={@absence_form[:reason]} type="text" label="Where and why" required />
@@ -400,9 +423,10 @@ defmodule RescordWeb.ResidentLive do
           </p>
         </div>
 
-        <details :if={
-          @resident.arrival && is_nil(@resident.departure) && can?(@role, :departure, :record)
-        }>
+        <details
+          :if={@resident.arrival && is_nil(@resident.departure) && can?(@role, :departure, :record)}
+          id="departure-details"
+        >
           <summary>Record the departure</summary>
           <.form for={@departure_form} id="departure" phx-submit="record_departure">
             <.input
@@ -418,6 +442,24 @@ defmodule RescordWeb.ResidentLive do
             <footer><.button type="submit">Record the departure</.button></footer>
           </.form>
         </details>
+      </section>
+
+      <section aria-labelledby="journal-heading">
+        <h2 id="journal-heading">Journal</h2>
+        <p :if={@measurements == []}>No measurement is recorded.</p>
+        <.list :if={@measurements != []}>
+          <:item :for={entry <- @measurements} title={to_string(entry.measurement.measure_kind.label)}>
+            {measurement_words(entry, @organisation)}
+          </:item>
+        </.list>
+        <p>
+          <.link
+            navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal"}
+            data-variant="secondary"
+          >
+            Open the journal
+          </.link>
+        </p>
       </section>
 
       <section aria-labelledby="relations-heading">
@@ -440,7 +482,7 @@ defmodule RescordWeb.ResidentLive do
           </li>
         </ul>
 
-        <details :if={can?(@role, :parent, :record) and @other_residents != []}>
+        <details :if={can?(@role, :parent, :record) and @other_residents != []} id="parent-details">
           <summary>Add a parent</summary>
           <.form for={@parent_form} id="parent" phx-submit="record_parent">
             <.input
@@ -488,7 +530,7 @@ defmodule RescordWeb.ResidentLive do
           </li>
         </ul>
 
-        <details :if={can?(@role, :family_member, :add)}>
+        <details :if={can?(@role, :family_member, :add)} id="family-details">
           <summary>Add to a family</summary>
           <.form for={@family_form} id="family" phx-submit="add_to_family">
             <.input
@@ -540,7 +582,10 @@ defmodule RescordWeb.ResidentLive do
           </li>
         </ul>
 
-        <details :if={can?(@role, :identifier, :add) and @identifier_kinds != []}>
+        <details
+          :if={can?(@role, :identifier, :add) and @identifier_kinds != []}
+          id="identifier-details"
+        >
           <summary>Add an identifier</summary>
           <.form for={@identifier_form} id="identifier" phx-submit="add_identifier">
             <.input
@@ -594,7 +639,7 @@ defmodule RescordWeb.ResidentLive do
       </section>
       <section :if={can?(@role, :resident, :remove)} aria-labelledby="remove-heading">
         <h2 id="remove-heading">Remove</h2>
-        <details>
+        <details id="remove-details">
           <summary>Remove this resident</summary>
           <p>
             Remove a resident only when somebody recorded it by mistake. For a resident that left,

@@ -209,7 +209,7 @@ defmodule RescordWeb.LocationLive do
           </li>
         </ul>
 
-        <details :if={can?(@role, :placement, :place)}>
+        <details :if={can?(@role, :placement, :place)} id="put-here">
           <summary>Put a resident or a group here</summary>
           <.form for={@place_form} id="placement" phx-submit="place">
             <.input
@@ -250,7 +250,7 @@ defmodule RescordWeb.LocationLive do
 
       <section :if={can?(@role, :location, :revise)} aria-labelledby="change-heading">
         <h2 id="change-heading">Change</h2>
-        <details>
+        <details id="change-location">
           <summary>Change the location</summary>
           <.form for={@form} id="location" phx-submit="revise">
             <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
@@ -270,7 +270,7 @@ defmodule RescordWeb.LocationLive do
             <footer><.button type="submit">Save the location</.button></footer>
           </.form>
         </details>
-        <details>
+        <details id="move-location">
           <summary>Put this location inside another</summary>
           <.form for={@move_form} id="move" phx-submit="move">
             <.input
@@ -283,7 +283,7 @@ defmodule RescordWeb.LocationLive do
             <footer><.button type="submit">Move the location</.button></footer>
           </.form>
         </details>
-        <details>
+        <details id="close-location">
           <summary>Close this location</summary>
           <p>Close a location that the organisation uses no more. Its history stays.</p>
           <.button phx-click="close">Close the location</.button>

@@ -183,7 +183,7 @@ defmodule RescordWeb.ListsLive do
           </li>
         </ul>
 
-        <details :if={@can_change?}>
+        <details :if={@can_change?} id={"add-details-#{list.key}"}>
           <summary>Add a value to {String.downcase(list.name)}</summary>
           <form :if={list.unused != []} id={"use-#{list.key}"} phx-submit="use">
             <input type="hidden" name="dimension" value={list.key} />

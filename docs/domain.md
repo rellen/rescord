@@ -295,7 +295,11 @@ to add to a journal entry:
 
 Use a correction only for a mistake in the entry.
 
-*Proposal.* A journal entry has one of these kinds:
+Rescord has the journal (ADR 0030): an entry with the facts of its kind, the
+time that the thing happened, an addendum, and a correction. It does not
+have the timeline or an attachment yet.
+
+A journal entry has one of these kinds:
 
 | Kind | Part of the medical history |
 | --- | --- |
@@ -419,7 +423,7 @@ This section applies the answers of section 4 and the proposals of sections
 There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
 `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
 `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has the first nine.
+Rescord has each one but `TaskKind` and `ItemCategory`.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each
@@ -506,6 +510,8 @@ difficulty.
 5. A routine makes its tasks a number of days ahead. Can one routine have a
    number of its own, for example a vaccination each 12 months? This
    document reads the answer of the maintainer in that way.
-6. A placement has a time that a member gives for when it happened. The
-   code does not have that time yet for an absence, a change to a group,
-   and a journal entry.
+6. A placement and a journal entry have a time that a member gives for
+   when the thing happened. The code does not have that time yet for an
+   absence and a change to a group.
+7. Does a measure kind have one unit? A member can record a weight in
+   another unit by mistake.

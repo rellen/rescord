@@ -189,7 +189,10 @@ defmodule RescordWeb.CinderTest do
         |> Enum.join("\n")
 
       # Without the first, a patch takes the focus off a sort control.
-      assert code =~ "onBeforeElUpdated: (from, to) => keepCinderTables(from, to)"
+      # The page keeps a table, and a <details>, before each update (ADR 0031).
+      assert code =~ "onBeforeElUpdated: (from, to) => {"
+      assert code =~ "keepCinderTables(from, to)"
+      assert code =~ "keepDetailsOpen(from, to)"
       assert code =~ "onPatchEnd: () => enhanceCinderTables()"
       assert code =~ "listenToCinderTables()"
     end

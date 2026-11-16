@@ -22,7 +22,11 @@ defmodule Rescord.ResidentsFixtures do
           size_class: ["Small"],
           coat: ["Rough", "Smooth"],
           temperament: ["Shy", "Confident"],
-          identifier_kind: ["Microchip", "Ear tag"]
+          identifier_kind: ["Microchip", "Ear tag"],
+          condition: ["Respiratory infection"],
+          measure_kind: ["Weight", "Temperature"],
+          procedure_kind: ["Desexing"],
+          unit: ["g"]
         ],
         into: %{} do
       values =

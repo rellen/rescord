@@ -168,7 +168,7 @@ defmodule RescordWeb.GroupLive do
           </:item>
         </.list>
 
-        <details :if={can?(@role, :group, :revise)}>
+        <details :if={can?(@role, :group, :revise)} id="change-group">
           <summary>Change the group</summary>
           <.form for={@form} id="group" phx-submit="revise">
             <.input
@@ -214,7 +214,7 @@ defmodule RescordWeb.GroupLive do
           </li>
         </ul>
 
-        <details :if={can?(@role, :group_member, :join) and @others != []}>
+        <details :if={can?(@role, :group_member, :join) and @others != []} id="add-member">
           <summary>Add a member</summary>
           <.form for={@join_form} id="member" phx-submit="join">
             <.input
@@ -232,7 +232,7 @@ defmodule RescordWeb.GroupLive do
 
       <section :if={can?(@role, :group, :close)} aria-labelledby="close-heading">
         <h2 id="close-heading">Close</h2>
-        <details>
+        <details id="close-group">
           <summary>Close this group</summary>
           <p>Close a group that is no more. Its history stays.</p>
           <.button phx-click="close">Close the group</.button>

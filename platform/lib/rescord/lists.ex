@@ -41,6 +41,10 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.Base.IdentifierKind
     resource Rescord.Lists.Base.GroupKind
     resource Rescord.Lists.Base.LocationKind
+    resource Rescord.Lists.Base.Condition
+    resource Rescord.Lists.Base.MeasureKind
+    resource Rescord.Lists.Base.ProcedureKind
+    resource Rescord.Lists.Base.Unit
 
     resource Rescord.Lists.Species
     resource Rescord.Lists.Breed
@@ -51,6 +55,10 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.IdentifierKind
     resource Rescord.Lists.GroupKind
     resource Rescord.Lists.LocationKind
+    resource Rescord.Lists.Condition
+    resource Rescord.Lists.MeasureKind
+    resource Rescord.Lists.ProcedureKind
+    resource Rescord.Lists.Unit
   end
 
   # The key of each dimension, its name for a person, and its two resources.
@@ -63,7 +71,11 @@ defmodule Rescord.Lists do
     {:temperament, "Temperament", Base.Temperament, Rescord.Lists.Temperament},
     {:identifier_kind, "Identifier kind", Base.IdentifierKind, Rescord.Lists.IdentifierKind},
     {:group_kind, "Group kind", Base.GroupKind, Rescord.Lists.GroupKind},
-    {:location_kind, "Location kind", Base.LocationKind, Rescord.Lists.LocationKind}
+    {:location_kind, "Location kind", Base.LocationKind, Rescord.Lists.LocationKind},
+    {:condition, "Condition", Base.Condition, Rescord.Lists.Condition},
+    {:measure_kind, "Measure kind", Base.MeasureKind, Rescord.Lists.MeasureKind},
+    {:procedure_kind, "Procedure kind", Base.ProcedureKind, Rescord.Lists.ProcedureKind},
+    {:unit, "Unit", Base.Unit, Rescord.Lists.Unit}
   ]
 
   @doc "The dimensions, each as `{key, name}`, in the order of a page."

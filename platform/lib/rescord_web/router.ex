@@ -60,6 +60,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/residents/new", ResidentFormLive, :new
       live "/o/:organisation/residents/:id", ResidentLive
       live "/o/:organisation/residents/:id/edit", ResidentFormLive, :edit
+      live "/o/:organisation/residents/:id/journal", JournalLive
     end
   end
 

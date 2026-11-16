@@ -427,8 +427,19 @@ defmodule Rescord.Accounts.OrganisationTest do
     end
 
     test "give a member less than an administrator" do
-      assert Grants.grants(:member) -- Grants.grants(:administrator) == []
+      # A member has no action that an administrator does not have. The scope
+      # of a member can be less: the entries that they wrote, for example.
+      actions = fn role ->
+        for {resource, action, _scope} <- Grants.grants(role), do: {resource, action}
+      end
+
+      assert actions.(:member) -- actions.(:administrator) == []
       assert length(Grants.grants(:administrator)) > length(Grants.grants(:member))
+
+      for {resource, action, scope} <- Grants.grants(:member), scope != :all do
+        assert {:ok, :all} = Grants.scope(:administrator, resource, action)
+      end
+
       assert Grants.grants(:nobody) == []
     end
 

@@ -27,7 +27,14 @@ defmodule RescordWeb do
   """
 
   use Boundary,
-    deps: [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations],
+    deps: [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Lists,
+      Rescord.Residents,
+      Rescord.Locations,
+      Rescord.Journal
+    ],
     exports: [Endpoint, Telemetry],
     check: [aliases: true, apps: [:ash]]
 

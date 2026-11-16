@@ -103,7 +103,7 @@ defmodule RescordWeb.GroupsLive do
         </table>
       </div>
 
-      <details :if={@can_form?}>
+      <details :if={@can_form?} id="new-group">
         <summary>New group</summary>
         <.form for={@form} id="group" phx-submit="form">
           <.input field={@form[:name]} type="text" label="Name, if the group has one" maxlength="80" />
