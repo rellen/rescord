@@ -187,6 +187,11 @@ defmodule Rescord.TimelineTest do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
 
+    # The resident has a change of each domain to read.
+    {:ok, _} = Locations.settle({:resident, context.fern.id}, context.east.id, context.options)
+    assert [%{subject: :placement}] = Locations.changes(context.fern.id, context.options)
+    assert [_name, _arrival] = Residents.changes(context.fern.id, context.options)
+
     for actor <- [outsider, nil] do
       options = [actor: actor, tenant: context.organisation]
 
@@ -197,6 +202,6 @@ defmodule Rescord.TimelineTest do
 
     # A root user reads it.
     assert events(context, actor: context.root, tenant: context.organisation) ==
-             [name: :started, arrival: :started]
+             [name: :started, arrival: :started, placement: :started]
   end
 end
