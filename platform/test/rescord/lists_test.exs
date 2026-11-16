@@ -256,6 +256,57 @@ defmodule Rescord.ListsTest do
     end
   end
 
+  describe "a value that is retired" do
+    setup context do
+      options = [actor: context.administrator, tenant: context.organisation]
+      {:ok, rex} = Lists.add_local_value(:breed, "Rex", options)
+      {:ok, sheltie} = Lists.add_local_value(:breed, "Sheltie", options)
+      {:ok, rex: rex, sheltie: sheltie, options: options}
+    end
+
+    test "stays in the list, and no form offers it", context do
+      assert {:ok, %{retired: true}} = Lists.retire_value(:breed, context.rex.id, context.options)
+
+      assert {:ok, values} = Lists.values(:breed, context.options)
+
+      assert Enum.map(values, &{to_string(&1.label), &1.retired}) ==
+               [{"Rex", true}, {"Sheltie", false}]
+
+      assert {:ok, offered} = Lists.offered_values(:breed, context.options)
+      assert labels(offered) == ["Sheltie"]
+    end
+
+    test "comes again when an administrator restores it", context do
+      {:ok, _} = Lists.retire_value(:breed, context.rex.id, context.options)
+      before = DateTime.utc_now()
+
+      assert {:ok, %{retired: false}} =
+               Lists.restore_value(:breed, context.rex.id, context.options)
+
+      assert {:ok, offered} = Lists.offered_values(:breed, context.options)
+      assert labels(offered) == ["Rex", "Sheltie"]
+
+      # At the instant before, it was retired.
+      assert {:ok, then} = Lists.offered_values(:breed, [as_of: before] ++ context.options)
+      assert labels(then) == ["Sheltie"]
+    end
+
+    test "is not a thing that a member can do, and no input sets it", context do
+      member = [actor: context.member, tenant: context.organisation]
+
+      assert {:error, %Ash.Error.Forbidden{}} = Lists.retire_value(:breed, context.rex.id, member)
+
+      {:ok, _} = Lists.retire_value(:breed, context.rex.id, context.options)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Lists.restore_value(:breed, context.rex.id, member)
+
+      for action <- [:add_local, :add_shared, :rename, :retire, :restore] do
+        refute :retired in Ash.Resource.Info.action(Lists.Breed, action).accept
+      end
+    end
+  end
+
   describe "the grants of the lists" do
     test "are in the grants of each role" do
       assert Rescord.Lists.Grants in Rescord.Accounts.Grants.sources()

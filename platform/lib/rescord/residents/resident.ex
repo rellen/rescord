@@ -46,9 +46,13 @@ defmodule Rescord.Residents.Resident do
   actions do
     defaults [:read]
 
+    destroy :remove do
+      description "Removes a resident that was recorded by mistake. The row and its history stay"
+    end
+
     create :register do
       description "Records a new resident, with its facts"
-      accept [:species_id, :sex, :born_on, :born_on_estimated?, :size_class_id, :coat_id]
+      accept [:species_id, :sex, :born_on, :born_on_estimated, :size_class_id, :coat_id]
 
       argument :name, :string, constraints: [max_length: 80]
       argument :desex_status, Residents.DesexStatus, default: :unknown
@@ -68,7 +72,7 @@ defmodule Rescord.Residents.Resident do
       description "Changes the facts of a resident. An argument that is not given changes nothing"
       # The change writes other resources after the update.
       require_atomic? false
-      accept [:species_id, :sex, :born_on, :born_on_estimated?, :size_class_id, :coat_id]
+      accept [:species_id, :sex, :born_on, :born_on_estimated, :size_class_id, :coat_id]
 
       argument :name, :string, constraints: [max_length: 80]
       argument :desex_status, Residents.DesexStatus
@@ -104,11 +108,11 @@ defmodule Rescord.Residents.Resident do
       description "The date of birth. Rescord calculates the age from it"
     end
 
-    attribute :born_on_estimated?, :boolean do
+    # The name has no `?`, so the column has the same name (ADR 0027).
+    attribute :born_on_estimated, :boolean do
       allow_nil? false
       default false
       public? true
-      source :born_on_is_estimated
     end
   end
 

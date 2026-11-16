@@ -48,7 +48,7 @@ defmodule Rescord.ResidentsTest do
             species_id: lists.species.guinea_pig,
             sex: :male,
             born_on: ~D[2025-03-01],
-            born_on_estimated?: true,
+            born_on_estimated: true,
             size_class_id: lists.size_class.small,
             coat_id: lists.coat.rough,
             desex_status: :desexed,
@@ -67,7 +67,7 @@ defmodule Rescord.ResidentsTest do
       assert resident.name == "Biscuit"
       assert resident.sex == :male
       assert resident.born_on == ~D[2025-03-01]
-      assert resident.born_on_estimated?
+      assert resident.born_on_estimated
       assert resident.desex_status == :desexed
       assert resident.status == :in_care
       assert to_string(resident.species.label) == "Guinea pig"
@@ -537,6 +537,56 @@ defmodule Rescord.ResidentsTest do
                Residents.residents!(
                  [query: [filter: [status: :expected]], load: [:name]] ++ context.options
                )
+    end
+  end
+
+  describe "a resident that was recorded by mistake" do
+    test "goes when an administrator removes it, and its history stays", context do
+      resident = resident!(context.lists, context.options)
+      other = resident!(context.lists, context.options, %{name: "Pepper"})
+      before = DateTime.utc_now()
+
+      administrator = [actor: context.administrator, tenant: context.organisation]
+      assert :ok = Residents.remove_resident(resident, administrator)
+
+      assert Residents.resident!(resident.id, context.options) == nil
+      assert [%{id: id}] = Residents.residents!(context.options)
+      assert id == other.id
+
+      # At the instant before, the resident was there with its facts.
+      assert facts(resident, [as_of: before] ++ context.options).name == "Biscuit"
+    end
+
+    test "does not go for a member, and goes for a root user", context do
+      resident = resident!(context.lists, context.options)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Residents.remove_resident(resident, context.options)
+
+      assert count(context.options) == 1
+      refute Residents.role_can?(:member, :resident, :remove)
+      assert Residents.role_can?(:administrator, :resident, :remove)
+
+      assert :ok =
+               Residents.remove_resident(resident,
+                 actor: context.root,
+                 tenant: context.organisation
+               )
+
+      assert count(context.options) == 0
+    end
+
+    test "keeps a value that its organisation retired", context do
+      lists = context.lists
+      resident = resident!(lists, context.options, %{breed_ids: [lists.breed.rex]})
+
+      {:ok, _} =
+        Rescord.Lists.retire_value(:breed, lists.breed.rex,
+          actor: context.administrator,
+          tenant: context.organisation
+        )
+
+      assert labels(facts(resident, context.options).resident_breeds, :breed) == ["Rex"]
     end
   end
 

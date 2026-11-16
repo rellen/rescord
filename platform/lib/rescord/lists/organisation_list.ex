@@ -8,8 +8,12 @@ defmodule Rescord.Lists.OrganisationList do
   for its species, and that table is in the schema of its organisation.
 
   An administrator adds a value and gives a local value a new name. Each
-  member reads the list. No action removes a value yet: a resident can name
-  it.
+  member reads the list.
+
+  An administrator retires a value that the organisation does not want for
+  a new choice. A resident that has the value keeps it, and a page still
+  shows it: the row stays, with `retired` true. No form offers a retired
+  value. An administrator can restore it.
 
       defmodule Rescord.Lists.Species do
         use Rescord.Lists.OrganisationList, table: "species", base: Rescord.Lists.Base.Species
@@ -62,6 +66,18 @@ defmodule Rescord.Lists.OrganisationList do
           validate absent(:base_id),
             message: "is a shared value, which has the name of the base list"
         end
+
+        update :retire do
+          description "Stops the offer of the value for a new choice"
+          accept []
+          change set_attribute(:retired, true)
+        end
+
+        update :restore do
+          description "Offers a retired value again"
+          accept []
+          change set_attribute(:retired, false)
+        end
       end
 
       policies do
@@ -80,6 +96,16 @@ defmodule Rescord.Lists.OrganisationList do
         attribute :name, :ci_string do
           public? true
           constraints min_length: 1, max_length: 60
+        end
+
+        # The name has no `?`, so the column has the same name: the version
+        # resource of a temporal resource reads the column by the name of
+        # the attribute (ADR 0027).
+        attribute :retired, :boolean do
+          allow_nil? false
+          default false
+          public? true
+          writable? false
         end
       end
 

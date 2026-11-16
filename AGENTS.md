@@ -236,6 +236,11 @@ too.
   - It is temporal by default. Each change, validation and preparation that
     you write for it declares `temporal_safe?/1`, and reads the instant of
     the action and not the clock.
+  - An attribute has the name of its column: no `source`, and so no `?` in
+    the name of a boolean (ADR 0027). The compiler refuses the opposite.
+  - When you give an attribute a new name, read the migration. The generator
+    writes a new column and the removal of the old one, which loses each
+    value. Change that to `rename`.
   - A relationship between two temporal resources names its period keys:
     `temporal_keys {:valid_at, :valid_at}`.
   - After `mix ash.codegen` makes a tenant migration, run

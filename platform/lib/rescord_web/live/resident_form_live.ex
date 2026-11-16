@@ -23,13 +23,13 @@ defmodule RescordWeb.ResidentFormLive do
 
   @impl true
   def mount(params, _session, socket) do
-    socket = assign(socket, problems: [], lists: lists(socket))
+    socket = assign(socket, problems: [])
 
     case socket.assigns.live_action do
       :new ->
         {:ok,
          socket
-         |> assign(page_title: "New resident", resident: nil)
+         |> assign(page_title: "New resident", resident: nil, lists: lists(socket, nil))
          |> assign_form(%{"sex" => "unknown", "desex_status" => "unknown"})}
 
       :edit ->
@@ -38,6 +38,7 @@ defmodule RescordWeb.ResidentFormLive do
             {:ok,
              socket
              |> assign(page_title: "Change #{resident.name || "a resident"}", resident: resident)
+             |> assign(lists: lists(socket, resident))
              |> assign_form(fields_of(resident))}
 
           _no_resident ->
@@ -53,12 +54,29 @@ defmodule RescordWeb.ResidentFormLive do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
 
-  # The values of each list of the organisation, as `{label, id}`.
-  defp lists(socket) do
+  # The values that the form offers for each list, as `{label, id}`. A
+  # retired value is there only when the resident has it, so that a change
+  # to another fact does not take it away.
+  defp lists(socket, resident) do
+    has = if resident, do: values_of(resident), else: MapSet.new()
+
     for {key, _field} <- @one ++ @many, into: %{} do
       {:ok, values} = Lists.values(key, options(socket))
-      {key, Enum.map(values, &{to_string(&1.label), &1.id})}
+
+      {key,
+       for value <- values, not value.retired or MapSet.member?(has, value.id) do
+         {to_string(value.label), value.id}
+       end}
     end
+  end
+
+  defp values_of(resident) do
+    MapSet.new(
+      [resident.species_id, resident.size_class_id, resident.coat_id] ++
+        Enum.map(resident.resident_breeds, & &1.breed_id) ++
+        Enum.map(resident.resident_colours, & &1.colour_id) ++
+        Enum.map(resident.resident_temperaments, & &1.temperament_id)
+    )
   end
 
   defp assign_form(socket, fields) do
@@ -72,7 +90,7 @@ defmodule RescordWeb.ResidentFormLive do
       "sex" => Atom.to_string(resident.sex),
       "desex_status" => Atom.to_string(resident.desex_status),
       "born_on" => if(resident.born_on, do: Date.to_iso8601(resident.born_on), else: ""),
-      "born_on_estimated" => to_string(resident.born_on_estimated?),
+      "born_on_estimated" => to_string(resident.born_on_estimated),
       "size_class_id" => resident.size_class_id || "",
       "coat_id" => resident.coat_id || "",
       "breed_ids" => Enum.map(resident.resident_breeds, & &1.breed_id),
@@ -123,7 +141,7 @@ defmodule RescordWeb.ResidentFormLive do
       sex: text(fields["sex"]),
       desex_status: text(fields["desex_status"]),
       born_on: text(fields["born_on"]),
-      born_on_estimated?: fields["born_on_estimated"] == "true",
+      born_on_estimated: fields["born_on_estimated"] == "true",
       size_class_id: text(fields["size_class_id"]),
       coat_id: text(fields["coat_id"]),
       breed_ids: ids(fields["breed_ids"]),

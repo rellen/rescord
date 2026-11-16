@@ -16,7 +16,7 @@ defmodule Rescord.Lists.Grants do
       administrator:
         for(
           list <- lists,
-          action <- [:read, :add_shared, :add_local, :rename],
+          action <- [:read, :add_shared, :add_local, :rename, :retire, :restore],
           do: {list, action, :all}
         ),
       member: for(list <- lists, do: {list, :read, :all})

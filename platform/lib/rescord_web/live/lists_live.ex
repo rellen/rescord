@@ -38,7 +38,17 @@ defmodule RescordWeb.ListsLive do
     lists =
       for {key, name} <- Lists.dimensions() do
         {:ok, values} = Lists.shared_values(key, options(socket))
-        %{key: key, name: name, values: Enum.map(values, &{to_string(&1.name), nil}), unused: []}
+
+        %{
+          key: key,
+          name: name,
+          values:
+            Enum.map(
+              values,
+              &%{id: &1.id, label: to_string(&1.name), origin: nil, retired?: false}
+            ),
+          unused: []
+        }
       end
 
     assign(socket, lists: lists)
@@ -54,7 +64,15 @@ defmodule RescordWeb.ListsLive do
           key: key,
           name: name,
           values:
-            Enum.map(values, &{to_string(&1.label), if(&1.base_id, do: "shared", else: "local")}),
+            Enum.map(
+              values,
+              &%{
+                id: &1.id,
+                label: to_string(&1.label),
+                origin: if(&1.base_id, do: "shared", else: "local"),
+                retired?: &1.retired
+              }
+            ),
           unused: Enum.map(unused, &{to_string(&1.name), &1.id})
         }
       end
@@ -70,6 +88,20 @@ defmodule RescordWeb.ListsLive do
         do: Lists.add_shared_value(key, name, options(socket)),
         else: Lists.add_local_value(key, name, options(socket))
     end)
+  end
+
+  def handle_event("retire", %{"dimension" => dimension, "id" => id}, socket)
+      when is_binary(id) do
+    if socket.assigns.shared?,
+      do: {:noreply, socket},
+      else: write(socket, dimension, &Lists.retire_value(&1, id, options(socket)))
+  end
+
+  def handle_event("restore", %{"dimension" => dimension, "id" => id}, socket)
+      when is_binary(id) do
+    if socket.assigns.shared?,
+      do: {:noreply, socket},
+      else: write(socket, dimension, &Lists.restore_value(&1, id, options(socket)))
   end
 
   def handle_event("use", %{"dimension" => dimension, "value" => %{"base_id" => id}}, socket)
@@ -127,9 +159,27 @@ defmodule RescordWeb.ListsLive do
 
         <p :if={list.values == []}>The list is empty.</p>
         <ul :if={list.values != []}>
-          <li :for={{label, origin} <- list.values}>
-            {label}
-            <small :if={origin}>({origin})</small>
+          <li :for={value <- list.values}>
+            {value.label}
+            <small :if={value.origin}>({value.origin}{if value.retired?, do: ", retired"})</small>
+            <.button
+              :if={@can_change? and not @shared? and not value.retired?}
+              phx-click="retire"
+              phx-value-dimension={list.key}
+              phx-value-id={value.id}
+              aria-label={"Retire #{value.label} from #{String.downcase(list.name)}"}
+            >
+              Retire
+            </.button>
+            <.button
+              :if={@can_change? and not @shared? and value.retired?}
+              phx-click="restore"
+              phx-value-dimension={list.key}
+              phx-value-id={value.id}
+              aria-label={"Restore #{value.label} to #{String.downcase(list.name)}"}
+            >
+              Restore
+            </.button>
           </li>
         </ul>
 

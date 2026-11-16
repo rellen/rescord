@@ -40,6 +40,7 @@ defmodule Rescord.Residents do
       define :resident, action: :read, get_by: [:id], not_found_error?: false
       define :register_resident, action: :register
       define :revise_resident, action: :revise
+      define :remove_resident, action: :remove
     end
 
     resource Rescord.Residents.ResidentName

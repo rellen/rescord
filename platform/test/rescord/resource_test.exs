@@ -66,6 +66,50 @@ defmodule Rescord.ResourceTest do
     end
   end
 
+  describe "a temporal resource with a paper trail" do
+    test "does not compile with an attribute whose column has another name" do
+      error =
+        assert_raise Spark.Error.DslError, fn ->
+          Code.compile_string("""
+          defmodule Rescord.ResourceTest.RenamedColumn do
+            use Rescord.Resource, domain: Rescord.ResourceFixtures.Domain
+
+            postgres do
+              table "renamed_columns"
+            end
+
+            attributes do
+              uuid_primary_key :id
+              attribute :gone?, :boolean, source: :is_gone
+            end
+          end
+          """)
+        end
+
+      assert Exception.message(error) =~ "cannot give an attribute a column of another name"
+      assert Exception.message(error) =~ ":gone?"
+    end
+
+    test "compiles with such an attribute when it is not temporal" do
+      assert [{Rescord.ResourceTest.RenamedPlain, _binary}] =
+               Code.compile_string("""
+               defmodule Rescord.ResourceTest.RenamedPlain do
+                 use Rescord.Resource, domain: Rescord.ResourceFixtures.Domain, temporal?: false
+
+                 postgres do
+                   table "renamed_plains"
+                 end
+
+                 attributes do
+                   uuid_primary_key :id
+                   attribute :gone?, :boolean, source: :is_gone
+                 end
+               end
+               """)
+               |> Enum.filter(&(elem(&1, 0) == Rescord.ResourceTest.RenamedPlain))
+    end
+  end
+
   describe "a resource with a workflow" do
     test "compiles when it is not temporal, and keeps a trail in a table of its own" do
       refute Ash.Resource.Info.temporal?(Flow)

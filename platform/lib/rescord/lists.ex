@@ -124,6 +124,29 @@ defmodule Rescord.Lists do
     end
   end
 
+  @doc """
+  The values that a form offers for a dimension: each value of the
+  organisation that is not retired, with its `label`.
+  """
+  def offered_values(key, opts \\ []) do
+    with {:ok, values} <- values(key, opts) do
+      {:ok, Enum.reject(values, & &1.retired)}
+    end
+  end
+
+  @doc "Retires a value of an organisation: no form offers it for a new choice."
+  def retire_value(key, id, opts \\ []), do: change_value(key, id, :retire, opts)
+
+  @doc "Offers a retired value of an organisation again."
+  def restore_value(key, id, opts \\ []), do: change_value(key, id, :restore, opts)
+
+  defp change_value(key, id, action, opts) do
+    with {:ok, list} <- fetch(&list/1, key),
+         {:ok, value} <- Ash.get(list, id, opts) do
+      value |> Ash.Changeset.for_update(action, %{}, opts) |> Ash.update()
+    end
+  end
+
   @doc "The shared values of a dimension that the organisation does not use yet."
   def unused_shared_values(key, opts \\ []) do
     with {:ok, values} <- values(key, opts),

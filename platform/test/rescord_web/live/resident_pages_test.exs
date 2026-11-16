@@ -154,6 +154,80 @@ defmodule RescordWeb.ResidentPagesTest do
     end
   end
 
+  describe "a value that an administrator retires" do
+    test "stays on the lists page, with a button to restore it", context do
+      lists = lists!(context.organisation, context.root)
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, html} = open(conn, context.base <> "/lists")
+
+      assert html =~ ~s(aria-label="Retire Rex from breed")
+
+      {:ok, view, _html} =
+        view
+        |> render_click("retire", %{"dimension" => "breed", "id" => lists.breed.rex})
+        |> follow_redirect(conn)
+
+      html = render_async(view)
+      assert html =~ "(local, retired)"
+      assert html =~ ~s(aria-label="Restore Rex to breed")
+      refute html =~ ~s(aria-label="Retire Rex from breed")
+
+      # A member sees that it is retired, and has no button.
+      {_view, html} = open(context.conn, context.base <> "/lists")
+      assert html =~ "(local, retired)"
+      refute html =~ ~s(phx-click="restore")
+      refute html =~ ~s(phx-click="retire")
+    end
+
+    test "is not in the form of a new resident, and is in the form of one that has it", context do
+      lists = lists!(context.organisation, context.root)
+      resident = resident!(lists, context.options, %{breed_ids: [lists.breed.rex]})
+      admin = [actor: context.administrator, tenant: context.organisation]
+      {:ok, _} = Lists.retire_value(:breed, lists.breed.rex, admin)
+      {:ok, _} = Lists.retire_value(:breed, lists.breed.sheltie, admin)
+
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+      refute has_element?(view, ~s(input[type="checkbox"][value="#{lists.breed.rex}"]))
+      assert has_element?(view, ~s(input[type="checkbox"][value="#{lists.breed.abyssinian}"]))
+
+      {view, _html} = open(context.conn, context.base <> "/residents/#{resident.id}/edit")
+      assert has_element?(view, ~s(input[type="checkbox"][value="#{lists.breed.rex}"][checked]))
+      refute has_element?(view, ~s(input[type="checkbox"][value="#{lists.breed.sheltie}"]))
+
+      # A change to another fact keeps the retired breed.
+      {_view, html} = submit(view, context.conn, "#resident", resident: %{name: "Bis"})
+      assert html =~ "Bis"
+      assert html =~ "Rex"
+    end
+  end
+
+  describe "the removal of a resident" do
+    test "is on the page for an administrator, and not for a member", context do
+      lists = lists!(context.organisation, context.root)
+      resident = resident!(lists, context.options)
+      path = context.base <> "/residents/#{resident.id}"
+
+      {view, html} = open(context.conn, path)
+      refute html =~ "Remove this resident"
+
+      # An event that the page did not offer is refused.
+      render_click(view, "remove_resident", %{})
+      assert has_element?(view, "main p[role=alert]")
+      assert [_resident] = Residents.residents!(context.options)
+
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, html} = open(conn, path)
+      assert html =~ "Remove this resident"
+
+      {:ok, view, _html} = view |> render_click("remove_resident", %{}) |> follow_redirect(conn)
+      html = render_async(view)
+
+      assert html =~ "The resident is removed."
+      refute html =~ "Biscuit"
+      assert Residents.residents!(context.options) == []
+    end
+  end
+
   describe "the residents page" do
     test "lists the residents with their species and their status", context do
       lists = lists!(context.organisation, context.root)

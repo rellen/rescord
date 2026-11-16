@@ -435,7 +435,8 @@ one table for its species, and that table is in the same schema.
   name.
 - An administrator adds a shared value to the list of the organisation, and
   adds a local value. An administrator can give a local value a new name.
-- No person can remove a value yet.
+- An administrator retires a value. A resident that has the value keeps it,
+  and no form offers it for a new choice. An administrator can restore it.
 
 ### 7.3 The dimensions with a fixed list
 
@@ -492,6 +493,5 @@ difficulty.
 5. A routine makes its tasks a number of days ahead. Can one routine have a
    number of its own, for example a vaccination each 12 months? This
    document reads the answer of the maintainer in that way.
-6. The code does not have these answers of 16 November 2026 yet: the
-   removal of a resident, a list value that is retired, and a time that a
-   member gives for when a thing happened.
+6. The code does not have this answer of 16 November 2026 yet: a time that
+   a member gives for when a thing happened.

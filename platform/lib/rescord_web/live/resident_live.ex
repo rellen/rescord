@@ -20,7 +20,7 @@ defmodule RescordWeb.ResidentLive do
   def mount(%{"id" => id}, _session, socket) do
     case load(socket, id) do
       {:ok, socket} ->
-        {:ok, kinds} = Lists.values(:identifier_kind, options(socket))
+        {:ok, kinds} = Lists.offered_values(:identifier_kind, options(socket))
 
         {:ok,
          socket
@@ -125,6 +125,19 @@ defmodule RescordWeb.ResidentLive do
     }
     |> Residents.add_identifier(options(socket))
     |> after_write(socket)
+  end
+
+  def handle_event("remove_resident", _params, socket) do
+    case Residents.remove_resident(socket.assigns.resident, options(socket)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "The resident is removed.")
+         |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/residents")}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+    end
   end
 
   def handle_event("remove_identifier", %{"id" => id}, socket) when is_binary(id) do
@@ -373,6 +386,17 @@ defmodule RescordWeb.ResidentLive do
           </ol>
         </div>
       </section>
+      <section :if={can?(@role, :resident, :remove)} aria-labelledby="remove-heading">
+        <h2 id="remove-heading">Remove</h2>
+        <details>
+          <summary>Remove this resident</summary>
+          <p>
+            Remove a resident only when somebody recorded it by mistake. For a resident that left,
+            record the departure.
+          </p>
+          <.button phx-click="remove_resident">Remove the resident</.button>
+        </details>
+      </section>
     </Layouts.app>
     """
   end
@@ -390,7 +414,7 @@ defmodule RescordWeb.ResidentLive do
 
   defp born(resident, today) do
     date = ResidentWords.date(resident.born_on)
-    date = if resident.born_on_estimated?, do: "About #{date}", else: date
+    date = if resident.born_on_estimated, do: "About #{date}", else: date
 
     case ResidentWords.age(resident.born_on, today) do
       nil -> date

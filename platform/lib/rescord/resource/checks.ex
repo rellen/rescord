@@ -8,5 +8,8 @@ defmodule Rescord.Resource.Checks do
   """
 
   use Spark.Dsl.Extension,
-    transformers: [Rescord.Resource.Checks.TemporalOrWorkflow]
+    transformers: [
+      Rescord.Resource.Checks.TemporalOrWorkflow,
+      Rescord.Resource.Checks.NoSourceOnTemporal
+    ]
 end
