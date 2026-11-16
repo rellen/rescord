@@ -386,4 +386,10 @@ _A code generation and project patching framework_
 ## phoenix:phoenix usage
 [phoenix:phoenix usage rules](deps/phoenix/usage-rules/phoenix.md)
 <!-- phoenix:phoenix-end -->
+<!-- shoddy-start -->
+## shoddy usage
+_Small functions for tasks that occur frequently in Elixir code._
+
+[shoddy usage rules](deps/shoddy/usage-rules.md)
+<!-- shoddy-end -->
 <!-- usage-rules-end -->

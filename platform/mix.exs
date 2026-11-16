@@ -92,7 +92,7 @@ defmodule Rescord.MixProject do
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).
-      {:shoddy, github: "rellen/shoddy", ref: "3feca9cf084710e7dac7eda95a39379ae517fc08"},
+      {:shoddy, github: "rellen/shoddy", ref: "4b3a66b19eb1b05eb1ceefb5ed40d52f4d7a9917"},
       {:shoddy_phoenix,
        github: "rellen/shoddy_phoenix", ref: "acb06970c7138063303bdad28a3b2d699fef6e76"},
       {:swoosh, "~> 1.16"},

@@ -18,11 +18,7 @@ import Config
 # script that automatically sets the env var above.
 # Each value of the environment is read with `Shoddy.Env`, which raises an
 # error that names the variable when its value is not correct.
-if Shoddy.Env.boolean("PHX_SERVER",
-     default: false,
-     true_values: ["true", "1"],
-     false_values: ["false", "0"]
-   ) do
+if Shoddy.Env.boolean("PHX_SERVER", default: false, digits: true) do
   config :rescord, RescordWeb.Endpoint, server: true
 end
 
@@ -52,26 +48,14 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
-  # A value that the application cannot start without. `Shoddy.Env` reads no
-  # text, so this reads it, and a blank value is as bad as none.
-  required = fn name, hint ->
-    value = System.get_env(name)
-
-    if Shoddy.Strings.blank?(value),
-      do: raise("environment variable #{name} is missing. #{hint}"),
-      else: String.trim(value)
-  end
-
-  database_url = required.("DATABASE_URL", "For example: ecto://USER:PASS@HOST/DATABASE")
+  # A required text: `Shoddy.Env.string/2` refuses a variable that is absent
+  # or blank. For example: ecto://USER:PASS@HOST/DATABASE
+  database_url = Shoddy.Env.string("DATABASE_URL")
 
   maybe_ipv6 =
-    if Shoddy.Env.boolean("ECTO_IPV6",
-         default: false,
-         true_values: ["true", "1"],
-         false_values: ["false", "0"]
-       ),
-       do: [:inet6],
-       else: []
+    if Shoddy.Env.boolean("ECTO_IPV6", default: false, digits: true),
+      do: [:inet6],
+      else: []
 
   config :rescord, Rescord.Repo,
     # ssl: true,
@@ -86,12 +70,11 @@ if config_env() == :prod do
   # want to use a different value for prod and you most likely don't want
   # to check this value into version control, so we use an environment
   # variable instead.
-  secret_key_base =
-    required.("SECRET_KEY_BASE", "You can generate one by calling: mix phx.gen.secret")
+  # Make each secret with `mix phx.gen.secret`, which gives 64 bytes.
+  secret_key_base = Shoddy.Env.string("SECRET_KEY_BASE", min_bytes: 64)
 
   # The secret that signs a sign-in token.
-  token_signing_secret =
-    required.("TOKEN_SIGNING_SECRET", "You can generate one by calling: mix phx.gen.secret")
+  token_signing_secret = Shoddy.Env.string("TOKEN_SIGNING_SECRET", min_bytes: 64)
 
   config :rescord, token_signing_secret: token_signing_secret
 
