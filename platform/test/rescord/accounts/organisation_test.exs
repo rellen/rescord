@@ -42,7 +42,10 @@ defmodule Rescord.Accounts.OrganisationTest do
     test "does not come from a user who is not a root user, or from nobody" do
       for actor <- [user!(), nil] do
         assert {:error, %Ash.Error.Forbidden{}} =
-                 Accounts.create_organisation(%{name: "A", short_name: "a-refuge"}, actor: actor)
+                 Accounts.create_organisation(
+                   %{name: "A", short_name: "a-refuge", time_zone: "Etc/UTC"},
+                   actor: actor
+                 )
       end
     end
 
@@ -51,13 +54,17 @@ defmodule Rescord.Accounts.OrganisationTest do
     } do
       for short_name <- ["Wattle", "wattle creek", "-wattle", "wattle-", "wattle--creek", ""] do
         assert {:error, %Ash.Error.Invalid{}} =
-                 Accounts.create_organisation(%{name: "A", short_name: short_name}, actor: root)
+                 Accounts.create_organisation(
+                   %{name: "A", short_name: short_name, time_zone: "Etc/UTC"},
+                   actor: root
+                 )
       end
 
       first = organisation!(root)
 
       assert {:error, %Ash.Error.Invalid{}} =
-               Accounts.create_organisation(%{name: "B", short_name: first.short_name},
+               Accounts.create_organisation(
+                 %{name: "B", short_name: first.short_name, time_zone: "Etc/UTC"},
                  actor: root
                )
     end
@@ -274,6 +281,104 @@ defmodule Rescord.Accounts.OrganisationTest do
                versions |> Enum.map(& &1.version_action_name) |> Enum.sort()
 
       assert Enum.all?(versions, &(&1.user_id == context.administrator.id))
+    end
+  end
+
+  describe "the time zone of an organisation" do
+    setup %{root: root} do
+      organisation = organisation!(root, "Wattle Creek", "Australia/Brisbane")
+      {_, administrator} = member!(organisation, :administrator, root)
+      {_, member} = member!(organisation, :member, administrator)
+      {:ok, organisation: organisation, administrator: administrator, member: member}
+    end
+
+    test "is necessary, and is a name that the time zone rules know", %{root: root} do
+      for zone <- [nil, "", "Brisbane", "Australia/Atlantis", "+10:00"] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.create_organisation(
+                   %{name: "A", short_name: "a-refuge", time_zone: zone},
+                   actor: root
+                 )
+      end
+
+      assert Accounts.time_zone?("Australia/Brisbane")
+      assert Accounts.time_zone?("Etc/UTC")
+      refute Accounts.time_zone?("Australia/Atlantis")
+      refute Accounts.time_zone?(nil)
+    end
+
+    test "says what the date is in the organisation at an instant", context do
+      # 20:00 in UTC is 06:00 on the next day in Brisbane, which is 10 hours ahead.
+      evening = ~U[2026-11-15 20:00:00Z]
+      assert Accounts.local_date(context.organisation, evening) == ~D[2026-11-16]
+      assert Accounts.local_date(context.organisation, ~U[2026-11-15 13:59:59Z]) == ~D[2026-11-15]
+
+      # An action has the name of the schema in place of the organisation.
+      schema = Rescord.Accounts.Organisation.schema(context.organisation)
+      assert Accounts.local_date(schema, evening) == ~D[2026-11-16]
+      assert Accounts.time_zone_of(schema) == "Australia/Brisbane"
+
+      assert Accounts.today(context.organisation) in [
+               Date.utc_today(),
+               Date.add(Date.utc_today(), 1)
+             ]
+    end
+
+    test "changes for an administrator and for a root user, and the version names who", context do
+      assert {:ok, %{time_zone: "Australia/Perth"}} =
+               Accounts.set_organisation_time_zone(context.organisation, "Australia/Perth",
+                 actor: context.administrator
+               )
+
+      assert {:ok, %{time_zone: "Australia/Hobart"}} =
+               Accounts.set_organisation_time_zone(context.organisation, "Australia/Hobart",
+                 actor: context.root
+               )
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Accounts.set_organisation_time_zone(context.organisation, "Hobart",
+                 actor: context.administrator
+               )
+
+      version = AshPaperTrail.Resource.Info.version_resource(Rescord.Accounts.Organisation)
+
+      users =
+        version
+        |> Ash.read!(authorize?: false)
+        |> Enum.filter(&(&1.version_source_id == context.organisation.id))
+        |> Enum.filter(&(&1.version_action_name == :set_time_zone))
+        |> Enum.map(& &1.user_id)
+
+      assert Enum.sort(users) == Enum.sort([context.administrator.id, context.root.id])
+    end
+
+    test "does not change for a member, for a user of another organisation, or for nobody",
+         context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for actor <- [context.member, outsider, user!(), nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.set_organisation_time_zone(context.organisation, "Australia/Perth",
+                   actor: actor
+                 )
+      end
+
+      assert Accounts.time_zone_of(Rescord.Accounts.Organisation.schema(context.organisation)) ==
+               "Australia/Brisbane"
+
+      assert Accounts.role_can_change_settings?(:administrator)
+      assert Accounts.role_can_change_settings?(:root)
+      refute Accounts.role_can_change_settings?(:member)
+      refute Accounts.role_can_change_settings?(nil)
+    end
+
+    test "has suggestions for a form, each a name that the rules know" do
+      zones = Accounts.time_zones()
+
+      assert "Australia/Brisbane" in zones
+      assert length(zones) > 300
+      assert Enum.all?(zones, &Accounts.time_zone?/1)
     end
   end
 

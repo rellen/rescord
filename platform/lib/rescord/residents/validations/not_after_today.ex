@@ -2,9 +2,8 @@ defmodule Rescord.Residents.Validations.NotAfterToday do
   @moduledoc """
   A date of a fact that happened is not after today.
 
-  Rescord does not know the time zone of an organisation. Today is thus the
-  latest date that any place has at the instant of the write: the date in
-  UTC, and one day more.
+  Today is the date in the time zone of the organisation (ADR 0026), at the
+  instant of the write.
   """
 
   use Ash.Resource.Validation
@@ -23,7 +22,7 @@ defmodule Rescord.Residents.Validations.NotAfterToday do
 
     case Ash.Changeset.get_attribute(changeset, attribute) do
       %Date{} = date ->
-        if Date.compare(date, latest_today(changeset)) == :gt do
+        if Date.compare(date, today(changeset)) == :gt do
           {:error, field: attribute, message: "cannot be after today"}
         else
           :ok
@@ -35,9 +34,9 @@ defmodule Rescord.Residents.Validations.NotAfterToday do
   end
 
   # The write happens as of an instant. That instant, and not the clock of
-  # the server, says what today is.
-  defp latest_today(%{as_of: %DateTime{} = instant}),
-    do: instant |> DateTime.to_date() |> Date.add(1)
+  # the server, says what today is in the organisation.
+  defp today(%{as_of: %DateTime{} = instant, tenant: tenant}),
+    do: Rescord.Accounts.local_date(tenant, instant)
 
-  defp latest_today(_changeset), do: Date.add(Date.utc_today(), 1)
+  defp today(%{tenant: tenant}), do: Rescord.Accounts.today(tenant)
 end

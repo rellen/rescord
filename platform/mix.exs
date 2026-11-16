@@ -72,6 +72,8 @@ defmodule Rescord.MixProject do
       {:ash_authentication, "~> 4.15"},
       # Ash needs a SAT solver for its policies. This one is plain Elixir.
       {:simple_sat, "~> 0.1"},
+      # The time zone rules, for the time zone of an organisation (ADR 0026).
+      {:tz, "~> 0.28"},
       {:ash_rate_limiter, "~> 2.0"},
       {:hammer, "~> 7.5"},
       {:igniter, "~> 0.6", only: [:dev, :test]},

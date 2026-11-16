@@ -254,6 +254,12 @@ too.
   the page with `has_element?(view, "main p[role=alert]")`: the layout
   always holds a hidden element with `role="alert"`, so a search of the
   text for that role finds one on each page.
+- **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
+  time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
+  for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
+  turns an instant into its date there. A test that needs two different
+  dates at one instant uses two zones that are far apart, and no clock of
+  its own.
 - **Words for a value.** A page never shows an atom. A fixed list has a word
   for each value in a module such as `RescordWeb.ResidentWords`, and a test
   holds the words to the type.

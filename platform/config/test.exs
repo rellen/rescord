@@ -72,5 +72,10 @@ config :phoenix_test,
   otp_app: :rescord,
   endpoint: RescordWeb.Endpoint,
   playwright:
-    [assets_dir: System.get_env("PLAYWRIGHT_ASSETS_DIR", "assets"), browser: :chromium] ++
-      chromium
+    [
+      assets_dir: System.get_env("PLAYWRIGHT_ASSETS_DIR", "assets"),
+      browser: :chromium,
+      # The default is 4 seconds. A cold or busy machine needs more, and a
+      # launch that is too slow makes each browser test invalid.
+      browser_launch_timeout: 30_000
+    ] ++ chromium

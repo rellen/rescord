@@ -47,7 +47,16 @@ defmodule Rescord.Accounts.Organisation do
     end
 
     create :create do
-      accept [:name, :short_name]
+      accept [:name, :short_name, :time_zone]
+      validate Rescord.Accounts.Validations.KnownTimeZone
+    end
+
+    update :set_time_zone do
+      description "Changes the time zone of the organisation"
+      # The validation reads the name of the zone in Elixir.
+      require_atomic? false
+      accept [:time_zone]
+      validate Rescord.Accounts.Validations.KnownTimeZone
     end
 
     update :rename do
@@ -56,9 +65,15 @@ defmodule Rescord.Accounts.Organisation do
   end
 
   policies do
-    # A root user can do anything. Nobody else has a policy here.
+    # A root user can do anything.
     bypass actor_attribute_equals(:root?, true) do
       authorize_if always()
+    end
+
+    # An administrator changes the time zone of their own organisation
+    # (ADR 0026). Nobody else has a policy here.
+    policy action(:set_time_zone) do
+      authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
     end
   end
 
@@ -75,6 +90,15 @@ defmodule Rescord.Accounts.Organisation do
       allow_nil? false
       public? true
       constraints match: ~r/\A[a-z0-9]+(-[a-z0-9]+)*\z/, max_length: 40
+    end
+  end
+
+  attributes do
+    attribute :time_zone, :string do
+      allow_nil? false
+      public? true
+      constraints max_length: 64
+      description "The name of the time zone of the organisation, for example Australia/Brisbane"
     end
   end
 

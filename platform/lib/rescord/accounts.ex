@@ -49,6 +49,7 @@ defmodule Rescord.Accounts do
       define :organisations, action: :read
       define :create_organisation, action: :create
       define :rename_organisation, action: :rename
+      define :set_organisation_time_zone, action: :set_time_zone, args: [:time_zone]
 
       define :organisation_by_short_name,
         action: :by_short_name,
@@ -154,6 +155,55 @@ defmodule Rescord.Accounts do
 
   def role_can?(role, action, %Member{} = member),
     do: Grants.allows?(role, Member, action, member)
+
+  @doc "Whether a role can change the settings of an organisation."
+  @spec role_can_change_settings?(atom | nil) :: boolean
+  def role_can_change_settings?(role), do: granted?(role, Organisation, :set_time_zone)
+
+  @doc """
+  Whether the time zone rules know a name, for example `Australia/Brisbane`.
+  """
+  @spec time_zone?(term) :: boolean
+  def time_zone?(zone) when is_binary(zone),
+    do: match?({:ok, _now}, DateTime.now(zone, Tz.TimeZoneDatabase))
+
+  def time_zone?(_zone), do: false
+
+  @doc """
+  The names of the time zones that PostgreSQL knows, for the suggestions of
+  a form. `time_zone?/1` decides whether a name is valid.
+  """
+  @spec time_zones() :: [String.t()]
+  def time_zones do
+    Rescord.Repo.query!(
+      "select name from pg_timezone_names where name ~ '^[A-Z][A-Za-z_]+/' and name !~ '^(posix|right)/' order by name"
+    ).rows
+    |> List.flatten()
+    |> Enum.filter(&time_zone?/1)
+  end
+
+  @doc """
+  The time zone of an organisation. `tenant` is the organisation, or the
+  name of its schema, as an action has it.
+  """
+  @spec time_zone_of(Ash.Resource.record() | String.t()) :: String.t()
+  def time_zone_of(%Organisation{time_zone: zone}), do: zone
+
+  def time_zone_of("org_" <> id) do
+    Organisation |> Ash.get!(id, authorize?: false) |> Map.fetch!(:time_zone)
+  end
+
+  @doc "The date in an organisation at an instant: its local date."
+  @spec local_date(Ash.Resource.record() | String.t(), DateTime.t()) :: Date.t()
+  def local_date(tenant, %DateTime{} = instant) do
+    instant
+    |> DateTime.shift_zone!(time_zone_of(tenant), Tz.TimeZoneDatabase)
+    |> DateTime.to_date()
+  end
+
+  @doc "The date in an organisation now."
+  @spec today(Ash.Resource.record() | String.t()) :: Date.t()
+  def today(tenant), do: local_date(tenant, DateTime.utc_now())
 
   @doc """
   Whether a role can run an action of a resource at all. Another domain asks

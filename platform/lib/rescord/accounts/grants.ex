@@ -45,7 +45,9 @@ defmodule Rescord.Accounts.Grants do
       {Member, :invite_member, :all},
       {Member, :make_administrator, :all},
       # An administrator removes a member, and not another administrator.
-      {Member, :remove, :members}
+      {Member, :remove, :members},
+      # The settings of the organisation itself (ADR 0026).
+      {Rescord.Accounts.Organisation, :set_time_zone, :all}
     ],
     member: [
       {Member, :read, :all}

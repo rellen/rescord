@@ -24,7 +24,7 @@ defmodule RescordWeb.ResidentLive do
 
         {:ok,
          socket
-         |> assign(problems: [], today: Date.utc_today())
+         |> assign(problems: [], today: Rescord.Accounts.today(socket.assigns.organisation))
          |> assign(identifier_kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}))
          |> assign_forms()}
 
@@ -355,7 +355,7 @@ defmodule RescordWeb.ResidentLive do
             <li :for={name <- @names}>
               {name.value}, from
               <time datetime={DateTime.to_iso8601(name.from)}>{ResidentWords.date(
-                DateTime.to_date(name.from)
+                Rescord.Accounts.local_date(@organisation, name.from)
               )}</time>
             </li>
           </ol>
@@ -367,7 +367,7 @@ defmodule RescordWeb.ResidentLive do
             <li :for={status <- @desex_statuses}>
               {ResidentWords.desex(status.value)}, from
               <time datetime={DateTime.to_iso8601(status.from)}>{ResidentWords.date(
-                DateTime.to_date(status.from)
+                Rescord.Accounts.local_date(@organisation, status.from)
               )}</time>
             </li>
           </ol>

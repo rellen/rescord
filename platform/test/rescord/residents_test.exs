@@ -156,10 +156,43 @@ defmodule Rescord.ResidentsTest do
       assert labels(then.resident_breeds, :breed) == ["Rex"]
     end
 
-    test "can arrive tomorrow in UTC, which is today in a place to the east",
-         %{lists: lists, options: options} do
-      resident = resident!(lists, options, %{arrived_on: Date.add(Date.utc_today(), 1)})
-      assert facts(resident, options).status == :in_care
+    test "arrives no later than today in the time zone of its organisation", context do
+      # These two zones are 26 hours apart, so the east one is always one day
+      # or two ahead of the west one. The test thus needs no clock of its own.
+      east = organisation!(context.root, "East", "Pacific/Kiritimati")
+      west = organisation!(context.root, "West", "Etc/GMT+12")
+      today_east = Rescord.Accounts.today(east)
+
+      assert Date.compare(today_east, Rescord.Accounts.today(west)) == :gt
+
+      for {organisation, outcome} <- [{east, :ok}, {west, :error}] do
+        options = [actor: context.root, tenant: organisation]
+        lists = lists!(organisation, context.root)
+
+        result =
+          Residents.register_resident(
+            %{species_id: lists.species.guinea_pig, arrival_kind: :stray, arrived_on: today_east},
+            options
+          )
+
+        assert elem(result, 0) == outcome
+      end
+
+      # Tomorrow is too late in each of them.
+      east_options = [actor: context.root, tenant: east]
+      {:ok, [species | _]} = Rescord.Lists.values(:species, east_options)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Residents.register_resident(
+                 %{
+                   species_id: species.id,
+                   arrival_kind: :stray,
+                   arrived_on: Date.add(today_east, 1)
+                 },
+                 east_options
+               )
+
+      assert Exception.message(error) =~ "cannot be after today"
     end
   end
 

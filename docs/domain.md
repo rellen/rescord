@@ -110,6 +110,7 @@ These subjects are out of scope for now:
 | How does a resident get its status? | Rescord calculates it from the arrival, the departure and an absence. A member sets only `away for a time`. |
 | Which dimensions have a fixed list? | The eight of section 7.3. The size class and the coat are lists that an organisation can extend. |
 | Which part does the project build second? | The residents: all of section 5.2. |
+| In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
 
 ## 5. The root entities
 
@@ -200,7 +201,8 @@ it:
 
 An absence is the record that a member makes for the value `away for a
 time`. Its period is the time away. An arrival and a departure are facts
-that happened, so their dates are not after today.
+that happened, so their dates are not after today. Today is the date in the
+time zone of the organisation.
 
 Rescord has these parts of this section (ADR 0025): the resident and each of
 its dimensions, the name and the desex status with their history, the
@@ -479,12 +481,9 @@ difficulty.
    size class and one coat. Rescord does not refuse a resident that has
    none, because a member can know little about a resident that is expected.
    When must a resident have them?
-7. In which time zone is an organisation? Rescord does not know. It thus
-   accepts a date of an arrival or a departure that is one day after the
-   date in UTC, and it cannot say what today is for an organisation.
-8. How does an organisation remove a value from a list, when a resident can
+7. How does an organisation remove a value from a list, when a resident can
    name the value?
-9. Can a member record a fact as of a past instant, for example an absence
+8. Can a member record a fact as of a past instant, for example an absence
    that started in the morning? Each write is as of the instant of the
    write now.
-10. How does a member remove a resident that was recorded by mistake?
+9. How does a member remove a resident that was recorded by mistake?

@@ -82,20 +82,45 @@ defmodule RescordWeb.OrganisationPagesTest do
 
       html =
         view
-        |> form("#new-organisation", organisation: %{name: "Banksia", short_name: "Banksia Road"})
+        |> form("#new-organisation",
+          organisation: %{
+            name: "Banksia",
+            short_name: "Banksia Road",
+            time_zone: "Australia/Perth"
+          }
+        )
         |> render_submit()
 
       assert has_element?(view, "main p[role=alert]")
       assert html =~ "Short name"
 
       view
-      |> form("#new-organisation", organisation: %{name: "Banksia", short_name: "banksia-road"})
+      |> form("#new-organisation",
+        organisation: %{name: "Banksia", short_name: "banksia-road", time_zone: "Australia/Perth"}
+      )
       |> render_submit()
 
       assert render_async(view) =~ "banksia-road"
 
-      assert {:ok, %{name: "Banksia"}} =
+      assert {:ok, %{name: "Banksia", time_zone: "Australia/Perth"}} =
                Accounts.organisation_by_short_name("banksia-road", actor: context.root)
+    end
+
+    test "offers the time zones, and refuses a zone that is not one", context do
+      {view, html} = open(context.conn, context.root, ~p"/root")
+
+      assert html =~ ~s(<option value="Australia/Brisbane">)
+
+      html =
+        view
+        |> form("#new-organisation",
+          organisation: %{name: "Banksia", short_name: "banksia-road", time_zone: "Perth"}
+        )
+        |> render_submit()
+
+      assert has_element?(view, "main p[role=alert]")
+      assert html =~ "Time zone is not a time zone that Rescord knows"
+      assert {:ok, nil} = Accounts.organisation_by_short_name("banksia-road", actor: context.root)
     end
 
     test "makes a user a root user, and says so for an address with no user", context do
@@ -140,6 +165,43 @@ defmodule RescordWeb.OrganisationPagesTest do
 
         assert {:error, {:redirect, %{to: "/"}}} = live(context.conn, path)
       end
+    end
+  end
+
+  describe "the settings page" do
+    test "shows the time zone to a member, with no form", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      {view, html} = open(context.conn, context.member, path)
+
+      assert html =~ "Australia/Brisbane"
+      assert html =~ "Today here"
+      refute has_element?(view, "#settings")
+
+      # An event that the page did not offer is refused.
+      render_submit(view, "save", %{"settings" => %{"time_zone" => "Australia/Perth"}})
+      assert has_element?(view, "main p[role=alert]")
+
+      assert Accounts.time_zone_of(Rescord.Accounts.Organisation.schema(context.organisation)) ==
+               "Australia/Brisbane"
+    end
+
+    test "lets an administrator change the time zone, and says when a zone is not one", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      conn = sign_in(context.conn, context.administrator)
+      {:ok, view, _html} = live(conn, path)
+
+      html = view |> form("#settings", settings: %{time_zone: "Perth"}) |> render_submit()
+      assert has_element?(view, "main p[role=alert]")
+      assert html =~ "Time zone is not a time zone that Rescord knows"
+
+      {:ok, view, html} =
+        view
+        |> form("#settings", settings: %{time_zone: "Australia/Perth"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert html =~ "The time zone is Australia/Perth now."
+      assert has_element?(view, "dd", "Australia/Perth")
     end
   end
 

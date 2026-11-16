@@ -23,9 +23,12 @@ defmodule Rescord.AccountsFixtures do
   end
 
   @doc "A root user creates an organisation, which makes its schema."
-  def organisation!(root, name \\ "Wattle Creek") do
+  def organisation!(root, name \\ "Wattle Creek", time_zone \\ "Australia/Brisbane") do
     short_name = "refuge-#{System.unique_integer([:positive])}"
-    Accounts.create_organisation!(%{name: name, short_name: short_name}, actor: root)
+
+    Accounts.create_organisation!(%{name: name, short_name: short_name, time_zone: time_zone},
+      actor: root
+    )
   end
 
   @doc "Invites a person to an organisation, and returns the member with its user."

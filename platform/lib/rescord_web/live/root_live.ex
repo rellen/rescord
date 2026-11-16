@@ -14,8 +14,8 @@ defmodule RescordWeb.RootLive do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(page_title: "Root", problems: [])
-     |> assign_organisation_form(%{"name" => "", "short_name" => ""})
+     |> assign(page_title: "Root", problems: [], time_zones: Accounts.time_zones())
+     |> assign_organisation_form(%{"name" => "", "short_name" => "", "time_zone" => ""})
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
      |> assign_roots()}
   end
@@ -31,14 +31,18 @@ defmodule RescordWeb.RootLive do
   @impl true
   def handle_event("create_organisation", %{"organisation" => params}, socket)
       when is_map(params) do
-    attributes = %{name: params["name"], short_name: params["short_name"]}
+    attributes = %{
+      name: params["name"],
+      short_name: params["short_name"],
+      time_zone: params["time_zone"]
+    }
 
     case Accounts.create_organisation(attributes, actor: socket.assigns.current_user) do
       {:ok, organisation} ->
         {:noreply,
          socket
          |> assign(problems: [])
-         |> assign_organisation_form(%{"name" => "", "short_name" => ""})
+         |> assign_organisation_form(%{"name" => "", "short_name" => "", "time_zone" => ""})
          |> put_flash(:info, "#{organisation.name} is created.")
          |> Cinder.Refresh.refresh_table("organisations")}
 
@@ -112,6 +116,9 @@ defmodule RescordWeb.RootLive do
           <:col :let={organisation} field="name" label="Name" filter sort>
             <a href={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</a>
           </:col>
+          <:col :let={organisation} field="time_zone" label="Time zone" sort>
+            {organisation.time_zone}
+          </:col>
           <:col :let={organisation} field="short_name" label="Short name" sort>
             {organisation.short_name}
           </:col>
@@ -125,6 +132,16 @@ defmodule RescordWeb.RootLive do
             label="Short name, for the address of its pages"
             required
           />
+          <.input
+            field={@organisation_form[:time_zone]}
+            label="Time zone, for example Australia/Brisbane"
+            list="time-zones"
+            autocomplete="off"
+            required
+          />
+          <datalist id="time-zones">
+            <option :for={zone <- @time_zones} value={zone}></option>
+          </datalist>
           <footer>
             <.button type="submit">Create the organisation</.button>
           </footer>

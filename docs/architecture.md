@@ -265,6 +265,10 @@ table (ADR 0025).
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function
   of the domain.
+- **Today is a date in the time zone of the organisation** (ADR 0026). The
+  zone is a setting of the organisation, and the package `tz` has the rules.
+  `Rescord.Accounts.today/1` and `local_date/2` give the date. Never use
+  `Date.utc_today/0` for a rule or for a page of an organisation.
 - **A tenant migration needs a repair.** ash_postgres 2.15.2 writes the
   period foreign key of a temporal resource with two faults.
   `Rescord.TenantMigrations.repair!/0` repairs them, and a test fails while

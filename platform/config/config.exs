@@ -88,6 +88,9 @@ config :spark,
     "Ash.Domain": [section_order: [:resources, :policies, :authorization, :domain, :execution]]
   ]
 
+# The time zone rules, for the time zone of an organisation (ADR 0026).
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 config :rescord,
   # `use Rescord.Resource` stands for `use Ash.Resource` (ADR 0013).
   base_resources: [Rescord.Resource],
