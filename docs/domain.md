@@ -2,8 +2,8 @@
 
 This document follows ASD-STE100 Simplified Technical English.
 
-The maintainer gave the scope on 15 November 2026, and then answered twelve
-questions about it. Section 4 lists the answers. A paragraph that starts
+The maintainer gave the scope on 15 November 2026, and then answered
+questions about it on that day and the next. Section 4 lists the answers. A paragraph that starts
 with the word *Proposal* is an idea that the maintainer has not agreed yet.
 Section 7 holds estimates, not measurements.
 
@@ -110,6 +110,19 @@ These subjects are out of scope for now:
 | How does a resident get its status? | Rescord calculates it from the arrival, the departure and an absence. A member sets only `away for a time`. |
 | Which dimensions have a fixed list? | The eight of section 7.3. The size class and the coat are lists that an organisation can extend. |
 | Which part does the project build second? | The residents: all of section 5.2. |
+| In which order does the project build the other parts? | Families and groups, locations, the journal, tasks, and then the inventory. |
+| Must a resident have a breed, a colour, a size class and a coat? | No. An organisation that wants `not known` adds it to its list. |
+| Who removes a resident that was recorded by mistake? | An administrator. The removal archives the record. |
+| How does an organisation remove a value from a list? | It retires the value. A resident that has the value keeps it, and no form offers it for a new choice. The organisation can bring it back. |
+| Must a parent be a resident of the organisation? | Yes. A parent that did not live there is a resident with no arrival. |
+| Can a resident be in more than one group at one time? | Yes. Each membership has its own start and end. |
+| Where does a resident live when it and its group each have a placement? | In its own placement, while that lasts. After it ends, the resident is with its group again. |
+| Does a location have a capacity? | It can have one. A placement over the capacity is permitted, and the page says so. |
+| Can a member say when a thing happened? | Yes, for an absence, a placement, a change to a group, and a journal entry. The time is now when the member gives none, and it is never after now. |
+| Who corrects a journal entry? | Its author, and an administrator. Each other member writes an addendum. |
+| How does a task become complete? | A task is due, done, or skipped. A task names a member or is for each member. Each member can take an open task, complete it, or skip it with a reason. |
+| How far ahead does Rescord make the tasks of a routine? | A number of days that is a setting, 14 at the start. A member can also plan a task or an event for a date months ahead, one time or with a pattern, as on a calendar. |
+| Where will Rescord run? | The maintainer has not decided, and the work does not wait for it. |
 | In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
 
 ## 5. The root entities
@@ -258,8 +271,9 @@ The journal of a resident is the list of its journal entries. A member
 writes each journal entry, and each journal entry has a kind. The medical
 history of a resident is the part of its journal that has a medical kind.
 
-A member can correct a journal entry. The paper trail keeps each version of
-the entry, and shows who corrected it and when. There are two preferred ways
+The author of a journal entry, and an administrator, can correct it. The
+paper trail keeps each version of the entry, and shows who corrected it and
+when. Each other member writes an addendum. There are two preferred ways
 to add to a journal entry:
 
 - Write an addendum. An addendum is a new journal entry that names the
@@ -473,17 +487,11 @@ difficulty.
    transferred to it?
 3. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
-4. A placement names a resident or a group. Where does a resident live when
-   it has a placement of its own and its group has a different placement?
-5. Section 7 does not count the resources that the answers of 15 November
+4. Section 7 does not count the resources that the answers of 15 November
    2026 add, for example the organisation. What is the new estimate?
-6. Section 5.2 gives a resident one breed or more, one colour or more, one
-   size class and one coat. Rescord does not refuse a resident that has
-   none, because a member can know little about a resident that is expected.
-   When must a resident have them?
-7. How does an organisation remove a value from a list, when a resident can
-   name the value?
-8. Can a member record a fact as of a past instant, for example an absence
-   that started in the morning? Each write is as of the instant of the
-   write now.
-9. How does a member remove a resident that was recorded by mistake?
+5. A routine makes its tasks a number of days ahead. Can one routine have a
+   number of its own, for example a vaccination each 12 months? This
+   document reads the answer of the maintainer in that way.
+6. The code does not have these answers of 16 November 2026 yet: the
+   removal of a resident, a list value that is retired, and a time that a
+   member gives for when a thing happened.
