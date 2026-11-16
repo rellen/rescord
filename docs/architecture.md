@@ -63,6 +63,11 @@ A part with state is a live widget, unless it needs its own process, and then
 it is a nested LiveView (`live_render/3`). A widget with no `:handle_params`
 hook also works inside a nested LiveView.
 
+**Decompose each page, and use a widget only when it is needed** (ADR 0037).
+A LiveView keeps the state and the events of its page, and its `render/1`
+composes function components from a module of components for its area. A
+part becomes a widget only when it needs state that the page does not need.
+
 ### Collections
 
 **A collection of records is shown with Cinder** (ADR 0014): a table, a list

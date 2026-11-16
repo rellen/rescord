@@ -13,8 +13,9 @@ defmodule RescordWeb.LocationLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.LocationComponents
+
   alias Rescord.{Lists, Locations, Residents}
-  alias RescordWeb.HousingLive
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -150,15 +151,6 @@ defmodule RescordWeb.LocationLive do
 
   defp after_write(_done, socket), do: {:noreply, push_navigate(socket, to: path(socket))}
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(value) when is_integer(value), do: value
-  defp text(_other), do: nil
-
-  defp can?(role, subject, action), do: Locations.role_can?(role, subject, action)
-
-  defp resident_path(organisation, id), do: ~p"/o/#{organisation.short_name}/residents/#{id}"
-  defp group_path(organisation, id), do: ~p"/o/#{organisation.short_name}/groups/#{id}"
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -170,125 +162,31 @@ defmodule RescordWeb.LocationLive do
       <.header>
         {@node.location.name}
         <:subtitle>
-          {if @node.location.kind, do: "#{@node.location.kind.label} · "}{HousingLive.occupancy(@node)}
+          {if @node.location.kind, do: "#{@node.location.kind.label} · "}{occupancy(@node)}
           <.state :if={@node.over?} kind="alert">Over its capacity</.state>
         </:subtitle>
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <section aria-labelledby="who-heading">
-        <h2 id="who-heading">Who lives here</h2>
-        <p :if={@node.residents == [] and @node.groups == []}>Nobody has a placement here.</p>
-        <ul :if={@node.residents != [] or @node.groups != []}>
-          <li :for={placement <- @node.residents}>
-            <.link navigate={resident_path(@organisation, placement.resident_id)}>{placement.resident.name ||
-              "No name yet"}</.link>
-            <.button
-              :if={can?(@role, :placement, :finish)}
-              phx-click="finish"
-              phx-value-id={placement.id}
-              aria-label={"End the placement of #{placement.resident.name || "the resident with no name"}"}
-            >
-              End the placement
-            </.button>
-          </li>
-          <li :for={{placement, group, members} <- @node.groups}>
-            <.link navigate={group_path(@organisation, group.id)}>{Residents.group_name(group)}</.link>
-            <span>
-              ({length(members)} of {length(group.members)} members here)
-            </span>
-            <.button
-              :if={can?(@role, :placement, :finish)}
-              phx-click="finish"
-              phx-value-id={placement.id}
-              aria-label={"End the placement of #{Residents.group_name(group)}"}
-            >
-              End the placement
-            </.button>
-          </li>
-        </ul>
+      <.who_lives_here
+        node={@node}
+        organisation={@organisation}
+        role={@role}
+        place_form={@place_form}
+        residents={@residents}
+        groups={@groups}
+      />
 
-        <details :if={can?(@role, :placement, :place)} id="put-here">
-          <summary>Put a resident or a group here</summary>
-          <.form for={@place_form} id="placement" phx-submit="place">
-            <.input
-              field={@place_form[:resident_id]}
-              type="select"
-              label="A resident"
-              prompt="Choose"
-              options={@residents}
-            />
-            <.input
-              field={@place_form[:group_id]}
-              type="select"
-              label="Or a group"
-              prompt="Choose"
-              options={@groups}
-            />
-            <.input
-              field={@place_form[:at]}
-              type="datetime-local"
-              label="When the move happened, if not now"
-            />
-            <footer><.button type="submit">Put here</.button></footer>
-          </.form>
-        </details>
-      </section>
+      <.inside :if={@node.children != []} node={@node} organisation={@organisation} />
 
-      <section :if={@node.children != []} aria-labelledby="inside-heading">
-        <h2 id="inside-heading">Inside</h2>
-        <div data-places>
-          <HousingLive.place
-            :for={child <- @node.children}
-            node={child}
-            organisation={@organisation}
-            level={3}
-          />
-        </div>
-      </section>
-
-      <section :if={can?(@role, :location, :revise)} aria-labelledby="change-heading">
-        <h2 id="change-heading">Change</h2>
-        <details id="change-location">
-          <summary>Change the location</summary>
-          <.form for={@form} id="location" phx-submit="revise">
-            <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
-            <.input
-              field={@form[:kind_id]}
-              type="select"
-              label="Kind"
-              prompt="Not recorded"
-              options={@kinds}
-            />
-            <.input
-              field={@form[:capacity]}
-              type="number"
-              label="Capacity: the number of residents that it houses"
-              min="1"
-            />
-            <footer><.button type="submit">Save the location</.button></footer>
-          </.form>
-        </details>
-        <details id="move-location">
-          <summary>Put this location inside another</summary>
-          <.form for={@move_form} id="move" phx-submit="move">
-            <.input
-              field={@move_form[:parent_id]}
-              type="select"
-              label="Inside"
-              prompt="No other location"
-              options={@places}
-            />
-            <footer><.button type="submit">Move the location</.button></footer>
-          </.form>
-        </details>
-        <details id="close-location">
-          <summary>Close this location</summary>
-          <p>Close a location that the organisation uses no more. Its history stays.</p>
-          <.button phx-click="close">Close the location</.button>
-        </details>
-      </section>
+      <.change_location
+        :if={can?(@role, :location, :revise)}
+        form={@form}
+        kinds={@kinds}
+        move_form={@move_form}
+        places={@places}
+      />
     </Layouts.app>
     """
   end

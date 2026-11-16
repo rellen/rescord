@@ -16,7 +16,9 @@ defmodule RescordWeb.ItemLive do
   use RescordWeb, :live_view
 
   alias Rescord.{Accounts, Inventory, Lists, Locations}
-  alias RescordWeb.{InventoryWords, ResidentWords, TaskWords}
+  import RescordWeb.InventoryComponents
+
+  alias RescordWeb.InventoryWords
 
   # The name of each form in the fields that the browser sends, and its assign.
   @forms [
@@ -28,6 +30,13 @@ defmodule RescordWeb.ItemLive do
     item: :item_form,
     reorder: :reorder_form
   ]
+
+  # The events that take stock out, each with its form and its action.
+  @out %{
+    "use" => {:use, :use_stock},
+    "discard" => {:discard, :discard_stock},
+    "move" => {:move, :move_stock}
+  }
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -115,16 +124,6 @@ defmodule RescordWeb.ItemLive do
     end)
   end
 
-  # The stock of the page as the choices of a select: each lot in each place
-  # where it has some. The value is the id of the lot, a bar, and the id of
-  # the location or nothing.
-  defp sources(stock, place_names) do
-    for %{lot: lot, places: places} <- stock.lots, {place, level} <- places do
-      {"#{InventoryWords.lot(lot)}, #{place_words(place, place_names)}: " <>
-         InventoryWords.quantity(level, stock.item), "#{lot.id}|#{place}"}
-    end
-  end
-
   # A source of a form as the lot and the place of a movement.
   defp source(value) when is_binary(value) do
     case String.split(value, "|", parts: 2) do
@@ -176,50 +175,34 @@ defmodule RescordWeb.ItemLive do
     end)
   end
 
-  def handle_event("use", %{"use" => fields}, socket) when is_map(fields) do
-    write(socket, :use, fields, fn instant, options ->
-      movement =
-        fields["source"]
-        |> source()
-        |> Map.merge(%{
-          quantity: text(fields["quantity"]),
-          note: text(fields["note"]),
-          happened_at: instant
-        })
+  # A use, a discard and a move take stock out of a lot in a place.
+  def handle_event(event, params, socket) when is_map_key(@out, event) do
+    {form, action} = Map.fetch!(@out, event)
 
-      of_this_item(socket, movement, &Inventory.use_stock(&1, options))
-    end)
-  end
+    case params[event] do
+      fields when is_map(fields) ->
+        write(socket, form, fields, fn instant, options ->
+          movement =
+            fields["source"]
+            |> source()
+            |> Map.merge(%{
+              quantity: text(fields["quantity"]),
+              note: text(fields["note"]),
+              happened_at: instant
+            })
 
-  def handle_event("discard", %{"discard" => fields}, socket) when is_map(fields) do
-    write(socket, :discard, fields, fn instant, options ->
-      movement =
-        fields["source"]
-        |> source()
-        |> Map.merge(%{
-          quantity: text(fields["quantity"]),
-          note: text(fields["note"]),
-          happened_at: instant
-        })
+          # A move also names the place that the stock goes to.
+          movement =
+            if form == :move,
+              do: Map.put(movement, :to_location_id, text(fields["to_location_id"])),
+              else: movement
 
-      of_this_item(socket, movement, &Inventory.discard_stock(&1, options))
-    end)
-  end
+          of_this_item(socket, movement, &apply(Inventory, action, [&1, options]))
+        end)
 
-  def handle_event("move", %{"move" => fields}, socket) when is_map(fields) do
-    write(socket, :move, fields, fn instant, options ->
-      movement =
-        fields["source"]
-        |> source()
-        |> Map.merge(%{
-          to_location_id: text(fields["to_location_id"]),
-          quantity: text(fields["quantity"]),
-          note: text(fields["note"]),
-          happened_at: instant
-        })
-
-      of_this_item(socket, movement, &Inventory.move_stock(&1, options))
-    end)
+      _other ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("count", %{"count" => fields}, socket) when is_map(fields) do
@@ -323,38 +306,6 @@ defmodule RescordWeb.ItemLive do
   defp drawn?(assigns, :item), do: assigns.can_revise?
   defp drawn?(assigns, :reorder), do: assigns.can_set_level?
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
-  defp place_words(nil, _names), do: "no place in particular"
-  defp place_words("", _names), do: "no place in particular"
-  defp place_words(id, names), do: Map.get(names, id, "a location that is not here now")
-
-  defp when_words(instant, organisation) do
-    local = Accounts.local_time(organisation, instant)
-    "#{ResidentWords.date(DateTime.to_date(local))}, #{TaskWords.time(local)}"
-  end
-
-  # The address of the member who recorded a movement. A root user is not a
-  # member, and reads their own movements as their own.
-  defp author(members, movement, user) do
-    cond do
-      Map.has_key?(members, movement.author_id) -> members[movement.author_id]
-      movement.author_id == user.id -> to_string(user.email)
-      true -> "A person who is not a member now"
-    end
-  end
-
-  defp in_stock(stock), do: Enum.filter(stock.lots, &(&1.places != []))
-  defp empty(stock), do: Enum.filter(stock.lots, &(&1.places == []))
-
-  defp lot_choices(stock), do: Enum.map(stock.lots, &{lot_words(&1.lot), &1.lot.id})
-
-  defp lot_words(%{expires_on: nil} = lot), do: InventoryWords.lot(lot)
-
-  defp lot_words(lot),
-    do: "#{InventoryWords.lot(lot)}, expires #{ResidentWords.date(lot.expires_on)}"
-
   @impl true
   def render(assigns) do
     assigns =
@@ -379,363 +330,50 @@ defmodule RescordWeb.ItemLive do
 
       <.problems :if={is_nil(@refused)} list={@problems} />
 
-      <section aria-labelledby="stock-heading">
-        <h2 id="stock-heading">Stock</h2>
-        <.list>
-          <:item title="In stock">{InventoryWords.quantity(@stock.level, @item)}</:item>
-          <:item title="State">
-            <.state :for={{words, kind} <- InventoryWords.states(@stock)} kind={kind}>
-              {words}
-            </.state>
-          </:item>
-          <:item :if={@item.reorder_level} title="Order more when the stock is below">
-            {InventoryWords.quantity(@item.reorder_level, @item)}
-          </:item>
-          <:item :if={@item.note} title="Note">{@item.note}</:item>
-        </.list>
+      <.item_stock stock={@stock} item={@item} place_names={@place_names} />
 
-        <ul :if={@stock.short != []} id="short">
-          <li :for={short <- @stock.short}>
-            {short_words(short, @item, @place_names)}
-          </li>
-        </ul>
+      <.record_stock
+        :if={@can_record?}
+        item={@item}
+        places={@places}
+        suppliers={@suppliers}
+        sources={@sources}
+        lot_choices={@lot_choices}
+        receive_form={@receive_form}
+        use_form={@use_form}
+        move_form={@move_form}
+        discard_form={@discard_form}
+        count_form={@count_form}
+        refused={@refused}
+        problems={@problems}
+      />
 
-        <p :if={in_stock(@stock) == []}>There is no stock of this item.</p>
-        <div :if={in_stock(@stock) != []} data-scroll>
-          <table id="lots">
-            <thead>
-              <tr>
-                <th scope="col">Lot</th>
-                <th scope="col">Expiry</th>
-                <th scope="col">Where</th>
-                <th scope="col">In the lot</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={lot_stock <- in_stock(@stock)} id={"lot-#{lot_stock.lot.id}"}>
-                <td>
-                  {InventoryWords.lot(lot_stock.lot)}
-                  <small :if={lot_stock.lot.supplier}>From {lot_stock.lot.supplier.name}</small>
-                  <small :if={lot_stock.lot.note}>{lot_stock.lot.note}</small>
-                </td>
-                <td>
-                  <.state kind={InventoryWords.expiry_kind(lot_stock.expiry)}>
-                    {InventoryWords.expiry(lot_stock.expiry)}
-                  </.state>
-                  <small :if={lot_stock.lot.expires_on}>
-                    {ResidentWords.date(lot_stock.lot.expires_on)}
-                  </small>
-                </td>
-                <td>
-                  <ul>
-                    <li :for={{place, level} <- lot_stock.places}>
-                      {String.capitalize(place_words(place, @place_names))}: {InventoryWords.quantity(
-                        level,
-                        @item
-                      )}
-                    </li>
-                  </ul>
-                </td>
-                <td>{InventoryWords.quantity(lot_stock.level, @item)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <.stock_history
+        history={@history}
+        item={@item}
+        organisation={@organisation}
+        members={@members}
+        user={@current_user}
+        place_names={@place_names}
+      />
 
-        <details :if={empty(@stock) != []} id="empty-lots">
-          <summary>Lots with nothing left ({length(empty(@stock))})</summary>
-          <ul>
-            <li :for={lot_stock <- empty(@stock)}>{lot_words(lot_stock.lot)}</li>
-          </ul>
-        </details>
-      </section>
-
-      <section :if={@can_record?} aria-labelledby="record-heading">
-        <h2 id="record-heading">Record what happened</h2>
-
-        <details id="receive">
-          <summary>Stock came in</summary>
-          <.problems :if={@refused == :receive} list={@problems} />
-          <.form for={@receive_form} id="receive-form" phx-submit="receive">
-            <.input
-              field={@receive_form[:lot_id]}
-              type="select"
-              label="Lot"
-              prompt="A new lot"
-              options={@lot_choices}
-            />
-            <.input
-              field={@receive_form[:code]}
-              type="text"
-              label="Code on the pack of a new lot, if it has one"
-              maxlength="60"
-            />
-            <.input
-              field={@receive_form[:expires_on]}
-              type="date"
-              label="Expiry date of a new lot, if it has one"
-            />
-            <.input
-              field={@receive_form[:supplier_id]}
-              type="select"
-              label="Supplier of a new lot"
-              prompt="Not recorded"
-              options={@suppliers}
-            />
-            <.input
-              field={@receive_form[:quantity]}
-              type="number"
-              label={quantity_label("How much came in", @item)}
-              min="0"
-              step="any"
-              required
-            />
-            <.input
-              field={@receive_form[:location_id]}
-              type="select"
-              label="Where it is now"
-              prompt="No place in particular"
-              options={@places}
-            />
-            <.input
-              field={@receive_form[:at]}
-              type="datetime-local"
-              label="When it came in, if not now"
-            />
-            <footer><.button type="submit">Record the stock</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@sources != []} id="use">
-          <summary>Stock was used</summary>
-          <.problems :if={@refused == :use} list={@problems} />
-          <.form for={@use_form} id="use-form" phx-submit="use">
-            <.input
-              field={@use_form[:source]}
-              type="select"
-              label="From which lot and place"
-              options={@sources}
-            />
-            <.input
-              field={@use_form[:quantity]}
-              type="number"
-              label={quantity_label("How much was used", @item)}
-              min="0"
-              step="any"
-              required
-            />
-            <.input field={@use_form[:note]} type="text" label="Note" maxlength="500" />
-            <.input field={@use_form[:at]} type="datetime-local" label="When, if not now" />
-            <footer><.button type="submit">Record the use</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@sources != []} id="move">
-          <summary>Stock moved to another place</summary>
-          <.problems :if={@refused == :move} list={@problems} />
-          <.form for={@move_form} id="move-form" phx-submit="move">
-            <.input
-              field={@move_form[:source]}
-              type="select"
-              label="From which lot and place"
-              options={@sources}
-            />
-            <.input
-              field={@move_form[:to_location_id]}
-              type="select"
-              label="To which place"
-              prompt="No place in particular"
-              options={@places}
-            />
-            <.input
-              field={@move_form[:quantity]}
-              type="number"
-              label={quantity_label("How much moved", @item)}
-              min="0"
-              step="any"
-              required
-            />
-            <.input field={@move_form[:note]} type="text" label="Note" maxlength="500" />
-            <.input field={@move_form[:at]} type="datetime-local" label="When, if not now" />
-            <footer><.button type="submit">Record the move</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@sources != []} id="discard">
-          <summary>Stock was thrown out</summary>
-          <.problems :if={@refused == :discard} list={@problems} />
-          <.form for={@discard_form} id="discard-form" phx-submit="discard">
-            <.input
-              field={@discard_form[:source]}
-              type="select"
-              label="From which lot and place"
-              options={@sources}
-            />
-            <.input
-              field={@discard_form[:quantity]}
-              type="number"
-              label={quantity_label("How much was thrown out", @item)}
-              min="0"
-              step="any"
-              required
-            />
-            <.input field={@discard_form[:note]} type="text" label="Why" maxlength="500" />
-            <.input field={@discard_form[:at]} type="datetime-local" label="When, if not now" />
-            <footer><.button type="submit">Record the discard</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@lot_choices != []} id="count">
-          <summary>I counted the stock</summary>
-          <.problems :if={@refused == :count} list={@problems} />
-          <p>
-            Give the number that is there. Rescord records the difference from its own number.
-          </p>
-          <.form for={@count_form} id="count-form" phx-submit="count">
-            <.input field={@count_form[:lot_id]} type="select" label="Lot" options={@lot_choices} />
-            <.input
-              field={@count_form[:location_id]}
-              type="select"
-              label="Place"
-              prompt="No place in particular"
-              options={@places}
-            />
-            <.input
-              field={@count_form[:counted]}
-              type="number"
-              label={quantity_label("How much is there", @item)}
-              min="0"
-              step="any"
-              required
-            />
-            <.input field={@count_form[:note]} type="text" label="Note" maxlength="500" />
-            <footer><.button type="submit">Record the count</.button></footer>
-          </.form>
-        </details>
-      </section>
-
-      <section aria-labelledby="history-heading">
-        <h2 id="history-heading">What happened</h2>
-        <p :if={@history == []}>Nothing happened to the stock of this item yet.</p>
-        <div :if={@history != []} data-scroll>
-          <table id="history">
-            <thead>
-              <tr>
-                <th scope="col">When</th>
-                <th scope="col">What</th>
-                <th scope="col">Change</th>
-                <th scope="col">Lot</th>
-                <th scope="col">Where</th>
-                <th scope="col">Who</th>
-                <th scope="col">Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={movement <- @history} id={"movement-#{movement.id}"}>
-                <td>{when_words(movement.happened_at, @organisation)}</td>
-                <td>{InventoryWords.movement(movement)}</td>
-                <td>{InventoryWords.change(movement.quantity)}</td>
-                <td>{InventoryWords.lot(movement.lot)}</td>
-                <td>{String.capitalize(place_words(movement.location_id, @place_names))}</td>
-                <td>{author(@members, movement, @current_user)}</td>
-                <td>{movement.note}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section :if={@can_revise? or @can_set_level?} aria-labelledby="keep-heading">
-        <h2 id="keep-heading">Keep the item</h2>
-
-        <details :if={@can_revise?} id="edit-item">
-          <summary>Change the item</summary>
-          <.problems :if={@refused == :item} list={@problems} />
-          <.form for={@item_form} id="item-form" phx-submit="revise">
-            <.input field={@item_form[:name]} type="text" label="Name" maxlength="80" required />
-            <.input
-              field={@item_form[:category_id]}
-              type="select"
-              label="Category"
-              prompt="Not recorded"
-              options={@categories}
-            />
-            <.input
-              field={@item_form[:unit_id]}
-              type="select"
-              label="Unit that you count it in"
-              prompt="Not recorded"
-              options={@units}
-            />
-            <.input
-              field={@item_form[:reorder_level]}
-              type="number"
-              label="Order more when the stock is below, if you give a number"
-              min="0"
-              step="any"
-            />
-            <.input field={@item_form[:note]} type="text" label="Note" maxlength="1000" />
-            <footer><.button type="submit">Save the item</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@can_set_level?} id="reorder">
-          <summary>Reorder levels in a location ({length(@wanted)})</summary>
-          <.problems :if={@refused == :reorder} list={@problems} />
-          <ul :if={@wanted != []} id="wanted">
-            <li :for={level <- @wanted}>
-              {String.capitalize(place_words(level.location_id, @place_names))}: bring more when
-              the stock there is below {InventoryWords.quantity(level.quantity, @item)}
-            </li>
-          </ul>
-          <.form for={@reorder_form} id="reorder-form" phx-submit="set_level">
-            <.input
-              field={@reorder_form[:location_id]}
-              type="select"
-              label="Location"
-              prompt="Choose a location"
-              options={@places}
-              required
-            />
-            <.input
-              field={@reorder_form[:quantity]}
-              type="number"
-              label="Bring more when the stock there is below. No number removes the level"
-              min="0"
-              step="any"
-            />
-            <footer><.button type="submit">Save the level</.button></footer>
-          </.form>
-        </details>
-
-        <details :if={@can_remove?} id="remove-item">
-          <summary>Remove the item</summary>
-          <p>
-            The item leaves the inventory. Its lots and what happened to its stock stay in the
-            history.
-          </p>
-          <.button phx-click="remove">Remove {@item.name}</.button>
-        </details>
-      </section>
+      <.keep_item
+        :if={@can_revise? or @can_set_level?}
+        can_revise?={@can_revise?}
+        can_set_level?={@can_set_level?}
+        can_remove?={@can_remove?}
+        item={@item}
+        item_form={@item_form}
+        reorder_form={@reorder_form}
+        categories={@categories}
+        units={@units}
+        wanted={@wanted}
+        places={@places}
+        place_names={@place_names}
+        refused={@refused}
+        problems={@problems}
+      />
     </Layouts.app>
     """
-  end
-
-  defp quantity_label(words, item) do
-    case InventoryWords.unit(item) do
-      nil -> words
-      unit -> "#{words}, in #{unit}"
-    end
-  end
-
-  defp short_words(%{location_id: nil} = short, item, _names) do
-    "Order more: #{InventoryWords.quantity(short.level, item)} is good to use, and the " <>
-      "organisation wants #{InventoryWords.quantity(short.wanted, item)} or more."
-  end
-
-  defp short_words(short, item, names) do
-    "#{String.capitalize(place_words(short.location_id, names))} has " <>
-      "#{InventoryWords.quantity(short.level, item)} that is good to use, and wants " <>
-      "#{InventoryWords.quantity(short.wanted, item)} or more."
   end
 end

@@ -16,7 +16,13 @@ import Config
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
-if System.get_env("PHX_SERVER") do
+# Each value of the environment is read with `Shoddy.Env`, which raises an
+# error that names the variable when its value is not correct.
+if Shoddy.Env.boolean("PHX_SERVER",
+     default: false,
+     true_values: ["true", "1"],
+     false_values: ["false", "0"]
+   ) do
   config :rescord, RescordWeb.Endpoint, server: true
 end
 
@@ -25,7 +31,7 @@ end
 # take port 4000, which is the port of `mix phx.server`.
 if config_env() != :test do
   config :rescord, RescordWeb.Endpoint,
-    http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+    http: [port: Shoddy.Env.integer("PORT", default: 4000, min: 1, max: 65_535)]
 end
 
 if config_env() == :dev do
@@ -46,19 +52,31 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
-  database_url =
-    System.get_env("DATABASE_URL") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
-      """
+  # A value that the application cannot start without. `Shoddy.Env` reads no
+  # text, so this reads it, and a blank value is as bad as none.
+  required = fn name, hint ->
+    value = System.get_env(name)
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+    if Shoddy.Strings.blank?(value),
+      do: raise("environment variable #{name} is missing. #{hint}"),
+      else: String.trim(value)
+  end
+
+  database_url = required.("DATABASE_URL", "For example: ecto://USER:PASS@HOST/DATABASE")
+
+  maybe_ipv6 =
+    if Shoddy.Env.boolean("ECTO_IPV6",
+         default: false,
+         true_values: ["true", "1"],
+         false_values: ["false", "0"]
+       ),
+       do: [:inet6],
+       else: []
 
   config :rescord, Rescord.Repo,
     # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    pool_size: Shoddy.Env.integer("POOL_SIZE", default: 10, min: 1),
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
@@ -69,24 +87,11 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
+    required.("SECRET_KEY_BASE", "You can generate one by calling: mix phx.gen.secret")
 
-  # The secret that signs a sign-in token. A blank value is as bad as none.
+  # The secret that signs a sign-in token.
   token_signing_secret =
-    case System.get_env("TOKEN_SIGNING_SECRET", "") |> String.trim() do
-      "" ->
-        raise """
-        environment variable TOKEN_SIGNING_SECRET is missing.
-        You can generate one by calling: mix phx.gen.secret
-        """
-
-      secret ->
-        secret
-    end
+    required.("TOKEN_SIGNING_SECRET", "You can generate one by calling: mix phx.gen.secret")
 
   config :rescord, token_signing_secret: token_signing_secret
 
@@ -110,8 +115,7 @@ if config_env() == :prod do
       :crypto.mac(
         :hmac,
         :sha256,
-        System.get_env("SECRET_KEY_BASE") ||
-          raise("environment variable SECRET_KEY_BASE is missing"),
+        secret_key_base,
         "ash keyset signing"
       )
 

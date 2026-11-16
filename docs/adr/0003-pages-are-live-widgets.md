@@ -1,6 +1,6 @@
 # ADR 0003: Pages are compositions of live widgets
 
-Status: accepted (chosen by the maintainer)
+Status: accepted (chosen by the maintainer). ADR 0037 changes when a part is a widget.
 
 ## Context
 

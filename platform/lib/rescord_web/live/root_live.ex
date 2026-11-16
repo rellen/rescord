@@ -8,6 +8,8 @@ defmodule RescordWeb.RootLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.AccountComponents
+
   alias Rescord.Accounts
 
   @impl true
@@ -109,74 +111,13 @@ defmodule RescordWeb.RootLive do
 
       <p><a href={~p"/root/lists"}>See the shared lists of values</a>.</p>
 
-      <section aria-labelledby="organisations-heading">
-        <h2 id="organisations-heading">Organisations</h2>
+      <.organisations
+        current_user={@current_user}
+        organisation_form={@organisation_form}
+        time_zones={@time_zones}
+      />
 
-        <Cinder.collection
-          id="organisations"
-          query={Accounts.query_to_organisations(%{}, actor: @current_user)}
-          actor={@current_user}
-        >
-          <:col :let={organisation} field="name" label="Name" filter sort>
-            <a href={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</a>
-          </:col>
-          <:col :let={organisation} field="time_zone" label="Time zone" sort>
-            {organisation.time_zone}
-          </:col>
-          <:col :let={organisation} field="short_name" label="Short name" sort>
-            {organisation.short_name}
-          </:col>
-        </Cinder.collection>
-
-        <.form for={@organisation_form} id="new-organisation" phx-submit="create_organisation">
-          <h3>New organisation</h3>
-          <.input field={@organisation_form[:name]} label="Name" required />
-          <.input
-            field={@organisation_form[:short_name]}
-            label="Short name, for the address of its pages"
-            required
-          />
-          <.input
-            field={@organisation_form[:time_zone]}
-            label="Time zone, for example Australia/Brisbane"
-            list="time-zones"
-            autocomplete="off"
-            required
-          />
-          <datalist id="time-zones">
-            <option :for={zone <- @time_zones} value={zone}></option>
-          </datalist>
-          <footer>
-            <.button type="submit">Create the organisation</.button>
-          </footer>
-        </.form>
-      </section>
-
-      <section aria-labelledby="roots-heading">
-        <h2 id="roots-heading">Root users</h2>
-
-        <ul>
-          <li :for={root <- @roots}>
-            {root.email}
-            <.button
-              :if={root.id != @current_user.id}
-              phx-click="revoke_root"
-              phx-value-id={root.id}
-              aria-label={"Make #{root.email} an ordinary user"}
-            >
-              Make an ordinary user
-            </.button>
-          </li>
-        </ul>
-
-        <.form for={@root_form} id="new-root" phx-submit="make_root">
-          <h3>Make a user a root user</h3>
-          <.input field={@root_form[:email]} type="email" label="Email address of the user" required />
-          <footer>
-            <.button type="submit">Make a root user</.button>
-          </footer>
-        </.form>
-      </section>
+      <.root_users roots={@roots} current_user={@current_user} root_form={@root_form} />
     </Layouts.app>
     """
   end

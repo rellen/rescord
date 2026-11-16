@@ -13,8 +13,9 @@ defmodule RescordWeb.ResidentFormLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.ResidentComponents
+
   alias Rescord.{Lists, Residents}
-  alias RescordWeb.ResidentWords
 
   # A dimension of which a resident has one value, and its field.
   @one [species: "species_id", size_class: "size_class_id", coat: "coat_id"]
@@ -159,9 +160,6 @@ defmodule RescordWeb.ResidentFormLive do
     }
   end
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
   # A group of check boxes with none set sends no field.
   defp ids(values) when is_list(values), do: Enum.filter(values, &is_binary/1)
   defp ids(_none), do: []
@@ -194,45 +192,7 @@ defmodule RescordWeb.ResidentFormLive do
       </p>
 
       <.form for={@form} id="resident" phx-submit="save">
-        <fieldset>
-          <legend>The resident</legend>
-          <.input field={@form[:name]} type="text" label="Name" maxlength="80" />
-          <.input
-            field={@form[:species_id]}
-            type="select"
-            label="Species"
-            prompt="Choose"
-            options={@lists.species}
-            required
-          />
-          <.input field={@form[:sex]} type="select" label="Sex" options={ResidentWords.options(:sex)} />
-          <.input
-            field={@form[:desex_status]}
-            type="select"
-            label="Desex status"
-            options={ResidentWords.options(:desex)}
-          />
-          <.input field={@form[:born_on]} type="date" label="Date of birth" />
-          <.input
-            field={@form[:born_on_estimated]}
-            type="checkbox"
-            label="The date of birth is an estimate"
-          />
-          <.input
-            field={@form[:size_class_id]}
-            type="select"
-            label="Size class"
-            prompt="Not recorded"
-            options={@lists.size_class}
-          />
-          <.input
-            field={@form[:coat_id]}
-            type="select"
-            label="Coat"
-            prompt="Not recorded"
-            options={@lists.coat}
-          />
-        </fieldset>
+        <.resident_fields form={@form} lists={@lists} />
 
         <fieldset :for={{key, legend} <- @many}>
           <legend>{legend}</legend>
@@ -248,19 +208,7 @@ defmodule RescordWeb.ResidentFormLive do
           </label>
         </fieldset>
 
-        <fieldset :if={is_nil(@resident)}>
-          <legend>The arrival</legend>
-          <p>Leave the arrival empty for a resident that you expect.</p>
-          <.input
-            field={@form[:arrival_kind]}
-            type="select"
-            label="How the resident came"
-            prompt="Not here yet"
-            options={ResidentWords.options(:arrival)}
-          />
-          <.input field={@form[:arrived_on]} type="date" label="Date of the arrival" />
-          <.input field={@form[:arrival_note]} type="text" label="Note about the arrival" />
-        </fieldset>
+        <.arrival_fields :if={is_nil(@resident)} form={@form} />
 
         <footer>
           <.button type="submit" variant="primary">

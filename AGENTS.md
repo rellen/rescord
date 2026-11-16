@@ -54,10 +54,17 @@ too.
   `live_component/0`. A part with no state is a function component. A part
   with state is a live widget, unless it needs a process of its own, and then
   it is a nested LiveView.
-- **Pages are compositions of live widgets** (ADR 0003). A stateful part of a
-  page is a widget in `lib/rescord_web/widgets/`, built as the `shoddy_phoenix`
-  guide "Build a widget with lifecycle hooks" shows, with `RescordWeb.Widget`
-  for the bookkeeping.
+- **Decompose each page** (ADR 0037). A LiveView keeps the route, the state,
+  the events and the layout, and its `render/1` composes parts from modules
+  of their own. A part is a function component by default, in
+  `lib/rescord_web/components/<area>_components.ex`, with an `attr` for each
+  value that it shows. A LiveView past about 250 lines still holds a part.
+- **A live widget only when it is needed** (ADR 0037, which changes
+  ADR 0003): a part with state of its own that the page does not need,
+  such as a stateful part that two pages share. Then it is a widget in
+  `lib/rescord_web/widgets/`, built as the `shoddy_phoenix` guide "Build a
+  widget with lifecycle hooks" shows, with `RescordWeb.Widget` for the
+  bookkeeping.
   - A widget module starts with `use RescordWeb, :widget` and
     `use ShoddyPhoenix.LiveView.Events, prefix: "<name>"`. Its state is a
     struct with a `:key`, its events are written with `event/1` and carry a
@@ -329,7 +336,8 @@ too.
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
-| `platform/lib/rescord_web/components/` | function components and layouts |
+| `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
+| `platform/lib/rescord_web/input.ex` | what a page reads from the fields of a form |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |

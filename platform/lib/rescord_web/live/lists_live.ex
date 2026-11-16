@@ -14,6 +14,8 @@ defmodule RescordWeb.ListsLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.ListComponents
+
   alias Rescord.Lists
 
   @impl true
@@ -154,76 +156,12 @@ defmodule RescordWeb.ListsLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <section :for={list <- @lists} aria-labelledby={"list-#{list.key}"}>
-        <h2 id={"list-#{list.key}"}>{list.name}</h2>
-
-        <p :if={list.values == []}>The list is empty.</p>
-        <ul :if={list.values != []}>
-          <li :for={value <- list.values}>
-            {value.label}
-            <small :if={value.origin}>({value.origin}{if value.retired?, do: ", retired"})</small>
-            <.button
-              :if={@can_change? and not @shared? and not value.retired?}
-              phx-click="retire"
-              phx-value-dimension={list.key}
-              phx-value-id={value.id}
-              aria-label={"Retire #{value.label} from #{String.downcase(list.name)}"}
-            >
-              Retire
-            </.button>
-            <.button
-              :if={@can_change? and not @shared? and value.retired?}
-              phx-click="restore"
-              phx-value-dimension={list.key}
-              phx-value-id={value.id}
-              aria-label={"Restore #{value.label} to #{String.downcase(list.name)}"}
-            >
-              Restore
-            </.button>
-          </li>
-        </ul>
-
-        <details :if={@can_change?} id={"add-details-#{list.key}"}>
-          <summary>Add a value to {String.downcase(list.name)}</summary>
-          <form :if={list.unused != []} id={"use-#{list.key}"} phx-submit="use">
-            <input type="hidden" name="dimension" value={list.key} />
-            <.input
-              id={"use-#{list.key}-value"}
-              name="value[base_id]"
-              type="select"
-              label={"A shared value for #{String.downcase(list.name)}"}
-              options={list.unused}
-              value=""
-            />
-            <.button
-              type="submit"
-              aria-label={"Add the shared value to #{String.downcase(list.name)}"}
-            >
-              Add the shared value
-            </.button>
-          </form>
-
-          <form id={"add-#{list.key}"} phx-submit="add">
-            <input type="hidden" name="dimension" value={list.key} />
-            <.input
-              id={"add-#{list.key}-name"}
-              name="value[name]"
-              type="text"
-              label={
-                if @shared?,
-                  do: "A new shared value for #{String.downcase(list.name)}",
-                  else: "A new local value for #{String.downcase(list.name)}"
-              }
-              value=""
-              maxlength="60"
-              required
-            />
-            <.button type="submit" aria-label={"Add the value to #{String.downcase(list.name)}"}>
-              Add the value
-            </.button>
-          </form>
-        </details>
-      </section>
+      <.value_list
+        :for={list <- @lists}
+        list={list}
+        can_change?={@can_change?}
+        shared?={@shared?}
+      />
     </Layouts.app>
     """
   end

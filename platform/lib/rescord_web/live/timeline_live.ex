@@ -10,8 +10,10 @@ defmodule RescordWeb.TimelineLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.TimelineComponents
+
   alias Rescord.{Accounts, Journal, Locations, Residents}
-  alias RescordWeb.{JournalWords, TimelineWords}
+  alias RescordWeb.TimelineWords
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -56,21 +58,6 @@ defmodule RescordWeb.TimelineLive do
 
   defp name(resident), do: resident.name || "a resident with no name"
 
-  defp when_words(organisation, instant),
-    do: JournalWords.time(Accounts.local_time(organisation, instant))
-
-  # The person of an event, or `nil` for an event that has none on record.
-  # A root user is not a member, and reads their own events as their own.
-  defp person(_people, %{user_id: nil}, _user), do: nil
-
-  defp person(people, %{user_id: id}, user) do
-    cond do
-      Map.has_key?(people, id) -> people[id]
-      id == user.id -> to_string(user.email)
-      true -> "a person who is not a member now"
-    end
-  end
-
   defp resident_path(organisation, resident),
     do: ~p"/o/#{organisation.short_name}/residents/#{resident.id}"
 
@@ -99,13 +86,14 @@ defmodule RescordWeb.TimelineLive do
       <p :if={@events == []}>Nothing is on record for this resident yet.</p>
 
       <ol :if={@events != []} id="timeline">
-        <li :for={event <- @events} data-subject={event.subject}>
-          <time datetime={DateTime.to_iso8601(event.at)}>
-            {when_words(@organisation, event.at)}
-          </time>
-          <p>{TimelineWords.event(event, @names)}</p>
-          <small :if={person = person(@people, event, @current_user)}>{person}</small>
-        </li>
+        <.timeline_event
+          :for={event <- @events}
+          event={event}
+          organisation={@organisation}
+          names={@names}
+          people={@people}
+          current_user={@current_user}
+        />
       </ol>
     </Layouts.app>
     """

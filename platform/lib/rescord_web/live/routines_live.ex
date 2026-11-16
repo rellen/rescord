@@ -13,8 +13,10 @@ defmodule RescordWeb.RoutinesLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.RoutineComponents
+
   alias Rescord.{Accounts, Journal, Lists, Locations, Residents, Tasks}
-  alias RescordWeb.{ResidentWords, TaskWords}
+  alias RescordWeb.TaskWords
 
   # The fields of the times of the form: a routine of the page has 4 at most.
   @time_fields ~w(time_1 time_2 time_3 time_4)
@@ -266,12 +268,6 @@ defmodule RescordWeb.RoutinesLive do
     end
   end
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
-  defp edit_path(organisation, routine),
-    do: ~p"/o/#{organisation.short_name}/routines/#{routine.id}/edit"
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -290,266 +286,53 @@ defmodule RescordWeb.RoutinesLive do
 
       <.problems :if={not @refused_form?} list={@problems} />
 
-      <section :if={@editing} aria-labelledby="edit-heading">
-        <h2 id="edit-heading">Change the routine {@editing.title}</h2>
-        <p>
-          When you save, Rescord cancels the tasks of this routine that are due after now, and
-          makes them again. The tasks that are done, skipped or late stay as they are.
-        </p>
-        <.routine_form {assigns} button="Save the routine" />
-        <p><.link navigate={~p"/o/#{@organisation.short_name}/routines"}>Change nothing</.link></p>
-      </section>
+      <.edit_routine
+        :if={@editing}
+        editing={@editing}
+        form={@form}
+        pattern={@pattern}
+        weekdays={@weekdays}
+        prescription={@prescription}
+        days_ahead={@days_ahead}
+        kinds={@kinds}
+        residents={@residents}
+        groups={@groups}
+        locations={@locations}
+        members={@members}
+        problems={@problems}
+        refused_form?={@refused_form?}
+        organisation={@organisation}
+      />
 
-      <section :if={!@editing} aria-labelledby="routines-heading">
-        <h2 id="routines-heading">The routines</h2>
-        <p :if={@routines == []}>There is no routine yet.</p>
-        <div :if={@routines != []} data-scroll>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Routine</th>
-                <th scope="col">When</th>
-                <th scope="col">For</th>
-                <th scope="col">Who</th>
-                <th scope="col">State</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={routine <- @routines} id={"routine-#{routine.id}"}>
-                <td>
-                  {routine.title}
-                  <small :if={routine.kind}>{routine.kind.label}</small>
-                  <small :if={routine.prescription_id}>Writes a dose to the journal</small>
-                  <small :if={routine.note}>{routine.note}</small>
-                </td>
-                <td>
-                  {TaskWords.pattern(routine)}, at {TaskWords.times(routine.times)}
-                  <small>{TaskWords.span(routine)}</small>
-                </td>
-                <td>{for_words(routine, assigns)}</td>
-                <td>{who(routine, @members)}</td>
-                <td>
-                  <.state kind={state_kind(routine, @today)}>{state_words(routine, @today)}</.state>
-                  <small :if={next = Tasks.next_task_at(routine)}>
-                    Next: {next_words(next, @organisation)}
-                  </small>
-                </td>
-                <td>
-                  <.change_link
-                    :if={@can_revise?}
-                    to={edit_path(@organisation, routine)}
-                    label={"Change the routine #{routine.title}"}
-                  />
-                  <.button
-                    :if={@can_revise? and not routine.paused}
-                    phx-click="pause"
-                    phx-value-id={routine.id}
-                    aria-label={"Stop the routine #{routine.title} for a time"}
-                  >
-                    Pause
-                  </.button>
-                  <.button
-                    :if={@can_revise? and routine.paused}
-                    phx-click="resume"
-                    phx-value-id={routine.id}
-                    aria-label={"Start the routine #{routine.title} again"}
-                  >
-                    Start again
-                  </.button>
-                  <details :if={@can_remove?} id={"end-details-#{routine.id}"}>
-                    <summary>End</summary>
-                    <form id={"end-#{routine.id}"} phx-submit="remove">
-                      <input type="hidden" name="routine_id" value={routine.id} />
-                      <p>
-                        The routine goes, with its tasks that are due after now. The tasks that
-                        are done, skipped or late stay.
-                      </p>
-                      <.button type="submit">End the routine {routine.title}</.button>
-                    </form>
-                  </details>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <.routines_table
+        :if={!@editing}
+        routines={@routines}
+        residents={@residents}
+        groups={@groups}
+        locations={@locations}
+        members={@members}
+        today={@today}
+        organisation={@organisation}
+        can_revise?={@can_revise?}
+        can_remove?={@can_remove?}
+      />
 
-      <details :if={!@editing and @can_start?} id="new-routine" open={@prescription != nil}>
-        <summary>New routine</summary>
-        <.routine_form {assigns} button="Start the routine" />
-      </details>
+      <.new_routine
+        :if={!@editing and @can_start?}
+        prescription={@prescription}
+        form={@form}
+        pattern={@pattern}
+        weekdays={@weekdays}
+        days_ahead={@days_ahead}
+        kinds={@kinds}
+        residents={@residents}
+        groups={@groups}
+        locations={@locations}
+        members={@members}
+        problems={@problems}
+        refused_form?={@refused_form?}
+      />
     </Layouts.app>
     """
-  end
-
-  attr :to, :string, required: true
-  attr :label, :string, required: true
-
-  # The link is on one line: a space before its end is drawn with the line
-  # under the link.
-  defp change_link(assigns) do
-    ~H"""
-    <.link navigate={@to} aria-label={@label}>Change</.link>
-    """
-  end
-
-  attr :form, :any, required: true
-  attr :button, :string, required: true
-  attr :pattern, :string, required: true
-  attr :weekdays, :list, required: true
-  attr :prescription, :any, required: true
-  attr :days_ahead, :integer, required: true
-  attr :kinds, :list, required: true
-  attr :residents, :list, required: true
-  attr :groups, :list, required: true
-  attr :locations, :list, required: true
-  attr :members, :list, required: true
-  attr :problems, :list, required: true
-  attr :refused_form?, :boolean, required: true
-  attr :rest, :global
-
-  # The form of a routine: a new one, or one that a member changes.
-  defp routine_form(assigns) do
-    ~H"""
-    <.form for={@form} id="routine" phx-change="shape" phx-submit="save">
-      <.problems :if={@refused_form?} list={@problems} />
-      <p :if={@prescription} id="routine-prescription">
-        Each task of this routine writes a dose of {@prescription.medication} ({@prescription.dose}) for {@prescription.resident_name} to the journal, when a member
-        completes it.
-      </p>
-      <.input field={@form[:title]} type="text" label="What to do" maxlength="120" required />
-      <.input
-        field={@form[:kind_id]}
-        type="select"
-        label="Kind"
-        prompt="Not recorded"
-        options={@kinds}
-      />
-      <.input
-        field={@form[:pattern]}
-        type="select"
-        label="How it repeats"
-        options={TaskWords.pattern_options()}
-      />
-      <fieldset :if={@pattern == "weekly"} id="routine-weekdays">
-        <legend>Days of the week</legend>
-        <label :for={{name, number} <- TaskWords.weekdays()}>
-          <input
-            type="checkbox"
-            name="routine[weekdays][]"
-            value={number}
-            checked={to_string(number) in @weekdays}
-          />
-          {name}
-        </label>
-      </fieldset>
-      <.input
-        :if={@pattern in ["interval", "monthly"]}
-        field={@form[:every]}
-        type="number"
-        label={if @pattern == "interval", do: "Every how many days", else: "Every how many months"}
-        min="1"
-        max={if @pattern == "interval", do: "366", else: "36"}
-        required
-      />
-      <.input field={@form[:time_1]} type="time" label="Time" required />
-      <.input field={@form[:time_2]} type="time" label="A second time, if there is one" />
-      <.input field={@form[:time_3]} type="time" label="A third time, if there is one" />
-      <.input field={@form[:time_4]} type="time" label="A fourth time, if there is one" />
-      <.input field={@form[:starts_on]} type="date" label="First day" required />
-      <.input field={@form[:ends_on]} type="date" label="Last day, if there is one" />
-      <.input
-        field={@form[:resident_id]}
-        type="select"
-        label="For a resident"
-        prompt="No resident"
-        options={@residents}
-      />
-      <.input
-        field={@form[:group_id]}
-        type="select"
-        label="For a group"
-        prompt="No group"
-        options={@groups}
-      />
-      <.input
-        field={@form[:location_id]}
-        type="select"
-        label="For a location"
-        prompt="No location"
-        options={@locations}
-      />
-      <.input
-        field={@form[:assignee_id]}
-        type="select"
-        label="Who does it"
-        prompt="Anybody"
-        options={@members}
-      />
-      <.input
-        field={@form[:days_ahead]}
-        type="number"
-        label={"How many days ahead the tasks exist, if not #{@days_ahead}"}
-        min="1"
-        max="400"
-      />
-      <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
-      <footer><.button type="submit">{@button}</.button></footer>
-    </.form>
-    """
-  end
-
-  defp for_words(routine, assigns) do
-    names =
-      names(routine.resident_ids, assigns.residents, "A resident who is not here now") ++
-        names(routine.group_ids, assigns.groups, "A group that is not here now") ++
-        names(routine.location_ids, assigns.locations, "A location that is not here now")
-
-    if names == [], do: "Nothing in particular", else: Enum.join(names, ", ")
-  end
-
-  defp names(ids, options, missing) do
-    for id <- ids do
-      Enum.find_value(options, missing, fn {name, option_id} ->
-        if option_id == id, do: String.trim_leading(name, "– ")
-      end)
-    end
-  end
-
-  defp who(%{assignee_id: nil}, _members), do: "Anybody"
-
-  defp who(%{assignee_id: id}, members) do
-    Enum.find_value(members, "A person who is not a member now", fn {email, user_id} ->
-      if user_id == id, do: email
-    end)
-  end
-
-  defp ended?(%{ends_on: %Date{} = ends_on}, today), do: Date.compare(ends_on, today) == :lt
-  defp ended?(_routine, _today), do: false
-
-  defp state_words(%{paused: true}, _today), do: "Paused"
-
-  defp state_words(routine, today) do
-    cond do
-      ended?(routine, today) -> "Finished"
-      Date.compare(routine.starts_on, today) == :gt -> "Not started"
-      true -> "Active"
-    end
-  end
-
-  defp state_kind(%{paused: true}, _today), do: "none"
-
-  defp state_kind(routine, today) do
-    cond do
-      ended?(routine, today) -> "none"
-      Date.compare(routine.starts_on, today) == :gt -> "info"
-      true -> "ok"
-    end
-  end
-
-  defp next_words(instant, organisation) do
-    local = Accounts.local_time(organisation, instant)
-    "#{ResidentWords.date(DateTime.to_date(local))}, #{TaskWords.time(local)}"
   end
 end

@@ -75,6 +75,9 @@ defmodule RescordWeb do
     quote do
       use Phoenix.LiveView
 
+      # The text of a field of a form, or nil for a blank one.
+      import RescordWeb.Input, only: [text: 1]
+
       unquote(html_helpers())
     end
   end

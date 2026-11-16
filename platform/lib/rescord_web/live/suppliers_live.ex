@@ -7,6 +7,8 @@ defmodule RescordWeb.SuppliersLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.InventoryComponents
+
   alias Rescord.{Accounts, Inventory}
 
   @impl true
@@ -78,9 +80,6 @@ defmodule RescordWeb.SuppliersLive do
     end
   end
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -98,82 +97,13 @@ defmodule RescordWeb.SuppliersLive do
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
       <p :if={@suppliers == []}>There is no supplier yet.</p>
-      <div :if={@suppliers != []} data-scroll>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Supplier</th>
-              <th scope="col">How to reach it</th>
-              <th scope="col">Note</th>
-              <th :if={@can_change?} scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={supplier <- @suppliers} id={"supplier-#{supplier.id}"}>
-              <td>{supplier.name}</td>
-              <td>{supplier.contact || "Not recorded"}</td>
-              <td>{supplier.note}</td>
-              <td :if={@can_change?}>
-                <details id={"change-details-#{supplier.id}"}>
-                  <summary>Change</summary>
-                  <form id={"change-#{supplier.id}"} phx-submit="revise">
-                    <input type="hidden" name="supplier_id" value={supplier.id} />
-                    <.input
-                      id={"change-#{supplier.id}-name"}
-                      name="change[name]"
-                      type="text"
-                      label={"Name of #{supplier.name}"}
-                      value={supplier.name}
-                      maxlength="120"
-                      required
-                    />
-                    <.input
-                      id={"change-#{supplier.id}-contact"}
-                      name="change[contact]"
-                      type="text"
-                      label={"How to reach #{supplier.name}"}
-                      value={supplier.contact}
-                      maxlength="500"
-                    />
-                    <.input
-                      id={"change-#{supplier.id}-note"}
-                      name="change[note]"
-                      type="text"
-                      label={"Note about #{supplier.name}"}
-                      value={supplier.note}
-                      maxlength="1000"
-                    />
-                    <.button type="submit">Save the supplier</.button>
-                  </form>
-                </details>
-                <details id={"remove-details-#{supplier.id}"}>
-                  <summary>Remove</summary>
-                  <form id={"remove-#{supplier.id}"} phx-submit="remove">
-                    <input type="hidden" name="supplier_id" value={supplier.id} />
-                    <p>The lots that name this supplier keep their history.</p>
-                    <.button type="submit">Remove {supplier.name}</.button>
-                  </form>
-                </details>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <.suppliers_table
+        :if={@suppliers != []}
+        can_change?={@can_change?}
+        suppliers={@suppliers}
+      />
 
-      <details :if={@can_change?} id="new-supplier">
-        <summary>New supplier</summary>
-        <.form for={@form} id="supplier" phx-submit="add">
-          <.input field={@form[:name]} type="text" label="Name" maxlength="120" required />
-          <.input
-            field={@form[:contact]}
-            type="text"
-            label="How to reach it: a telephone number, an address, a person"
-            maxlength="500"
-          />
-          <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
-          <footer><.button type="submit">Add the supplier</.button></footer>
-        </.form>
-      </details>
+      <.new_supplier :if={@can_change?} form={@form} />
     </Layouts.app>
     """
   end

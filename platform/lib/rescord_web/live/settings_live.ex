@@ -14,8 +14,10 @@ defmodule RescordWeb.SettingsLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.AccountComponents
+
   alias Rescord.{Accounts, Tasks}
-  alias RescordWeb.{ResidentWords, TaskWords}
+  alias RescordWeb.TaskWords
 
   @impl true
   def mount(_params, _session, socket) do
@@ -103,54 +105,19 @@ defmodule RescordWeb.SettingsLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <section aria-labelledby="time-zone-heading">
-        <h2 id="time-zone-heading">Time zone</h2>
-        <.list>
-          <:item title="Time zone">{@organisation.time_zone}</:item>
-          <:item title="Today here">{ResidentWords.date(@today)}</:item>
-        </.list>
-        <p>
-          The time zone says what today is for {@organisation.name}: a date of an arrival or a
-          departure is not after today, and the age of a resident counts to today.
-        </p>
+      <.time_zone_setting
+        organisation={@organisation}
+        today={@today}
+        can_change?={@can_change?}
+        form={@form}
+        time_zones={@time_zones}
+      />
 
-        <.form :if={@can_change?} for={@form} id="settings" phx-submit="save">
-          <.input
-            field={@form[:time_zone]}
-            label="Time zone, for example Australia/Brisbane"
-            list="time-zones"
-            autocomplete="off"
-            required
-          />
-          <datalist id="time-zones">
-            <option :for={zone <- @time_zones} value={zone}></option>
-          </datalist>
-          <footer><.button type="submit">Save the time zone</.button></footer>
-        </.form>
-      </section>
-
-      <section aria-labelledby="ahead-heading">
-        <h2 id="ahead-heading">Tasks of the routines</h2>
-        <.list>
-          <:item title="The tasks exist">{TaskWords.days(@organisation.task_days_ahead)} ahead</:item>
-        </.list>
-        <p>
-          Rescord makes the tasks of each routine this number of days ahead. A routine can have
-          a number of its own. A smaller number here removes no task that exists.
-        </p>
-
-        <.form :if={@can_change?} for={@ahead_form} id="ahead" phx-submit="save_ahead">
-          <.input
-            field={@ahead_form[:task_days_ahead]}
-            type="number"
-            label="Days ahead, from 1 to 400"
-            min="1"
-            max="400"
-            required
-          />
-          <footer><.button type="submit">Save the days ahead</.button></footer>
-        </.form>
-      </section>
+      <.days_ahead_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        ahead_form={@ahead_form}
+      />
     </Layouts.app>
     """
   end

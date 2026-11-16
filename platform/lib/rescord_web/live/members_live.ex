@@ -12,6 +12,8 @@ defmodule RescordWeb.MembersLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.AccountComponents
+
   alias Rescord.Accounts
 
   @impl true
@@ -101,54 +103,18 @@ defmodule RescordWeb.MembersLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <Cinder.collection
-        id="members"
-        query={Accounts.query_to_members(%{}, actor: @current_user, tenant: @organisation)}
-        actor={@current_user}
-        tenant={@organisation}
-      >
-        <:col :let={member} field="email" label="Email address">{member.email}</:col>
-        <:col :let={member} field="role" label="Role" filter sort>{role_word(member.role)}</:col>
-        <:col :let={member} field="id" label="Actions">
-          <.button
-            :if={member.role == :member and Accounts.role_can?(@role, :make_administrator, member)}
-            phx-click="make_administrator"
-            phx-value-id={member.id}
-            aria-label={"Make #{member.email} an administrator"}
-          >
-            Make administrator
-          </.button>
-          <.button
-            :if={Accounts.role_can?(@role, :remove, member)}
-            phx-click="remove"
-            phx-value-id={member.id}
-            aria-label={"Remove #{member.email} from #{@organisation.name}"}
-          >
-            Remove
-          </.button>
-        </:col>
-      </Cinder.collection>
+      <.members_table
+        current_user={@current_user}
+        organisation={@organisation}
+        role={@role}
+      />
 
-      <section :if={@can_invite?} aria-labelledby="invite-heading">
-        <h2 id="invite-heading">Invite a person</h2>
-        <.form for={@invite_form} id="invite" phx-submit="invite">
-          <.input field={@invite_form[:email]} type="email" label="Email address" required />
-          <.input
-            :if={@can_invite_administrator?}
-            field={@invite_form[:role]}
-            type="select"
-            label="Role"
-            options={[{"Member", "member"}, {"Administrator", "administrator"}]}
-          />
-          <footer>
-            <.button type="submit">Send the invitation</.button>
-          </footer>
-        </.form>
-      </section>
+      <.invite_form
+        :if={@can_invite?}
+        invite_form={@invite_form}
+        can_invite_administrator?={@can_invite_administrator?}
+      />
     </Layouts.app>
     """
   end
-
-  defp role_word(:administrator), do: "Administrator"
-  defp role_word(:member), do: "Member"
 end

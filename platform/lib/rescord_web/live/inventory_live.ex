@@ -9,8 +9,9 @@ defmodule RescordWeb.InventoryLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.InventoryComponents
+
   alias Rescord.{Accounts, Inventory, Lists}
-  alias RescordWeb.InventoryWords
 
   @impl true
   def mount(_params, _session, socket) do
@@ -74,11 +75,6 @@ defmodule RescordWeb.InventoryLive do
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
-  defp item_path(organisation, item), do: ~p"/o/#{organisation.short_name}/inventory/#{item.id}"
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -98,66 +94,9 @@ defmodule RescordWeb.InventoryLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <section aria-labelledby="items-heading">
-        <h2 id="items-heading">The items</h2>
-        <p :if={@stock == []}>The inventory has no item yet.</p>
-        <div :if={@stock != []} data-scroll>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Category</th>
-                <th scope="col">In stock</th>
-                <th scope="col">State</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={stock <- @stock} id={"item-#{stock.item.id}"}>
-                <td>
-                  <.link navigate={item_path(@organisation, stock.item)}>{stock.item.name}</.link>
-                </td>
-                <td>{(stock.item.category && stock.item.category.label) || "Not recorded"}</td>
-                <td>{InventoryWords.quantity(stock.level, stock.item)}</td>
-                <td>
-                  <.state :for={{words, kind} <- InventoryWords.states(stock)} kind={kind}>
-                    {words}
-                  </.state>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <.items_table stock={@stock} organisation={@organisation} />
 
-      <details :if={@can_add?} id="new-item">
-        <summary>New item</summary>
-        <.form for={@form} id="item" phx-submit="add">
-          <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
-          <.input
-            field={@form[:category_id]}
-            type="select"
-            label="Category"
-            prompt="Not recorded"
-            options={@categories}
-          />
-          <.input
-            field={@form[:unit_id]}
-            type="select"
-            label="Unit that you count it in"
-            prompt="Not recorded"
-            options={@units}
-          />
-          <.input
-            field={@form[:reorder_level]}
-            type="number"
-            label="Order more when the stock is below, if you give a number"
-            min="0"
-            step="any"
-          />
-          <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
-          <footer><.button type="submit">Add the item</.button></footer>
-        </.form>
-      </details>
+      <.new_item :if={@can_add?} form={@form} categories={@categories} units={@units} />
     </Layouts.app>
     """
   end

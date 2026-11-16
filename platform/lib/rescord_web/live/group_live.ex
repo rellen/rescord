@@ -12,6 +12,8 @@ defmodule RescordWeb.GroupLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.GroupComponents
+
   alias Rescord.{Lists, Locations, Residents}
 
   @impl true
@@ -144,11 +146,6 @@ defmodule RescordWeb.GroupLive do
 
   defp after_write(_done, socket), do: {:noreply, push_navigate(socket, to: path(socket))}
 
-  defp text(value) when is_binary(value), do: if(String.trim(value) == "", do: nil, else: value)
-  defp text(_other), do: nil
-
-  defp can?(role, subject, action), do: Residents.role_can?(role, subject, action)
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -164,106 +161,24 @@ defmodule RescordWeb.GroupLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <section aria-labelledby="about-heading">
-        <h2 id="about-heading">About</h2>
-        <.list>
-          <:item title="Kind">{if @group.kind, do: @group.kind.label, else: "Not recorded"}</:item>
-          <:item title="Lives in">
-            <.link
-              :if={@home}
-              navigate={~p"/o/#{@organisation.short_name}/housing/#{@home.location_id}"}
-            >{@home.location.name}</.link>
-            <span :if={is_nil(@home)}>No place in the housing yet</span>
-          </:item>
-          <:item title="How they are related">
-            {Residents.words(@group) || "No relation is recorded"}
-            <small :if={@group.description}>(the words of a member)</small>
-          </:item>
-        </.list>
+      <.about_group
+        group={@group}
+        home={@home}
+        organisation={@organisation}
+        role={@role}
+        form={@form}
+        kinds={@kinds}
+      />
 
-        <details :if={can?(@role, :group, :revise)} id="change-group">
-          <summary>Change the group</summary>
-          <.form for={@form} id="group" phx-submit="revise">
-            <.input
-              field={@form[:name]}
-              type="text"
-              label="Name, if the group has one"
-              maxlength="80"
-            />
-            <.input
-              field={@form[:kind_id]}
-              type="select"
-              label="Kind"
-              prompt="Not recorded"
-              options={@kinds}
-            />
-            <.input
-              field={@form[:description]}
-              type="text"
-              label="How they are related, in your words. Leave it empty for the words of Rescord"
-              maxlength="200"
-            />
-            <footer><.button type="submit">Save the group</.button></footer>
-          </.form>
-        </details>
-      </section>
+      <.group_members
+        group={@group}
+        organisation={@organisation}
+        role={@role}
+        others={@others}
+        join_form={@join_form}
+      />
 
-      <section aria-labelledby="members-heading">
-        <h2 id="members-heading">Members</h2>
-        <p :if={@group.members == []}>The group has no member.</p>
-        <ul :if={@group.members != []}>
-          <li :for={member <- @group.members}>
-            <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{member.resident_id}"}>
-              {member.resident.name || "No name yet"}
-            </.link>
-            <details :if={can?(@role, :group_member, :leave)} id={"leave-details-#{member.id}"}>
-              <summary>Take out</summary>
-              <form id={"leave-#{member.id}"} phx-submit="leave">
-                <input type="hidden" name="member_id" value={member.id} />
-                <.input
-                  id={"leave-#{member.id}-at"}
-                  name="leave[at]"
-                  type="datetime-local"
-                  label={"When #{member.resident.name || "the resident with no name"} left the group, if not now"}
-                  value=""
-                />
-                <.button type="submit">
-                  Take {member.resident.name || "the resident with no name"} out of the group
-                </.button>
-              </form>
-            </details>
-          </li>
-        </ul>
-
-        <details :if={can?(@role, :group_member, :join) and @others != []} id="add-member">
-          <summary>Add a member</summary>
-          <.form for={@join_form} id="member" phx-submit="join">
-            <.input
-              field={@join_form[:resident_id]}
-              type="select"
-              label="Resident"
-              prompt="Choose"
-              options={@others}
-              required
-            />
-            <.input
-              field={@join_form[:at]}
-              type="datetime-local"
-              label="When it joined the group, if not now"
-            />
-            <footer><.button type="submit">Add to the group</.button></footer>
-          </.form>
-        </details>
-      </section>
-
-      <section :if={can?(@role, :group, :close)} aria-labelledby="close-heading">
-        <h2 id="close-heading">Close</h2>
-        <details id="close-group">
-          <summary>Close this group</summary>
-          <p>Close a group that is no more. Its history stays.</p>
-          <.button phx-click="close">Close the group</.button>
-        </details>
-      </section>
+      <.close_group_section :if={can?(@role, :group, :close)} />
     </Layouts.app>
     """
   end
