@@ -22,7 +22,7 @@ defmodule Rescord.Journal do
   alias Rescord.Journal.{EntryKind, JournalEntry}
 
   boundary do
-    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents]
+    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
   end
 
   paper_trail do
@@ -74,6 +74,48 @@ defmodule Rescord.Journal do
     |> Ash.Query.sort(happened_at: :desc)
     |> Ash.Query.load(@facts)
     |> Ash.read(opts)
+  end
+
+  # The order of two events at one instant: the name of a new resident is
+  # before its arrival.
+  @order [:name, :arrival, :placement, :group_member, :absence, :departure, :entry]
+
+  @doc """
+  The timeline of a resident (`docs/domain.md`, section 5.6, and ADR 0035):
+  its journal entries together with the changes that Rescord recorded, the
+  newest first.
+
+  Each event has `subject`, `kind`, `at`, `record` and `user_id`. A journal
+  entry has the subject `:entry` and the kind `:written`, at the time that
+  the thing happened. Each other event is a change of
+  `Rescord.Residents.changes/2` or of `Rescord.Locations.changes/2`, at the
+  time that Rescord recorded it.
+  """
+  def timeline(resident_id, opts \\ []) do
+    with {:ok, entries} <- entries(resident_id, opts) do
+      written =
+        for entry <- entries do
+          %{
+            subject: :entry,
+            kind: :written,
+            at: entry.happened_at,
+            record: entry,
+            user_id: entry.author_id
+          }
+        end
+
+      changes =
+        Rescord.Residents.changes(resident_id, opts) ++
+          Rescord.Locations.changes(resident_id, opts)
+
+      {:ok,
+       Enum.sort_by(
+         written ++ changes,
+         &{DateTime.to_unix(&1.at, :microsecond),
+          Enum.find_index(@order, fn s -> s == &1.subject end)},
+         :desc
+       )}
+    end
   end
 
   @doc "One entry with its facts, or `nil` when the actor can read no such entry."

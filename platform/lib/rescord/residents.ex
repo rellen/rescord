@@ -146,6 +146,42 @@ defmodule Rescord.Residents do
   def desex_history(resident_id, opts \\ []),
     do: history(ResidentDesexStatus, :status, resident_id, opts)
 
+  @doc """
+  The changes that Rescord recorded about a resident, in the order of time:
+  its name, its arrival, its departure, each absence and each group. Each
+  one is a change of `Rescord.History` with a `subject`: `:name`,
+  `:arrival`, `:departure`, `:absence` or `:group_member`.
+
+  Returns `[]` when the actor can read no such resident: the versions have
+  no policy of their own, so the resident decides.
+  """
+  def changes(resident_id, opts \\ []) do
+    subjects = [
+      name: ResidentName,
+      arrival: Arrival,
+      departure: Departure,
+      absence: Absence,
+      group_member: GroupMember
+    ]
+
+    case resident(resident_id, opts) do
+      {:ok, %Resident{}} ->
+        for {subject, resource} <- subjects,
+            change <-
+              resource
+              |> AshPaperTrail.Resource.Info.version_resource()
+              |> Ash.Query.filter(resident_id == ^resident_id)
+              |> Ash.read!(tenant: opts[:tenant], authorize?: false)
+              |> Rescord.History.changes() do
+          Map.put(change, :subject, subject)
+        end
+        |> Enum.sort_by(& &1.at, DateTime)
+
+      _no_resident ->
+        []
+    end
+  end
+
   defp history(resource, attribute, resident_id, opts) do
     # The versions have no policy of their own: the resident decides.
     case resident(resident_id, opts) do

@@ -296,8 +296,8 @@ to add to a journal entry:
 Use a correction only for a mistake in the entry.
 
 Rescord has the journal (ADR 0030): an entry with the facts of its kind, the
-time that the thing happened, an addendum, and a correction. It does not
-have the timeline or an attachment yet.
+time that the thing happened, an addendum, and a correction. It has the
+timeline (ADR 0035). It does not have an attachment yet.
 
 A journal entry has one of these kinds:
 

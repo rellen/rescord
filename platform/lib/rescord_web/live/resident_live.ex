@@ -487,6 +487,12 @@ defmodule RescordWeb.ResidentLive do
           >
             Open the journal
           </.link>
+          <.link
+            navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/timeline"}
+            data-variant="secondary"
+          >
+            Open the timeline
+          </.link>
         </p>
       </section>
 

@@ -220,6 +220,30 @@ defmodule Rescord.Locations do
   end
 
   @doc """
+  The changes that Rescord recorded about where a resident lives, in the
+  order of time: each placement of its own, each move and each end. Each
+  one is a change of `Rescord.History` with the `subject` `:placement`.
+  The placements of the groups of the resident are not here.
+
+  Returns `[]` when the actor can read no such resident: the versions have
+  no policy of their own, so the resident decides.
+  """
+  def changes(resident_id, opts \\ []) do
+    case Residents.resident(resident_id, opts) do
+      {:ok, %{id: ^resident_id}} ->
+        Placement
+        |> AshPaperTrail.Resource.Info.version_resource()
+        |> Ash.Query.filter(resident_id == ^resident_id)
+        |> Ash.read!(tenant: opts[:tenant], authorize?: false)
+        |> Rescord.History.changes()
+        |> Enum.map(&Map.put(&1, :subject, :placement))
+
+      _no_resident ->
+        []
+    end
+  end
+
+  @doc """
   Whether a role can run an action of a resource of this domain at all. A
   page asks this to decide what to show. The policy decides when the action
   runs.

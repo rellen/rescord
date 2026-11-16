@@ -268,6 +268,11 @@ too.
   turns an instant into its date there. A test that needs two different
   dates at one instant uses two zones that are far apart, and no clock of
   its own.
+- **A domain reads the versions of its own resources**, and no other domain
+  does (ADR 0035). The versions have no policy: the function reads the
+  record that decides first, with the options of the caller, and returns
+  nothing when the caller cannot read it. `Rescord.History.changes/1` says
+  what the versions mean.
 - **An action that changes a state has a filter on that state**
   (`change filter(expr(state == :due))`, ADR 0032). The state machine reads
   the record that the caller has in hand, which can be old. The filter
@@ -306,6 +311,7 @@ too.
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |
 | `platform/lib/rescord/inventory/` | the items, the lots, the suppliers, the stock movements and the reorder levels |
 | `platform/lib/rescord/tasks/` | the tasks, their states and their subjects; the routines, their patterns and the job that makes their tasks |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |

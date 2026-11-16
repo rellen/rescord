@@ -237,6 +237,44 @@ li > details:not([open]) {
   margin: 0;
 }
 
+/* The timeline of a resident: each event is a row with its time, its
+   words and its person. The number of an event is of no use to a reader. */
+#timeline {
+  padding: 0;
+  list-style: none;
+}
+
+#timeline > li {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  gap: 0 1rem;
+  padding-block: 0.625rem;
+  border-block-end: 1px solid var(--border);
+}
+
+#timeline > li > time {
+  color: var(--muted);
+}
+
+#timeline > li > p {
+  margin: 0;
+}
+
+#timeline > li > small {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+@media (width < 40rem) {
+  #timeline > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #timeline > li > small {
+    grid-column: 1;
+  }
+}
+
 /* What an action refused. The page says it beside the form that the person
    sent, or below the header. */
 main p[role="alert"] {

@@ -442,18 +442,24 @@ defmodule Rescord.InventoryTest do
     end
 
     test "is on the calendar of the organisation", context do
-      # Honolulu is a day behind Brisbane for most of the day.
-      far = organisation!(context.root, "Far", "Pacific/Honolulu")
-      options = [actor: context.root, tenant: far]
-      item = Inventory.add_item!(%{name: "Pellets"}, options)
+      # These two zones are 25 hours apart, so they never have the same date,
+      # and one of them is not on the date of UTC.
+      for zone <- ["Pacific/Kiritimati", "Pacific/Pago_Pago"] do
+        far = organisation!(context.root, "Far", zone)
+        options = [actor: context.root, tenant: far]
+        item = Inventory.add_item!(%{name: "Pellets"}, options)
+        today = Accounts.today(far)
 
-      Inventory.receive_lot!(
-        %{item_id: item.id, quantity: 1, expires_on: Accounts.today(far)},
-        options
-      )
+        for expires_on <- [today, Date.add(today, -1)] do
+          Inventory.receive_lot!(
+            %{item_id: item.id, quantity: 1, expires_on: expires_on},
+            options
+          )
+        end
 
-      {:ok, stock} = Inventory.item_stock(item.id, options)
-      assert [%{expiry: :soon}] = stock.lots
+        {:ok, stock} = Inventory.item_stock(item.id, options)
+        assert Enum.map(stock.lots, & &1.expiry) == [:expired, :soon]
+      end
     end
   end
 

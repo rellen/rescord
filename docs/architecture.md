@@ -295,6 +295,12 @@ table (ADR 0025).
   `generated_until` on the routine says up to which instant its tasks exist,
   so no task is made two times. `Rescord.Tasks.Pattern` gives the days of a
   pattern with no database and no clock.
+- **The timeline** of a resident (ADR 0035) is its journal entries together
+  with the changes that Rescord recorded. `Rescord.History` reads the
+  versions of a temporal resource as changes, and each domain gives the
+  changes of its own resources: `Rescord.Residents.changes/2` and
+  `Rescord.Locations.changes/2`. `Rescord.Journal.timeline/2` puts them in
+  one list.
 - **The inventory** (ADR 0034) has items, lots, suppliers, stock movements
   and reorder levels. Rescord stores no level:
   `Rescord.Inventory.stock/1` adds the stock movements of each lot in each

@@ -252,6 +252,12 @@ defmodule RescordWeb.JournalLive do
           >
             Show the medical history
           </.link>
+          <.link
+            navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/timeline"}
+            data-variant="secondary"
+          >
+            Timeline
+          </.link>
         </:actions>
       </.header>
 
