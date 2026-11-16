@@ -135,6 +135,14 @@ defmodule RescordWeb.ItemLive do
 
   defp source(_other), do: %{lot_id: nil, location_id: nil}
 
+  # Runs a movement of a lot of this item. A lot of another item is refused:
+  # the browser can send any id, and this page is about one item.
+  defp of_this_item(socket, %{lot_id: lot_id} = movement, write) do
+    if Enum.any?(socket.assigns.stock.lots, &(&1.lot.id == lot_id)),
+      do: write.(movement),
+      else: {:error, "Choose a lot of #{socket.assigns.item.name}"}
+  end
+
   @impl true
   def handle_event("receive", %{"receive" => fields}, socket) when is_map(fields) do
     common = fn instant ->
@@ -159,54 +167,65 @@ defmodule RescordWeb.ItemLive do
           |> Inventory.receive_lot(options)
 
         lot_id ->
-          instant |> common.() |> Map.put(:lot_id, lot_id) |> Inventory.receive_stock(options)
+          of_this_item(
+            socket,
+            instant |> common.() |> Map.put(:lot_id, lot_id),
+            &Inventory.receive_stock(&1, options)
+          )
       end
     end)
   end
 
   def handle_event("use", %{"use" => fields}, socket) when is_map(fields) do
     write(socket, :use, fields, fn instant, options ->
-      fields["source"]
-      |> source()
-      |> Map.merge(%{
-        quantity: text(fields["quantity"]),
-        note: text(fields["note"]),
-        happened_at: instant
-      })
-      |> Inventory.use_stock(options)
+      movement =
+        fields["source"]
+        |> source()
+        |> Map.merge(%{
+          quantity: text(fields["quantity"]),
+          note: text(fields["note"]),
+          happened_at: instant
+        })
+
+      of_this_item(socket, movement, &Inventory.use_stock(&1, options))
     end)
   end
 
   def handle_event("discard", %{"discard" => fields}, socket) when is_map(fields) do
     write(socket, :discard, fields, fn instant, options ->
-      fields["source"]
-      |> source()
-      |> Map.merge(%{
-        quantity: text(fields["quantity"]),
-        note: text(fields["note"]),
-        happened_at: instant
-      })
-      |> Inventory.discard_stock(options)
+      movement =
+        fields["source"]
+        |> source()
+        |> Map.merge(%{
+          quantity: text(fields["quantity"]),
+          note: text(fields["note"]),
+          happened_at: instant
+        })
+
+      of_this_item(socket, movement, &Inventory.discard_stock(&1, options))
     end)
   end
 
   def handle_event("move", %{"move" => fields}, socket) when is_map(fields) do
     write(socket, :move, fields, fn instant, options ->
-      fields["source"]
-      |> source()
-      |> Map.merge(%{
-        to_location_id: text(fields["to_location_id"]),
-        quantity: text(fields["quantity"]),
-        note: text(fields["note"]),
-        happened_at: instant
-      })
-      |> Inventory.move_stock(options)
+      movement =
+        fields["source"]
+        |> source()
+        |> Map.merge(%{
+          to_location_id: text(fields["to_location_id"]),
+          quantity: text(fields["quantity"]),
+          note: text(fields["note"]),
+          happened_at: instant
+        })
+
+      of_this_item(socket, movement, &Inventory.move_stock(&1, options))
     end)
   end
 
   def handle_event("count", %{"count" => fields}, socket) when is_map(fields) do
     write(socket, :count, fields, fn instant, options ->
-      Inventory.count_stock(
+      of_this_item(
+        socket,
         %{
           lot_id: text(fields["lot_id"]),
           location_id: text(fields["location_id"]),
@@ -214,7 +233,7 @@ defmodule RescordWeb.ItemLive do
           note: text(fields["note"]),
           happened_at: instant
         },
-        options
+        &Inventory.count_stock(&1, options)
       )
     end)
   end

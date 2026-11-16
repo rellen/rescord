@@ -161,6 +161,10 @@ defmodule Rescord.Locations do
          {:ok, placements} <- placements([load: [resident: [:name]]] ++ opts),
          {:ok, groups} <- Residents.groups_with_facts(opts) do
       groups = Map.new(groups, &{&1.id, &1})
+
+      # A placement of a resident that the actor cannot read, such as one that
+      # an administrator removed, is not in the housing.
+      placements = Enum.reject(placements, &(&1.resident_id && is_nil(&1.resident)))
       apart = for %{resident_id: id} when not is_nil(id) <- placements, into: MapSet.new(), do: id
       here = Enum.group_by(placements, & &1.location_id)
       ids = MapSet.new(locations, & &1.id)

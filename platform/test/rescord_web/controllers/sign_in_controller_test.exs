@@ -213,7 +213,14 @@ defmodule RescordWeb.SignInControllerTest do
       signed_in = post(conn, ~p"/sign-in/link", %{"token" => token_in(email)})
       assert signed_in?(recycle(signed_in))
 
+      # The session names the sockets of its user, so a sign-out closes each
+      # page that is open.
+      socket_id = RescordWeb.UserAuth.socket_id(user.id)
+      assert get_session(signed_in, :live_socket_id) == socket_id
+      RescordWeb.Endpoint.subscribe(socket_id)
+
       signed_out = delete(recycle(signed_in), ~p"/sign-out")
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect", topic: ^socket_id}
       assert redirected_to(signed_out) == ~p"/sign-in"
       refute signed_in?(recycle(signed_out))
 

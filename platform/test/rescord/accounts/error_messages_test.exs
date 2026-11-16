@@ -38,6 +38,16 @@ defmodule Rescord.Accounts.ErrorMessagesTest do
     assert messages([between]) == ["Weekdays must be one of [1, 2]"]
   end
 
+  test "a validation of a hook names its field in a list, and an error can hold errors" do
+    alias Ash.Error.Changes.InvalidChanges
+
+    changes = InvalidChanges.exception(fields: [:location], message: "has residents in it")
+    assert messages([changes]) == ["Location has residents in it"]
+
+    inner = %Ash.Error.Invalid{errors: [changes]}
+    assert messages([inner]) == ["Location has residents in it"]
+  end
+
   test "a value that is not there says that it is required" do
     assert messages([Required.exception(field: :title, type: :attribute)]) == [
              "Title is required"

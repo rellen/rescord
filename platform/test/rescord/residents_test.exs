@@ -557,6 +557,48 @@ defmodule Rescord.ResidentsTest do
       assert facts(resident, [as_of: before] ++ context.options).name == "Biscuit"
     end
 
+    test "takes its ties with it, and the pages of its relatives still read", context do
+      options = context.options
+      administrator = [actor: context.administrator, tenant: context.organisation]
+      mother = resident!(context.lists, options, %{name: "Pepper", sex: :female})
+      young = resident!(context.lists, options, %{name: "Toffee"})
+      resident = resident!(context.lists, options)
+
+      {:ok, _} =
+        Residents.record_parent(
+          %{resident_id: resident.id, parent_id: mother.id, role: :mother},
+          options
+        )
+
+      {:ok, _} =
+        Residents.record_parent(
+          %{resident_id: young.id, parent_id: resident.id, role: :father},
+          options
+        )
+
+      group = Residents.form_group!(%{resident_ids: [resident.id, young.id]}, options)
+      {:ok, family} = Residents.name_family("The hay bale litter", options)
+
+      {:ok, _} =
+        Residents.add_to_family(%{resident_id: resident.id, family_id: family.id}, options)
+
+      before = DateTime.utc_now()
+      assert :ok = Residents.remove_resident(resident, administrator)
+
+      # Each page that names the relatives of a resident reads them.
+      assert %{young: [], parents: []} = Residents.relations(mother.id, options)
+      assert %{parents: []} = Residents.relations(young.id, options)
+
+      assert {:ok, %{members: [%{resident: %{name: "Toffee"}}]}} =
+               Residents.group_with_facts(group.id, options)
+
+      assert {:ok, [_group]} = Residents.groups_with_facts(options)
+
+      # The ties were there before the removal.
+      assert %{young: [%{resident: %{name: "Biscuit"}}]} =
+               Residents.relations(mother.id, [as_of: before] ++ options)
+    end
+
     test "does not go for a member, and goes for a root user", context do
       resident = resident!(context.lists, context.options)
 

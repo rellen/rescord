@@ -77,6 +77,28 @@ defmodule RescordWeb.OrganisationPagesTest do
       assert html =~ "Wattle Creek"
     end
 
+    test "closes each open page of a user who gets or loses the root grant", context do
+      other = root!()
+      plain = user!()
+      topic = fn user -> RescordWeb.UserAuth.socket_id(user.id) end
+      RescordWeb.Endpoint.subscribe(topic.(other))
+      RescordWeb.Endpoint.subscribe(topic.(plain))
+
+      {view, _html} = open(context.conn, context.root, ~p"/root")
+
+      # The open pages of a root user who is one no more lose that grant.
+      render_click(view, "revoke_root", %{"id" => other.id})
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect", topic: topic_other}
+      assert topic_other == topic.(other)
+
+      view
+      |> form("#new-root", root: %{email: to_string(plain.email)})
+      |> render_submit()
+
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect", topic: topic_plain}
+      assert topic_plain == topic.(plain)
+    end
+
     test "creates an organisation, and says what is wrong with a short name", context do
       {view, _html} = open(context.conn, context.root, ~p"/root")
 
@@ -316,8 +338,12 @@ defmodule RescordWeb.OrganisationPagesTest do
 
       assert html =~ "Make administrator"
 
+      # The open pages of that person have the old role: they close.
+      RescordWeb.Endpoint.subscribe(RescordWeb.UserAuth.socket_id(another.user_id))
+
       render_click(view, "make_administrator", %{"id" => another.id})
       render_async(view)
+      assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
 
       assert %{role: :administrator} =
                Accounts.member!(another.id, tenant: context.organisation, authorize?: false)

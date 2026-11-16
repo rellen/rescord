@@ -176,12 +176,24 @@ defmodule Rescord.Tasks do
     end)
   end
 
-  # A routine whose tasks exist up to its horizon needs no write.
+  # A routine whose tasks exist up to its horizon, or up to the end of its
+  # last day, needs no write. A routine that ended thus costs nothing.
   defp up_to_date?(%{generated_until: nil}, _organisation, _now), do: false
 
   defp up_to_date?(routine, organisation, now) do
-    DateTime.compare(routine.generated_until, SyncTasks.horizon(routine, organisation, now)) !=
-      :lt
+    horizon = SyncTasks.horizon(routine, organisation, now)
+
+    limit =
+      case routine.ends_on do
+        nil ->
+          horizon
+
+        ends_on ->
+          {_start, finish} = Rescord.Accounts.day_range(organisation, ends_on)
+          Enum.min([horizon, finish], DateTime)
+      end
+
+    DateTime.compare(routine.generated_until, limit) != :lt
   end
 
   @doc """

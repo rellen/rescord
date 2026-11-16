@@ -72,6 +72,9 @@ defmodule RescordWeb.MembersLive do
   defp change(socket, id, action) do
     with {:ok, %{} = member} <- Accounts.member(id, options(socket)),
          :ok <- done(action.(member, options(socket))) do
+      # Each open page of that user has the role as it was.
+      RescordWeb.UserAuth.disconnect(member.user_id)
+
       {:noreply, socket |> assign(problems: []) |> Cinder.Refresh.refresh_table("members")}
     else
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}

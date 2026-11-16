@@ -42,6 +42,8 @@ defmodule Rescord.Locations.Location do
 
     destroy :close do
       description "Closes a location that the organisation uses no more. The row and its history stay"
+      require_atomic? false
+      validate Rescord.Locations.Validations.IsEmpty, before_action?: true
     end
   end
 

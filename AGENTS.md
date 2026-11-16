@@ -277,6 +277,15 @@ too.
   (`change filter(expr(state == :due))`, ADR 0032). The state machine reads
   the record that the caller has in hand, which can be old. The filter
   refuses the second of two members with `Ash.Error.Changes.StaleRecord`.
+- **A change to what a user is reaches each open page** (ADR 0036). After a
+  page changes the root grant or the role of a person, or takes a member
+  out, it calls `RescordWeb.UserAuth.disconnect/1` for that user. A
+  LiveView keeps the user that it read when it connected, and the root
+  bypass reads `root?` from that user.
+- **A removal reaches what names the record** (ADR 0036). An action that
+  removes a record ends the ties of that record in the same transaction, or
+  refuses while something still names it. A reader leaves out a record that
+  names one that it cannot read.
 - **Code that runs with no person**, such as a job, calls a function of the
   domain that passes `authorize?: false`. An action that only Rescord runs
   is in no list of grants, so the policy refuses each role (ADR 0033). A

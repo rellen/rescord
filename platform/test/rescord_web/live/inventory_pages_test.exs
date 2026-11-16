@@ -358,6 +358,34 @@ defmodule RescordWeb.InventoryPagesTest do
       assert level(context) == "10"
     end
 
+    test "does not move a lot of another item from the page of this item", context do
+      pellets = Inventory.add_item!(%{name: "Pellets"}, context.admin)
+
+      other =
+        Inventory.receive_lot!(
+          %{item_id: pellets.id, quantity: 5, location_id: context.shed.id},
+          context.options
+        )
+
+      lot!(context)
+      {view, _html} = open(context.conn, context.item_path)
+      source = "#{other.id}|#{context.shed.id}"
+
+      for {event, fields} <- [
+            {"use", %{"use" => %{"source" => source, "quantity" => "1"}}},
+            {"discard", %{"discard" => %{"source" => source, "quantity" => "1"}}},
+            {"move", %{"move" => %{"source" => source, "quantity" => "1"}}},
+            {"count", %{"count" => %{"lot_id" => other.id, "counted" => "0"}}},
+            {"receive", %{"receive" => %{"lot_id" => other.id, "quantity" => "1"}}}
+          ] do
+        render_submit(view, event, fields)
+        assert has_element?(view, "main p[role=alert]", "Choose a lot of Meadow hay")
+      end
+
+      {:ok, %{level: level}} = Inventory.item_stock(pellets.id, context.options)
+      assert InventoryWords.plain(level) == "5"
+    end
+
     test "has no form to change the item, to set a level, or to remove the item", context do
       {view, _html} = open(context.conn, context.item_path)
 

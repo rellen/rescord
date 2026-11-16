@@ -60,6 +60,8 @@ defmodule RescordWeb.RootLive do
 
     with {:ok, %{} = user} <- Accounts.user_by_email(address, actor: actor),
          {:ok, _root} <- Accounts.make_root(user, actor: actor) do
+      RescordWeb.UserAuth.disconnect(user.id)
+
       {:noreply,
        socket
        |> assign(problems: [], root_form: to_form(%{"email" => ""}, as: :root))
@@ -79,6 +81,8 @@ defmodule RescordWeb.RootLive do
 
     with %{} = root <- Enum.find(socket.assigns.roots, &(&1.id == id)),
          {:ok, _user} <- Accounts.revoke_root(root, actor: actor) do
+      # Each open page of that user has the user as a root user still.
+      RescordWeb.UserAuth.disconnect(root.id)
       {:noreply, socket |> assign(problems: []) |> assign_roots()}
     else
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}

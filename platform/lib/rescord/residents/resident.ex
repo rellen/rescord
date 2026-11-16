@@ -48,6 +48,9 @@ defmodule Rescord.Residents.Resident do
 
     destroy :remove do
       description "Removes a resident that was recorded by mistake. The row and its history stay"
+      # The change ends the ties of the resident after the removal.
+      require_atomic? false
+      change Residents.Changes.EndTies
     end
 
     create :register do

@@ -6,6 +6,16 @@ defmodule RescordWeb.UserAuth do
   session, and assigns `:current_user`: the user, or `nil`. The session holds
   a token, and the token is valid only while Rescord stores it, so a sign-out
   ends each copy of the session.
+
+  ## An open page
+
+  A LiveView reads the user when it connects, and keeps it. A sign-out does
+  not reach a page that is open in another tab, and a change to what a user
+  is (a root user, or the role of a member) does not reach a page of that
+  user. So the session names the socket of its user (`:live_socket_id`), and
+  `disconnect/1` closes each socket of a user. Each page then connects
+  again: with a valid session it reads the user as the user is now, and
+  with no session it sends the person away.
   """
 
   import Plug.Conn
@@ -69,13 +79,32 @@ defmodule RescordWeb.UserAuth do
     |> configure_session(renew: true)
     |> clear_session()
     |> Helpers.store_in_session(user)
+    |> put_session(:live_socket_id, socket_id(user.id))
   end
 
-  @doc "Ends the session, and revokes its token."
+  @doc "Ends the session, revokes its token, and closes each open page of the user."
   def sign_out(conn) do
+    case conn.assigns[:current_user] do
+      %{id: id} -> disconnect(id)
+      _nobody -> :ok
+    end
+
     conn
     |> Helpers.revoke_session_tokens(:rescord)
     |> configure_session(renew: true)
     |> clear_session()
   end
+
+  @doc """
+  Closes each open page of a user. Call it after a change to what the user
+  is: a root user, or the role of a member, or a member that is no more.
+  """
+  @spec disconnect(String.t()) :: :ok
+  def disconnect(user_id) when is_binary(user_id) do
+    RescordWeb.Endpoint.broadcast(socket_id(user_id), "disconnect", %{})
+  end
+
+  @doc "The id of the sockets of a user, which the session names."
+  @spec socket_id(String.t()) :: String.t()
+  def socket_id(user_id), do: "users_sockets:" <> user_id
 end

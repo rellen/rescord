@@ -37,6 +37,21 @@ defmodule Rescord.Inventory.Levels do
     end)
   end
 
+  @doc """
+  The places of each lot, each with its level, in one pass: a map from the
+  id of a lot to its list of `{place, level}`, with the places that have a
+  level that is not zero, in order.
+  """
+  @spec by_lot(t) :: %{String.t() => [{String.t() | nil, Decimal.t()}]}
+  def by_lot(levels) do
+    levels
+    |> Enum.reject(fn {_key, level} -> Decimal.equal?(level, @zero) end)
+    |> Enum.group_by(fn {{lot_id, _place}, _level} -> lot_id end, fn {{_lot, place}, level} ->
+      {place, level}
+    end)
+    |> Map.new(fn {lot_id, places} -> {lot_id, Enum.sort(places)} end)
+  end
+
   @doc "The level of one lot in one place."
   @spec at(t, String.t(), String.t() | nil) :: Decimal.t()
   def at(levels, lot_id, location_id), do: Map.get(levels, {lot_id, location_id}, @zero)

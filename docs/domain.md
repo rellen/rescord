@@ -112,7 +112,7 @@ These subjects are out of scope for now:
 | Which part does the project build second? | The residents: all of section 5.2. |
 | In which order does the project build the other parts? | Families and groups, locations, the journal, tasks, and then the inventory. |
 | Must a resident have a breed, a colour, a size class and a coat? | No. An organisation that wants `not known` adds it to its list. |
-| Who removes a resident that was recorded by mistake? | An administrator. The removal archives the record. |
+| Who removes a resident that was recorded by mistake? | An administrator. The removal archives the record, and ends its ties to groups, families and relatives (ADR 0036). |
 | How does an organisation remove a value from a list? | It retires the value. A resident that has the value keeps it, and no form offers it for a new choice. The organisation can bring it back. |
 | Must a parent be a resident of the organisation? | Yes. A parent that did not live there is a resident with no arrival. |
 | Can a resident be in more than one group at one time? | Yes. Each membership has its own start and end. |

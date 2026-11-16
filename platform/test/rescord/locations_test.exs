@@ -124,6 +124,32 @@ defmodule Rescord.LocationsTest do
       assert length(node(context.room.id, context.options).children) == 1
     end
 
+    test "is not closed while it holds a resident, a group or another location", context do
+      {:ok, _} = Locations.settle({:resident, context.fern.id}, context.east.id, context.options)
+
+      for location <- [context.east, context.room] do
+        assert {:error, %Ash.Error.Invalid{} = error} =
+                 Locations.close_location(location, context.admin)
+
+        assert Exception.message(error) =~ "Move them first"
+      end
+
+      group = Residents.form_group!(%{resident_ids: [context.sage.id]}, context.options)
+      {:ok, _} = Locations.settle({:group, group.id}, context.west.id, context.options)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Locations.close_location(context.west, context.admin)
+
+      # A member gets the answer of the policy, and not of the rule.
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Locations.close_location(context.east, context.options)
+
+      # A resident that an administrator removed is in no location.
+      assert :ok = Residents.remove_resident(context.fern, context.admin)
+      assert node(context.east.id, context.options).residents == []
+      assert :ok = Locations.close_location(context.east, context.admin)
+    end
+
     test "is not for a user of another organisation, or for nobody", context do
       other = organisation!(context.root, "Other")
       {_, outsider} = member!(other, :administrator, context.root)

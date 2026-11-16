@@ -169,6 +169,70 @@ defmodule Rescord.JournalTest do
       assert [%{kind: :vaccination}] = journal(context, only: :medical)
     end
 
+    test "adds to an entry of its own resident, and names a prescription of its own resident",
+         context do
+      sage = resident!(context.lists, context.options, %{name: "Sage"})
+
+      theirs =
+        Journal.write_entry!(
+          %{
+            resident_id: sage.id,
+            kind: :prescription,
+            medication: "A sample drop",
+            dose: "1 drop"
+          },
+          context.options
+        )
+
+      {:ok, %{prescription: prescription}} = Journal.entry_with_facts(theirs.id, context.options)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Journal.write_entry(
+                 %{
+                   resident_id: context.biscuit.id,
+                   kind: :general,
+                   note: "More",
+                   follows_id: theirs.id
+                 },
+                 context.options
+               )
+
+      assert Exception.message(error) =~ "is an entry about another resident"
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Journal.write_entry(
+                 %{
+                   resident_id: context.biscuit.id,
+                   kind: :dose,
+                   prescription_id: prescription.id
+                 },
+                 context.options
+               )
+
+      assert Exception.message(error) =~ "is a prescription for another resident"
+      assert journal(context) == []
+
+      # The resident of the prescription gets the dose.
+      assert {:ok, _dose} =
+               Journal.write_entry(
+                 %{resident_id: sage.id, kind: :dose, prescription_id: prescription.id},
+                 context.options
+               )
+
+      # A person with no grant gets the answer of the policy, and not of the rule.
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Journal.write_entry(
+                 %{
+                   resident_id: context.biscuit.id,
+                   kind: :general,
+                   note: "More",
+                   follows_id: theirs.id
+                 },
+                 actor: nil,
+                 tenant: context.organisation
+               )
+    end
+
     test "can add to an earlier entry: an addendum", context do
       first = write!(context, %{kind: :examination, note: "Mild chest sounds."})
 

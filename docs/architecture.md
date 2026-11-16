@@ -232,6 +232,10 @@ The first resource in the schema of an organisation needs
   neither its words nor its time say whether an address has an account.
 - A member is an administrator or a member. The grants can hold more roles
   later (see "Policies and roles").
+- **An open page follows the user** (ADR 0036). A session names the sockets
+  of its user, and `RescordWeb.UserAuth.disconnect/1` closes them after a
+  sign-out, and after a change to the root grant or the role of the user.
+  Each page then connects again with the user as the user is now.
 
 - **The email goes through Postmark, with the SMTP adapter of Swoosh** (the
   maintainer, 15 November 2026). The adapter needs the package `gen_smtp`.

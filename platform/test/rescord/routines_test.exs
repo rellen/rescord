@@ -310,6 +310,35 @@ defmodule Rescord.RoutinesTest do
       assert length(tasks(routine, context)) == before + 6
     end
 
+    test "cost no write after the last day of the routine", context do
+      start!(context, %{ends_on: Date.add(context.today, 1)})
+
+      # Later days are after its last day: the job writes nothing.
+      assert Tasks.generate(context.organisation, DateTime.add(context.now, 5, :day)) == 0
+      assert Tasks.generate(context.organisation, DateTime.add(context.now, 60, :day)) == 0
+    end
+
+    test "are made for each organisation when one organisation has a fault", context do
+      routine = start!(context)
+      before = length(tasks(routine, context))
+
+      {:ok, _} =
+        Accounts.set_organisation_task_days_ahead(context.organisation, 20,
+          actor: context.administrator
+        )
+
+      # An organisation whose schema is not there. The transaction of the
+      # test takes the change back.
+      broken = organisation!(context.root, "Aaa broken")
+
+      Rescord.Repo.query!(
+        ~s(DROP SCHEMA "#{Rescord.Accounts.Organisation.schema(broken)}" CASCADE)
+      )
+
+      assert :ok = Rescord.Tasks.Workers.GenerateTasks.perform(%Oban.Job{})
+      assert length(tasks(routine, context)) == before + 6
+    end
+
     test "are 500 in one run at most, and the next run makes the others", context do
       times = for hour <- 0..11, do: Time.new!(hour * 2, 0, 0)
       routine = start!(context, %{times: times, days_ahead: 50})

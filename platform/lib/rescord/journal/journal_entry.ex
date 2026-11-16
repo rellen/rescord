@@ -60,6 +60,7 @@ defmodule Rescord.Journal.JournalEntry do
       change Journal.Changes.SetAuthor
       change Journal.Changes.HappenedAt
       validate Journal.Validations.KindHasItsFacts
+      validate Journal.Validations.SameResident, before_action?: true
       change Journal.Changes.WriteDetail
     end
 
@@ -84,6 +85,7 @@ defmodule Rescord.Journal.JournalEntry do
       argument :amount, :string
 
       change Journal.Changes.HappenedAt
+      validate Journal.Validations.SameResident, before_action?: true
       change Journal.Changes.WriteDetail
     end
   end

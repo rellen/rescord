@@ -321,10 +321,27 @@ defmodule Rescord.Accounts do
   @doc "The messages of an error of an action, for a person to read."
   @spec error_messages(term) :: [String.t()]
   def error_messages(%{errors: errors}) when is_list(errors) do
-    Enum.map(errors, fn
+    Enum.flat_map(errors, fn
       %{field: field, message: message} = error when not is_nil(field) and is_binary(message) ->
-        "#{field_words(field)} #{with_values(message, Map.get(error, :vars))}"
+        ["#{field_words(field)} #{with_values(message, Map.get(error, :vars))}"]
 
+      # A validation that runs in a hook of the action names its field in a list.
+      %{fields: [field | _], message: message} = error when is_binary(message) ->
+        ["#{field_words(field)} #{with_values(message, Map.get(error, :vars))}"]
+
+      # An error of a hook in the transaction holds the errors of the action.
+      %{errors: [_ | _]} = inner ->
+        error_messages(inner)
+
+      error ->
+        [message(error)]
+    end)
+  end
+
+  def error_messages(_error), do: ["That did not work"]
+
+  defp message(error) do
+    case error do
       # A value that is necessary and is not there has no message of its own.
       %Ash.Error.Changes.Required{field: field} when not is_nil(field) ->
         "#{field_words(field)} is required"
@@ -338,10 +355,8 @@ defmodule Rescord.Accounts do
 
       error ->
         Exception.message(error)
-    end)
+    end
   end
-
-  def error_messages(_error), do: ["That did not work"]
 
   # A message of Ash can name a value of the rule, as in `must be more than
   # or equal to %{min}`. The values are beside the message.

@@ -229,10 +229,25 @@ defmodule RescordWeb.HousingPagesTest do
       # The page does not offer the location itself as the one to be inside.
       refute has_element?(view, ~s(#move option[value="#{context.east.id}"]))
 
-      {view, _html} = submit(view, conn, "#move", move: %{parent_id: ""})
+      {_view, _html} = submit(view, conn, "#move", move: %{parent_id: ""})
       {:ok, tree} = Locations.tree(context.options)
       assert Enum.map(tree, & &1.location.name) == ["East 1a", "Long room"]
 
+      # A location that holds a resident is not closed, and the page says why.
+      {:ok, placement} =
+        Locations.settle({:resident, context.fern.id}, context.east.id, context.options)
+
+      {view, _html} = open(conn, context.path)
+      render_click(view, "close", %{})
+
+      assert has_element?(
+               view,
+               "main p[role=alert]",
+               "Location has residents or groups in it. Move them first"
+             )
+
+      :ok = Locations.finish_placement(placement, context.options)
+      {view, _html} = open(conn, context.path)
       {_view, html} = press(view, conn, "close", %{})
       assert html =~ "The location is closed."
       refute html =~ "East 1a"

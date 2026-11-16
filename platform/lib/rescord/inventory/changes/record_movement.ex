@@ -53,8 +53,13 @@ defmodule Rescord.Inventory.Changes.RecordMovement do
 
   defp set_author(changeset, _actor), do: changeset
 
+  # The instant of the action, and the clock only when the action has none.
   defp set_time(changeset) do
-    now = DateTime.utc_now()
+    now =
+      case changeset.as_of do
+        %DateTime{} = instant -> instant
+        _not_set -> DateTime.utc_now()
+      end
 
     case Changeset.get_attribute(changeset, :happened_at) do
       nil ->

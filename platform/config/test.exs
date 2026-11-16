@@ -77,5 +77,9 @@ config :phoenix_test,
       browser: :chromium,
       # The default is 4 seconds. A cold or busy machine needs more, and a
       # launch that is too slow makes each browser test invalid.
-      browser_launch_timeout: 30_000
+      browser_launch_timeout: 30_000,
+      # The browsers start in this pool. phoenix_test_playwright 0.19.0 gives
+      # the pool the global settings above only when the configuration names
+      # the pool: with its default pool, the launch has the 4 seconds.
+      browser_pools: [[id: :default_pool]]
     ] ++ chromium

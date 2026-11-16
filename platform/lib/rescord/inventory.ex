@@ -144,7 +144,7 @@ defmodule Rescord.Inventory do
   end
 
   defp build(items, lots, movements, wanted, opts) do
-    levels = Levels.by_place(movements)
+    places_of = movements |> Levels.by_place() |> Levels.by_lot()
     today = Rescord.Accounts.today(opts[:tenant])
     lots_of = Enum.group_by(lots, & &1.item_id)
     wanted_of = Enum.group_by(wanted, & &1.item_id)
@@ -154,10 +154,12 @@ defmodule Rescord.Inventory do
         lots_of
         |> Map.get(item.id, [])
         |> Enum.map(fn lot ->
+          places = Map.get(places_of, lot.id, [])
+
           %{
             lot: lot,
-            level: Levels.of_lot(levels, lot.id),
-            places: lot_places(levels, lot.id),
+            level: places |> Enum.map(&elem(&1, 1)) |> Levels.sum(),
+            places: places,
             expiry: expiry(lot, today)
           }
         end)
@@ -173,8 +175,6 @@ defmodule Rescord.Inventory do
       }
     end
   end
-
-  defp lot_places(levels, lot_id), do: levels |> Levels.places(lot_id) |> Enum.sort()
 
   defp sum_levels(lots), do: lots |> Enum.map(& &1.level) |> Levels.sum()
 
