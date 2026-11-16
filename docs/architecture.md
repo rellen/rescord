@@ -261,6 +261,10 @@ table (ADR 0025).
   each a resource with one value, so each has a history. Its breeds, colours
   and temperaments are ties. `register` and `revise` take those as
   arguments, and one change writes them with the resident.
+- **A group has words** that say how its members are related, such as
+  `Sisters and an unrelated male` (ADR 0028). `Rescord.Residents.Kinship`
+  calculates them from the parent links and the families. Rescord stores no
+  other relation.
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

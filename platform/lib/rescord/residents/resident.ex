@@ -175,6 +175,28 @@ defmodule Rescord.Residents.Resident do
       public? true
       temporal_keys {:valid_at, :valid_at}
     end
+
+    # The links to the parents of the resident, and to its young.
+    has_many :parent_links, Residents.ParentLink do
+      public? true
+      temporal_keys {:valid_at, :valid_at}
+    end
+
+    has_many :young_links, Residents.ParentLink do
+      public? true
+      destination_attribute :parent_id
+      temporal_keys {:valid_at, :valid_at}
+    end
+
+    has_many :family_memberships, Residents.FamilyMember do
+      public? true
+      temporal_keys {:valid_at, :valid_at}
+    end
+
+    has_many :group_memberships, Residents.GroupMember do
+      public? true
+      temporal_keys {:valid_at, :valid_at}
+    end
   end
 
   calculations do

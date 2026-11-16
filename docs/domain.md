@@ -231,6 +231,11 @@ Rescord records the relatives of a resident in two ways:
 - A family is a named set of residents, for example a litter that arrived
   with no known parent.
 
+A parent is a resident of the organisation. A parent that did not live there
+is a resident with no arrival. A resident has one mother and one father at
+most, and a resident is not a parent of one of its own parents. Rescord has
+this section (ADR 0028).
+
 ### 5.4 Groups of residents
 
 A group is a set of residents that is not a family. A bonded pair, a herd, a
@@ -241,8 +246,11 @@ relative`. Rescord calculates the description from the parent links and the
 families of the members. A member can replace the description with other
 words.
 
-*Proposal.* A group has a group kind. The membership of a resident in a group
-has a start date and an end date.
+A group has a group kind, from a list that the organisation can extend. The
+membership of a resident in a group has a start and an end, and a resident
+can be in more than one group at one time. Rescord has this section
+(ADR 0028). The words for a group are `sisters and an unrelated male`: the
+sex of a resident, and not a word of its species.
 
 ### 5.5 Locations of residents
 
@@ -406,7 +414,7 @@ This section applies the answers of section 4 and the proposals of sections
 There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
 `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
 `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has the first seven, which describe a resident.
+Rescord has the first eight.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each

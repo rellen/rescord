@@ -20,6 +20,12 @@ defmodule Rescord.Residents do
     Absence,
     Arrival,
     Departure,
+    Family,
+    FamilyMember,
+    Group,
+    GroupMember,
+    Kinship,
+    ParentLink,
     Resident,
     ResidentDesexStatus,
     ResidentIdentifier,
@@ -68,6 +74,35 @@ defmodule Rescord.Residents do
     resource Rescord.Residents.Absence do
       define :start_absence, action: :start
       define :finish_absence, action: :finish
+    end
+
+    resource Rescord.Residents.ParentLink do
+      define :record_parent, action: :record
+      define :remove_parent, action: :remove
+    end
+
+    resource Rescord.Residents.Family do
+      define :families, action: :read
+      define :name_family, action: :name, args: [:name]
+      define :rename_family, action: :rename, args: [:name]
+    end
+
+    resource Rescord.Residents.FamilyMember do
+      define :add_to_family, action: :add
+      define :remove_from_family, action: :remove
+    end
+
+    resource Rescord.Residents.Group do
+      define :groups, action: :read
+      define :group, action: :read, get_by: [:id], not_found_error?: false
+      define :form_group, action: :form
+      define :revise_group, action: :revise
+      define :close_group, action: :close
+    end
+
+    resource Rescord.Residents.GroupMember do
+      define :join_group, action: :join
+      define :leave_group, action: :leave
     end
   end
 
@@ -129,13 +164,119 @@ defmodule Rescord.Residents do
     end
   end
 
+  # What a page shows of a member of a group, or of a relative.
+  @resident_summary [resident: [:name]]
+
+  @doc """
+  One group with its kind, its members, and `words`: how its members are
+  related. The words are those of a member when the group has a
+  description, and in each other case the ones that Rescord calculates.
+
+  Returns `{:ok, nil}` when the actor can read no such group.
+  """
+  def group_with_facts(id, opts \\ []) do
+    with {:ok, %Group{} = group} <-
+           group(id, Keyword.put(opts, :load, kind: [:label], members: @resident_summary)) do
+      {:ok, with_words(group, opts)}
+    end
+  end
+
+  @doc "Each group of the organisation, as `group_with_facts/2` gives one."
+  def groups_with_facts(opts \\ []) do
+    with {:ok, groups} <-
+           groups(Keyword.put(opts, :load, kind: [:label], members: @resident_summary)) do
+      {:ok, Enum.map(groups, &with_words(&1, opts))}
+    end
+  end
+
+  defp with_words(group, opts) do
+    members = Enum.sort_by(group.members, &(&1.resident.name || ""))
+    words = group.description || kinship_words(Enum.map(members, & &1.resident), opts)
+
+    group
+    |> Map.put(:members, members)
+    |> Ash.Resource.put_metadata(:words, words)
+  end
+
+  @doc "The words of a group that `group_with_facts/2` loaded, or `nil`."
+  def words(%Group{} = group), do: Ash.Resource.get_metadata(group, :words)
+
+  @doc """
+  A name for a group that `group_with_facts/2` loaded: its own name, or the
+  names of its members.
+  """
+  def group_name(%Group{name: name}) when is_binary(name), do: name
+
+  def group_name(%Group{members: members}) do
+    case Enum.map(members, &(&1.resident.name || "a resident with no name")) do
+      [] -> "A group with no members"
+      [one] -> one
+      names -> Enum.join(Enum.drop(names, -1), ", ") <> " and " <> List.last(names)
+    end
+  end
+
+  # The facts are those of the policy of the group: the function reads the
+  # links and the families of its members with no second decision.
+  defp kinship_words(residents, opts) do
+    ids = Enum.map(residents, & &1.id)
+    internal = [tenant: opts[:tenant], authorize?: false] ++ Keyword.take(opts, [:as_of])
+
+    links =
+      ParentLink
+      |> Ash.Query.filter(resident_id in ^ids)
+      |> Ash.read!(internal)
+      |> Enum.map(&%{child_id: &1.resident_id, parent_id: &1.parent_id, role: &1.role})
+
+    families =
+      FamilyMember
+      |> Ash.Query.filter(resident_id in ^ids)
+      |> Ash.read!(internal)
+      |> Enum.group_by(& &1.resident_id, & &1.family_id)
+
+    Kinship.describe(Enum.map(residents, &%{id: &1.id, sex: &1.sex}), links, families)
+  end
+
+  @doc """
+  The relatives of a resident, and what it belongs to: its parents and its
+  young, each with the resident and the role, its families, and its groups.
+
+  Returns `nil` when the actor can read no such resident.
+  """
+  def relations(resident_id, opts \\ []) do
+    load = [
+      parent_links: [parent: [:name]],
+      young_links: @resident_summary,
+      family_memberships: [:family],
+      group_memberships: []
+    ]
+
+    case resident(resident_id, Keyword.put(opts, :load, load)) do
+      {:ok, %Resident{} = resident} ->
+        groups =
+          for membership <- resident.group_memberships,
+              {:ok, %Group{} = group} <- [group_with_facts(membership.group_id, opts)] do
+            {membership, group}
+          end
+
+        %{
+          # The mother is first.
+          parents: Enum.sort_by(resident.parent_links, &(&1.role == :father)),
+          young: Enum.sort_by(resident.young_links, &(&1.resident.name || "")),
+          families: Enum.sort_by(resident.family_memberships, & &1.family.name),
+          groups: groups
+        }
+
+      _no_resident ->
+        nil
+    end
+  end
+
   @doc """
   Whether a role can run an action of a resource of this domain at all. A
   page asks this to decide what to show. The policy decides when the action
   runs.
   """
-  @spec role_can?(atom | nil, :resident | :arrival | :departure | :absence | :identifier, atom) ::
-          boolean
+  @spec role_can?(atom | nil, atom, atom) :: boolean
   def role_can?(role, subject, action) do
     resource =
       case subject do
@@ -144,6 +285,11 @@ defmodule Rescord.Residents do
         :departure -> Departure
         :absence -> Absence
         :identifier -> ResidentIdentifier
+        :parent -> ParentLink
+        :family -> Family
+        :family_member -> FamilyMember
+        :group -> Group
+        :group_member -> GroupMember
       end
 
     Rescord.Accounts.granted?(role, resource, action)

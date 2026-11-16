@@ -14,6 +14,7 @@ defmodule RescordWeb.ResidentWords do
     left: {"Left", "none"}
   ]
 
+  @kin [mother: "Mother", father: "Father"]
   @sex [female: "Female", male: "Male", unknown: "Not known"]
   @desex [entire: "Entire", desexed: "Desexed", unknown: "Not known"]
 
@@ -37,6 +38,7 @@ defmodule RescordWeb.ResidentWords do
   @doc "The kind of state that `<.state>` draws for a status."
   def status_kind(value), do: @status |> Keyword.fetch!(value) |> elem(1)
 
+  def kin(value), do: Keyword.fetch!(@kin, value)
   def sex(value), do: Keyword.fetch!(@sex, value)
   def desex(value), do: Keyword.fetch!(@desex, value)
   def arrival(value), do: Keyword.fetch!(@arrival, value)
@@ -46,6 +48,7 @@ defmodule RescordWeb.ResidentWords do
   def options(:status),
     do: Enum.map(@status, fn {value, {word, _kind}} -> {word, Atom.to_string(value)} end)
 
+  def options(:kin), do: options_of(@kin)
   def options(:sex), do: options_of(@sex)
   def options(:desex), do: options_of(@desex)
   def options(:arrival), do: options_of(@arrival)
@@ -53,6 +56,7 @@ defmodule RescordWeb.ResidentWords do
 
   @doc "The values of a list, for the test that holds the words to the types."
   def values(:status), do: Keyword.keys(@status)
+  def values(:kin), do: Keyword.keys(@kin)
   def values(:sex), do: Keyword.keys(@sex)
   def values(:desex), do: Keyword.keys(@desex)
   def values(:arrival), do: Keyword.keys(@arrival)

@@ -33,7 +33,12 @@ defmodule Rescord.Residents.Grants do
             {ResidentIdentifier, [:read, :add, :remove]},
             {Arrival, [:read, :record, :correct]},
             {Departure, [:read, :record, :correct, :withdraw]},
-            {Absence, [:read, :start, :finish]}
+            {Absence, [:read, :start, :finish]},
+            {Rescord.Residents.ParentLink, [:read, :record, :remove]},
+            {Rescord.Residents.Family, [:read, :name, :rename]},
+            {Rescord.Residents.FamilyMember, [:read, :add, :remove]},
+            {Rescord.Residents.Group, [:read, :form, :revise, :close]},
+            {Rescord.Residents.GroupMember, [:read, :join, :leave]}
           ]
           |> Enum.flat_map(fn {resource, actions} ->
             Enum.map(actions, &{resource, &1, :all})

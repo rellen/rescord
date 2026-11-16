@@ -29,9 +29,18 @@ defmodule Rescord.ListsTest do
   defp names(values), do: Enum.map(values, &to_string(&1.name))
 
   describe "the dimensions" do
-    test "are the seven that describe a resident" do
+    test "are the seven that describe a resident, and the kind of a group" do
       assert Keyword.keys(Lists.dimensions()) ==
-               [:species, :breed, :colour, :size_class, :coat, :temperament, :identifier_kind]
+               [
+                 :species,
+                 :breed,
+                 :colour,
+                 :size_class,
+                 :coat,
+                 :temperament,
+                 :identifier_kind,
+                 :group_kind
+               ]
     end
 
     test "have a key for the text of a parameter, and make no atom from other text" do

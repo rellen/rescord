@@ -13,6 +13,7 @@ defmodule RescordWeb.ResidentWordsTest do
   for {list, type, word} <- [
         {:status, Residents.Status, :status},
         {:sex, Residents.Sex, :sex},
+        {:kin, Residents.KinRole, :kin},
         {:desex, Residents.DesexStatus, :desex},
         {:arrival, Residents.ArrivalKind, :arrival},
         {:departure, Residents.DepartureKind, :departure}

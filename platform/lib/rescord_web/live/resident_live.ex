@@ -48,11 +48,36 @@ defmodule RescordWeb.ResidentLive do
          resident: resident,
          page_title: resident.name || "A resident with no name",
          names: Residents.name_history(resident.id, options(socket)),
-         desex_statuses: Residents.desex_history(resident.id, options(socket))
-       )}
+         desex_statuses: Residents.desex_history(resident.id, options(socket)),
+         relations: Residents.relations(resident.id, options(socket))
+       )
+       |> assign_choices()}
     else
       _no_resident -> :error
     end
+  end
+
+  # The residents and the families that a form of the relations offers.
+  defp assign_choices(socket) do
+    {:ok, residents} = Residents.residents([load: [:name]] ++ options(socket))
+    {:ok, families} = Residents.families(options(socket))
+    relations = socket.assigns.relations
+    in_family = MapSet.new(relations.families, & &1.family_id)
+
+    assign(socket,
+      other_residents:
+        residents
+        |> Enum.reject(&(&1.id == socket.assigns.resident.id))
+        |> Enum.map(&{&1.name || "No name yet", &1.id})
+        |> Enum.sort(),
+      other_families:
+        families
+        |> Enum.reject(&MapSet.member?(in_family, &1.id))
+        |> Enum.map(&{&1.name, &1.id})
+        |> Enum.sort(),
+      parent_form: to_form(%{"parent_id" => "", "role" => "mother"}, as: :parent),
+      family_form: to_form(%{"family_id" => "", "name" => ""}, as: :family)
+    )
   end
 
   defp assign_forms(socket) do
@@ -127,6 +152,56 @@ defmodule RescordWeb.ResidentLive do
     |> after_write(socket)
   end
 
+  def handle_event("record_parent", %{"parent" => params}, socket) when is_map(params) do
+    %{
+      resident_id: socket.assigns.resident.id,
+      parent_id: blank_to_nil(params["parent_id"]),
+      role: params["role"]
+    }
+    |> Residents.record_parent(options(socket))
+    |> after_write(socket)
+  end
+
+  def handle_event("remove_parent", %{"id" => id}, socket) when is_binary(id) do
+    case Enum.find(socket.assigns.relations.parents, &(&1.id == id)) do
+      nil -> {:noreply, socket}
+      link -> link |> Residents.remove_parent(options(socket)) |> after_write(socket)
+    end
+  end
+
+  # A family that is there, or a new one with the name that the person gave.
+  def handle_event("add_to_family", %{"family" => params}, socket) when is_map(params) do
+    family =
+      case {blank_to_nil(params["family_id"]), blank_to_nil(params["name"])} do
+        {nil, nil} -> {:error, :nothing}
+        {nil, name} -> Residents.name_family(name, options(socket))
+        {id, _name} -> {:ok, %{id: id}}
+      end
+
+    case family do
+      {:ok, %{id: family_id}} ->
+        %{resident_id: socket.assigns.resident.id, family_id: family_id}
+        |> Residents.add_to_family(options(socket))
+        |> after_write(socket)
+
+      {:error, :nothing} ->
+        {:noreply, assign(socket, problems: ["Choose a family, or give a new one a name"])}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+    end
+  end
+
+  def handle_event("remove_from_family", %{"id" => id}, socket) when is_binary(id) do
+    case Enum.find(socket.assigns.relations.families, &(&1.id == id)) do
+      nil ->
+        {:noreply, socket}
+
+      membership ->
+        membership |> Residents.remove_from_family(options(socket)) |> after_write(socket)
+    end
+  end
+
   def handle_event("remove_resident", _params, socket) do
     case Residents.remove_resident(socket.assigns.resident, options(socket)) do
       :ok ->
@@ -182,6 +257,13 @@ defmodule RescordWeb.ResidentLive do
   defp blank_to_nil(_other), do: nil
 
   defp can?(role, subject, action), do: Residents.role_can?(role, subject, action)
+
+  # Short names for the paths, so that a link and its text are on one line:
+  # a line break inside a link is a space that the browser underlines.
+  defp resident_path(organisation, id), do: ~p"/o/#{organisation.short_name}/residents/#{id}"
+  defp group_path(organisation, id), do: ~p"/o/#{organisation.short_name}/groups/#{id}"
+
+  defp name(resident), do: resident.name || "No name yet"
 
   @impl true
   def render(assigns) do
@@ -267,9 +349,9 @@ defmodule RescordWeb.ResidentLive do
               {ResidentWords.date(@resident.absence.expected_back_on)}
             </:item>
           </.list>
-          <.button :if={can?(@role, :absence, :finish)} phx-click="finish_absence">
-            Mark as back
-          </.button>
+          <p :if={can?(@role, :absence, :finish)}>
+            <.button phx-click="finish_absence">Mark as back</.button>
+          </p>
         </div>
 
         <details :if={@resident.status == :in_care and can?(@role, :absence, :start)}>
@@ -292,9 +374,9 @@ defmodule RescordWeb.ResidentLive do
               {@resident.departure.note}
             </:item>
           </.list>
-          <.button :if={can?(@role, :departure, :withdraw)} phx-click="withdraw_departure">
-            Withdraw the departure
-          </.button>
+          <p :if={can?(@role, :departure, :withdraw)}>
+            <.button phx-click="withdraw_departure">Withdraw the departure</.button>
+          </p>
         </div>
 
         <details :if={
@@ -315,6 +397,109 @@ defmodule RescordWeb.ResidentLive do
             <footer><.button type="submit">Record the departure</.button></footer>
           </.form>
         </details>
+      </section>
+
+      <section aria-labelledby="relations-heading">
+        <h2 id="relations-heading">Family and groups</h2>
+
+        <h3>Parents</h3>
+        <p :if={@relations.parents == []}>No parent is recorded.</p>
+        <ul :if={@relations.parents != []}>
+          <li :for={link <- @relations.parents}>
+            {ResidentWords.kin(link.role)}:
+            <.link navigate={resident_path(@organisation, link.parent_id)}>{name(link.parent)}</.link>
+            <.button
+              :if={can?(@role, :parent, :remove)}
+              phx-click="remove_parent"
+              phx-value-id={link.id}
+              aria-label={"Remove the #{String.downcase(ResidentWords.kin(link.role))} #{link.parent.name}"}
+            >
+              Remove
+            </.button>
+          </li>
+        </ul>
+
+        <details :if={can?(@role, :parent, :record) and @other_residents != []}>
+          <summary>Add a parent</summary>
+          <.form for={@parent_form} id="parent" phx-submit="record_parent">
+            <.input
+              field={@parent_form[:parent_id]}
+              type="select"
+              label="Parent"
+              prompt="Choose"
+              options={@other_residents}
+              required
+            />
+            <.input
+              field={@parent_form[:role]}
+              type="select"
+              label="Mother or father"
+              options={ResidentWords.options(:kin)}
+            />
+            <footer><.button type="submit">Add the parent</.button></footer>
+          </.form>
+        </details>
+
+        <div :if={@relations.young != []}>
+          <h3>Young</h3>
+          <ul>
+            <li :for={link <- @relations.young}>
+              <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{link.resident_id}"}>
+                {link.resident.name || "No name yet"}
+              </.link>
+            </li>
+          </ul>
+        </div>
+
+        <h3>Families</h3>
+        <p :if={@relations.families == []}>The resident is in no family.</p>
+        <ul :if={@relations.families != []}>
+          <li :for={membership <- @relations.families}>
+            {membership.family.name}
+            <.button
+              :if={can?(@role, :family_member, :remove)}
+              phx-click="remove_from_family"
+              phx-value-id={membership.id}
+              aria-label={"Take the resident out of #{membership.family.name}"}
+            >
+              Take out
+            </.button>
+          </li>
+        </ul>
+
+        <details :if={can?(@role, :family_member, :add)}>
+          <summary>Add to a family</summary>
+          <.form for={@family_form} id="family" phx-submit="add_to_family">
+            <.input
+              :if={@other_families != []}
+              field={@family_form[:family_id]}
+              type="select"
+              label="A family that is there"
+              prompt="Choose"
+              options={@other_families}
+            />
+            <.input
+              field={@family_form[:name]}
+              type="text"
+              label="Or the name of a new family"
+              maxlength="80"
+            />
+            <footer><.button type="submit">Add to the family</.button></footer>
+          </.form>
+        </details>
+
+        <h3>Groups</h3>
+        <p :if={@relations.groups == []}>
+          The resident is in no group. A member adds it on <.link navigate={
+            ~p"/o/#{@organisation.short_name}/groups"
+          }>the groups page</.link>.
+        </p>
+        <ul :if={@relations.groups != []}>
+          <li :for={{_membership, group} <- @relations.groups}>
+            <.link navigate={group_path(@organisation, group.id)}>{Residents.group_name(group)}</.link>
+            <span :if={Residents.words(group)}>({Residents.words(group)})</span>
+          </li>
+        </ul>
       </section>
 
       <section aria-labelledby="identifiers-heading">
