@@ -126,13 +126,15 @@ These subjects are out of scope for now:
 | In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
 | Which units can a measurement have? | Each kind of measurement lists the units that it accepts, and the form offers only those (18 November 2026). |
 | Can a use of stock take more than the record has? | Yes. The level can go below zero, and the item shows a warning until a member records a count. |
-| When does a lot expire soon? | In a number of days before its expiry date. Each category of item has its own number. |
+| When does a lot expire soon? | In a number of days before its expiry date. Each category of item has its own number. A category with no number uses 30 days. |
 | What does "every number of days" count from? | Each routine says it: from its first day, as a calendar, or from the last time that a member completed its task. |
 | Can a routine have its own number of days ahead? | Yes. The organisation has a default, and a routine can have its own number. |
 | Who starts, changes and ends a routine? | An administrator. A member works through the tasks. An administrator also keeps the items and the suppliers. |
 | Can a refuge see a resident that another refuge transferred to it? | Yes, as a copy that it cannot change. The copy holds the facts and the medical history. The first refuge can add other parts. |
 | Can a journal entry have an attachment? | Yes. The files are in storage that is compatible with S3. |
 | Can a task name more than one member? | Yes. The task is done when one of them completes it. |
+| Which parts does the copy of a transferred resident hold, other than the facts and the medical history? | The parts that the first refuge chooses. An administrator gives the default parts as a setting, and a member can change them for each transfer. |
+| Which library reads the storage of the attachments? | `req_s3`, a plugin of `Req`. The maintainer approved it. |
 | Who defines the roles of an organisation? | Its administrators. Each organisation starts with an administrator and a member. An administrator can add a role, and give it what it may do. |
 
 ## 5. The root entities
@@ -568,16 +570,13 @@ its state machine.
 ## 8. Open points
 
 1. Which other kinds of task and categories of item are necessary?
-2. A refuge can add parts to the copy of a resident that it transfers. Which
-   parts can it add: the other journal entries, the facts of the stay, the
-   placements? Does it choose for each transfer, or as a setting?
+2. Which parts can a refuge add to the copy of a transferred resident: the
+   other journal entries, the placements, the groups, the facts of the stay?
 3. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
-4. Which service gives the storage for attachments, and which library of
-   Elixir reads it? Each new library needs the approval of the maintainer.
+4. Which service gives the storage for attachments? A machine for
+   development can use MinIO.
 5. A stock movement has a time that a member gives for when it happened,
    as a placement, a journal entry, an absence and a change to a group
    have. The maintainer did not name the inventory in that answer. Is that
    correct?
-6. When a category of item gives no number of days for "expires soon",
-   which number applies?
