@@ -118,7 +118,7 @@ These subjects are out of scope for now:
 | Can a resident be in more than one group at one time? | Yes. Each membership has its own start and end. |
 | Where does a resident live when it and its group each have a placement? | In its own placement, while that lasts. After it ends, the resident is with its group again. |
 | Does a location have a capacity? | It can have one. A placement over the capacity is permitted, and the page says so. |
-| Can a member say when a thing happened? | Yes, for an absence, a placement, a change to a group, and a journal entry. The time is now when the member gives none, and it is never after now. |
+| Can a member say when a thing happened? | Yes, for an absence, a placement, a change to a group, a journal entry, and a stock movement. The time is now when the member gives none, and it is never after now. |
 | Who corrects a journal entry? | Its author, and an administrator. Each other member writes an addendum. |
 | How does a task become complete? | A task is due, done, or skipped. A task names a member or is for each member. Each member can take an open task, complete it, or skip it with a reason. |
 | How far ahead does Rescord make the tasks of a routine? | A number of days that is a setting, 14 at the start. A member can also plan a task or an event for a date months ahead, one time or with a pattern, as on a calendar. |
@@ -135,6 +135,8 @@ These subjects are out of scope for now:
 | Can a task name more than one member? | Yes. The task is done when one of them completes it. |
 | Which parts does the copy of a transferred resident hold, other than the facts and the medical history? | The parts that the first refuge chooses. An administrator gives the default parts as a setting, and a member can change them for each transfer. |
 | Which library reads the storage of the attachments? | `req_s3`, a plugin of `Req`. The maintainer approved it. |
+| Which parts can a refuge add to the copy of a transferred resident? | The other journal entries, the stay, the placements, and the families and the groups. |
+| Which service stores the attachments? | Tigris in production, probably. A machine for development runs Garage, and the tests use a store in a temporary directory (ADR 0038). |
 | Who defines the roles of an organisation? | Its administrators. Each organisation starts with an administrator and a member. An administrator can add a role, and give it what it may do. |
 
 ## 5. The root entities
@@ -570,13 +572,5 @@ its state machine.
 ## 8. Open points
 
 1. Which other kinds of task and categories of item are necessary?
-2. Which parts can a refuge add to the copy of a transferred resident: the
-   other journal entries, the placements, the groups, the facts of the stay?
-3. Which resources, other than a resource with a workflow, are not temporal
+2. Which resources, other than a resource with a workflow, are not temporal
    resources or keep no paper trail?
-4. Which service gives the storage for attachments? A machine for
-   development can use MinIO.
-5. A stock movement has a time that a member gives for when it happened,
-   as a placement, a journal entry, an absence and a change to a group
-   have. The maintainer did not name the inventory in that answer. Is that
-   correct?
