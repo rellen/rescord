@@ -136,6 +136,10 @@ These subjects are out of scope for now:
 | Which parts does the copy of a transferred resident hold, other than the facts and the medical history? | The parts that the first refuge chooses. An administrator gives the default parts as a setting, and a member can change them for each transfer. |
 | Which library reads the storage of the attachments? | `req_s3`, a plugin of `Req`. The maintainer approved it. |
 | Which parts can a refuge add to the copy of a transferred resident? | The other journal entries, the stay, the placements, and the families and the groups. |
+| To which refuge can a refuge transfer a resident? | To a partner. An administrator asks another refuge by its short name, and it becomes a partner when an administrator there accepts. No member sees a list of the other refuges. |
+| Must the receiving refuge accept a transfer? | Yes. Nothing appears there until a member with that power accepts it, and it can decline. |
+| Does the copy of a transferred resident change later? | No. It holds the record as it was at the transfer. |
+| Who records, accepts and reads a transfer? | An administrator records it and accepts it. Each member reads the copy. |
 | Which service stores the attachments? | Tigris in production, probably. A machine for development runs Garage, and the tests use a store in a temporary directory (ADR 0038). |
 | Who defines the roles of an organisation? | Its administrators. Each organisation starts with an administrator and a member. An administrator can add a role, and give it what it may do. |
 
