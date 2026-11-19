@@ -38,6 +38,7 @@ defmodule RescordWeb.OrganisationLive do
         <li><a href={~p"/o/#{@organisation.short_name}/inventory"}>See the inventory</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a></li>
+        <li><a href={~p"/o/#{@organisation.short_name}/roles"}>See the roles</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/settings"}>See the settings</a></li>
       </ul>
     </Layouts.app>
@@ -45,6 +46,5 @@ defmodule RescordWeb.OrganisationLive do
   end
 
   defp role_words(:root), do: "You are a root user. You can do anything here."
-  defp role_words(:administrator), do: "You are an administrator of this organisation."
-  defp role_words(:member), do: "You are a member of this organisation."
+  defp role_words(%{name: name}), do: "Your role in this organisation: #{name}."
 end

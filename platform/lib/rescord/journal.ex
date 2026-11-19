@@ -172,8 +172,14 @@ defmodule Rescord.Journal do
   administrator, and a root user. A page asks this to decide what to show.
   The policy decides when the action runs.
   """
-  @spec can_correct?(atom | nil, map, map) :: boolean
-  def can_correct?(role, _user, _entry) when role in [:root, :administrator], do: true
-  def can_correct?(:member, %{id: user_id}, %{author_id: author_id}), do: user_id == author_id
-  def can_correct?(_role, _user, _entry), do: false
+  @spec can_correct?(term, map, map) :: boolean
+  def can_correct?(:root, _user, _entry), do: true
+
+  def can_correct?(role, %{id: user_id}, %{author_id: author_id}) do
+    case Rescord.Accounts.Grants.scope(role, JournalEntry, :correct) do
+      {:ok, :all} -> true
+      {:ok, :own} -> user_id == author_id
+      :none -> false
+    end
+  end
 end

@@ -235,8 +235,9 @@ The first resource in the schema of an organisation needs
   the request runs in a supervised task: a known address, an address that
   Rescord does not know, and a fault. The answer is the same in each way, so
   neither its words nor its time say whether an address has an account.
-- A member is an administrator or a member. The grants can hold more roles
-  later (see "Policies and roles").
+- A member has one role of the organisation. Each organisation starts with
+  an administrator and a member, and its administrators define more (see
+  "Policies and roles").
 - **An open page follows the user** (ADR 0036). A session names the sockets
   of its user, and `RescordWeb.UserAuth.disconnect/1` closes them after a
   sign-out, and after a change to the root grant or the role of the user.
@@ -368,10 +369,15 @@ on the action, inside the task of ADR 0019. The numbers are not decided.
 **Authorization is our own system, in the manner of `ash_grant`.** We write
 it in this repository; `ash_grant` is the model and not a dependency.
 
-It starts small (ADR 0021). A member is an administrator or a member.
-`Rescord.Accounts.Grants` holds the grants of each role and the filter of
-each scope, in code. The policy of a resource of an organisation is the one
-check `Rescord.Accounts.Checks.Granted`, after a bypass for a root user.
+A role is a record of the organisation (ADR 0040), with a list of powers.
+A power is one area of work, and each domain says which grants each of its
+powers gives. Each role also reads what the organisation has.
+`Rescord.Accounts.Grants` turns a role into its grants, and holds the filter
+of each scope. The policy of a resource of an organisation is the one check
+`Rescord.Accounts.Checks.Granted`, after a bypass for a root user. Each
+organisation starts with an administrator and a member, and its
+administrators define more roles. A person gives only the powers that their
+own role has.
 
 What we take from the model (`ash_grant` 0.22):
 
@@ -387,12 +393,10 @@ A root user is outside the grants: a root user can do anything in each
 organisation (`docs/domain.md`, section 5.1).
 
 A domain other than the accounts holds its own grants, in a module that the
-configuration names (ADR 0024): `Rescord.Lists.Grants` and
-`Rescord.Residents.Grants`. A domain that is not in `:grant_sources` has no
-grants.
+configuration names (ADR 0024): `reads/0` and `powers/0`. A domain that
+is not in `:grant_sources` has no grants.
 
-Not decided yet: when the roles and their grants move to the database, and whether a grant can name one record
-or a group of fields. The rule above stays whatever the answer: a
+Not decided yet: whether a grant can name one record or a group of fields. The rule above stays whatever the answer: a
 refused read is empty and not an error, so a test that reads asserts a
 non-empty result.
 

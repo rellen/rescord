@@ -166,8 +166,13 @@ users. A member connects one user to one organisation.
   administrator also manages the members and the settings of the
   organisation.
 
-*Proposal.* A member has one or more roles, and a role has grants. The
-section "Policies and roles" of `docs/architecture.md` describes the grants.
+A member has one role of the organisation (ADR 0040). The administrators
+define the roles, and tick what each one may do: a role has powers, and a
+power is one area of work, such as the journal or the routines. Each role
+reads what the organisation has. A person gives only the powers that their
+own role has. The role of the administrators keeps the power to change the
+roles. The section "Policies and roles" of `docs/architecture.md` describes
+the grants.
 
 The first root user comes from a script that a person runs in IEx when
 Rescord is first deployed. No page makes the first root user.

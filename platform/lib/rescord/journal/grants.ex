@@ -2,9 +2,10 @@ defmodule Rescord.Journal.Grants do
   @moduledoc """
   What a role can do with the journal of a resident (ADR 0024).
 
-  Each member reads the journal and writes an entry. A member corrects the
-  entries that they wrote: the scope `own`. An administrator corrects each
-  entry (`docs/domain.md`, section 5.6). A role reads the facts of an entry,
+  Each role reads the journal. The power `:journal` writes an entry, and
+  corrects the entries that the person wrote: the scope `own`. The power
+  `:correct_journal` corrects each entry (`docs/domain.md`, section 5.6, and
+  ADR 0040). A member has the first at first, and an administrator both. A role reads the facts of an entry,
   and writes them only through the entry.
   """
 
@@ -22,22 +23,25 @@ defmodule Rescord.Journal.Grants do
     Vaccination
   }
 
-  @reads for resource <- [
-               JournalEntry,
-               Diagnosis,
-               Measurement,
-               Procedure,
-               Vaccination,
-               Prescription,
-               Dose
-             ],
-             do: {resource, :read, :all}
+  @impl true
+  def reads do
+    for resource <- [
+          JournalEntry,
+          Diagnosis,
+          Measurement,
+          Procedure,
+          Vaccination,
+          Prescription,
+          Dose
+        ],
+        do: {resource, :read, :all}
+  end
 
   @impl true
-  def grants do
+  def powers do
     %{
-      administrator: @reads ++ [{JournalEntry, :write, :all}, {JournalEntry, :correct, :all}],
-      member: @reads ++ [{JournalEntry, :write, :all}, {JournalEntry, :correct, :own}]
+      journal: [{JournalEntry, :write, :all}, {JournalEntry, :correct, :own}],
+      correct_journal: [{JournalEntry, :correct, :all}]
     }
   end
 

@@ -35,6 +35,20 @@ defmodule RescordWeb.OrganisationPagesTest do
     end
   end
 
+  defp role_with_key(context, key) do
+    {:ok, roles} = Accounts.roles(tenant: context.organisation, authorize?: false)
+    Enum.find(roles, &(&1.key == key))
+  end
+
+  # The key of the role of the member with an address.
+  defp role_key_of(context, address) do
+    [member] =
+      Accounts.members!(tenant: context.organisation, authorize?: false, load: [:email, :role])
+      |> Enum.filter(&(to_string(&1.email) == address))
+
+    member.role.key
+  end
+
   defp open(conn, user, path) do
     {:ok, view, _html} = conn |> sign_in(user) |> live(path)
     {view, render_async(view)}
@@ -163,8 +177,8 @@ defmodule RescordWeb.OrganisationPagesTest do
       path = ~p"/o/#{context.organisation.short_name}"
 
       for {user, words} <- [
-            {context.member, "You are a member"},
-            {context.administrator, "You are an administrator"},
+            {context.member, "Your role in this organisation: Member."},
+            {context.administrator, "Your role in this organisation: Administrator."},
             {context.root, "You are a root user"}
           ] do
         {_view, html} = open(context.conn, user, path)
@@ -275,7 +289,7 @@ defmodule RescordWeb.OrganisationPagesTest do
   end
 
   describe "the members page" do
-    test "shows the members to a member, with no form and no button", context do
+    test "shows the members with their roles to a member, with no form and no button", context do
       {_view, html} =
         open(context.conn, context.member, ~p"/o/#{context.organisation.short_name}/members")
 
@@ -284,11 +298,11 @@ defmodule RescordWeb.OrganisationPagesTest do
       assert html =~ "Administrator"
 
       refute html =~ "Invite a person"
-      refute html =~ "Make administrator"
+      refute html =~ "Give the role"
       refute html =~ ~s(phx-click="remove")
     end
 
-    test "lets an administrator invite a member, but not choose a role", context do
+    test "lets an administrator invite a member, with the role of a member at first", context do
       {view, html} =
         open(
           context.conn,
@@ -297,22 +311,17 @@ defmodule RescordWeb.OrganisationPagesTest do
         )
 
       assert html =~ "Invite a person"
-      refute html =~ ~s(name="invite[role]")
+      assert has_element?(view, "#invite_role_id option[selected]", "Member")
 
       address = unique_address()
       view |> form("#invite", invite: %{email: address}) |> render_submit()
 
       assert render_async(view) =~ address
       assert_email_sent(fn email -> email.to == [{"", address}] end)
-
-      assert [invited] =
-               Accounts.members!(tenant: context.organisation, authorize?: false, load: [:email])
-               |> Enum.filter(&(to_string(&1.email) == address))
-
-      assert invited.role == :member
+      assert role_key_of(context, address) == :member
     end
 
-    test "refuses an administrator who asks for the role that the form did not offer", context do
+    test "gives the role of a member for a role that the form did not offer", context do
       {view, _html} =
         open(
           context.conn,
@@ -323,30 +332,34 @@ defmodule RescordWeb.OrganisationPagesTest do
       address = unique_address()
 
       render_submit(view, "invite", %{
-        "invite" => %{"email" => address, "role" => "administrator"}
+        "invite" => %{"email" => address, "role_id" => Ash.UUID.generate()}
       })
 
-      assert has_element?(view, "main p[role=alert]")
-      assert_no_email_sent()
-      assert Accounts.user_by_email!(address, authorize?: false) == nil
+      assert role_key_of(context, address) == :member
     end
 
-    test "lets an administrator make a member an administrator, and remove a member", context do
+    test "lets an administrator give a member a role, and remove a member", context do
       {another, _user} = member!(context.organisation, :member, context.administrator)
       path = ~p"/o/#{context.organisation.short_name}/members"
       {view, html} = open(context.conn, context.administrator, path)
 
-      assert html =~ "Make administrator"
+      assert html =~ "Give the role"
+      administrator = role_with_key(context, :administrator)
 
       # The open pages of that person have the old role: they close.
       RescordWeb.Endpoint.subscribe(RescordWeb.UserAuth.socket_id(another.user_id))
 
-      render_click(view, "make_administrator", %{"id" => another.id})
+      view
+      |> form("#role-of-#{another.id}", member_role: %{role_id: administrator.id})
+      |> render_submit()
+
       render_async(view)
       assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
 
-      assert %{role: :administrator} =
+      assert %{role_id: id} =
                Accounts.member!(another.id, tenant: context.organisation, authorize?: false)
+
+      assert id == administrator.id
 
       # The administrator cannot remove the one who is an administrator now.
       render_click(view, "remove", %{"id" => another.id})
@@ -371,35 +384,36 @@ defmodule RescordWeb.OrganisationPagesTest do
       {:ok, _organisation, own} =
         Accounts.organisation_for(context.member, context.organisation.short_name)
 
-      render_click(view, "make_administrator", %{"id" => own.id})
-      assert has_element?(view, "main p[role=alert]")
+      administrator = role_with_key(context, :administrator)
+
+      render_submit(view, "set_role", %{
+        "member_id" => own.id,
+        "member_role" => %{"role_id" => administrator.id}
+      })
 
       render_submit(view, "invite", %{"invite" => %{"email" => unique_address()}})
       assert has_element?(view, "main p[role=alert]")
 
-      assert %{role: :member} =
+      assert %{role_id: role_id} =
                Accounts.member!(own.id, tenant: context.organisation, authorize?: false)
 
+      assert role_id == role_with_key(context, :member).id
       assert_no_email_sent()
     end
 
     test "lets a root user invite an administrator", context do
-      {view, html} =
+      {view, _html} =
         open(context.conn, context.root, ~p"/o/#{context.organisation.short_name}/members")
-
-      assert html =~ ~s(name="invite[role]")
 
       address = unique_address()
 
       view
-      |> form("#invite", invite: %{email: address, role: "administrator"})
+      |> form("#invite",
+        invite: %{email: address, role_id: role_with_key(context, :administrator).id}
+      )
       |> render_submit()
 
-      assert [invited] =
-               Accounts.members!(tenant: context.organisation, authorize?: false, load: [:email])
-               |> Enum.filter(&(to_string(&1.email) == address))
-
-      assert invited.role == :administrator
+      assert role_key_of(context, address) == :administrator
     end
   end
 

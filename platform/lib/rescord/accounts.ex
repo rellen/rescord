@@ -65,10 +65,19 @@ defmodule Rescord.Accounts do
       define :members, action: :read
       define :member, action: :read, get_by: [:id], not_found_error?: false
       define :invite_member, action: :invite_member, args: [:email]
+      define :set_member_role, action: :set_role, args: [:role_id]
       define :invite_administrator, action: :invite_administrator, args: [:email]
       define :make_administrator, action: :make_administrator
       define :make_member, action: :make_member
       define :remove_member, action: :remove
+    end
+
+    resource Rescord.Accounts.Role do
+      define :roles, action: :read, default_options: [query: [sort: [name: :asc]]]
+      define :role, action: :read, get_by: [:id], not_found_error?: false
+      define :define_role, action: :define
+      define :revise_role, action: :revise
+      define :remove_role, action: :remove
     end
   end
 
@@ -155,29 +164,30 @@ defmodule Rescord.Accounts do
   def organisation_for(_user, _short_name), do: :error
 
   @doc """
-  What a user is in an organisation: `:root`, or the role of their member.
+  What a user is in an organisation: `:root`, or the role of their member,
+  a `Rescord.Accounts.Role`.
   """
   @spec role_in(Ash.Resource.record(), Ash.Resource.record() | nil) ::
-          :root | :administrator | :member | nil
+          :root | Ash.Resource.record() | nil
   def role_in(%User{root?: true}, _member), do: :root
-  def role_in(%User{}, %Member{role: role}), do: role
+  def role_in(%User{}, %Member{role: %Rescord.Accounts.Role{} = role}), do: role
   def role_in(_user, _member), do: nil
 
   @doc """
-  Whether a role can run an action on the members: on one member, or at all.
-  A page asks this to decide what to show. The policy decides when the action
-  runs.
+  Whether a role can run an action on the members: at all, or on one member
+  of the organisation `tenant`. A page asks this to decide what to show. The
+  policy decides when the action runs.
   """
-  @spec role_can?(atom | nil, atom, Ash.Resource.record() | nil) :: boolean
-  def role_can?(role, action, member \\ nil)
-  def role_can?(:root, _action, _member), do: true
-  def role_can?(role, action, nil), do: Grants.scope(role, Member, action) != :none
+  @spec role_can?(term, atom, Ash.Resource.record() | nil, term) :: boolean
+  def role_can?(role, action, member \\ nil, tenant \\ nil)
+  def role_can?(:root, _action, _member, _tenant), do: true
+  def role_can?(role, action, nil, _tenant), do: Grants.scope(role, Member, action) != :none
 
-  def role_can?(role, action, %Member{} = member),
-    do: Grants.allows?(role, Member, action, member)
+  def role_can?(role, action, %Member{} = member, tenant),
+    do: Grants.allows?(role, Member, action, member, tenant)
 
   @doc "Whether a role can change the settings of an organisation."
-  @spec role_can_change_settings?(atom | nil) :: boolean
+  @spec role_can_change_settings?(term) :: boolean
   def role_can_change_settings?(role), do: granted?(role, Organisation, :set_time_zone)
 
   @doc """
@@ -314,7 +324,7 @@ defmodule Rescord.Accounts do
   this about a resource of its own, to decide what a page shows. The policy
   decides when the action runs.
   """
-  @spec granted?(atom | nil, module, atom) :: boolean
+  @spec granted?(term, module, atom) :: boolean
   def granted?(:root, _resource, _action), do: true
   def granted?(role, resource, action), do: Grants.scope(role, resource, action) != :none
 
@@ -389,6 +399,7 @@ defmodule Rescord.Accounts do
   defp member_of(%User{id: user_id}, %Organisation{} = organisation) do
     Member
     |> Ash.Query.filter(user_id == ^user_id)
+    |> Ash.Query.load(:role)
     |> Ash.read_one!(tenant: organisation, authorize?: false)
   end
 

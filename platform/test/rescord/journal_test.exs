@@ -429,7 +429,8 @@ defmodule Rescord.JournalTest do
 
   describe "the grants of the journal" do
     test "name only resources and actions that exist, and give each scope a filter" do
-      for {_role, grants} <- Journal.Grants.grants(), {resource, action, scope} <- grants do
+      for {resource, action, scope} <-
+            Journal.Grants.reads() ++ Enum.flat_map(Journal.Grants.powers(), &elem(&1, 1)) do
         assert Ash.Resource.Info.action(resource, action)
         assert Rescord.Accounts.Grants.filter(resource, scope) != nil
       end

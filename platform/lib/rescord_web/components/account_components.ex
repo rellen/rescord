@@ -14,28 +14,38 @@ defmodule RescordWeb.AccountComponents do
   attr :current_user, :any, required: true
   attr :organisation, :any, required: true
   attr :role, :any, required: true
+  attr :roles, :list, required: true, doc: "the roles that the reader can give, as options"
 
   def members_table(assigns) do
     ~H"""
     <Cinder.collection
       id="members"
       query={Accounts.query_to_members(%{}, actor: @current_user, tenant: @organisation)}
+      query_opts={[load: [:role]]}
       actor={@current_user}
       tenant={@organisation}
     >
       <:col :let={member} field="email" label="Email address">{member.email}</:col>
-      <:col :let={member} field="role" label="Role" filter sort>{role_word(member.role)}</:col>
+      <:col :let={member} field="role_id" label="Role">{member.role.name}</:col>
       <:col :let={member} field="id" label="Actions">
-        <.button
-          :if={member.role == :member and Accounts.role_can?(@role, :make_administrator, member)}
-          phx-click="make_administrator"
-          phx-value-id={member.id}
-          aria-label={"Make #{member.email} an administrator"}
+        <form
+          :if={@roles != [] and Accounts.role_can?(@role, :set_role, member, @organisation)}
+          id={"role-of-#{member.id}"}
+          phx-submit="set_role"
         >
-          Make administrator
-        </.button>
+          <input type="hidden" name="member_id" value={member.id} />
+          <.input
+            id={"role-of-#{member.id}-role"}
+            name="member_role[role_id]"
+            type="select"
+            label={"The role of #{member.email}"}
+            options={@roles}
+            value={member.role_id}
+          />
+          <.button type="submit" aria-label={"Give #{member.email} the role"}>Give the role</.button>
+        </form>
         <.button
-          :if={Accounts.role_can?(@role, :remove, member)}
+          :if={Accounts.role_can?(@role, :remove, member, @organisation)}
           phx-click="remove"
           phx-value-id={member.id}
           aria-label={"Remove #{member.email} from #{@organisation.name}"}
@@ -47,9 +57,9 @@ defmodule RescordWeb.AccountComponents do
     """
   end
 
-  @doc "The form that invites a person to an organisation."
+  @doc "The form that invites a person to an organisation, with a role that the person can give."
   attr :invite_form, :any, required: true
-  attr :can_invite_administrator?, :any, required: true
+  attr :roles, :list, required: true
 
   def invite_form(assigns) do
     ~H"""
@@ -58,11 +68,11 @@ defmodule RescordWeb.AccountComponents do
       <.form for={@invite_form} id="invite" phx-submit="invite">
         <.input field={@invite_form[:email]} type="email" label="Email address" required />
         <.input
-          :if={@can_invite_administrator?}
-          field={@invite_form[:role]}
+          :if={@roles != []}
+          field={@invite_form[:role_id]}
           type="select"
           label="Role"
-          options={[{"Member", "member"}, {"Administrator", "administrator"}]}
+          options={@roles}
         />
         <footer>
           <.button type="submit">Send the invitation</.button>
@@ -72,9 +82,6 @@ defmodule RescordWeb.AccountComponents do
     """
   end
 
-  def role_word(:administrator), do: "Administrator"
-
-  def role_word(:member), do: "Member"
   @doc "The organisations, and the form of a new organisation."
   attr :current_user, :any, required: true
   attr :organisation_form, :any, required: true

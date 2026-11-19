@@ -2,30 +2,30 @@ defmodule Rescord.Lists.Grants do
   @moduledoc """
   What a role can do with the lists of an organisation (ADR 0024).
 
-  An administrator adds a value and gives a local value a new name. An
-  administrator also gives a measure kind its units, and an item category
-  its days before expiry. A member reads. The base lists are outside the
+  Each role reads the lists. The power `:lists` adds a value, gives a
+  local value a new name, and gives a measure kind its units and an item
+  category its days before expiry (ADR 0040). The administrators have it. The base lists are outside the
   grants: only a root user writes one.
   """
 
   @behaviour Rescord.Accounts.Grants
 
   @impl true
-  def grants do
-    lists = Rescord.Lists.lists()
+  def reads, do: for(list <- Rescord.Lists.lists(), do: {list, :read, :all})
 
+  @impl true
+  def powers do
     %{
-      administrator:
+      lists:
         for(
-          list <- lists,
-          action <- [:read, :add_shared, :add_local, :rename, :retire, :restore],
+          list <- Rescord.Lists.lists(),
+          action <- [:add_shared, :add_local, :rename, :retire, :restore],
           do: {list, action, :all}
         ) ++
           [
             {Rescord.Lists.MeasureKind, :set_units, :all},
             {Rescord.Lists.ItemCategory, :set_soon_days, :all}
-          ],
-      member: for(list <- lists, do: {list, :read, :all})
+          ]
     }
   end
 end

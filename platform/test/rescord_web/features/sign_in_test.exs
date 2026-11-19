@@ -67,7 +67,7 @@ defmodule RescordWeb.Features.SignInTest do
     |> assert_path(~p"/o/#{organisation.short_name}")
     |> assert_connected()
     |> assert_has("h1", text: "Wattle Creek")
-    |> assert_has("main", text: "You are a member of this organisation.")
+    |> assert_has("main", text: "Your role in this organisation: Member.")
 
     session
     |> click_link("Sign out")

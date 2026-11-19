@@ -3,14 +3,19 @@ defmodule Rescord.Accounts.Member do
   A user who belongs to one organisation. The member is in the schema of the
   organisation, and names a user, who is outside it.
 
-  A member is an administrator or a member (`docs/domain.md`, section 5.1):
+  A member has one role of the organisation, a `Rescord.Accounts.Role`
+  (ADR 0040):
 
-    * a root user invites an administrator;
-    * an administrator invites a member, and can make a member an
-      administrator;
-    * an administrator removes a member, and a root user removes anybody.
+    * a root user invites an administrator, who has the role with the key
+      `:administrator`;
+    * a person with the power `:members` invites a member, with the role
+      with the key `:member` or another role, and gives a member another
+      role;
+    * a person with the power `:members` removes a member whose role does
+      not have that power, and a root user removes anybody.
 
-  No action takes the role as input: each action sets it.
+  A person gives only a role whose powers their own role has
+  (`Rescord.Accounts.Validations.WithinPowers`).
 
   An invitation makes the user when the address has none, makes the member,
   and sends an email that says where to sign in. The email has no token: the
@@ -42,27 +47,43 @@ defmodule Rescord.Accounts.Member do
     defaults [:read]
 
     create :invite_member do
-      description "Invites a person to the organisation as a member"
+      description "Invites a person to the organisation, with the role `role_id` or the role of a member"
       argument :email, :ci_string, allow_nil?: false
-      change set_attribute(:role, :member)
+      argument :role_id, :uuid
+      change {Rescord.Accounts.Changes.SetRole, key: :member}
+      validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
       change Rescord.Accounts.Changes.Invite
     end
 
     create :invite_administrator do
       description "Invites a person to the organisation as an administrator"
       argument :email, :ci_string, allow_nil?: false
-      change set_attribute(:role, :administrator)
+      change {Rescord.Accounts.Changes.SetRole, key: :administrator}
       change Rescord.Accounts.Changes.Invite
     end
 
-    update :make_administrator do
+    update :set_role do
+      description "Gives the member another role of the organisation"
       accept []
-      change set_attribute(:role, :administrator)
+      argument :role_id, :uuid, allow_nil?: false
+      require_atomic? false
+      change {Rescord.Accounts.Changes.SetRole, key: nil}
+      validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
+    end
+
+    update :make_administrator do
+      description "Gives the member the role with the key `:administrator`"
+      accept []
+      require_atomic? false
+      change {Rescord.Accounts.Changes.SetRole, key: :administrator}
+      validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
     end
 
     update :make_member do
+      description "Gives the member the role with the key `:member`"
       accept []
-      change set_attribute(:role, :member)
+      require_atomic? false
+      change {Rescord.Accounts.Changes.SetRole, key: :member}
     end
 
     destroy :remove do
@@ -82,17 +103,16 @@ defmodule Rescord.Accounts.Member do
 
   attributes do
     uuid_primary_key :id
-
-    attribute :role, :atom do
-      allow_nil? false
-      default :member
-      public? true
-      writable? false
-      constraints one_of: [:administrator, :member]
-    end
   end
 
   relationships do
+    belongs_to :role, Rescord.Accounts.Role do
+      allow_nil? false
+      public? true
+      # No action takes the role as input: `SetRole` sets it.
+      attribute_writable? false
+    end
+
     belongs_to :user, Rescord.Accounts.User do
       allow_nil? false
       public? true

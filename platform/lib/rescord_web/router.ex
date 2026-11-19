@@ -50,6 +50,7 @@ defmodule RescordWeb.Router do
       on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_organisation}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
+      live "/o/:organisation/roles", RolesLive
       live "/o/:organisation/settings", SettingsLive
       live "/o/:organisation/lists", ListsLive, :organisation
       live "/o/:organisation/tasks", TasksLive

@@ -22,6 +22,10 @@ defmodule Rescord.Accounts.OrganisationTest do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation}
 
+  # The key of the role of a member: `:administrator` or `:member` (ADR 0040).
+  defp role_key(member, organisation),
+    do: Ash.load!(member, :role, tenant: organisation, authorize?: false).role.key
+
   setup do
     {:ok, root: root!()}
   end
@@ -83,7 +87,7 @@ defmodule Rescord.Accounts.OrganisationTest do
 
       {member, user} = member!(organisation, :administrator, root, address)
 
-      assert member.role == :administrator
+      assert role_key(member, organisation) == :administrator
       assert member.user_id == user.id
       refute user.root?
 
@@ -115,7 +119,7 @@ defmodule Rescord.Accounts.OrganisationTest do
       {_member, administrator} = member!(organisation, :administrator, root)
 
       {member, _user} = member!(organisation, :member, administrator)
-      assert member.role == :member
+      assert role_key(member, organisation) == :member
 
       assert {:error, %Ash.Error.Forbidden{}} =
                Accounts.invite_administrator(unique_address(),
@@ -203,7 +207,7 @@ defmodule Rescord.Accounts.OrganisationTest do
                  tenant: context.organisation
                )
 
-      assert promoted.role == :administrator
+      assert role_key(promoted, context.organisation) == :administrator
     end
 
     test "only a root user makes an administrator a member again", context do
@@ -219,8 +223,10 @@ defmodule Rescord.Accounts.OrganisationTest do
                  tenant: context.organisation
                )
 
-      assert {:ok, %{role: :member}} =
+      assert {:ok, demoted} =
                Accounts.make_member(promoted, actor: context.root, tenant: context.organisation)
+
+      assert role_key(demoted, context.organisation) == :member
     end
 
     test "an administrator removes a member, and not another administrator", context do

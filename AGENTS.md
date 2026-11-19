@@ -191,14 +191,19 @@ too.
   - Policies and roles are our own system in the manner of `ash_grant`
     (ADR 0021). The policy of a resource of an organisation is a bypass for
     a root user and then the one check `Rescord.Accounts.Checks.Granted`.
-    Give a role an action with one line in the grants of its domain (ADR 0024). Never
-    write a role into a policy, and do not add `ash_grant` as a dependency.
+    Give an action to a power with one line in the grants of its domain
+    (ADR 0024 and ADR 0040). A role is a record with powers, so never write
+    a role into a policy, and do not add `ash_grant` as a dependency. A new
+    power takes a key in `Rescord.Accounts.Grants.power_keys/0`, words in
+    `RescordWeb.RoleWords`, and a migration that gives it to the role with
+    the key `:administrator`.
   - No action takes as input an attribute that decides who can do what:
-    `root?` of a user, the role and the user of a member. Mark such an
+    `root?` of a user, the role and the user of a member, and the powers
+    that a person gives (`Rescord.Accounts.Validations.WithinPowers`). Mark such an
     attribute `writable? false`, and set it in a named action.
   - A page below `/o/:organisation` is in the live session `:organisation`,
-    whose hook assigns ``, ``, `` and
-    ``. Pass the user as the actor and the organisation as the tenant
+    whose hook assigns `current_user`, `organisation`, `member` and
+    `role`. Pass the user as the actor and the organisation as the tenant
     of each call. Show a form or a button only when
     `Rescord.Accounts.role_can?/3` says so.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the

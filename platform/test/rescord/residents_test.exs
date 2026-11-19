@@ -264,7 +264,8 @@ defmodule Rescord.ResidentsTest do
     end
 
     test "the grants name only resources and actions that exist" do
-      for {_role, grants} <- Residents.Grants.grants(), {resource, action, :all} <- grants do
+      for {resource, action, :all} <-
+            Residents.Grants.reads() ++ Enum.flat_map(Residents.Grants.powers(), &elem(&1, 1)) do
         assert Ash.Resource.Info.action(resource, action),
                "#{inspect(resource)} has no action #{action}"
       end

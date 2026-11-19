@@ -2,12 +2,16 @@ defmodule RescordWeb.MembersLive do
   @moduledoc """
   The members of an organisation, at `/o/<short name>/members`.
 
-  Each member of the organisation sees the list. An administrator invites a
-  member, makes a member an administrator, and removes a member. A root user
-  does each of those, and also invites an administrator.
+  Each member of the organisation sees the list, with the role of each
+  member. A person whose role has the power `:members` invites a person
+  with a role, gives a member another role, and removes a member whose role
+  does not have that power (ADR 0040). A root user does each of those for
+  anybody.
 
-  The page shows a form or a button only when the role of the person has the
-  grant for it. The policy of the member decides again when the action runs.
+  The forms offer only the roles that the person can give: those whose
+  powers their own role has. The page shows a form or a button only when
+  the role of the person has the grant for it. The policy and the
+  validations of the member decide again when the action runs.
   """
 
   use RescordWeb, :live_view
@@ -19,34 +23,48 @@ defmodule RescordWeb.MembersLive do
   @impl true
   def mount(_params, _session, socket) do
     role = socket.assigns.role
+    {:ok, roles} = Accounts.roles(options(socket))
 
     {:ok,
      socket
      |> assign(page_title: "Members", problems: [])
      |> assign(can_invite?: Accounts.role_can?(role, :invite_member))
-     |> assign(can_invite_administrator?: Accounts.role_can?(role, :invite_administrator))
+     |> assign(roles: for(r <- roles, givable?(role, r), do: {to_string(r.name), r.id}))
+     |> assign(member_role_id: Enum.find_value(roles, &(&1.key == :member && &1.id)))
      |> assign_invite_form()}
   end
 
+  # A root user gives each role, and another person the roles whose powers
+  # their own role has.
+  defp givable?(:root, _role), do: true
+  defp givable?(%{powers: own}, role), do: Enum.all?(role.powers, &(&1 in own))
+  defp givable?(_none, _role), do: false
+
   defp assign_invite_form(socket) do
-    assign(socket, invite_form: to_form(%{"email" => "", "role" => "member"}, as: :invite))
+    assign(socket,
+      invite_form:
+        to_form(%{"email" => "", "role_id" => socket.assigns.member_role_id}, as: :invite)
+    )
   end
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
 
+  # The id of a role of the form, when the page offered it, or `nil`, which
+  # is the role of a member.
+  defp offered(socket, id) do
+    if Enum.any?(socket.assigns.roles, fn {_name, role_id} -> role_id == id end), do: id
+  end
+
   @impl true
   def handle_event("invite", %{"invite" => %{"email" => address} = params}, socket)
       when is_binary(address) do
-    # A role that the form did not offer is refused by the policy.
-    invite =
-      case params["role"] do
-        "administrator" -> &Accounts.invite_administrator/2
-        _member -> &Accounts.invite_member/2
-      end
-
-    case invite.(address, options(socket)) do
+    case Accounts.invite_member(
+           address,
+           %{role_id: offered(socket, params["role_id"])},
+           options(socket)
+         ) do
       {:ok, _member} ->
         {:noreply,
          socket
@@ -60,8 +78,16 @@ defmodule RescordWeb.MembersLive do
     end
   end
 
-  def handle_event("make_administrator", %{"id" => id}, socket) when is_binary(id) do
-    change(socket, id, &Accounts.make_administrator/2)
+  def handle_event(
+        "set_role",
+        %{"member_id" => id, "member_role" => %{"role_id" => role_id}},
+        socket
+      )
+      when is_binary(id) and is_binary(role_id) do
+    case offered(socket, role_id) do
+      nil -> {:noreply, socket}
+      role_id -> change(socket, id, &Accounts.set_member_role(&1, role_id, &2))
+    end
   end
 
   def handle_event("remove", %{"id" => id}, socket) when is_binary(id) do
@@ -99,6 +125,11 @@ defmodule RescordWeb.MembersLive do
       <.header>
         Members
         <:subtitle>The people of {@organisation.name}</:subtitle>
+        <:actions>
+          <.link navigate={~p"/o/#{@organisation.short_name}/roles"} data-variant="secondary">
+            The roles
+          </.link>
+        </:actions>
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
@@ -107,13 +138,10 @@ defmodule RescordWeb.MembersLive do
         current_user={@current_user}
         organisation={@organisation}
         role={@role}
+        roles={@roles}
       />
 
-      <.invite_form
-        :if={@can_invite?}
-        invite_form={@invite_form}
-        can_invite_administrator?={@can_invite_administrator?}
-      />
+      <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />
     </Layouts.app>
     """
   end

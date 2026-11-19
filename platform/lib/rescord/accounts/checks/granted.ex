@@ -23,7 +23,7 @@ defmodule Rescord.Accounts.Checks.Granted do
     with tenant when not is_nil(tenant) <- subject.tenant,
          role when not is_nil(role) <- role_of(actor, tenant),
          {:ok, scope} <- Grants.scope(role, resource, action.name) do
-      Grants.filter(resource, scope)
+      Grants.filter(resource, scope, tenant)
     else
       _no_grant -> false
     end
@@ -31,11 +31,14 @@ defmodule Rescord.Accounts.Checks.Granted do
 
   def filter(_actor, _authorizer, _opts), do: false
 
-  @doc "The role of a user in an organisation, or `nil` for a user who is not a member."
+  @doc """
+  The role of a user in an organisation, a `Rescord.Accounts.Role`, or `nil`
+  for a user who is not a member.
+  """
   def role_of(%User{id: user_id}, tenant) do
     Member
     |> Ash.Query.filter(user_id == ^user_id)
-    |> Ash.Query.select([:role])
+    |> Ash.Query.load(:role)
     |> Ash.read_one!(tenant: tenant, authorize?: false)
     |> case do
       nil -> nil
