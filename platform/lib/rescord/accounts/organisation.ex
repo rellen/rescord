@@ -64,6 +64,11 @@ defmodule Rescord.Accounts.Organisation do
       accept [:task_days_ahead]
     end
 
+    update :set_transfer_parts do
+      description "Changes the parts that a copy of a transferred resident holds at first"
+      accept [:transfer_parts]
+    end
+
     update :rename do
       accept [:name]
     end
@@ -77,7 +82,7 @@ defmodule Rescord.Accounts.Organisation do
 
     # An administrator changes the settings of their own organisation
     # (ADR 0026 and ADR 0033). Nobody else has a policy here.
-    policy action([:set_time_zone, :set_task_days_ahead]) do
+    policy action([:set_time_zone, :set_task_days_ahead, :set_transfer_parts]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
     end
   end
@@ -112,6 +117,15 @@ defmodule Rescord.Accounts.Organisation do
       public? true
       constraints min: 1, max: 400
       description "How many days ahead the tasks of the routines exist"
+    end
+
+    attribute :transfer_parts, {:array, :atom} do
+      allow_nil? false
+      default []
+      public? true
+      constraints items: [one_of: [:journal, :stay, :placements, :relations]]
+
+      description "The parts that a copy of a resident holds at first, other than the facts and the medical history (ADR 0042)"
     end
   end
 

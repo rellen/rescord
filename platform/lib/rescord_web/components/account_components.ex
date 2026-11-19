@@ -237,4 +237,41 @@ defmodule RescordWeb.AccountComponents do
     </section>
     """
   end
+
+  @doc "The parts that a copy of a transferred resident holds at first (ADR 0042)."
+  attr :organisation, :any, required: true
+  attr :can_change?, :boolean, required: true
+
+  def transfer_parts_setting(assigns) do
+    ~H"""
+    <section aria-labelledby="parts-heading">
+      <h2 id="parts-heading">Transfers</h2>
+      <p>
+        A copy of a resident that this refuge sends to a partner holds the facts and the medical
+        history always. It also holds these parts at first, and the person who sends it can
+        change them for each transfer.
+      </p>
+      <p :if={@organisation.transfer_parts == []}>No other part.</p>
+      <ul :if={@organisation.transfer_parts != []}>
+        <li :for={part <- @organisation.transfer_parts}>{RescordWeb.TransferWords.part(part)}</li>
+      </ul>
+
+      <form :if={@can_change?} id="parts" phx-submit="save_parts">
+        <fieldset>
+          <legend>The parts of a copy at first</legend>
+          <label :for={{part, words} <- RescordWeb.TransferWords.parts()}>
+            <input
+              type="checkbox"
+              name="parts[keys][]"
+              value={part}
+              checked={part in @organisation.transfer_parts}
+            />
+            {words}
+          </label>
+        </fieldset>
+        <footer><.button type="submit">Save the parts</.button></footer>
+      </form>
+    </section>
+    """
+  end
 end

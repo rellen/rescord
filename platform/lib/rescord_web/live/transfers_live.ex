@@ -1,0 +1,217 @@
+defmodule RescordWeb.TransfersLive do
+  @moduledoc """
+  The transfers of an organisation, at `/o/<short name>/transfers`
+  (ADR 0042), and one copy, at `/o/<short name>/transfers/<id>`.
+
+  The page lists the transfers that the organisation received and sent. A
+  person whose role has the power `:transfers` sends a resident to a
+  partner refuge, with the parts of the copy that they choose; the setting
+  of the organisation ticks the parts at first. That person also accepts
+  or declines a transfer that waits for an answer, and withdraws one that
+  the organisation sent. Each member reads a copy that the organisation
+  accepted.
+
+  The page acts only on a transfer that it has in hand, and reads only the
+  fields that it knows from what the browser sends: a part comes from
+  `RescordWeb.TransferWords.part_of/1`, which makes no atom.
+  """
+
+  use RescordWeb, :live_view
+
+  import RescordWeb.TransferComponents
+
+  alias Rescord.{Accounts, Residents, Transfers}
+  alias RescordWeb.TransferWords
+
+  @impl true
+  def mount(_params, _session, socket) do
+    role = socket.assigns.role
+
+    {:ok,
+     assign(socket,
+       problems: [],
+       can_send?: Transfers.role_can?(role, :transfer, :send),
+       can_answer?: Transfers.role_can?(role, :transfer, :accept),
+       can_withdraw?: Transfers.role_can?(role, :transfer, :withdraw)
+     )}
+  end
+
+  @impl true
+  def handle_params(%{"id" => id}, _uri, socket) do
+    with {:ok, _uuid} <- Ecto.UUID.cast(id),
+         {:ok, %{} = transfer} <-
+           Transfers.transfer_of(socket.assigns.organisation, id,
+             actor: socket.assigns.current_user
+           ) do
+      {:noreply,
+       assign(socket,
+         page_title: "Transfer of #{transfer.resident_name || "a resident"}",
+         transfer: transfer
+       )}
+    else
+      _no_transfer -> {:noreply, push_navigate(socket, to: path(socket))}
+    end
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket |> assign(page_title: "Transfers", transfer: nil) |> assign_lists()}
+  end
+
+  defp options(socket) do
+    [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
+  end
+
+  defp assign_lists(socket) do
+    organisation = socket.assigns.organisation
+    actor = [actor: socket.assigns.current_user]
+    {:ok, transfers} = Transfers.transfers_of(organisation, actor)
+    {:ok, partners} = Transfers.partners_of(organisation, actor)
+
+    residents =
+      if socket.assigns.can_send? do
+        {:ok, residents} = Residents.residents([load: [:name]] ++ options(socket))
+        residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort()
+      else
+        []
+      end
+
+    {received, sent} = Enum.split_with(transfers, &(&1.to_organisation_id == organisation.id))
+
+    assign(socket,
+      received: received,
+      sent: sent,
+      partners: partners,
+      residents: residents,
+      send_form:
+        to_form(
+          %{"parts" => Enum.map(organisation.transfer_parts, &Atom.to_string/1)},
+          as: :transfer
+        )
+    )
+  end
+
+  defp path(socket), do: ~p"/o/#{socket.assigns.organisation.short_name}/transfers"
+
+  @impl true
+  def handle_event("send", %{"transfer" => fields}, socket) when is_map(fields) do
+    parts =
+      for text <- List.wrap(fields["parts"]),
+          {:ok, part} <- [TransferWords.part_of(text)],
+          uniq: true,
+          do: part
+
+    facts = %{
+      organisation_id: socket.assigns.organisation.id,
+      partner_id: offered(socket.assigns.partners, fields["partner_id"]),
+      resident_id: offered(socket.assigns.residents, fields["resident_id"]),
+      parts: parts,
+      note: non_blank(fields["note"])
+    }
+
+    case Transfers.send_transfer(facts, actor: socket.assigns.current_user) do
+      {:ok, _transfer} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "The copy is with the partner refuge.")
+         |> push_navigate(to: path(socket))}
+
+      {:error, error} ->
+        {:noreply,
+         assign(socket,
+           problems: Accounts.error_messages(error),
+           send_form: typed_form(fields, as: :transfer)
+         )}
+    end
+  end
+
+  def handle_event(event, %{"id" => id}, socket)
+      when event in ["accept", "decline", "withdraw"] and is_binary(id) do
+    action =
+      case event do
+        "accept" -> &Transfers.accept_transfer/2
+        "decline" -> &Transfers.decline_transfer/2
+        "withdraw" -> &Transfers.withdraw_transfer/2
+      end
+
+    with %{} = transfer <-
+           Enum.find(socket.assigns.received ++ socket.assigns.sent, &(&1.id == id)),
+         {:ok, _transfer} <- action.(transfer, actor: socket.assigns.current_user) do
+      {:noreply, push_navigate(socket, to: path(socket))}
+    else
+      nil ->
+        {:noreply, socket}
+
+      {:error, error} ->
+        {:noreply, socket |> assign(problems: Accounts.error_messages(error)) |> assign_lists()}
+    end
+  end
+
+  # Ignore an event that this page does not know.
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The id of an option that the page offered, or `nil`, which the action
+  # refuses.
+  defp offered(options, id) do
+    if Enum.any?(options, fn {_name, option_id} -> option_id == id end), do: id
+  end
+
+  @impl true
+  def render(%{transfer: %{}} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+      <nav aria-label="Breadcrumb">
+        <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</.link>
+      </nav>
+      <.copy transfer={@transfer} organisation={@organisation} />
+    </Layouts.app>
+    """
+  end
+
+  def render(assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+      <.header>
+        Transfers
+        <:subtitle>The residents that {@organisation.name} sent and received</:subtitle>
+        <:actions>
+          <.link navigate={~p"/o/#{@organisation.short_name}/partners"} data-variant="secondary">
+            Partner refuges
+          </.link>
+        </:actions>
+      </.header>
+
+      <p :for={problem <- @problems} role="alert">{problem}</p>
+
+      <.transfers_table
+        id="received"
+        title="Received"
+        empty="No refuge has sent a resident yet."
+        transfers={@received}
+        organisation={@organisation}
+        can_answer?={@can_answer?}
+        can_withdraw?={false}
+      />
+
+      <.transfers_table
+        id="sent"
+        title="Sent"
+        empty="This refuge has sent no resident yet."
+        transfers={@sent}
+        organisation={@organisation}
+        can_answer?={false}
+        can_withdraw?={@can_withdraw?}
+      />
+
+      <.send_form
+        :if={@can_send?}
+        form={@send_form}
+        partners={@partners}
+        residents={@residents}
+      />
+    </Layouts.app>
+    """
+  end
+end

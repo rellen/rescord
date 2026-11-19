@@ -375,6 +375,15 @@ organisation, and no part of it comes from what a person sends. A person
 reads a file through a controller that asks the policy, and the answer
 names the type that Rescord found in the first bytes of the file.
 
+### Transfers
+
+**A partnership and a transfer are between two organisations, so they are
+outside the schemas, with the organisations** (ADR 0042). Their policies
+read the role of the actor in one of the two (`Rescord.Transfers.Checks.PowerIn`),
+and their read is a filter of the organisations of the actor. A transfer
+holds a copy of the resident as plain data, which the sender builds at the
+transfer and which never changes.
+
 ### Policies and roles
 
 **Authorization is our own system, in the manner of `ash_grant`.** We write

@@ -55,6 +55,10 @@ defmodule Rescord.Accounts do
         action: :set_task_days_ahead,
         args: [:task_days_ahead]
 
+      define :set_organisation_transfer_parts,
+        action: :set_transfer_parts,
+        args: [:transfer_parts]
+
       define :organisation_by_short_name,
         action: :by_short_name,
         args: [:short_name],

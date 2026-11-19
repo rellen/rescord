@@ -15,7 +15,8 @@ defmodule RescordWeb.RoleWords do
     {"Housing", [:placements, :locations]},
     {"Journal", [:journal, :correct_journal]},
     {"Tasks", [:tasks, :routines]},
-    {"Inventory", [:stock, :inventory]}
+    {"Inventory", [:stock, :inventory]},
+    {"Transfers", [:transfers]}
   ]
 
   @words %{
@@ -32,7 +33,8 @@ defmodule RescordWeb.RoleWords do
     tasks: "Plan, take, complete and skip tasks",
     routines: "Start, change, pause and end routines",
     stock: "Record deliveries, uses, moves, discards and counts of stock",
-    inventory: "Keep the items, the suppliers and the reorder levels"
+    inventory: "Keep the items, the suppliers and the reorder levels",
+    transfers: "Agree partner refuges, send a resident to one, and answer a transfer"
   }
 
   @doc "The areas of work, each with its powers, in the order of the page."

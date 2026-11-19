@@ -39,6 +39,12 @@ defmodule RescordWeb.OrganisationLive do
         <li><a href={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/roles"}>See the roles</a></li>
+        <li>
+          <a href={~p"/o/#{@organisation.short_name}/transfers"}>See the transfers</a>
+        </li>
+        <li>
+          <a href={~p"/o/#{@organisation.short_name}/partners"}>See the partner refuges</a>
+        </li>
         <li><a href={~p"/o/#{@organisation.short_name}/settings"}>See the settings</a></li>
       </ul>
     </Layouts.app>

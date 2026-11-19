@@ -427,6 +427,22 @@ particular. A lot expires soon in the days before its expiry date that the
 category of its item gives, or in 30 days. Stock that is past its expiry date does not count
 against a reorder level.
 
+### 5.9 Transfers between refuges
+
+A refuge sends a resident to a partner refuge as a copy that does not
+change (ADR 0042). An administrator asks another refuge by its short name,
+and the two are partners when an administrator there accepts. An
+administrator sends a resident to a partner. The copy holds the facts and
+the medical history of the resident, and the parts that the sender ticks:
+the other journal entries, the stay, the placements, and the families and
+the groups. The settings of the refuge tick the parts at first.
+
+Nothing appears at the partner until an administrator there accepts the
+transfer, and that administrator can decline it. After the acceptance, each
+member there reads the copy. The refuge that sends a resident records its
+departure itself. Here, an administrator is each role with the power
+`:transfers`.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.

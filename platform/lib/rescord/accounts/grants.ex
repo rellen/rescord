@@ -68,7 +68,8 @@ defmodule Rescord.Accounts.Grants do
     :tasks,
     :routines,
     :stock,
-    :inventory
+    :inventory,
+    :transfers
   ]
 
   # The powers of a member of ADR 0021.
@@ -88,7 +89,8 @@ defmodule Rescord.Accounts.Grants do
     # The settings of the organisation itself (ADR 0026).
     settings: [
       {Organisation, :set_time_zone, :all},
-      {Organisation, :set_task_days_ahead, :all}
+      {Organisation, :set_task_days_ahead, :all},
+      {Organisation, :set_transfer_parts, :all}
     ]
   }
 

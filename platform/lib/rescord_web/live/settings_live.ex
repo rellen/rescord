@@ -5,7 +5,8 @@ defmodule RescordWeb.SettingsLive do
   The time zone (ADR 0026) says what today is for the organisation: a date
   of an arrival is not after today, and the age of a resident counts to
   today. The number of days ahead (ADR 0033) says how far ahead the tasks of
-  the routines exist. Each member reads the settings. An administrator and a
+  the routines exist. The parts of a copy (ADR 0042) are the parts that a
+  copy of a transferred resident holds at first. Each member reads the settings. An administrator and a
   root user change them.
 
   The page opens again after a change, so that each part of it reads the
@@ -17,7 +18,7 @@ defmodule RescordWeb.SettingsLive do
   import RescordWeb.AccountComponents
 
   alias Rescord.{Accounts, Tasks}
-  alias RescordWeb.TaskWords
+  alias RescordWeb.{TaskWords, TransferWords}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -57,6 +58,29 @@ defmodule RescordWeb.SettingsLive do
            problems: Accounts.error_messages(error),
            form: typed_form(params, as: :settings)
          )}
+    end
+  end
+
+  def handle_event("save_parts", params, socket) do
+    organisation = socket.assigns.organisation
+
+    parts =
+      for text <- List.wrap(get_in(params, ["parts", "keys"])),
+          {:ok, part} <- [TransferWords.part_of(text)],
+          uniq: true,
+          do: part
+
+    case Accounts.set_organisation_transfer_parts(organisation, parts,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, _organisation} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "A copy of a transferred resident holds those parts at first now.")
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
     end
   end
 
@@ -118,6 +142,8 @@ defmodule RescordWeb.SettingsLive do
         can_change?={@can_change?}
         ahead_form={@ahead_form}
       />
+
+      <.transfer_parts_setting organisation={@organisation} can_change?={@can_change?} />
     </Layouts.app>
     """
   end
