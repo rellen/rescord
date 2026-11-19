@@ -49,7 +49,7 @@ defmodule Rescord.TasksTest do
       task = plan!(context, %{kind_id: context.lists.task_kind.feed})
 
       assert task.state == :due
-      assert task.assignee_id == nil
+      assert task.assignee_ids == []
 
       {:ok, loaded} = Tasks.task_with_facts(task.id, context.options)
       assert to_string(loaded.kind.label) == "Feed"
@@ -172,24 +172,38 @@ defmodule Rescord.TasksTest do
   end
 
   describe "who a task is for" do
-    test "is the member who takes it, or the member that somebody gives it to", context do
-      task = plan!(context)
+    test "is each member who takes it, or the members that somebody gives it to", context do
+      task = plan!(context, %{assignee_ids: [context.member.id]})
       other = [actor: context.other, tenant: context.organisation]
 
-      assert {:ok, %{assignee_id: taken}} = Tasks.take_task(task, other)
-      assert taken == context.other.id
+      # A member who takes a task is one of its members, with the others.
+      assert {:ok, %{assignee_ids: taken} = task} = Tasks.take_task(task, other)
+      assert taken == [context.member.id, context.other.id]
 
-      assert {:ok, %{assignee_id: given}} =
-               Tasks.give_task(task, %{assignee_id: context.member.id}, other)
+      # A second take adds nobody.
+      assert {:ok, %{assignee_ids: ^taken}} = Tasks.take_task(task, other)
 
-      assert given == context.member.id
+      assert {:ok, %{assignee_ids: given}} =
+               Tasks.give_task(task, %{assignee_ids: [context.member.id]}, other)
+
+      assert given == [context.member.id]
 
       # For each member again.
-      assert {:ok, %{assignee_id: nil}} = Tasks.give_task(task, %{assignee_id: nil}, other)
+      assert {:ok, %{assignee_ids: []}} = Tasks.give_task(task, %{assignee_ids: []}, other)
+    end
+
+    test "is done for each of its members when one of them completes it", context do
+      task = plan!(context, %{assignee_ids: [context.member.id, context.other.id]})
+      other = [actor: context.other, tenant: context.organisation]
+
+      assert {:ok, %{state: :done, finished_by_id: by}} = Tasks.complete_task(task, %{}, other)
+      assert by == context.other.id
+
+      assert {:error, %Ash.Error.Invalid{}} = Tasks.complete_task(task, %{}, context.options)
     end
 
     test "does not stop another member from the work", context do
-      task = plan!(context, %{assignee_id: context.member.id})
+      task = plan!(context, %{assignee_ids: [context.member.id]})
       other = [actor: context.other, tenant: context.organisation]
 
       assert {:ok, %{state: :done}} = Tasks.complete_task(task, %{}, other)

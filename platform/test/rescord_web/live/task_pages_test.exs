@@ -191,7 +191,7 @@ defmodule RescordWeb.TaskPagesTest do
             date: Date.to_iso8601(later),
             time: "09:15",
             resident_id: context.biscuit.id,
-            assignee_id: context.other.id,
+            assignee_ids: [context.other.id],
             kind_id: context.lists.task_kind.clean
           }
         )
@@ -215,6 +215,7 @@ defmodule RescordWeb.TaskPagesTest do
         "task" => %{
           "title" => ["a list"],
           "note" => %{"a" => "map"},
+          "assignee_ids" => %{"a" => "map"},
           "date" => Date.to_iso8601(context.today),
           "time" => "09:15"
         }

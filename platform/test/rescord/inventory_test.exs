@@ -2,9 +2,9 @@ defmodule Rescord.InventoryTest do
   @moduledoc """
   Holds the inventory of an organisation (`docs/domain.md`, section 5.8, and
   ADR 0034): an item has lots, the level is the sum of the stock movements,
-  a movement out takes no more than the level, a count writes the
-  difference, and the stock says what is past its expiry date and what is
-  below a reorder level.
+  a movement out can take the level below zero, which the stock flags until
+  a count, a count writes the difference, and the stock says what is past
+  its expiry date and what is below a reorder level.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
@@ -212,39 +212,44 @@ defmodule Rescord.InventoryTest do
       assert Enum.map(history, & &1.kind) == [:discarded, :used, :received, :received]
     end
 
-    test "does not go below zero: a movement out takes no more than is there", context do
+    test "can go below zero, and the stock asks for a count until one", context do
       lot = lot!(context)
 
       for action <- [&Inventory.use_stock/2, &Inventory.discard_stock/2] do
-        assert {:error, %Ash.Error.Invalid{} = error} =
+        assert {:ok, _movement} =
                  action.(
-                   %{lot_id: lot.id, location_id: context.shed.id, quantity: 11},
-                   context.options
-                 )
-
-        assert Accounts.error_messages(error) == [
-                 "Quantity is more than the 10 there. Count the place when that number is wrong"
-               ]
-      end
-
-      # The stock is in the shed, and not in the clinic or in no place.
-      for place <- [context.clinic.id, nil] do
-        assert {:error, %Ash.Error.Invalid{}} =
-                 Inventory.use_stock(
-                   %{lot_id: lot.id, location_id: place, quantity: 1},
+                   %{lot_id: lot.id, location_id: context.shed.id, quantity: 6},
                    context.options
                  )
       end
 
-      # All of it can go.
-      assert {:ok, _} =
+      # A use from a place with no stock also goes below zero there.
+      assert {:ok, _movement} =
                Inventory.use_stock(
-                 %{lot_id: lot.id, location_id: context.shed.id, quantity: 10},
+                 %{lot_id: lot.id, location_id: context.clinic.id, quantity: 1},
                  context.options
                )
 
       stock = stock!(context)
+      assert number(stock.level) == "-3"
+
+      assert stock.below_zero
+             |> Enum.map(fn {%{id: id}, place, level} -> {id, place, number(level)} end)
+             |> Enum.sort() ==
+               Enum.sort([{lot.id, context.shed.id, "-2"}, {lot.id, context.clinic.id, "-1"}])
+
+      # A count puts each place right, and the warning goes.
+      for place <- [context.shed.id, context.clinic.id] do
+        assert {:ok, _count} =
+                 Inventory.count_stock(
+                   %{lot_id: lot.id, location_id: place, counted: 0},
+                   context.options
+                 )
+      end
+
+      stock = stock!(context)
       assert number(stock.level) == "0"
+      assert stock.below_zero == []
       assert [%{places: []}] = stock.lots
     end
 
@@ -353,16 +358,9 @@ defmodule Rescord.InventoryTest do
       assert [_one] = moved |> Enum.map(& &1.happened_at) |> Enum.uniq()
     end
 
-    test "is refused for more than is there, and for the same place, and writes nothing",
-         context do
+    test "is refused for the same place, and writes nothing", context do
       lot = lot!(context)
       move = %{lot_id: lot.id, location_id: context.shed.id, quantity: 4}
-
-      assert {:error, %Ash.Error.Invalid{}} =
-               Inventory.move_stock(
-                 Map.merge(move, %{to_location_id: context.clinic.id, quantity: 11}),
-                 context.options
-               )
 
       assert {:error, %Ash.Error.Invalid{} = error} =
                Inventory.move_stock(
@@ -439,6 +437,41 @@ defmodule Rescord.InventoryTest do
       assert number(stock.expired) == "3"
       assert number(stock.soon) == "4"
       assert Enum.map(stock.lots, & &1.expiry) == [:expired, :soon, :none]
+    end
+
+    test "expires soon in the days that the category of the item gives", context do
+      lot!(context, %{quantity: 4, expires_on: Date.add(context.today, 45)})
+      assert [:later] = Enum.map(stock!(context).lots, & &1.expiry)
+
+      # A member does not change the days.
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Rescord.Lists.set_soon_days(context.lists.item_category.food, 60, context.options)
+
+      {:ok, food} =
+        Rescord.Lists.set_soon_days(context.lists.item_category.food, 60, context.admin)
+
+      assert food.soon_days == 60
+
+      stock = stock!(context)
+      assert [:soon] = Enum.map(stock.lots, & &1.expiry)
+      assert number(stock.soon) == "4"
+
+      # Zero days: a lot expires soon on its date alone.
+      {:ok, _food} =
+        Rescord.Lists.set_soon_days(context.lists.item_category.food, 0, context.admin)
+
+      assert [:later] = Enum.map(stock!(context).lots, & &1.expiry)
+      assert Inventory.expiry(%{expires_on: context.today}, context.today, 0) == :soon
+
+      # No number: 30 days again.
+      {:ok, food} =
+        Rescord.Lists.set_soon_days(context.lists.item_category.food, nil, context.admin)
+
+      assert food.soon_days == nil
+      assert Inventory.soon_days(%{category: food}) == 30
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Rescord.Lists.set_soon_days(context.lists.item_category.food, -1, context.admin)
     end
 
     test "is on the calendar of the organisation", context do

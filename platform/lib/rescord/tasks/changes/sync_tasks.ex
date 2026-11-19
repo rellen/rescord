@@ -22,6 +22,13 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
   A time that has a task of the routine gets no second one. So a task that
   a member finished ahead of its time stays the task of that time.
 
+  A routine that counts its days from the last task (`count_from` is
+  `:last_done`) has the tasks of its next day only, and only when none of
+  its tasks is due. Its next day is `every` days after the day when a
+  member last completed or skipped one of its tasks, or its first day.
+  `Rescord.Tasks.Changes.NextOfRoutine` runs this change when a member
+  finishes a task.
+
   One run makes 500 tasks at most. A routine with more than that to make
   gets the others in the next run.
 
@@ -100,7 +107,7 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
   defp make(%{paused: false} = routine, from, {organisation, now}, true, internal, actor) do
     # No task is for a time before now: not after a pause, and not after a
     # time when the job did not run.
-    from = Enum.max([from, now], DateTime)
+    from = if last_done?(routine), do: now, else: Enum.max([from, now], DateTime)
     until = horizon(routine, organisation, now)
 
     # A time that has a task is not made again: a member can finish a task
@@ -109,7 +116,7 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
 
     {times, more?} =
       routine
-      |> instants(organisation, from, until)
+      |> due_times(organisation, {from, until}, internal)
       |> Enum.reject(&MapSet.member?(taken, DateTime.to_unix(&1)))
       |> Enum.split(@most)
       |> split()
@@ -126,6 +133,10 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
       made != :ok -> made
       # The next run starts after the last task that this run made.
       more? -> {:ok, DateTime.add(List.last(times), 1, :second)}
+      # The mark of a routine that counts from the last task is after its
+      # last task: the next day is not known yet.
+      last_done?(routine) and times != [] -> {:ok, DateTime.add(List.last(times), 1, :second)}
+      last_done?(routine) -> {:ok, from}
       true -> {:ok, Enum.max([until, from], DateTime)}
     end
   end
@@ -133,6 +144,75 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
   defp make(_routine, from, _time, _make?, _internal, _actor), do: {:ok, from}
 
   defp split({times, rest}), do: {times, rest != []}
+
+  defp last_done?(%{pattern: :interval, count_from: :last_done}), do: true
+  defp last_done?(_routine), do: false
+
+  # The times of the tasks to make from `from` to `until`. A routine that
+  # counts from the last task has the tasks of its next day, and only when
+  # it has no task that is due.
+  defp due_times(routine, organisation, {from, until}, internal) do
+    if last_done?(routine) do
+      if open?(routine, internal),
+        do: [],
+        else: next_day_times(routine, organisation, {from, until}, internal)
+    else
+      instants(routine, organisation, from, until)
+    end
+  end
+
+  defp open?(routine, internal) do
+    Task
+    |> Ash.Query.filter(routine_id == ^routine.id and state == :due)
+    |> Ash.exists?(internal)
+  end
+
+  # The first day with a time from `from`, from the later of: the day when a
+  # member last finished a task plus `every` days, and the day after the
+  # last task. A routine with no finished task starts on its first day. The
+  # second keeps a task that a member finished ahead of its day from a
+  # next day that is its own day.
+  defp next_day_times(routine, organisation, {from, until}, internal) do
+    last =
+      Task
+      |> Ash.Query.filter(routine_id == ^routine.id and state in [:done, :skipped])
+      |> Ash.Query.sort(finished_at: :desc)
+      |> Ash.Query.limit(1)
+      |> Ash.read_one!(internal)
+
+    latest =
+      Task
+      |> Ash.Query.filter(routine_id == ^routine.id)
+      |> Ash.Query.sort(due_at: :desc)
+      |> Ash.Query.limit(1)
+      |> Ash.read_one!(internal)
+
+    next =
+      case {last, latest} do
+        {%{finished_at: %DateTime{} = at}, %{due_at: due_at}} ->
+          Enum.max(
+            [
+              organisation |> Accounts.local_date(at) |> Date.add(routine.every),
+              organisation |> Accounts.local_date(due_at) |> Date.add(1)
+            ],
+            Date
+          )
+
+        _none ->
+          routine.starts_on
+      end
+
+    daily = %{routine | pattern: :daily, starts_on: Enum.max([next, routine.starts_on], Date)}
+
+    case instants(daily, organisation, from, until) do
+      [] ->
+        []
+
+      [first | _later] = all ->
+        day = Accounts.local_date(organisation, first)
+        Enum.take_while(all, &(Accounts.local_date(organisation, &1) == day))
+    end
+  end
 
   # The times from `from` that have a task of the routine, as seconds.
   defp taken(routine, from, internal) do
@@ -152,7 +232,7 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
         title: routine.title,
         note: routine.note,
         kind_id: routine.kind_id,
-        assignee_id: routine.assignee_id,
+        assignee_ids: routine.assignee_ids,
         prescription_id: routine.prescription_id,
         due_at: due_at,
         resident_ids: routine.resident_ids,

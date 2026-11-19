@@ -154,6 +154,74 @@ defmodule RescordWeb.ResidentPagesTest do
     end
   end
 
+  describe "the units of a kind of measurement and the days before expiry" do
+    test "are on the lists page, and an administrator changes them", context do
+      lists = lists!(context.organisation, context.root)
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, html} = open(conn, context.base <> "/lists")
+
+      assert html =~ "Units: any unit"
+      assert html =~ "Expires soon: 30 days, the default before its date"
+
+      {view, html} =
+        submit(view, conn, "#units-#{lists.measure_kind.weight}",
+          units: %{ids: [lists.unit.g, lists.unit.kg]}
+        )
+
+      assert html =~ "Units: g, kg"
+
+      {_view, html} =
+        submit(view, conn, "#soon-#{lists.item_category.medication}", soon: %{days: "60"})
+
+      assert html =~ "Expires soon: 60 days before its date"
+
+      assert Enum.sort(Lists.unit_ids_of_kind(lists.measure_kind.weight, context.options)) ==
+               Enum.sort([lists.unit.g, lists.unit.kg])
+
+      # A member reads them, and has no form.
+      {_view, html} = open(context.conn, context.base <> "/lists")
+      assert html =~ "Units: g, kg"
+      refute html =~ ~s(phx-submit="set_units")
+      refute html =~ ~s(phx-submit="set_soon_days")
+    end
+
+    test "take no value of another list, and read a forged field as no value", context do
+      lists = lists!(context.organisation, context.root)
+      admin = [actor: context.administrator, tenant: context.organisation]
+      {:ok, _weight} = Lists.set_units(lists.measure_kind.weight, [lists.unit.g], admin)
+      {:ok, _food} = Lists.set_soon_days(lists.item_category.food, 10, admin)
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, _html} = open(conn, context.base <> "/lists")
+
+      # A species is not a kind of measurement: the page changes nothing.
+      render_submit(view, "set_units", %{
+        "value_id" => lists.species.guinea_pig,
+        "units" => %{"ids" => [lists.unit.kg]}
+      })
+
+      assert Lists.unit_ids_of_kind(lists.measure_kind.weight, admin) == [lists.unit.g]
+
+      assert {:error, {:live_redirect, _to}} =
+               render_submit(view, "set_units", %{
+                 "value_id" => lists.measure_kind.weight,
+                 "units" => %{"ids" => %{"a" => "map"}}
+               })
+
+      assert Lists.unit_ids_of_kind(lists.measure_kind.weight, admin) == []
+
+      {view, _html} = open(conn, context.base <> "/lists")
+
+      assert {:error, {:live_redirect, _to}} =
+               render_submit(view, "set_soon_days", %{
+                 "value_id" => lists.item_category.food,
+                 "soon" => %{"days" => %{"a" => "map"}}
+               })
+
+      assert {:ok, values} = Lists.values(:item_category, admin)
+      assert %{soon_days: nil} = Enum.find(values, &(&1.id == lists.item_category.food))
+    end
+  end
+
   describe "a value that an administrator retires" do
     test "stays on the lists page, with a button to restore it", context do
       lists = lists!(context.organisation, context.root)

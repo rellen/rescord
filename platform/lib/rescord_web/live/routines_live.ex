@@ -1,8 +1,9 @@
 defmodule RescordWeb.RoutinesLive do
   @moduledoc """
   The routines of an organisation, at `/o/<short name>/routines`: the tasks
-  that repeat (ADR 0033). A member starts a routine, changes one at
+  that repeat (ADR 0033). An administrator starts a routine, changes one at
   `/o/<short name>/routines/<id>/edit`, stops one for a time, and ends one.
+  A member reads them (ADR 0039).
 
   `?prescription=<id>` opens the form for a routine that gives the doses of
   a prescription. The journal page links to it.
@@ -121,6 +122,7 @@ defmodule RescordWeb.RoutinesLive do
   defp new_fields(today, prescription) do
     fields = %{
       "pattern" => "daily",
+      "count_from" => "first_day",
       "time_1" => "08:00",
       "starts_on" => Date.to_iso8601(today),
       "weekdays" => []
@@ -147,7 +149,8 @@ defmodule RescordWeb.RoutinesLive do
       "title" => routine.title,
       "note" => routine.note,
       "kind_id" => routine.kind_id,
-      "assignee_id" => routine.assignee_id,
+      "assignee_ids" => routine.assignee_ids,
+      "count_from" => to_string(routine.count_from),
       "pattern" => to_string(routine.pattern),
       "every" => routine.every && to_string(routine.every),
       "weekdays" => Enum.map(routine.weekdays, &to_string/1),
@@ -177,7 +180,12 @@ defmodule RescordWeb.RoutinesLive do
       title: non_blank(fields["title"]),
       note: non_blank(fields["note"]),
       kind_id: non_blank(fields["kind_id"]),
-      assignee_id: non_blank(fields["assignee_id"]),
+      assignee_ids:
+        fields["assignee_ids"]
+        |> List.wrap()
+        |> Enum.filter(&is_binary/1)
+        |> Enum.reject(&(&1 == "")),
+      count_from: non_blank(fields["count_from"]),
       pattern: non_blank(fields["pattern"]),
       every: non_blank(fields["every"]),
       weekdays: fields["weekdays"] |> List.wrap() |> Enum.filter(&is_binary/1),

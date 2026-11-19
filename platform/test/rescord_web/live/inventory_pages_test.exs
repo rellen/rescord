@@ -298,23 +298,27 @@ defmodule RescordWeb.InventoryPagesTest do
       assert level(context) == "7"
     end
 
-    test "is told when a use takes more than is there, and keeps what they typed", context do
+    test "can take more than is there, and the page asks for a count", context do
       lot = lot!(context)
       {view, _html} = open(context.conn, context.item_path)
+      refute has_element?(view, "#below-zero")
 
-      html =
-        view
-        |> form("#use-form", use: %{source: "#{lot.id}|#{context.shed.id}", quantity: "11"})
-        |> render_submit()
+      {view, _html} =
+        submit(view, context.conn, "#use-form",
+          use: %{source: "#{lot.id}|#{context.shed.id}", quantity: "11"}
+        )
 
-      assert has_element?(
-               view,
-               "#use p[role=alert]",
-               "Quantity is more than the 10 there. Count the place when that number is wrong"
-             )
+      assert level(context) == "-1"
+      assert has_element?(view, "#below-zero li", "Feed shed")
+      assert has_element?(view, "[data-state=alert]", "Count the stock")
 
-      assert html =~ ~s(value="11")
-      assert level(context) == "10"
+      {view, _html} =
+        submit(view, context.conn, "#count-form",
+          count: %{lot_id: lot.id, location_id: context.shed.id, counted: "2"}
+        )
+
+      assert level(context) == "2"
+      refute has_element?(view, "#below-zero")
     end
 
     test "records a count, and the history says what it found", context do

@@ -16,11 +16,13 @@ defmodule Rescord.Inventory.Changes.RecordMovement do
       zero or more.
     * The time is the time that the member gave, or the instant of the
       write. It is never after that instant.
-    * A movement out takes no more than the level of the lot in that place.
+    * A movement out can take more than the level of the lot in that place
+      (the maintainer, 18 November 2026). The level is then below zero, and
+      the item shows a warning until a member records a count.
 
   The change reads the lot with a lock before the write, in the transaction
-  of the action. So two members do not take the same stock at the same
-  time. With no user, the change sets no author, and the policy refuses
+  of the action. So the difference that a count writes is from the level as
+  it is, and two counts at the same time do not each write it. With no user, the change sets no author, and the policy refuses
   the action.
   """
 
@@ -127,19 +129,9 @@ defmodule Rescord.Inventory.Changes.RecordMovement do
     )
   end
 
-  defp quantity(changeset, :out, level) do
+  defp quantity(changeset, :out, _level) do
     quantity = Changeset.get_argument(changeset, :quantity)
-
-    if Decimal.compare(quantity, level) == :gt do
-      there = level |> Decimal.normalize() |> Decimal.to_string(:normal)
-
-      Changeset.add_error(changeset,
-        field: :quantity,
-        message: "is more than the #{there} there. Count the place when that number is wrong"
-      )
-    else
-      Changeset.force_change_attribute(changeset, :quantity, Decimal.negate(quantity))
-    end
+    Changeset.force_change_attribute(changeset, :quantity, Decimal.negate(quantity))
   end
 
   defp quantity(changeset, :count, level) do

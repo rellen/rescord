@@ -3,8 +3,9 @@ defmodule Rescord.Tasks.Task do
   One piece of work that a member does for a resident, a group or a location
   (`docs/domain.md`, section 5.7, and ADR 0032).
 
-  A task is due at a time. It names a member, or it is for each member: any
-  member can take a task that is open. A member completes a task, or skips
+  A task is due at a time. It names members, or it is for each member: any
+  member can take a task. When one of the members completes the task, it is
+  done for all of them (the maintainer, 18 November 2026). A member completes a task, or skips
   it with a reason, and can open it again.
 
   ## States
@@ -71,7 +72,7 @@ defmodule Rescord.Tasks.Task do
 
     create :plan do
       description "Plans a task, for a time that can be months ahead"
-      accept [:title, :note, :due_at, :kind_id, :assignee_id, :prescription_id]
+      accept [:title, :note, :due_at, :kind_id, :assignee_ids, :prescription_id]
       argument :resident_ids, {:array, :uuid}, default: []
       argument :group_ids, {:array, :uuid}, default: []
       argument :location_ids, {:array, :uuid}, default: []
@@ -86,7 +87,7 @@ defmodule Rescord.Tasks.Task do
         :note,
         :due_at,
         :kind_id,
-        :assignee_id,
+        :assignee_ids,
         :prescription_id,
         :routine_id
       ]
@@ -102,15 +103,15 @@ defmodule Rescord.Tasks.Task do
     end
 
     update :take do
-      description "The actor takes the task"
+      description "The actor is one of the members that the task is for"
       accept []
       require_atomic? false
       change Tasks.Changes.TakeTask
     end
 
     update :give do
-      description "Gives the task to a member, or to each member when `assignee_id` is nil"
-      accept [:assignee_id]
+      description "Gives the task to members, or to each member when `assignee_ids` is empty"
+      accept [:assignee_ids]
     end
 
     update :complete do
@@ -121,6 +122,7 @@ defmodule Rescord.Tasks.Task do
       change transition_state(:done)
       change Tasks.Changes.Finish
       change Tasks.Changes.WriteDose
+      change Tasks.Changes.NextOfRoutine
     end
 
     update :skip do
@@ -131,6 +133,7 @@ defmodule Rescord.Tasks.Task do
       change filter(expr(state == :due))
       change transition_state(:skipped)
       change Tasks.Changes.Finish
+      change Tasks.Changes.NextOfRoutine
     end
 
     update :reopen do
@@ -183,9 +186,12 @@ defmodule Rescord.Tasks.Task do
     attribute :kind_id, :uuid, public?: true
     attribute :prescription_id, :uuid, public?: true
 
-    attribute :assignee_id, :uuid do
+    attribute :assignee_ids, {:array, :uuid} do
+      allow_nil? false
+      default []
       public? true
-      description "The user that the task is for. A task with none is for each member"
+
+      description "The users that the task is for. A task with none is for each member. One of them completes it"
     end
 
     attribute :skip_reason, :string do

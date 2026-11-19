@@ -158,6 +158,42 @@ defmodule Rescord.Lists do
     end
   end
 
+  @doc """
+  Gives a measure kind of the organisation the units that a measurement of
+  it can have: a list of ids of values of the dimension `unit`.
+  """
+  def set_units(measure_kind_id, unit_ids, opts \\ []) do
+    with {:ok, kind} <- Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, opts) do
+      kind
+      |> Ash.Changeset.for_update(:set_units, %{unit_ids: Enum.uniq(unit_ids)}, opts)
+      |> Ash.update()
+    end
+  end
+
+  @doc """
+  The ids of the units that a measurement of a kind can have. An empty list
+  means each unit, and so does a kind that is not there.
+  """
+  @spec unit_ids_of_kind(String.t(), keyword) :: [String.t()]
+  def unit_ids_of_kind(measure_kind_id, opts \\ []) do
+    case Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, [not_found_error?: false] ++ opts) do
+      {:ok, %{unit_ids: unit_ids}} -> unit_ids
+      _none -> []
+    end
+  end
+
+  @doc """
+  Gives an item category of the organisation the number of days before its
+  expiry date in which a lot expires soon, or `nil` for the default.
+  """
+  def set_soon_days(category_id, days, opts \\ []) do
+    with {:ok, category} <- Ash.get(Rescord.Lists.ItemCategory, category_id, opts) do
+      category
+      |> Ash.Changeset.for_update(:set_soon_days, %{soon_days: days}, opts)
+      |> Ash.update()
+    end
+  end
+
   @doc "Retires a value of an organisation: no form offers it for a new choice."
   def retire_value(key, id, opts \\ []), do: change_value(key, id, :retire, opts)
 

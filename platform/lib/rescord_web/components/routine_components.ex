@@ -250,6 +250,13 @@ defmodule RescordWeb.RoutineComponents do
         max={if @pattern == "interval", do: "366", else: "36"}
         required
       />
+      <.input
+        :if={@pattern == "interval"}
+        field={@form[:count_from]}
+        type="select"
+        label="Count the days from"
+        options={TaskWords.count_from_options()}
+      />
       <.input field={@form[:time_1]} type="time" label="Time" required />
       <.input field={@form[:time_2]} type="time" label="A second time, if there is one" />
       <.input field={@form[:time_3]} type="time" label="A third time, if there is one" />
@@ -277,13 +284,7 @@ defmodule RescordWeb.RoutineComponents do
         prompt="No location"
         options={@locations}
       />
-      <.input
-        field={@form[:assignee_id]}
-        type="select"
-        label="Who does it"
-        prompt="Anybody"
-        options={@members}
-      />
+      <RescordWeb.TaskComponents.members_field form={@form} name="routine" members={@members} />
       <.input
         field={@form[:days_ahead]}
         type="number"
@@ -314,12 +315,16 @@ defmodule RescordWeb.RoutineComponents do
     end
   end
 
-  def who(%{assignee_id: nil}, _members), do: "Anybody"
+  def who(%{assignee_ids: []}, _members), do: "Anybody"
 
-  def who(%{assignee_id: id}, members) do
-    Enum.find_value(members, "A person who is not a member now", fn {email, user_id} ->
-      if user_id == id, do: email
+  def who(%{assignee_ids: ids}, members) do
+    ids
+    |> Enum.map(fn id ->
+      Enum.find_value(members, "A person who is not a member now", fn {email, user_id} ->
+        if user_id == id, do: email
+      end)
     end)
+    |> Enum.join(", ")
   end
 
   def ended?(%{ends_on: %Date{} = ends_on}, today), do: Date.compare(ends_on, today) == :lt

@@ -15,8 +15,9 @@ defmodule Rescord.Inventory.StockMovement do
   ## The level
 
   The level of a lot in a place is the sum of its movements there. A
-  movement out is refused when it takes more than the level. A member who
-  finds another number on the shelf records a count, and Rescord writes the
+  movement out can take the level below zero (the maintainer, 18 November
+  2026): the stock of the item then asks for a count. A member who finds
+  another number on the shelf records a count, and Rescord writes the
   difference.
 
   Nothing changes a movement, and nothing removes one. A movement that is

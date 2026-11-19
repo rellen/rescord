@@ -19,7 +19,8 @@ defmodule RescordWeb.Features.RoutinesTest do
   setup do
     root = root!()
     organisation = organisation!(root, "Wattle Creek")
-    {_member, user} = member!(organisation, :member, root)
+    # Only an administrator starts a routine (ADR 0039).
+    {_member, user} = member!(organisation, :administrator, root)
     lists!(organisation, root)
 
     # The email of the invitation is not what the test looks at.
@@ -28,7 +29,7 @@ defmodule RescordWeb.Features.RoutinesTest do
     {:ok, address: to_string(user.email), path: "/o/#{organisation.short_name}/routines"}
   end
 
-  test "a member starts a routine on two days of the week, and the form stays open as it changes",
+  test "an administrator starts a routine on two days of the week, and the form stays open as it changes",
        %{conn: session, address: address, path: path} do
     session
     |> sign_in_with_link(address)

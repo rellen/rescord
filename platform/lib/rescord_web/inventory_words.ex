@@ -88,6 +88,7 @@ defmodule RescordWeb.InventoryWords do
     zero = Decimal.new(0)
 
     [
+      Map.get(stock, :below_zero, []) != [] && {"Count the stock", "alert"},
       stock.short != [] && {"Order more", "alert"},
       Decimal.positive?(stock.expired) && {"Has stock past its expiry date", "alert"},
       Decimal.positive?(stock.soon) && {"Has stock that expires soon", "info"}

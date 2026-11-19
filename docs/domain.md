@@ -379,8 +379,16 @@ have a number of its own, up to 400, for a thing of the calendar such as a
 check each year. A member also plans a task that does not repeat for any
 day.
 
-"After a number of days" is every number of days from the first day of the
-routine. It is not a number of days after a member completed the last task.
+A routine of every number of days counts from its first day, as a calendar,
+or from the day when a member last completed or skipped one of its tasks.
+The routine says which (ADR 0039). A routine of the second kind has the
+tasks of one day that are due at most, and its next day comes when a member
+finishes the last of them.
+
+Only an administrator starts, changes, pauses and ends a routine (ADR
+0039). A task names zero members or more. A task that names none is for
+each member. When one of its members completes a task, it is done for all
+of them. A member who takes a task joins the members that it names.
 
 ### 5.8 Inventory
 
@@ -405,11 +413,12 @@ A reorder level is the quantity below which the organisation orders more. It
 applies to an item in the whole organisation. An organisation can also give
 an item a reorder level in one location.
 
-Rescord has the inventory (ADR 0034). A movement out takes no more than the
-level of the lot in that place. A member who finds another number on the
-shelf records a count, and Rescord writes the difference. A place is a
-location, or no place in particular. A lot expires soon in the 30 days
-before its expiry date. Stock that is past its expiry date does not count
+Rescord has the inventory (ADR 0034). A movement out can take the level of
+a lot in a place below zero, and the item then asks for a count (ADR 0039).
+A member who finds another number on the shelf records a count, and
+Rescord writes the difference. A place is a location, or no place in
+particular. A lot expires soon in the days before its expiry date that the
+category of its item gives, or in 30 days. Stock that is past its expiry date does not count
 against a reorder level.
 
 ## 6. Design rules

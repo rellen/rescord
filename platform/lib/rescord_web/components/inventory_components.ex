@@ -35,6 +35,15 @@ defmodule RescordWeb.InventoryComponents do
         <:item :if={@item.note} title="Note">{@item.note}</:item>
       </.list>
 
+      <ul :if={@stock.below_zero != []} id="below-zero">
+        <li :for={{lot, place, level} <- @stock.below_zero}>
+          {InventoryWords.lot(lot)}, {place_words(place, @place_names)}: the record has {InventoryWords.quantity(
+            level,
+            @item
+          )}. Count what is there, and record the count.
+        </li>
+      </ul>
+
       <ul :if={@stock.short != []} id="short">
         <li :for={short <- @stock.short}>
           {short_words(short, @item, @place_names)}

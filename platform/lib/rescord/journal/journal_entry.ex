@@ -61,6 +61,7 @@ defmodule Rescord.Journal.JournalEntry do
       change Journal.Changes.HappenedAt
       validate Journal.Validations.KindHasItsFacts
       validate Journal.Validations.SameResident, before_action?: true
+      validate Journal.Validations.UnitOfKind, before_action?: true
       change Journal.Changes.WriteDetail
     end
 
@@ -86,6 +87,7 @@ defmodule Rescord.Journal.JournalEntry do
 
       change Journal.Changes.HappenedAt
       validate Journal.Validations.SameResident, before_action?: true
+      validate Journal.Validations.UnitOfKind, before_action?: true
       change Journal.Changes.WriteDetail
     end
   end

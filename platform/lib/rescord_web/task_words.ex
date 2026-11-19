@@ -67,10 +67,23 @@ defmodule RescordWeb.TaskWords do
     "Each " <> join(names)
   end
 
+  def pattern(%{pattern: :interval, every: 1, count_from: :last_done}),
+    do: "1 day after the last task is done"
+
+  def pattern(%{pattern: :interval, every: every, count_from: :last_done}),
+    do: "#{every} days after the last task is done"
+
   def pattern(%{pattern: :interval, every: 1}), do: "Each day"
   def pattern(%{pattern: :interval, every: every}), do: "Every #{every} days"
   def pattern(%{pattern: :monthly, every: 1}), do: "Each month"
   def pattern(%{pattern: :monthly, every: every}), do: "Every #{every} months"
+
+  @doc "The choices of the day from which a routine of every number of days counts."
+  def count_from_options,
+    do: [
+      {"Its first day: the days do not move", "first_day"},
+      {"The day when a member last finishes a task", "last_done"}
+    ]
 
   @doc "The times of a routine: `08:00 and 18:00`."
   def times(times), do: times |> Enum.map(&time/1) |> join()

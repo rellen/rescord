@@ -5,7 +5,8 @@ defmodule Rescord.Tasks.Changes.ShapePattern do
 
   The shape: the times in order with each one time; the days of the week in
   order, and only for the pattern `:weekly`; the number only for the
-  patterns `:interval` and `:monthly`.
+  patterns `:interval` and `:monthly`; `count_from` `:last_done` only for
+  the pattern `:interval`.
 
   The rules:
 
@@ -30,6 +31,7 @@ defmodule Rescord.Tasks.Changes.ShapePattern do
     |> shape_times()
     |> shape_weekdays(pattern)
     |> shape_every(pattern)
+    |> shape_count_from(pattern)
     |> check_days()
   end
 
@@ -77,6 +79,13 @@ defmodule Rescord.Tasks.Changes.ShapePattern do
 
   defp shape_every(changeset, _pattern),
     do: Changeset.force_change_attribute(changeset, :every, nil)
+
+  # Only a routine of every number of days counts from the last time that a
+  # member finished a task.
+  defp shape_count_from(changeset, :interval), do: changeset
+
+  defp shape_count_from(changeset, _pattern),
+    do: Changeset.force_change_attribute(changeset, :count_from, :first_day)
 
   defp check_days(changeset) do
     starts_on = Changeset.get_attribute(changeset, :starts_on)

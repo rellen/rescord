@@ -47,12 +47,12 @@ defmodule RescordWeb.Features.InventoryTest do
     |> assert_connected()
     |> assert_has("#lots li", text: "Feed shed: 10 bag")
     |> click("summary", "Stock was used")
-    |> fill_in("How much was used, in bag", with: "40")
+    |> fill_in("How much was used, in bag", with: "0")
     |> click_button("Record the use")
-    |> assert_has("#use p[role=alert]", text: "Quantity is more than the 10 there")
+    |> assert_has("#use p[role=alert]", text: "Quantity must be more than zero")
     |> evaluate("document.getElementById('use').open", fn open -> assert open end)
     |> evaluate("document.getElementById('use_quantity').value", fn value ->
-      assert value == "40"
+      assert value == "0"
     end)
     |> fill_in("How much was used, in bag", with: "6.5")
     |> click_button("Record the use")

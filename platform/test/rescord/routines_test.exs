@@ -27,7 +27,8 @@ defmodule Rescord.RoutinesTest do
     {_, administrator} = member!(organisation, :administrator, root)
     {_, member} = member!(organisation, :member, administrator)
     lists = lists!(organisation, root)
-    options = [actor: member, tenant: organisation]
+    # Only an administrator starts and changes a routine (ADR 0039).
+    options = [actor: administrator, tenant: organisation]
     now = DateTime.utc_now()
 
     # A time of the day that is 6 hours from now in the organisation: no
@@ -46,6 +47,7 @@ defmodule Rescord.RoutinesTest do
      member: member,
      lists: lists,
      options: options,
+     member_options: [actor: member, tenant: organisation],
      now: now,
      today: Accounts.today(organisation),
      time: time,
@@ -89,7 +91,7 @@ defmodule Rescord.RoutinesTest do
         start!(context, %{
           times: [second, context.time],
           kind_id: context.lists.task_kind.feed,
-          assignee_id: context.member.id,
+          assignee_ids: [context.member.id, context.administrator.id],
           note: "Two scoops",
           resident_ids: [context.biscuit.id]
         })
@@ -110,7 +112,7 @@ defmodule Rescord.RoutinesTest do
       for task <- tasks do
         assert %{title: "Hay and pellets", note: "Two scoops", state: :due} = task
         assert task.kind_id == context.lists.task_kind.feed
-        assert task.assignee_id == context.member.id
+        assert task.assignee_ids == [context.member.id, context.administrator.id]
       end
 
       {:ok, with_facts} = Tasks.task_with_facts(hd(tasks).id, context.options)
@@ -365,7 +367,78 @@ defmodule Rescord.RoutinesTest do
         |> Enum.filter(&(&1.version_source_id == routine.id))
 
       assert [%{version_action_name: :start, user_id: user_id}] = versions
-      assert user_id == context.member.id
+      assert user_id == context.administrator.id
+    end
+  end
+
+  describe "a routine that counts from the last task" do
+    defp last_done!(context, facts \\ %{}) do
+      start!(context, Map.merge(%{pattern: :interval, every: 3, count_from: :last_done}, facts))
+    end
+
+    defp day_at(context, days),
+      do:
+        Accounts.local_instant(context.organisation, Date.add(context.today, days), context.time)
+
+    test "has the tasks of one day, and no more while one is due", context do
+      routine = last_done!(context)
+
+      assert [%{state: :due} = task] = tasks(routine, context)
+      assert task.due_at == hd(expected(context, context.time, 14))
+
+      # The job makes no other task while that one is due.
+      Tasks.generate(context.organisation, DateTime.add(context.now, 5, :day))
+      assert [_one] = tasks(routine, context)
+    end
+
+    test "makes the next day when a member completes or skips the last task", context do
+      routine = last_done!(context)
+      [first] = tasks(routine, context)
+
+      # Done today: the next day is in 3 days, at the time of the routine.
+      {:ok, _done} = Tasks.complete_task(first, %{}, context.member_options)
+      assert [second] = due(tasks(routine, context))
+      assert second.due_at == day_at(context, 3)
+
+      # Skipped today, ahead of its day: the next day is after that day.
+      {:ok, _skipped} =
+        Tasks.skip_task(second, %{skip_reason: "At the clinic"}, context.member_options)
+
+      assert [third] = due(tasks(routine, context))
+      assert third.due_at == day_at(context, 4)
+    end
+
+    test "has the next day of each time of the routine when the last of a day is done",
+         context do
+      # A second time of the same day: no test is near midnight.
+      other = Time.add(context.time, if(context.time.hour >= 12, do: -30, else: 30) * 60)
+      [early, late] = Enum.sort([context.time, other], Time)
+      routine = last_done!(context, %{times: [early, late], every: 2})
+      [one, two] = tasks(routine, context)
+
+      assert Accounts.local_date(context.organisation, one.due_at) ==
+               Accounts.local_date(context.organisation, two.due_at)
+
+      # One task of the day is still due: no next day yet.
+      {:ok, _done} = Tasks.complete_task(one, %{}, context.member_options)
+      assert Enum.map(due(tasks(routine, context)), & &1.id) == [two.id]
+
+      {:ok, _done} = Tasks.complete_task(two, %{}, context.member_options)
+
+      day = Date.add(context.today, 2)
+
+      assert Enum.map(due(tasks(routine, context)), & &1.due_at) == [
+               Accounts.local_instant(context.organisation, day, early),
+               Accounts.local_instant(context.organisation, day, late)
+             ]
+    end
+
+    test "counts from its first day with any other pattern", context do
+      routine =
+        start!(context, %{pattern: :weekly, weekdays: Enum.to_list(1..7), count_from: :last_done})
+
+      assert routine.count_from == :first_day
+      assert length(tasks(routine, context)) == length(expected(context, context.time, 14))
     end
   end
 
@@ -495,10 +568,34 @@ defmodule Rescord.RoutinesTest do
   end
 
   describe "who can work with the routines" do
-    test "each member and a root user, and not a user of another organisation or nobody",
-         context do
+    test "an administrator and a root user change them, and a member reads them", context do
       routine = start!(context)
       assert {:ok, [_routine]} = Tasks.routines(actor: context.root, tenant: context.organisation)
+      assert {:ok, [_routine]} = Tasks.routines(context.member_options)
+
+      facts = %{title: "Hay", pattern: :daily, times: [context.time], starts_on: context.today}
+      assert {:error, %Ash.Error.Forbidden{}} = Tasks.start_routine(facts, context.member_options)
+
+      for action <- [:pause_routine, :remove_routine] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 apply(Tasks, action, [routine, context.member_options])
+      end
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Tasks.revise_routine(routine, %{title: "X"}, context.member_options)
+
+      paused = Tasks.pause_routine!(routine, context.options)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Tasks.resume_routine(paused, context.member_options)
+
+      refute Tasks.role_can_routine?(:member, :start)
+      assert Tasks.role_can_routine?(:member, :read)
+      assert Tasks.role_can_routine?(:administrator, :start)
+    end
+
+    test "not a user of another organisation or nobody", context do
+      routine = start!(context)
 
       other = organisation!(context.root, "Other")
       {_, outsider} = member!(other, :administrator, context.root)
@@ -518,7 +615,6 @@ defmodule Rescord.RoutinesTest do
         assert {:error, %Ash.Error.Forbidden{}} = Tasks.remove_routine(routine, options)
       end
 
-      assert Tasks.role_can_routine?(:member, :start)
       refute Tasks.role_can_routine?(nil, :start)
     end
 

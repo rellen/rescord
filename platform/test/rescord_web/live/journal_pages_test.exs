@@ -111,6 +111,43 @@ defmodule RescordWeb.JournalPagesTest do
       refute has_element?(view, "#entry [name='entry[value]']")
     end
 
+    test "offers the units of the kind of measurement, or each unit", context do
+      lists = context.lists
+
+      Rescord.Lists.set_units(lists.measure_kind.weight, [lists.unit.g, lists.unit.kg],
+        actor: context.administrator,
+        tenant: context.organisation
+      )
+
+      {view, _html} = open(context.conn, context.path)
+      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
+
+      view
+      |> form("#entry", entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight})
+      |> render_change()
+
+      assert has_element?(view, "#entry_unit_id option", "kg")
+      refute has_element?(view, "#entry_unit_id option", "bag")
+
+      view
+      |> form("#entry",
+        entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.temperature}
+      )
+      |> render_change()
+
+      assert has_element?(view, "#entry_unit_id option", "bag")
+
+      # The kind refuses a unit that the form did not offer.
+      html =
+        view
+        |> form("#entry",
+          entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight}
+        )
+        |> render_submit(%{entry: %{value: "2", unit_id: lists.unit.bag}})
+
+      assert html =~ "Unit is not a unit of this kind of measurement"
+    end
+
     test "records a weight, and the page of the resident shows the newest one", context do
       {view, _html} = open(context.conn, context.path)
       view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()

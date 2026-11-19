@@ -9,6 +9,14 @@ defmodule Rescord.Tasks.Routine do
   last day or none, and one time of the day or more. The days and the times
   are those of the organisation, in its time zone.
 
+  ## Every number of days
+
+  A routine of the pattern `:interval` counts its days from its first day
+  (`count_from` is `:first_day`), or from the day when a member last
+  completed or skipped one of its tasks (`:last_done`). A routine of the
+  second kind has the tasks of one day at most that are due: the tasks of
+  its next day come when a member finishes the last of them.
+
   ## Its tasks
 
   Rescord makes a `Rescord.Tasks.Task` for each time of the routine, a
@@ -43,9 +51,10 @@ defmodule Rescord.Tasks.Routine do
     :title,
     :note,
     :kind_id,
-    :assignee_id,
+    :assignee_ids,
     :pattern,
     :every,
+    :count_from,
     :weekdays,
     :times,
     :starts_on,
@@ -149,9 +158,11 @@ defmodule Rescord.Tasks.Routine do
     attribute :kind_id, :uuid, public?: true
     attribute :prescription_id, :uuid, public?: true
 
-    attribute :assignee_id, :uuid do
+    attribute :assignee_ids, {:array, :uuid} do
+      allow_nil? false
+      default []
       public? true
-      description "The user that each task is for. With none, each task is for each member"
+      description "The users that each task is for. With none, each task is for each member"
     end
 
     attribute :pattern, Rescord.Tasks.RoutinePattern do
@@ -162,6 +173,15 @@ defmodule Rescord.Tasks.Routine do
     attribute :every, :integer do
       public? true
       description "The number of days of `:interval`, or of months of `:monthly`"
+    end
+
+    attribute :count_from, :atom do
+      allow_nil? false
+      default :first_day
+      public? true
+      constraints one_of: [:first_day, :last_done]
+
+      description "For `:interval`: the days count from the first day, or from the last time that a member finished a task"
     end
 
     attribute :weekdays, {:array, :integer} do

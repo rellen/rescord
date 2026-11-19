@@ -56,13 +56,7 @@ defmodule RescordWeb.TaskComponents do
           prompt="No location"
           options={@locations}
         />
-        <.input
-          field={@form[:assignee_id]}
-          type="select"
-          label="Who does it"
-          prompt="Anybody"
-          options={@members}
-        />
+        <.members_field form={@form} name="task" members={@members} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
         <footer><.button type="submit">Plan the task</.button></footer>
       </.form>
@@ -113,7 +107,7 @@ defmodule RescordWeb.TaskComponents do
             <td>
               <.button
                 :if={
-                  task.state == :due and task.assignee_id != @user.id and
+                  task.state == :due and @user.id not in task.assignee_ids and
                     Tasks.role_can?(@role, :take)
                 }
                 phx-click="take"
@@ -180,11 +174,38 @@ defmodule RescordWeb.TaskComponents do
     end
   end
 
-  def who(%{assignee_id: nil}, _members, _user), do: "Anybody"
+  def who(%{assignee_ids: []}, _members, _user), do: "Anybody"
 
   # A root user is not a member, and reads a task that they took as their own.
-  def who(%{assignee_id: id}, members, user) do
-    Enum.find_value(members, fn {email, user_id} -> if user_id == id, do: email end) ||
-      if(id == user.id, do: to_string(user.email), else: "A person who is not a member now")
+  def who(%{assignee_ids: ids}, members, user) do
+    ids
+    |> Enum.map(fn id ->
+      Enum.find_value(members, fn {email, user_id} -> if user_id == id, do: email end) ||
+        if(id == user.id, do: to_string(user.email), else: "A person who is not a member now")
+    end)
+    |> Enum.join(", ")
+  end
+
+  @doc """
+  The members that a task or a routine is for, as a box for each member.
+  With no box ticked, it is for anybody. When one of them completes a task,
+  it is done.
+  """
+  attr :form, :any, required: true
+  attr :name, :string, required: true, doc: "the name of the form in the fields"
+  attr :members, :list, required: true
+
+  def members_field(assigns) do
+    assigns = assign(assigns, chosen: List.wrap(assigns.form[:assignee_ids].value))
+
+    ~H"""
+    <fieldset id={"#{@name}-members"}>
+      <legend>Who does it: one of the members that you tick, or anybody</legend>
+      <label :for={{email, id} <- @members}>
+        <input type="checkbox" name={"#{@name}[assignee_ids][]"} value={id} checked={id in @chosen} />
+        {email}
+      </label>
+    </fieldset>
+    """
   end
 end

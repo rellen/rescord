@@ -288,6 +288,57 @@ defmodule Rescord.JournalTest do
     end
   end
 
+  describe "the unit of a measurement" do
+    test "is one of the units of its kind, when the kind names units", context do
+      lists = context.lists
+      admin = [actor: context.administrator, tenant: context.organisation]
+
+      # A member does not change the units of a kind.
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Rescord.Lists.set_units(lists.measure_kind.weight, [lists.unit.g], context.options)
+
+      {:ok, weight} =
+        Rescord.Lists.set_units(lists.measure_kind.weight, [lists.unit.g, lists.unit.kg], admin)
+
+      assert Enum.sort(weight.unit_ids) == Enum.sort([lists.unit.g, lists.unit.kg])
+
+      assert Enum.sort(Rescord.Lists.unit_ids_of_kind(weight.id, admin)) ==
+               Enum.sort(weight.unit_ids)
+
+      measurement = fn kind, unit ->
+        Journal.write_entry(
+          %{
+            resident_id: context.biscuit.id,
+            kind: :measurement,
+            measure_kind_id: kind,
+            value: "1",
+            unit_id: unit
+          },
+          context.options
+        )
+      end
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               measurement.(lists.measure_kind.weight, lists.unit.bag)
+
+      assert Rescord.Accounts.error_messages(error) == [
+               "Unit is not a unit of this kind of measurement"
+             ]
+
+      assert {:ok, entry} = measurement.(lists.measure_kind.weight, lists.unit.kg)
+
+      # A kind with no unit in its list takes each unit.
+      assert {:ok, _entry} = measurement.(lists.measure_kind.temperature, lists.unit.bag)
+
+      # A correction keeps the rule, with the kind of the measurement.
+      assert {:error, %Ash.Error.Invalid{}} =
+               Journal.correct_entry(entry, %{unit_id: lists.unit.bag}, context.options)
+
+      assert {:ok, _entry} =
+               Journal.correct_entry(entry, %{unit_id: lists.unit.g}, context.options)
+    end
+  end
+
   describe "a correction" do
     test "is for the author, an administrator and a root user, and not another member",
          context do

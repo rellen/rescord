@@ -67,7 +67,8 @@ defmodule Rescord.Inventory do
     end
   end
 
-  # A lot that expires in this number of days or less expires soon.
+  # A lot expires soon in this number of days before its expiry date, when
+  # its category gives no number of its own.
   @soon_days 30
 
   @typedoc """
@@ -76,7 +77,11 @@ defmodule Rescord.Inventory do
     * `item` - the item, with its category and its unit;
     * `level` - the quantity in all its lots;
     * `expired` - the part of the level that is past its expiry date;
-    * `soon` - the part of the level that expires soon;
+    * `soon` - the part of the level that expires soon, in the days that the
+      category of the item gives, or 30;
+    * `below_zero` - each place of a lot whose level is below zero, as
+      `{lot, place, level}`: a member used more than the record had, and a
+      count puts it right;
     * `lots` - each lot with its level, its places and its expiry, the lot
       that expires first at the top;
     * `short` - each reorder level that the stock is below: the place (`nil`
@@ -89,6 +94,7 @@ defmodule Rescord.Inventory do
           level: Decimal.t(),
           expired: Decimal.t(),
           soon: Decimal.t(),
+          below_zero: [{Ash.Resource.record(), String.t() | nil, Decimal.t()}],
           lots: [lot_stock],
           short: [%{location_id: String.t() | nil, wanted: Decimal.t(), level: Decimal.t()}]
         }
@@ -160,7 +166,7 @@ defmodule Rescord.Inventory do
             lot: lot,
             level: places |> Enum.map(&elem(&1, 1)) |> Levels.sum(),
             places: places,
-            expiry: expiry(lot, today)
+            expiry: expiry(lot, today, soon_days(item))
           }
         end)
         |> Enum.sort_by(&lot_order/1)
@@ -170,6 +176,13 @@ defmodule Rescord.Inventory do
         level: sum_levels(lots),
         expired: lots |> Enum.filter(&(&1.expiry == :expired)) |> sum_levels(),
         soon: lots |> Enum.filter(&(&1.expiry == :soon)) |> sum_levels(),
+        below_zero:
+          for(
+            %{lot: lot, places: places} <- lots,
+            {place, level} <- places,
+            Decimal.negative?(level),
+            do: {lot, place, level}
+          ),
         lots: lots,
         short: short(item, lots, Map.get(wanted_of, item.id, []))
       }
@@ -209,19 +222,26 @@ defmodule Rescord.Inventory do
 
   @doc """
   Where a lot is with its expiry date on a day of the organisation:
-  `:expired` after the date, `:soon` in the 30 days before it and on it,
+  `:expired` after the date, `:soon` in the `soon_days` before it and on it,
   `:later` before that, and `:none` for a lot with no expiry date.
+  `soon_days` is 30 when the caller gives none.
   """
-  @spec expiry(map, Date.t()) :: :expired | :soon | :later | :none
-  def expiry(%{expires_on: nil}, _today), do: :none
+  @spec expiry(map, Date.t(), non_neg_integer) :: :expired | :soon | :later | :none
+  def expiry(lot, today, soon_days \\ @soon_days)
+  def expiry(%{expires_on: nil}, _today, _soon_days), do: :none
 
-  def expiry(%{expires_on: %Date{} = expires_on}, %Date{} = today) do
+  def expiry(%{expires_on: %Date{} = expires_on}, %Date{} = today, soon_days) do
     case Date.diff(expires_on, today) do
       days when days < 0 -> :expired
-      days when days <= @soon_days -> :soon
+      days when days <= soon_days -> :soon
       _days -> :later
     end
   end
+
+  @doc "The days before its expiry date in which a lot of an item expires soon."
+  @spec soon_days(map) :: non_neg_integer
+  def soon_days(%{category: %{soon_days: days}}) when is_integer(days), do: days
+  def soon_days(_item), do: @soon_days
 
   @doc """
   The last stock movements of an item, the newest first by the time that

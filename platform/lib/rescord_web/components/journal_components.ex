@@ -14,6 +14,7 @@ defmodule RescordWeb.JournalComponents do
   attr :form, :any, required: true
   attr :kind, :any, required: true
   attr :lists, :any, required: true
+  attr :units, :list, required: true, doc: "the units of the chosen measure kind"
   attr :prescriptions, :any, required: true
 
   def new_entry(assigns) do
@@ -59,7 +60,7 @@ defmodule RescordWeb.JournalComponents do
           type="select"
           label="Unit"
           prompt="No unit"
-          options={@lists.unit}
+          options={@units}
         />
         <.input
           :if={@kind == :procedure}
@@ -174,6 +175,7 @@ defmodule RescordWeb.JournalComponents do
   attr :entry, :any, required: true
   attr :today, :any, required: true
   attr :organisation, :any, required: true
+  attr :can_start_routine?, :boolean, default: false
 
   def dose_form(assigns) do
     ~H"""
@@ -200,7 +202,7 @@ defmodule RescordWeb.JournalComponents do
         />
         <footer><.button type="submit">Plan the dose</.button></footer>
       </form>
-      <p>
+      <p :if={@can_start_routine?}>
         <.link navigate={
           ~p"/o/#{@organisation.short_name}/routines?prescription=#{@entry.prescription.id}"
         }>Plan the doses as a routine</.link>
@@ -243,6 +245,7 @@ defmodule RescordWeb.JournalComponents do
   attr :can_plan?, :any, required: true
   attr :today, :any, required: true
   attr :can_write?, :any, required: true
+  attr :can_start_routine?, :boolean, default: false
 
   def entry_card(assigns) do
     ~H"""
@@ -269,6 +272,7 @@ defmodule RescordWeb.JournalComponents do
         entry={@entry}
         today={@today}
         organisation={@organisation}
+        can_start_routine?={@can_start_routine?}
       />
 
       <.addendum_form :if={@can_write?} entry={@entry} />

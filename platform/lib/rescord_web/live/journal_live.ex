@@ -36,8 +36,10 @@ defmodule RescordWeb.JournalLive do
          problems: [],
          authors: Map.new(members, &{&1.user_id, to_string(&1.email)}),
          lists: lists(options),
+         units_of: units_of(options),
          can_write?: Journal.role_can_write?(socket.assigns.role),
          can_plan?: Tasks.role_can?(socket.assigns.role, :plan),
+         can_start_routine?: Tasks.role_can_routine?(socket.assigns.role, :start),
          today: Accounts.today(socket.assigns.organisation)
        )
        |> assign_form(%{"kind" => "general"})}
@@ -67,6 +69,24 @@ defmodule RescordWeb.JournalLive do
     end
   end
 
+  # The units of each measure kind that names some: a map from the id of
+  # the kind to the ids of its units.
+  defp units_of(options) do
+    {:ok, kinds} = Lists.values(:measure_kind, options)
+    for kind <- kinds, kind.unit_ids != [], into: %{}, do: {kind.id, kind.unit_ids}
+  end
+
+  # The units that the form of a measurement offers: those of the chosen
+  # kind, or each unit when the kind names none.
+  defp unit_options(socket, kind_id) do
+    all = socket.assigns.lists.unit
+
+    case Map.get(socket.assigns.units_of, kind_id) do
+      nil -> all
+      ids -> Enum.filter(all, fn {_label, id} -> id in ids end)
+    end
+  end
+
   defp assign_entries(socket) do
     options = options(socket)
 
@@ -86,7 +106,8 @@ defmodule RescordWeb.JournalLive do
 
     assign(socket,
       form: typed_form(fields, as: :entry),
-      kind: JournalWords.kind_of(fields["kind"]) || :general
+      kind: JournalWords.kind_of(fields["kind"]) || :general,
+      units: unit_options(socket, fields["measure_kind_id"])
     )
   end
 
@@ -256,6 +277,7 @@ defmodule RescordWeb.JournalLive do
         form={@form}
         kind={@kind}
         lists={@lists}
+        units={@units}
         prescriptions={@prescriptions}
       />
 
@@ -269,6 +291,7 @@ defmodule RescordWeb.JournalLive do
         current_user={@current_user}
         role={@role}
         can_plan?={@can_plan?}
+        can_start_routine?={@can_start_routine?}
         today={@today}
         can_write?={@can_write?}
       />

@@ -1,6 +1,7 @@
 defmodule RescordWeb.RoutinePagesTest do
   @moduledoc """
-  Holds the page of the routines: what a member reads of a routine, the form
+  Holds the page of the routines: what an administrator and a member read
+  of a routine, the form
   of a new routine and of a change, the pause and the end of a routine, a
   routine for the doses of a prescription, and the words of a pattern.
 
@@ -23,7 +24,8 @@ defmodule RescordWeb.RoutinePagesTest do
     {_, administrator} = member!(organisation, :administrator, root)
     {_, member} = member!(organisation, :member, administrator)
     lists = lists!(organisation, root)
-    options = [actor: member, tenant: organisation]
+    # Only an administrator starts and changes a routine (ADR 0039).
+    options = [actor: administrator, tenant: organisation]
     today = Accounts.today(organisation)
 
     {:ok,
@@ -37,7 +39,7 @@ defmodule RescordWeb.RoutinePagesTest do
      tomorrow: Date.add(today, 1),
      biscuit: resident!(lists, options),
      path: ~p"/o/#{organisation.short_name}/routines",
-     conn: sign_in(context.conn, member)}
+     conn: sign_in(context.conn, administrator)}
   end
 
   defp open(conn, path) do
@@ -83,7 +85,7 @@ defmodule RescordWeb.RoutinePagesTest do
       start!(context, %{
         kind_id: context.lists.task_kind.feed,
         resident_ids: [context.biscuit.id],
-        assignee_id: context.member.id,
+        assignee_ids: [context.member.id, context.administrator.id],
         note: "Two scoops"
       })
 
@@ -95,9 +97,27 @@ defmodule RescordWeb.RoutinePagesTest do
       assert has_element?(view, "tbody td small", "Two scoops")
       assert has_element?(view, "tbody td", "Each day, at 08:00 and 18:00")
       assert has_element?(view, "tbody td", "Biscuit")
-      assert has_element?(view, "tbody td", to_string(context.member.email))
+
+      assert has_element?(
+               view,
+               "tbody td",
+               "#{context.member.email}, #{context.administrator.email}"
+             )
+
       assert has_element?(view, "[data-state=ok]", "Active")
       assert has_element?(view, "tbody td small", "Next:")
+    end
+
+    test "are on the page of a member, who changes none of them", context do
+      start!(context)
+      conn = build_conn() |> sign_in(context.member)
+      {view, _html} = open(conn, context.path)
+
+      assert has_element?(view, "tbody td", "Hay and pellets")
+      refute has_element?(view, "#new-routine")
+      refute has_element?(view, "tbody a", "Change")
+      refute has_element?(view, "tbody button")
+      refute has_element?(view, "tbody details")
     end
 
     test "say so when there is none", context do
@@ -162,6 +182,33 @@ defmodule RescordWeb.RoutinePagesTest do
 
       view |> form("#routine", routine: %{pattern: "monthly"}) |> render_change()
       assert has_element?(view, "label", "Every how many months")
+    end
+
+    test "counts from the last task, and is for the members that the form ticks", context do
+      {view, _html} = open(context.conn, context.path)
+
+      refute has_element?(view, "#routine_count_from")
+      view |> form("#routine", routine: %{pattern: "interval"}) |> render_change()
+      assert has_element?(view, "label", "Count the days from")
+
+      {view, _html} =
+        submit(view, context.conn, "#routine",
+          routine: %{
+            title: "Weigh",
+            pattern: "interval",
+            every: "7",
+            count_from: "last_done",
+            assignee_ids: [context.member.id, context.administrator.id]
+          }
+        )
+
+      assert has_element?(view, "tbody td", "7 days after the last task is done")
+
+      {:ok, [routine]} = Tasks.routines(context.options)
+      assert routine.count_from == :last_done
+
+      assert Enum.sort(routine.assignee_ids) ==
+               Enum.sort([context.member.id, context.administrator.id])
     end
 
     test "is on given days of the week", context do
@@ -326,6 +373,19 @@ defmodule RescordWeb.RoutinePagesTest do
       {:ok, prescription: prescription, entry: entry}
     end
 
+    test "is not offered on the journal of a member", context do
+      journal = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}/journal"
+      {view, _html} = open(build_conn() |> sign_in(context.member), journal)
+
+      assert has_element?(view, "#dose-details-#{context.entry.id}")
+
+      refute has_element?(
+               view,
+               "#dose-details-#{context.entry.id} a",
+               "Plan the doses as a routine"
+             )
+    end
+
     test "starts from the journal, with the resident and a title", context do
       journal = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}/journal"
       {view, _html} = open(context.conn, journal)
@@ -377,6 +437,16 @@ defmodule RescordWeb.RoutinePagesTest do
 
       assert TaskWords.pattern(routine.(%{pattern: :interval, every: 1})) == "Each day"
       assert TaskWords.pattern(routine.(%{pattern: :interval, every: 3})) == "Every 3 days"
+
+      assert TaskWords.pattern(routine.(%{pattern: :interval, every: 3, count_from: :last_done})) ==
+               "3 days after the last task is done"
+
+      assert TaskWords.pattern(routine.(%{pattern: :interval, every: 1, count_from: :last_done})) ==
+               "1 day after the last task is done"
+
+      assert TaskWords.pattern(routine.(%{pattern: :interval, every: 3, count_from: :first_day})) ==
+               "Every 3 days"
+
       assert TaskWords.pattern(routine.(%{pattern: :monthly, every: 1})) == "Each month"
       assert TaskWords.pattern(routine.(%{pattern: :monthly, every: 12})) == "Every 12 months"
 

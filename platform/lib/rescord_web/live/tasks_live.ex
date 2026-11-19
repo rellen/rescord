@@ -108,7 +108,7 @@ defmodule RescordWeb.TasksLive do
                note: non_blank(fields["note"]),
                due_at: due_at,
                kind_id: non_blank(fields["kind_id"]),
-               assignee_id: non_blank(fields["assignee_id"]),
+               assignee_ids: members(fields),
                resident_ids: List.wrap(non_blank(fields["resident_id"])),
                group_ids: List.wrap(non_blank(fields["group_id"])),
                location_ids: List.wrap(non_blank(fields["location_id"]))
@@ -156,6 +156,15 @@ defmodule RescordWeb.TasksLive do
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The members of a form: each id that the browser sent. Ash refuses an id
+  # that is no id.
+  defp members(fields),
+    do:
+      fields["assignee_ids"]
+      |> List.wrap()
+      |> Enum.filter(&is_binary/1)
+      |> Enum.reject(&(&1 == ""))
 
   # Runs an action on a task of this page: the page has them in hand.
   defp act(socket, id, action) do
