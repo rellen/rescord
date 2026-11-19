@@ -38,6 +38,11 @@ config :rescord, RescordWeb.Endpoint,
 # In test we don't send emails
 config :rescord, Rescord.Mailer, adapter: Swoosh.Adapters.Test
 
+# The tests keep the files of the attachments in a directory. A test that
+# keeps a file gives it a temporary directory of its own (ADR 0038).
+config :rescord, :storage, Rescord.Storage.Disk
+config :rescord, Rescord.Storage.Disk, root: Path.join(System.tmp_dir!(), "rescord-test-store")
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

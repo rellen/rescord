@@ -16,6 +16,7 @@ defmodule RescordWeb.JournalComponents do
   attr :lists, :any, required: true
   attr :units, :list, required: true, doc: "the units of the chosen measure kind"
   attr :prescriptions, :any, required: true
+  attr :uploads, :any, required: true
 
   def new_entry(assigns) do
     ~H"""
@@ -132,6 +133,7 @@ defmodule RescordWeb.JournalComponents do
           required={is_nil(Journal.needs(@kind))}
         />
         <.input field={@form[:at]} type="datetime-local" label="When it happened, if not now" />
+        <.file_field :if={@uploads[:files]} upload={@uploads.files} />
         <footer><.button type="submit">Write the entry</.button></footer>
       </.form>
     </details>
@@ -211,6 +213,79 @@ defmodule RescordWeb.JournalComponents do
     """
   end
 
+  @doc """
+  The files of a new entry: a photo or a PDF, five at most, each with its
+  progress, its problems, and a button that takes it out.
+  """
+  attr :upload, :any, required: true
+
+  def file_field(assigns) do
+    ~H"""
+    <fieldset id="entry-files">
+      <legend>Files: photos or PDFs, five at most, each 20 MB at most</legend>
+      <label for={@upload.ref}>Choose files</label>
+      <.live_file_input upload={@upload} />
+      <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
+      <ul :if={@upload.entries != []}>
+        <li :for={entry <- @upload.entries} id={"file-#{entry.ref}"}>
+          {entry.client_name}
+          <progress value={entry.progress} max="100" aria-label={"Sent of #{entry.client_name}"}>
+            {entry.progress} percent
+          </progress>
+          <span :for={error <- upload_errors(@upload, entry)} role="alert">{upload_words(error)}</span>
+          <.button
+            type="button"
+            phx-click="cancel_file"
+            phx-value-ref={entry.ref}
+            aria-label={"Take #{entry.client_name} out"}
+          >
+            Take out
+          </.button>
+        </li>
+      </ul>
+    </fieldset>
+    """
+  end
+
+  @doc "The words of a problem of a file that the browser sends."
+  def upload_words(:too_large), do: "The file is more than 20 MB."
+
+  def upload_words(:not_accepted),
+    do: "Rescord takes a photo or a PDF: JPEG, PNG, GIF, WebP or PDF."
+
+  def upload_words(:too_many_files), do: "Choose five files at most."
+  def upload_words(_other), do: "The file did not arrive. Choose it again."
+
+  @doc "The files of an entry, each with a link that opens it."
+  attr :attachments, :list, required: true
+  attr :entry, :any, required: true
+  attr :organisation, :any, required: true
+  attr :role, :any, required: true
+  attr :current_user, :any, required: true
+
+  def entry_files(assigns) do
+    ~H"""
+    <section :if={@attachments != []} aria-label="Files of the entry">
+      <ul>
+        <li :for={attachment <- @attachments} id={"attachment-#{attachment.id}"}>
+          <a href={~p"/o/#{@organisation.short_name}/attachments/#{attachment.id}"}>
+            {attachment.name}
+          </a>
+          <small>{JournalWords.file_size(attachment.size)}</small>
+          <.button
+            :if={Journal.can_remove_attachment?(@role, @current_user, attachment)}
+            phx-click="remove_attachment"
+            phx-value-id={attachment.id}
+            aria-label={"Take #{attachment.name} off the entry"}
+          >
+            Take off
+          </.button>
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
   @doc "The form that adds to an entry."
   attr :entry, :any, required: true
 
@@ -247,6 +322,8 @@ defmodule RescordWeb.JournalComponents do
   attr :can_write?, :any, required: true
   attr :can_start_routine?, :boolean, default: false
 
+  attr :attachments, :list, default: []
+
   def entry_card(assigns) do
     ~H"""
     <article id={"entry-#{@entry.id}"}>
@@ -264,6 +341,14 @@ defmodule RescordWeb.JournalComponents do
       </p>
       <p :if={JournalWords.facts(@entry)}>{JournalWords.facts(@entry)}</p>
       <p :if={@entry.note}>{@entry.note}</p>
+
+      <.entry_files
+        attachments={@attachments}
+        entry={@entry}
+        organisation={@organisation}
+        role={@role}
+        current_user={@current_user}
+      />
 
       <.correct_form :if={Journal.can_correct?(@role, @current_user, @entry)} entry={@entry} />
 

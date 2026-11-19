@@ -83,6 +83,24 @@ in
     '';
   };
 
+  # The store of the attachments on this machine (ADR 0038): Garage 2, with
+  # the bucket `rescord` and a fixed key for development, which
+  # `platform/config/runtime.exs` names. The key opens this store alone.
+  services.garage = {
+    enable = true;
+    package = pkgs.garage_2;
+    region = "garage";
+    buckets = [ "rescord" ];
+    afterStart = ''
+      if ! $GARAGE key info rescord-dev >/dev/null 2>&1; then
+        $GARAGE key import --yes -n rescord-dev \
+          GK0000000000000000000000ad \
+          000000000000000000000000000000000000000000000000000000000000dec0
+      fi
+      $GARAGE bucket allow --read --write --owner rescord --key rescord-dev
+    '';
+  };
+
   enterShell = ''
     mix local.hex --force --if-missing >/dev/null
     mix local.rebar --force --if-missing >/dev/null

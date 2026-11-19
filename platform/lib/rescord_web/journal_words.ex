@@ -59,6 +59,19 @@ defmodule RescordWeb.JournalWords do
   @doc "A local date and time in words: `16 November 2026, 08:30`."
   def time(%DateTime{} = local), do: Calendar.strftime(local, "%-d %B %Y, %H:%M")
 
+  @doc """
+  The size of a file in words, in units of 1000 bytes.
+
+      iex> RescordWeb.JournalWords.file_size(812)
+      "812 bytes"
+
+      iex> RescordWeb.JournalWords.file_size(2_450_000)
+      "2.5 MB"
+  """
+  def file_size(bytes) when bytes < 1000, do: "#{bytes} bytes"
+  def file_size(bytes) when bytes < 1_000_000, do: "#{round(bytes / 1000)} kB"
+  def file_size(bytes), do: "#{Float.round(bytes / 1_000_000, 1)} MB"
+
   @doc "The facts of an entry in one line, or `nil` for an entry with words only."
   def facts(%{measurement: %{} = measurement}) do
     unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""

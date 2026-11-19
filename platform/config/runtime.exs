@@ -31,6 +31,18 @@ if config_env() != :test do
 end
 
 if config_env() == :dev do
+  # The Garage of devenv (ADR 0038): its endpoint, its bucket, and the fixed
+  # key that `devenv.nix` imports. That key opens a store on this machine
+  # alone, and is no secret.
+  config :rescord, Rescord.Storage.S3,
+    endpoint: Shoddy.Env.string("GARAGE_S3_ENDPOINT", default: "http://127.0.0.1:3900"),
+    region: "garage",
+    bucket: "rescord",
+    access_key_id: "GK0000000000000000000000ad",
+    secret_access_key: "000000000000000000000000000000000000000000000000000000000000dec0"
+end
+
+if config_env() == :dev do
   # Reload browser tabs when matching files change.
   config :rescord, RescordWeb.Endpoint,
     live_reload: [
@@ -71,6 +83,15 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   # Make each secret with `mix phx.gen.secret`, which gives 64 bytes.
+  # The store of the attachments: Tigris, or another service that is
+  # compatible with S3 (ADR 0038).
+  config :rescord, Rescord.Storage.S3,
+    endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT", default: "https://t3.storage.dev"),
+    region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
+    bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
+    access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
+    secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
+
   secret_key_base = Shoddy.Env.string("SECRET_KEY_BASE", min_bytes: 64)
 
   # The secret that signs a sign-in token.

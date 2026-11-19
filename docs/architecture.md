@@ -364,6 +364,17 @@ application starts it. A resource names it as the backend in its
 The first use is the request for a sign-in link: a limit for each address
 on the action, inside the task of ADR 0019. The numbers are not decided.
 
+### Files
+
+**A file is in a store that is compatible with S3, and its record is in the
+schema of the organisation** (ADR 0038, ADR 0041). `Rescord.Storage` is the
+behaviour, and the configuration names the store: `Rescord.Storage.S3`,
+with `req_s3`, for Garage in development and Tigris in production, and
+`Rescord.Storage.Disk` in the tests. Each key starts with the id of the
+organisation, and no part of it comes from what a person sends. A person
+reads a file through a controller that asks the policy, and the answer
+names the type that Rescord found in the first bytes of the file.
+
 ### Policies and roles
 
 **Authorization is our own system, in the manner of `ash_grant`.** We write

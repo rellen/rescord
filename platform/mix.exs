@@ -97,6 +97,8 @@ defmodule Rescord.MixProject do
        github: "rellen/shoddy_phoenix", ref: "acb06970c7138063303bdad28a3b2d699fef6e76"},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
+      # The store of the attachments, compatible with S3 (ADR 0038).
+      {:req_s3, "~> 0.2.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},

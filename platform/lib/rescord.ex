@@ -15,6 +15,6 @@ defmodule Rescord do
 
   use Boundary,
     deps: [],
-    exports: [History, Mailer, RateLimit, Repo, Resource, Resource.Checks],
+    exports: [History, Mailer, RateLimit, Repo, Resource, Resource.Checks, Storage],
     check: [aliases: true, apps: [:phoenix, :phoenix_live_view, :phoenix_html, :shoddy_phoenix]]
 end

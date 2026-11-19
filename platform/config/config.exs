@@ -133,6 +133,11 @@ config :phoenix_live_view,
   # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
   root_tag_attribute: "phx-r"
 
+# The store of the attachments (ADR 0038). `config/runtime.exs` gives
+# `Rescord.Storage.S3` its endpoint and its keys, and the tests use a
+# directory.
+config :rescord, :storage, Rescord.Storage.S3
+
 # Configure the mailer
 #
 # By default it uses the "Local" adapter which stores the emails

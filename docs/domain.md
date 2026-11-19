@@ -320,7 +320,8 @@ Use a correction only for a mistake in the entry.
 
 Rescord has the journal (ADR 0030): an entry with the facts of its kind, the
 time that the thing happened, an addendum, and a correction. It has the
-timeline (ADR 0035). It does not have an attachment yet.
+timeline (ADR 0035). An entry has files: a photo or a PDF, which a person
+attaches when they write the entry (ADR 0041).
 
 A journal entry has one of these kinds:
 

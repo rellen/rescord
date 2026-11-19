@@ -184,6 +184,11 @@ too.
     an address that Rescord does not know, and a fault. Do no work that
     depends on the address before the task starts. Never log a token or a
     link.
+  - A file goes through `Rescord.Storage` (ADR 0041). Make each key with
+    `Rescord.Storage.key/2`, and never from what a person sends. Read the
+    type of a file from its first bytes, never from its name or from the
+    browser. A page sends a file only through a controller that reads the
+    record with the grants of the person.
   - Limit how often an action runs with `extensions: [AshRateLimiter]` and a
     `rate_limit` section whose backend is `Rescord.RateLimit` (ADR 0020). Do
     not write a counter by hand. A test of a limit counts under a key of its
@@ -223,6 +228,9 @@ too.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
+  - A test that keeps a file tags itself `:tmp_dir` and calls
+    `Rescord.StorageFixtures.disk_store!/1`, so each test has a directory of
+    its own. No test reaches a real store.
   - A test that creates an organisation is `async: false`: a new schema
     takes a lock on the users, and two at one time stop each other
     (ADR 0022).

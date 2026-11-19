@@ -36,6 +36,10 @@ defmodule RescordWeb.Router do
     post "/sign-in", SignInController, :create
     get "/sign-in/sent", SignInController, :sent
     get "/sign-in/link", SignInController, :link
+
+    # The file of an attachment, which the person reads with their grants
+    # (ADR 0041).
+    get "/o/:organisation/attachments/:id", AttachmentController, :show
     post "/sign-in/link", SignInController, :confirm
     delete "/sign-out", SignInController, :delete
 

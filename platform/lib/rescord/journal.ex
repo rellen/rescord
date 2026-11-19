@@ -42,6 +42,12 @@ defmodule Rescord.Journal do
     resource Rescord.Journal.Vaccination
     resource Rescord.Journal.Prescription
     resource Rescord.Journal.Dose
+
+    resource Rescord.Journal.Attachment do
+      define :attach_file, action: :attach
+      define :attachment, action: :read, get_by: [:id], not_found_error?: false
+      define :remove_attachment, action: :remove
+    end
   end
 
   # The facts of each kind that a page shows.
@@ -156,6 +162,90 @@ defmodule Rescord.Journal do
       {:error, error} -> {:error, error}
     end
   end
+
+  @doc """
+  Writes a journal entry with its files, in one transaction: a refused file
+  writes no entry (ADR 0041). `files` is a list of `{name, bytes}`.
+  """
+  @spec write_entry_with_files(map, [{String.t(), binary}], keyword) ::
+          {:ok, Ash.Resource.record()} | {:error, term}
+  def write_entry_with_files(facts, files, opts \\ []) do
+    Ash.transact(
+      [JournalEntry, Rescord.Journal.Attachment],
+      fn ->
+        with {:ok, entry} <- write_entry(facts, opts),
+             :ok <- attach_each(entry, files, opts) do
+          {:ok, entry}
+        end
+      end,
+      tenant: opts[:tenant]
+    )
+    |> case do
+      {:ok, {:ok, entry}} -> {:ok, entry}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp attach_each(entry, files, opts) do
+    Enum.reduce_while(files, :ok, fn {name, bytes}, :ok ->
+      case attach_file(%{entry_id: entry.id, name: name, content: bytes}, opts) do
+        {:ok, _attachment} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  @doc """
+  The attachments of journal entries, the oldest first, as a map from the id of
+  each entry to its attachments. An entry with none is not a key.
+  """
+  @spec attachments_of([String.t()], keyword) :: {:ok, %{String.t() => [map]}} | {:error, term}
+  def attachments_of(entry_ids, opts \\ []) do
+    Rescord.Journal.Attachment
+    |> Ash.Query.filter(entry_id in ^entry_ids)
+    |> Ash.Query.sort(inserted_at: :asc, id: :asc)
+    |> Ash.read(opts)
+    |> case do
+      {:ok, attachments} -> {:ok, Enum.group_by(attachments, & &1.entry_id)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  An attachment and the bytes of its file, when the actor can read the
+  attachment and the store has the file. A page that sends the file uses
+  this.
+  """
+  @spec attachment_file(String.t(), keyword) ::
+          {:ok, map, binary} | {:error, :not_found | term}
+  def attachment_file(id, opts \\ []) do
+    with {:ok, %{} = attachment} <- attachment(id, opts),
+         {:ok, bytes} <- Rescord.Storage.get(attachment.key) do
+      {:ok, attachment, bytes}
+    else
+      {:ok, nil} -> {:error, :not_found}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Whether a role can take a file off an entry: each file with the power
+  `:correct_journal`, and the files that the person attached with the power
+  `:journal`. A page asks this to decide what to show.
+  """
+  @spec can_remove_attachment?(term, map, map) :: boolean
+  def can_remove_attachment?(:root, _user, _attachment), do: true
+
+  def can_remove_attachment?(role, %{id: user_id}, %{author_id: author_id}) do
+    case Rescord.Accounts.Grants.scope(role, Rescord.Journal.Attachment, :remove) do
+      {:ok, :all} -> true
+      {:ok, :own} -> user_id == author_id
+      :none -> false
+    end
+  end
+
+  @doc "The largest file of an attachment, in bytes."
+  defdelegate max_attachment_size(), to: Rescord.Journal.Changes.StoreAttachment, as: :max_size
 
   @doc "Whether a kind of entry is a part of the medical history."
   defdelegate medical?(kind), to: EntryKind

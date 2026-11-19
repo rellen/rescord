@@ -7,6 +7,12 @@ defmodule RescordWeb.JournalLive do
   of the kind that the member chooses. The author of an entry, and an
   administrator, correct it. Each member adds to an entry with an addendum.
 
+  A person who writes an entry attaches files to it: up to five photos or
+  PDFs of 20 MB each (ADR 0041). The page writes the entry and its files in
+  one transaction, so a refused file writes no entry. Each file links to
+  `RescordWeb.AttachmentController`, which reads it with the grants of the
+  reader.
+
   The page reads only the fields that it knows from what the browser sends,
   and makes no atom from it.
   """
@@ -42,6 +48,7 @@ defmodule RescordWeb.JournalLive do
          can_start_routine?: Tasks.role_can_routine?(socket.assigns.role, :start),
          today: Accounts.today(socket.assigns.organisation)
        )
+       |> allow_files()
        |> assign_form(%{"kind" => "general"})}
     else
       _no_resident ->
@@ -51,6 +58,18 @@ defmodule RescordWeb.JournalLive do
          |> redirect(to: ~p"/o/#{socket.assigns.organisation.short_name}/residents")}
     end
   end
+
+  # The files of a new entry, for a person who writes one. The page reads
+  # the type of each file from its first bytes again (ADR 0041).
+  defp allow_files(%{assigns: %{can_write?: true}} = socket) do
+    allow_upload(socket, :files,
+      accept: ~w(.jpg .jpeg .png .gif .webp .pdf),
+      max_entries: 5,
+      max_file_size: Journal.max_attachment_size()
+    )
+  end
+
+  defp allow_files(socket), do: socket
 
   @impl true
   def handle_params(params, _uri, socket) do
@@ -94,9 +113,11 @@ defmodule RescordWeb.JournalLive do
       Journal.entries(socket.assigns.resident.id, [only: socket.assigns.only] ++ options)
 
     {:ok, prescriptions} = Journal.prescriptions(socket.assigns.resident.id, options)
+    {:ok, attachments} = Journal.attachments_of(Enum.map(entries, & &1.id), options)
 
     assign(socket,
       entries: entries,
+      attachments: attachments,
       prescriptions: Enum.map(prescriptions, &{&1.prescription.medication, &1.prescription.id})
     )
   end
@@ -118,7 +139,7 @@ defmodule RescordWeb.JournalLive do
 
   def handle_event("write", %{"entry" => fields}, socket) when is_map(fields) do
     with {:ok, instant} <- Accounts.instant(socket.assigns.organisation, fields["at"]),
-         {:ok, _entry} <-
+         facts =
            fields
            |> facts()
            |> Map.merge(%{
@@ -127,8 +148,8 @@ defmodule RescordWeb.JournalLive do
              note: non_blank(fields["note"]),
              happened_at: instant,
              follows_id: non_blank(fields["follows_id"])
-           })
-           |> Journal.write_entry(options(socket)) do
+           }),
+         {:ok, _entry} <- Journal.write_entry_with_files(facts, files(socket), options(socket)) do
       {:noreply, push_navigate(socket, to: path(socket))}
     else
       {:error, words} when is_binary(words) ->
@@ -191,11 +212,39 @@ defmodule RescordWeb.JournalLive do
     end
   end
 
+  def handle_event("cancel_file", %{"ref" => ref}, socket) when is_binary(ref) do
+    {:noreply, cancel_upload(socket, :files, ref)}
+  end
+
+  def handle_event("remove_attachment", %{"id" => id}, socket) when is_binary(id) do
+    # Only a file of this journal: the page has them in hand.
+    with %{} = attachment <-
+           socket.assigns.attachments
+           |> Map.values()
+           |> List.flatten()
+           |> Enum.find(&(&1.id == id)),
+         :ok <- Journal.remove_attachment(attachment, options(socket)) do
+      {:noreply, push_navigate(socket, to: path(socket))}
+    else
+      nil -> {:noreply, socket}
+      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+    end
+  end
+
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The files that the person chose, each as its name and its bytes.
+  defp files(%{assigns: %{uploads: %{files: _}}} = socket) do
+    consume_uploaded_entries(socket, :files, fn %{path: path}, entry ->
+      {:ok, {entry.client_name, File.read!(path)}}
+    end)
+  end
+
+  defp files(_socket), do: []
 
   # The facts of a medical kind that a form can send. A field that is empty
   # is not given, so it changes nothing.
@@ -279,6 +328,7 @@ defmodule RescordWeb.JournalLive do
         lists={@lists}
         units={@units}
         prescriptions={@prescriptions}
+        uploads={@uploads}
       />
 
       <p :if={@entries == []}>The journal has no entry yet.</p>
@@ -294,6 +344,7 @@ defmodule RescordWeb.JournalLive do
         can_start_routine?={@can_start_routine?}
         today={@today}
         can_write?={@can_write?}
+        attachments={Map.get(@attachments, entry.id, [])}
       />
     </Layouts.app>
     """
