@@ -8,6 +8,11 @@ defmodule RescordWeb.PartnersLive do
   or declines a question from another refuge, and ends a partnership. The
   page lists no other refuge: a person names a refuge that they know.
 
+  A refuge on another Rescord server is a partner through its partner card
+  (ADR 0043): the person with the power records the card of the other
+  refuge, gives the card of this one, and the two read the fingerprint to
+  each other before the first file.
+
   The page acts only on a partnership that it has in hand, and reads only
   the fields that it knows from what the browser sends.
   """
@@ -29,7 +34,9 @@ defmodule RescordWeb.PartnersLive do
        problems: [],
        can_ask?: Transfers.role_can?(role, :partnership, :ask),
        can_answer?: Transfers.role_can?(role, :partnership, :accept),
-       can_end?: Transfers.role_can?(role, :partnership, :end)
+       can_end?: Transfers.role_can?(role, :partnership, :end),
+       can_record?: Transfers.role_can?(role, :remote_partner, :record),
+       can_end_remote?: Transfers.role_can?(role, :remote_partner, :end)
      )
      |> assign_partnerships()}
   end
@@ -42,7 +49,23 @@ defmodule RescordWeb.PartnersLive do
     {:ok, partnerships} =
       Transfers.partnerships_of(socket.assigns.organisation, actor: socket.assigns.current_user)
 
-    assign(socket, partnerships: partnerships)
+    {:ok, remote} =
+      Transfers.remote_partners_of(socket.assigns.organisation,
+        actor: socket.assigns.current_user
+      )
+
+    # Only a person who records a partner needs the card of this refuge.
+    {card, fingerprint} =
+      if socket.assigns.can_record?,
+        do: Transfers.card(socket.assigns.organisation),
+        else: {nil, nil}
+
+    assign(socket,
+      partnerships: partnerships,
+      remote: remote,
+      card: card,
+      fingerprint: fingerprint
+    )
   end
 
   defp path(socket), do: ~p"/o/#{socket.assigns.organisation.short_name}/partners"
@@ -84,6 +107,30 @@ defmodule RescordWeb.PartnersLive do
     end
   end
 
+  def handle_event("record", %{"remote" => %{"card" => card}}, socket) when is_binary(card) do
+    case Transfers.record_remote_partner(socket.assigns.organisation, card, options(socket)) do
+      {:ok, partner} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "#{partner.name} is a partner on another server now.")
+         |> push_navigate(to: path(socket))}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+    end
+  end
+
+  def handle_event("end_remote", %{"id" => id}, socket) when is_binary(id) do
+    with %{} = partner <- Enum.find(socket.assigns.remote, &(&1.id == id)),
+         {:ok, _partner} <-
+           Transfers.end_remote_partner(partner, actor: socket.assigns.current_user) do
+      {:noreply, push_navigate(socket, to: path(socket))}
+    else
+      nil -> {:noreply, socket}
+      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+    end
+  end
+
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
@@ -114,6 +161,14 @@ defmodule RescordWeb.PartnersLive do
       />
 
       <.ask_form :if={@can_ask?} />
+
+      <.remote_partners
+        remote={@remote}
+        card={@card}
+        fingerprint={@fingerprint}
+        can_record?={@can_record?}
+        can_end?={@can_end_remote?}
+      />
     </Layouts.app>
     """
   end

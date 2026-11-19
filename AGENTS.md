@@ -184,6 +184,12 @@ too.
     an address that Rescord does not know, and a fault. Do no work that
     depends on the address before the task starts. Never log a token or a
     link.
+  - A file from another server is not trusted until it is checked: read it
+    with `Rescord.Transfers.Archive.read/4`, which checks the signature of a
+    recorded partner before it decrypts or decompresses, and show a copy
+    only after `Rescord.Transfers.Snapshot.clean/1`. Never decode a file
+    with `:erlang.binary_to_term/1`. The private keys stay encrypted under
+    `RESCORD_KEY_SECRET`, and no page or log shows them (ADR 0043).
   - A file goes through `Rescord.Storage` (ADR 0041). Make each key with
     `Rescord.Storage.key/2`, and never from what a person sends. Read the
     type of a file from its first bytes, never from its name or from the

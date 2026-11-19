@@ -34,6 +34,10 @@ if config_env() == :dev do
   # The Garage of devenv (ADR 0038): its endpoint, its bucket, and the fixed
   # key that `devenv.nix` imports. That key opens a store on this machine
   # alone, and is no secret.
+  # The secret that guards the private keys of the refuges of this machine
+  # (ADR 0043). It is no secret on a machine for development.
+  config :rescord, Rescord.Transfers.Keys, secret: "the secret of the development keys, 32 bytes"
+
   config :rescord, Rescord.Storage.S3,
     endpoint: Shoddy.Env.string("GARAGE_S3_ENDPOINT", default: "http://127.0.0.1:3900"),
     region: "garage",
@@ -83,6 +87,11 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   # Make each secret with `mix phx.gen.secret`, which gives 64 bytes.
+  # The secret that guards the private keys of the refuges (ADR 0043). A
+  # refuge keeps it with its backups: another secret cannot open the keys.
+  config :rescord, Rescord.Transfers.Keys,
+    secret: Shoddy.Env.string("RESCORD_KEY_SECRET", min_bytes: 32)
+
   # The store of the attachments: Tigris, or another service that is
   # compatible with S3 (ADR 0038).
   config :rescord, Rescord.Storage.S3,

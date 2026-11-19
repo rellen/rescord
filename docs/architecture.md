@@ -384,6 +384,13 @@ and their read is a filter of the organisations of the actor. A transfer
 holds a copy of the resident as plain data, which the sender builds at the
 transfer and which never changes.
 
+A partner on another server gets a file (ADR 0043): an Ed25519 signature
+over a header, and a payload encrypted for the receiver with X25519 and
+AES-256-GCM, all with `:crypto` of OTP. The private keys of a refuge are in
+the database, encrypted under `RESCORD_KEY_SECRET`. An import checks the
+signature with the key of a recorded partner before it decrypts or
+decompresses anything.
+
 ### Policies and roles
 
 **Authorization is our own system, in the manner of `ash_grant`.** We write

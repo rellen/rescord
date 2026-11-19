@@ -142,6 +142,10 @@ These subjects are out of scope for now:
 | Who records, accepts and reads a transfer? | An administrator records it and accepts it. Each member reads the copy. |
 | Which service stores the attachments? | Tigris in production, probably. A machine for development runs Garage, and the tests use a store in a temporary directory (ADR 0038). |
 | Who defines the roles of an organisation? | Its administrators. Each organisation starts with an administrator and a member. An administrator can add a role, and give it what it may do. |
+| What does an import of a transfer file from another server make? | A received transfer: a copy that waits for an answer, as a transfer on one server does (19 November 2026). |
+| How does a refuge know that a transfer file is true? | The refuge that sends it signs it, and encrypts it for the refuge that receives it. |
+| From whom can a refuge import a transfer file? | From a partner on another server that it recorded. |
+| Does a transfer file carry the photos and the PDFs? | Yes. The file is one archive with the copy and its files. |
 
 ## 5. The root entities
 
@@ -442,6 +446,13 @@ transfer, and that administrator can decline it. After the acceptance, each
 member there reads the copy. The refuge that sends a resident records its
 departure itself. Here, an administrator is each role with the power
 `:transfers`.
+
+A partner can be on another Rescord server (ADR 0043). The two refuges
+exchange partner cards and check their fingerprints, and an administrator
+then exports a resident as a file, which is signed by the refuge that sends
+it and encrypted for the one that receives it. The file holds the photos and
+the PDFs of its entries. The other refuge imports it, and it waits for an
+answer as a transfer on one server does.
 
 ## 6. Design rules
 

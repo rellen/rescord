@@ -11,7 +11,9 @@ defmodule Rescord.Transfers.Checks.PowerIn do
 
     * `:from` - the organisation that asked, or that sends;
     * `:to` - the organisation that answers, or that receives;
-    * `:either` - one of the two.
+    * `:either` - one of the two;
+    * `:own` - the refuge of a record that belongs to one refuge, such as
+      a partner on another server.
   """
 
   use Ash.Policy.SimpleCheck
@@ -31,6 +33,9 @@ defmodule Rescord.Transfers.Checks.PowerIn do
 
         :to ->
           [attribute(changeset, :to_organisation_id)]
+
+        :own ->
+          [attribute(changeset, :organisation_id)]
 
         :either ->
           [:from_organisation_id, :to_organisation_id] |> Enum.map(&attribute(changeset, &1))

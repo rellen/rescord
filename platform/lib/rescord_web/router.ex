@@ -40,6 +40,10 @@ defmodule RescordWeb.Router do
     # The file of an attachment, which the person reads with their grants
     # (ADR 0041).
     get "/o/:organisation/attachments/:id", AttachmentController, :show
+
+    # The transfer files and the files of a copy (ADR 0043).
+    post "/o/:organisation/transfers/export", TransferFileController, :export
+    get "/o/:organisation/transfers/:id/files/:file", TransferFileController, :show
     post "/sign-in/link", SignInController, :confirm
     delete "/sign-out", SignInController, :delete
 

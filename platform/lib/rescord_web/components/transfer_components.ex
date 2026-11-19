@@ -101,6 +101,188 @@ defmodule RescordWeb.TransferComponents do
     """
   end
 
+  @doc """
+  The partners on other servers (ADR 0043): each with its fingerprint, the
+  card of this refuge to give them, and the form that records a card.
+  """
+  attr :remote, :list, required: true
+  attr :card, :any, required: true
+  attr :fingerprint, :any, required: true
+  attr :can_record?, :boolean, required: true
+  attr :can_end?, :boolean, required: true
+
+  def remote_partners(assigns) do
+    ~H"""
+    <section aria-labelledby="remote-heading">
+      <h2 id="remote-heading">Refuges on other servers</h2>
+      <p :if={@remote == []}>This refuge has no partner on another server yet.</p>
+      <div :if={@remote != []} data-scroll>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Refuge</th>
+              <th scope="col">Fingerprint</th>
+              <th scope="col">State</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={partner <- @remote} id={"remote-#{partner.id}"}>
+              <td>{partner.name}</td>
+              <td><code>{partner.fingerprint}</code></td>
+              <td><.badge state={partner.state} /></td>
+              <td>
+                <.button
+                  :if={@can_end? and partner.state == :active}
+                  phx-click="end_remote"
+                  phx-value-id={partner.id}
+                  aria-label={"End the partnership with #{partner.name}"}
+                >
+                  End
+                </.button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div :if={@can_record?}>
+        <h3>The partner card of this refuge</h3>
+        <p>
+          Give this card to the refuge on the other server, by email or on paper. It holds no
+          secret. Before the first file, read the fingerprint to each other by phone or in person:
+          the two must match.
+        </p>
+        <.input
+          id="own-card"
+          name="own_card"
+          type="textarea"
+          label="Partner card"
+          value={@card}
+          readonly
+        />
+        <p>Fingerprint: <code id="own-fingerprint">{@fingerprint}</code></p>
+
+        <form id="record" phx-submit="record">
+          <.input
+            id="record-card"
+            name="remote[card]"
+            type="textarea"
+            label="The partner card of the other refuge"
+            value=""
+            maxlength="2000"
+            required
+          />
+          <footer><.button type="submit">Record the partner</.button></footer>
+        </form>
+      </div>
+    </section>
+    """
+  end
+
+  @doc """
+  The form that writes a transfer file for a partner on another server. It
+  posts to `RescordWeb.TransferFileController`, which sends the file.
+  """
+  attr :organisation, :map, required: true
+  attr :remote, :list, required: true
+  attr :residents, :list, required: true
+  attr :parts, :list, required: true
+
+  def export_form(assigns) do
+    ~H"""
+    <section aria-labelledby="export-heading">
+      <h2 id="export-heading">Export a resident for another server</h2>
+      <p :if={@remote == []}>
+        This refuge has no partner on another server yet. Record one on the page of the partner
+        refuges first.
+      </p>
+      <.form
+        :if={@remote != []}
+        for={%{}}
+        as={:export}
+        id="export"
+        action={~p"/o/#{@organisation.short_name}/transfers/export"}
+        method="post"
+      >
+        <.input
+          id="export-resident"
+          name="export[resident_id]"
+          type="select"
+          label="Resident"
+          prompt="Choose"
+          options={@residents}
+          value=""
+          required
+        />
+        <.input
+          id="export-partner"
+          name="export[remote_partner_id]"
+          type="select"
+          label="Partner on another server"
+          prompt="Choose"
+          options={@remote}
+          value=""
+          required
+        />
+        <fieldset id="export-parts">
+          <legend>
+            What the file holds: the facts and the medical history always, with their photos and
+            PDFs, and the parts that you tick
+          </legend>
+          <label :for={{part, words} <- TransferWords.parts()}>
+            <input type="checkbox" name="export[parts][]" value={part} checked={part in @parts} />
+            {words}
+          </label>
+        </fieldset>
+        <.input
+          id="export-note"
+          name="export[note]"
+          type="textarea"
+          label="Note to the refuge"
+          value=""
+          maxlength="2000"
+        />
+        <footer><.button type="submit">Write the transfer file</.button></footer>
+      </.form>
+    </section>
+    """
+  end
+
+  @doc "The form that imports a transfer file from a partner on another server."
+  attr :upload, :any, required: true
+
+  def import_form(assigns) do
+    ~H"""
+    <section aria-labelledby="import-heading">
+      <h2 id="import-heading">Import a transfer file</h2>
+      <p>
+        A file from a partner on another server waits for an answer here, as a transfer on this
+        server does.
+      </p>
+      <form id="import" phx-submit="import" phx-change="choose_file">
+        <label for={@upload.ref}>Transfer file</label>
+        <.live_file_input upload={@upload} />
+        <p :for={error <- upload_errors(@upload)} role="alert">{import_words(error)}</p>
+        <p :for={entry <- @upload.entries} id={"import-#{entry.ref}"}>
+          {entry.client_name}
+          <span :for={error <- upload_errors(@upload, entry)} role="alert">{import_words(error)}</span>
+        </p>
+        <footer><.button type="submit">Import the file</.button></footer>
+      </form>
+    </section>
+    """
+  end
+
+  @doc "The words of a problem of a transfer file that the browser sends."
+  def import_words(:too_large), do: "The file is larger than Rescord takes."
+
+  def import_words(:not_accepted),
+    do: "Choose a transfer file of Rescord: its name ends in .rescord."
+
+  def import_words(:too_many_files), do: "Choose one file."
+  def import_words(_other), do: "The file did not arrive. Choose it again."
+
   attr :state, :atom, required: true
 
   # The state of a partnership or a transfer, as a badge.
@@ -262,7 +444,7 @@ defmodule RescordWeb.TransferComponents do
     <.header>
       {@facts["name"] || "A resident with no name"}
       <:subtitle>
-        A copy from {@transfer.from_organisation.name}, as it was on {TransferWords.time(
+        A copy from {Transfers.other(@transfer, @organisation).name}, as it was on {TransferWords.time(
           @copy["taken_at"],
           @zone
         )}. It does not change.
@@ -299,13 +481,20 @@ defmodule RescordWeb.TransferComponents do
       </dl>
     </section>
 
-    <.entries id="copy-medical" title="Medical history" entries={@copy["medical"] || []} zone={@zone} />
+    <.entries
+      id="copy-medical"
+      title="Medical history"
+      entries={@copy["medical"] || []}
+      zone={@zone}
+      file_path={file_path(@transfer, @organisation)}
+    />
     <.entries
       :if={@copy["journal"]}
       id="copy-journal"
       title="Other journal entries"
       entries={@copy["journal"]}
       zone={@zone}
+      file_path={file_path(@transfer, @organisation)}
     />
 
     <section :if={@copy["stay"]} aria-labelledby="copy-stay">
@@ -378,8 +567,9 @@ defmodule RescordWeb.TransferComponents do
   attr :title, :string, required: true
   attr :entries, :list, required: true
   attr :zone, :string, required: true
+  attr :file_path, :any, required: true, doc: "the path of a file of the copy, or nil"
 
-  # The journal entries of a copy, the newest first.
+  # The journal entries of a copy, the newest first, each with its files.
   def entries(assigns) do
     ~H"""
     <section aria-labelledby={@id}>
@@ -392,10 +582,24 @@ defmodule RescordWeb.TransferComponents do
         </header>
         <p :if={TransferWords.facts(entry)}>{TransferWords.facts(entry)}</p>
         <p :if={entry["note"]}>{entry["note"]}</p>
+        <ul :if={(entry["files"] || []) != []} aria-label="Files of the entry">
+          <li :for={file <- entry["files"]}>
+            <a :if={@file_path} href={@file_path.(file["id"])}>{file["name"]}</a>
+            <span :if={is_nil(@file_path)}>{file["name"]}</span>
+            <small :if={is_integer(file["size"])}>{RescordWeb.JournalWords.file_size(file["size"])}</small>
+          </li>
+        </ul>
       </article>
     </section>
     """
   end
+
+  # The path of a file of the copy. A file exported to another server is
+  # not kept on this one, so its copy has no link.
+  defp file_path(%{to_organisation_id: nil}, _organisation), do: nil
+
+  defp file_path(transfer, organisation),
+    do: &~p"/o/#{organisation.short_name}/transfers/#{transfer.id}/files/#{&1}"
 
   defp join(nil), do: nil
   defp join([]), do: nil

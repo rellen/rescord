@@ -244,6 +244,9 @@ defmodule Rescord.Journal do
     end
   end
 
+  @doc "The type of a file from its first bytes, or `nil` for a type that Rescord does not take."
+  defdelegate file_type(bytes), to: Rescord.Journal.Changes.StoreAttachment, as: :type_of
+
   @doc "The largest file of an attachment, in bytes."
   defdelegate max_attachment_size(), to: Rescord.Journal.Changes.StoreAttachment, as: :max_size
 

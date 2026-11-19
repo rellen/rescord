@@ -11,6 +11,11 @@ defmodule RescordWeb.TransfersLive do
   the organisation sent. Each member reads a copy that the organisation
   accepted.
 
+  With a partner on another server (ADR 0043), the person with the power
+  writes a transfer file through `RescordWeb.TransferFileController`, and
+  imports a file from such a partner here: it waits for an answer, as a
+  transfer on this server does.
+
   The page acts only on a transfer that it has in hand, and reads only the
   fields that it knows from what the browser sends: a part comes from
   `RescordWeb.TransferWords.part_of/1`, which makes no atom.
@@ -28,13 +33,30 @@ defmodule RescordWeb.TransfersLive do
     role = socket.assigns.role
 
     {:ok,
-     assign(socket,
+     socket
+     |> assign(
        problems: [],
        can_send?: Transfers.role_can?(role, :transfer, :send),
        can_answer?: Transfers.role_can?(role, :transfer, :accept),
-       can_withdraw?: Transfers.role_can?(role, :transfer, :withdraw)
-     )}
+       can_withdraw?: Transfers.role_can?(role, :transfer, :withdraw),
+       can_export?: Transfers.role_can?(role, :transfer, :export),
+       can_import?: Transfers.role_can?(role, :transfer, :import)
+     )
+     |> allow_file()}
   end
+
+  # The transfer file of an import, for a person who imports one.
+  defp allow_file(%{assigns: %{can_import?: true}} = socket) do
+    allow_upload(socket, :transfer_file,
+      # A `.rescord` file has no MIME type, and the import reads the file
+      # itself: a file that is not one is refused in words.
+      accept: :any,
+      max_entries: 1,
+      max_file_size: Transfers.max_file_size()
+    )
+  end
+
+  defp allow_file(socket), do: socket
 
   @impl true
   def handle_params(%{"id" => id}, _uri, socket) do
@@ -67,8 +89,10 @@ defmodule RescordWeb.TransfersLive do
     {:ok, transfers} = Transfers.transfers_of(organisation, actor)
     {:ok, partners} = Transfers.partners_of(organisation, actor)
 
+    {:ok, remote} = Transfers.remote_partners_of(organisation, actor)
+
     residents =
-      if socket.assigns.can_send? do
+      if socket.assigns.can_send? or socket.assigns.can_export? do
         {:ok, residents} = Residents.residents([load: [:name]] ++ options(socket))
         residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort()
       else
@@ -81,6 +105,7 @@ defmodule RescordWeb.TransfersLive do
       received: received,
       sent: sent,
       partners: partners,
+      remote: for(%{state: :active} = partner <- remote, do: {partner.name, partner.id}),
       residents: residents,
       send_form:
         to_form(
@@ -121,6 +146,35 @@ defmodule RescordWeb.TransfersLive do
            problems: Accounts.error_messages(error),
            send_form: typed_form(fields, as: :transfer)
          )}
+    end
+  end
+
+  def handle_event("choose_file", _params, socket), do: {:noreply, socket}
+
+  def handle_event("import", _params, %{assigns: %{can_import?: true}} = socket) do
+    files =
+      consume_uploaded_entries(socket, :transfer_file, fn %{path: path}, _entry ->
+        {:ok, File.read!(path)}
+      end)
+
+    case files do
+      [file] ->
+        case Transfers.import_transfer(socket.assigns.organisation, file,
+               actor: socket.assigns.current_user
+             ) do
+          {:ok, transfer} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "The transfer of #{transfer.resident_name} waits for an answer.")
+             |> push_navigate(to: path(socket))}
+
+          {:error, error} ->
+            {:noreply,
+             socket |> assign(problems: Accounts.error_messages(error)) |> assign_lists()}
+        end
+
+      [] ->
+        {:noreply, assign(socket, problems: ["Choose a transfer file first."])}
     end
   end
 
@@ -211,6 +265,16 @@ defmodule RescordWeb.TransfersLive do
         partners={@partners}
         residents={@residents}
       />
+
+      <.export_form
+        :if={@can_export?}
+        organisation={@organisation}
+        remote={@remote}
+        residents={@residents}
+        parts={@organisation.transfer_parts}
+      />
+
+      <.import_form :if={@can_import?} upload={@uploads.transfer_file} />
     </Layouts.app>
     """
   end

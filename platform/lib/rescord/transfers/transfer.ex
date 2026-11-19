@@ -14,6 +14,11 @@ defmodule Rescord.Transfers.Transfer do
   it. After the acceptance, each member there reads the copy. The sender
   can withdraw a transfer that has no answer.
 
+  A transfer to a partner on another server is a file (ADR 0043). The
+  refuge that sends it keeps a record with the state `exported`, and the
+  refuge that imports the file gets a transfer that waits for its answer,
+  as above.
+
   ## States
 
       sent --accept---> accepted
@@ -57,6 +62,24 @@ defmodule Rescord.Transfers.Transfer do
       change Changes.SendTransfer
     end
 
+    create :export do
+      description "Writes a transfer file of a resident for a partner on another server"
+      accept [:note]
+      argument :organisation_id, :uuid, allow_nil?: false
+      argument :remote_partner_id, :uuid, allow_nil?: false
+      argument :resident_id, :uuid, allow_nil?: false
+      argument :parts, {:array, :atom}, default: []
+      change Changes.ExportTransfer
+    end
+
+    create :import do
+      description "Reads a transfer file from a partner on another server. It waits for an answer"
+      accept []
+      argument :organisation_id, :uuid, allow_nil?: false
+      argument :file, :binary, allow_nil?: false, sensitive?: true
+      change Changes.ImportTransfer
+    end
+
     update :accept do
       accept []
       require_atomic? false
@@ -91,11 +114,11 @@ defmodule Rescord.Transfers.Transfer do
       authorize_if Checks.MemberOf
     end
 
-    policy action([:send, :withdraw]) do
+    policy action([:send, :export, :withdraw]) do
       authorize_if {Checks.PowerIn, side: :from}
     end
 
-    policy action([:accept, :decline]) do
+    policy action([:accept, :decline, :import]) do
       authorize_if {Checks.PowerIn, side: :to}
     end
   end
@@ -104,22 +127,33 @@ defmodule Rescord.Transfers.Transfer do
     uuid_primary_key :id
 
     attribute :from_organisation_id, :uuid do
-      allow_nil? false
       public? true
       writable? false
+      description "The refuge that sent it, on this server, or none for an import"
     end
 
     attribute :to_organisation_id, :uuid do
-      allow_nil? false
       public? true
       writable? false
+      description "The refuge that receives it, on this server, or none for an export"
+    end
+
+    attribute :remote_partner_id, :uuid do
+      public? true
+      writable? false
+      description "The partner on another server, for an export or an import (ADR 0043)"
+    end
+
+    attribute :export_id, :uuid do
+      public? true
+      writable? false
+      description "The id of the transfer at the refuge that exported it, for an import"
     end
 
     attribute :resident_id, :uuid do
-      allow_nil? false
       public? true
       writable? false
-      description "The resident in the schema of the refuge that sent it"
+      description "The resident in the schema of the refuge that sent it, on this server"
     end
 
     attribute :resident_name, :string do
@@ -153,7 +187,7 @@ defmodule Rescord.Transfers.Transfer do
       default :sent
       public? true
       writable? false
-      constraints one_of: [:sent, :accepted, :declined, :withdrawn]
+      constraints one_of: [:sent, :accepted, :declined, :withdrawn, :exported]
     end
 
     attribute :sent_by_id, :uuid, public?: true, writable?: false
@@ -164,6 +198,12 @@ defmodule Rescord.Transfers.Transfer do
   end
 
   relationships do
+    belongs_to :remote_partner, Rescord.Transfers.RemotePartner do
+      public? true
+      define_attribute? false
+      source_attribute :remote_partner_id
+    end
+
     belongs_to :from_organisation, Rescord.Accounts.Organisation do
       public? true
       define_attribute? false
@@ -175,5 +215,11 @@ defmodule Rescord.Transfers.Transfer do
       define_attribute? false
       source_attribute :to_organisation_id
     end
+  end
+
+  identities do
+    # A file imports one time: the second import of it is refused.
+    identity :one_import, [:to_organisation_id, :export_id],
+      message: "is a transfer file that this refuge imported already"
   end
 end

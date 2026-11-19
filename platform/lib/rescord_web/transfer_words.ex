@@ -37,22 +37,41 @@ defmodule RescordWeb.TransferWords do
   def state(:ended), do: {"Ended", "none"}
   def state(:sent), do: {"Waits for an answer", "info"}
   def state(:withdrawn), do: {"Withdrawn", "none"}
+  def state(:exported), do: {"Exported to a file", "ok"}
+  def state(:active), do: {"Active", "ok"}
 
   @doc "A date of a copy, in words, or `nil`."
   def date(nil), do: nil
-  def date(text) when is_binary(text), do: text |> Date.from_iso8601!() |> ResidentWords.date()
+
+  def date(text) when is_binary(text) do
+    case Date.from_iso8601(text) do
+      {:ok, date} -> ResidentWords.date(date)
+      _bad -> nil
+    end
+  end
+
+  def date(_other), do: nil
 
   @doc "An instant of a copy, in words, in the time zone `zone`."
   def time(text, zone) when is_binary(text) do
-    {:ok, instant, _offset} = DateTime.from_iso8601(text)
-    instant |> DateTime.shift_zone!(zone, Tz.TimeZoneDatabase) |> JournalWords.time()
+    case DateTime.from_iso8601(text) do
+      {:ok, instant, _offset} ->
+        instant |> DateTime.shift_zone!(zone, Tz.TimeZoneDatabase) |> JournalWords.time()
+
+      _bad ->
+        nil
+    end
   end
+
+  def time(_text, _zone), do: nil
 
   @doc "A value of a copy that is a key of Rescord, such as `in_care`, in words."
   def value(nil), do: nil
 
   def value(text) when is_binary(text),
     do: text |> String.replace("_", " ") |> String.capitalize()
+
+  def value(_other), do: nil
 
   @doc "The facts of an entry of a copy, in one line, or `nil`."
   def facts(%{"kind" => "measurement", "facts" => f}) do
