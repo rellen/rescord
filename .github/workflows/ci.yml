@@ -1,0 +1,71 @@
+# The checks of each push to main and of each pull request (ADR 0047). They
+# run inside the devenv shell, so CI has the toolchain of devenv.lock, its
+# PostgreSQL 18, and the Playwright of nixpkgs for the browser tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Format, compile and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+
+      - name: Install devenv
+        run: nix profile install nixpkgs#devenv
+
+      - name: Restore the dependencies and the build
+        uses: actions/cache@v4
+        with:
+          path: |
+            platform/deps
+            platform/_build
+          key: mix-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-${{ github.sha }}
+          restore-keys: |
+            mix-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-
+
+      - name: Build the devenv shell
+        run: devenv shell -- elixir --version
+
+      - name: Start PostgreSQL
+        timeout-minutes: 5
+        run: |
+          devenv processes up -d
+          devenv shell -- bash -c 'until pg_isready -h 127.0.0.1 -p 5432; do sleep 1; done'
+
+      - name: Fetch the dependencies
+        run: devenv shell -- bash -c 'cd platform && mix deps.get'
+
+      - name: Check the format
+        run: devenv shell -- bash -c 'cd platform && mix format --check-formatted'
+
+      - name: Check that each locked dependency is used
+        run: devenv shell -- bash -c 'cd platform && mix deps.unlock --check-unused'
+
+      - name: Compile with the test support, with no warning
+        run: devenv shell -- bash -c 'cd platform && MIX_ENV=test mix compile --warnings-as-errors'
+
+      - name: Test
+        timeout-minutes: 30
+        run: devenv shell -- bash -c 'cd platform && mix test'

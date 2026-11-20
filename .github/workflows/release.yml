@@ -1,0 +1,137 @@
+# A release (ADR 0047), for a tag such as v0.1.0 that names the version of
+# platform/mix.exs. It publishes:
+#
+#   * the image, for amd64 and arm64, at ghcr.io/<owner>/rescord with the
+#     tags of the version and `latest`;
+#   * a tarball of the release for each architecture, with SHA256SUMS, on a
+#     GitHub release whose notes are the section of CHANGELOG.md.
+#
+# The flake is checked first. The arm64 builds run under QEMU on a runner of
+# amd64, which each plan of GitHub has: slower, and nothing waits for a
+# runner that the account does not have.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: The tag names the version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: version
+        run: |
+          version=$(sed -nE 's/^ +version: "([^"]+)",$/\1/p' platform/mix.exs | head -1)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag $GITHUB_REF_NAME does not name the version $version of platform/mix.exs."
+            exit 1
+          fi
+          if ! grep -q "^## $version " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section for $version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  nix:
+    name: Nix
+    needs: version
+    uses: ./.github/workflows/nix.yml
+
+  image:
+    name: Image
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: platform
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
+
+  tarball:
+    name: Tarball (${{ matrix.arch }})
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the tarball
+        run: scripts/release-tarball.sh ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball-${{ matrix.arch }}
+          path: dist/rescord-linux-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    needs: [version, nix, image, tarball]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tarball-*
+          path: dist
+          merge-multiple: true
+      - name: Write the checksums and the notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          (cd dist && sha256sum rescord-linux-*.tar.gz > SHA256SUMS && cat SHA256SUMS)
+          awk -v heading="## $VERSION " '
+            /^## / { inside = (index($0, heading) == 1); next }
+            inside
+          ' CHANGELOG.md > notes.md
+          test -s notes.md
+          {
+            echo
+            echo "The image: \`ghcr.io/${GITHUB_REPOSITORY}:${VERSION}\`."
+            echo "[docs/self-hosting.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/self-hosting.md) says how to install it."
+          } >> notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag --title "Rescord $VERSION" --notes-file notes.md

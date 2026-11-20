@@ -1,0 +1,46 @@
+# `nix flake check` (ADR 0044, ADR 0047): the Nix package, and a NixOS test of
+# the module that starts Rescord with PostgreSQL. It runs when a file that
+# the package reads for its dependencies changes, and for each release.
+name: Nix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - flake.nix
+      - flake.lock
+      - nix/**
+      - platform/mix.exs
+      - platform/mix.lock
+      - platform/rel/**
+      - platform/config/**
+      - .github/workflows/nix.yml
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: nix flake check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      # The NixOS test runs a virtual machine, which is slow without KVM.
+      - name: Let the runner use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            system-features = nixos-test benchmark big-parallel kvm
+
+      - name: Check the flake
+        run: nix flake check -L

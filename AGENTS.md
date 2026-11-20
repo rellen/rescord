@@ -54,6 +54,12 @@ scripts/release-tarball.sh amd64 arm64     # the tarballs in dist/, with Docker 
 After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
 `nix/package.nix` again: `nix build` prints the new one.
 
+CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
+ADR 0047). To release a version: change `version` in `platform/mix.exs`, add
+its section at the top of `CHANGELOG.md`, commit both on `main`, and push a
+tag such as `v0.2.0`. `release.yml` then checks the flake, and publishes the
+image, the tarballs and the GitHub release.
+
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
 too.
@@ -382,4 +388,6 @@ too.
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
 | `scripts/release-tarball.sh` | the tarballs of the release |
 | `docs/self-hosting.md` | the guide for an operator |
+| `.github/workflows/` | CI, the flake check, and the release (ADR 0047) |
+| `CHANGELOG.md` | the changes of each release, which become its notes |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |

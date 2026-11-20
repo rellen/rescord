@@ -473,8 +473,8 @@ from GitHub, pinned to a commit (ADR 0005).
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
   share lives (ADR 0009, "Signals and workflows").
-- CI, and how a cloud session (which runs as root, where devenv's PostgreSQL
-  cannot start) gets a toolchain and a database.
+- How a cloud session (which runs as root, where devenv's PostgreSQL cannot
+  start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
 - The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice
   filter and the pages.
 - Whether a hook that a component writes next to its markup
