@@ -96,7 +96,7 @@ defmodule Rescord.MixProject do
       # The browser tests (ADR 0023).
       {:phoenix_test, "~> 0.14.0", only: :test, runtime: false},
       {:phoenix_test_playwright, "~> 0.19.0", only: :test, runtime: false},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).
       {:shoddy, github: "rellen/shoddy", ref: "58576812c69bc75c95ecef7851b53bf937f41edb"},
@@ -112,7 +112,7 @@ defmodule Rescord.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3.1"},
       {:bandit, "~> 1.5"}
     ]
   end
