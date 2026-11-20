@@ -3,6 +3,20 @@
 Each release of Rescord has a section here. The release workflow puts the
 section of a version in the notes of its GitHub release (ADR 0047).
 
+## Unreleased
+
+- Security: Phoenix LiveView 1.2.14. In 1.2.13, a join of a page without a
+  URL skipped the `on_mount` hooks of its `live_session`, which find the
+  member and the role on the pages of an organisation.
+- `bin/check` says whether a server is ready: the database, the
+  migrations, the store, the SMTP server, and a test email.
+- Backups each day in each way of installing, and `bin/restore` to put one
+  back.
+- Each release now tests an upgrade from the last release, with its data,
+  before it publishes anything.
+- CI fails on a dependency with a security advisory, and Dependabot
+  proposes updates each week.
+
 ## 0.1.0 - 2026-11-20
 
 The first release, for a rescue that runs Rescord on a server of its own.

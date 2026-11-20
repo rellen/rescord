@@ -45,6 +45,7 @@ docker build -t rescord:local platform     # the image
 nix build .#rescord                        # the Nix package
 nix flake check                            # the package and a NixOS test of the module
 scripts/release-tarball.sh amd64 arm64     # the tarballs in dist/, with Docker buildx
+scripts/upgrade-test.sh OLD_IMAGE NEW_IMAGE  # an upgrade with its data, as the release runs it (ADR 0051)
 ```
 
 After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
@@ -390,7 +391,7 @@ too.
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin` (ADR 0044) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup` and `restore` (ADR 0044, ADR 0049, ADR 0050) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
 | `scripts/release-tarball.sh` | the tarballs of the release |
