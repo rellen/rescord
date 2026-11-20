@@ -243,19 +243,15 @@ The first resource in the schema of an organisation needs
   sign-out, and after a change to the root grant or the role of the user.
   Each page then connects again with the user as the user is now.
 
-- **The email goes through Postmark, with the SMTP adapter of Swoosh** (the
-  maintainer, 15 November 2026). The adapter needs the package `gen_smtp`.
-  Postmark takes SMTP at `smtp.postmarkapp.com` on port 587 with STARTTLS.
-  The name and the password are the API token of the Postmark server, or the
-  two keys of an SMTP token. They come from the environment at run time, and
-  never from a file in the repository.
+- **The email goes through an SMTP server that the operator names**, with
+  the SMTP adapter of Swoosh and `gen_smtp` (ADR 0044). Postmark is one such
+  server, and a mail host of the refuge is another. The settings come from
+  the environment at run time, and never from a file in the repository.
+  `Rescord.Mailer.smtp_options/1` turns them into the options of the
+  adapter, and with TLS the client checks the certificate of the server.
 - **A page names its organisation in the path** (the maintainer, 15
   November 2026), and not in a subdomain. One host and one certificate serve
   each organisation.
-
-The mailer is not set up for production yet. `config/config.exs` names the
-local adapter of Swoosh for each environment, and `config/prod.exs` stops its
-store, so a release sends no email today.
 
 The path starts with `/o/` and then the short name of the organisation, for
 example `/o/wattle-creek/residents` (the maintainer, 15 November 2026). The
@@ -369,8 +365,9 @@ on the action, inside the task of ADR 0019. The numbers are not decided.
 **A file is in a store that is compatible with S3, and its record is in the
 schema of the organisation** (ADR 0038, ADR 0041). `Rescord.Storage` is the
 behaviour, and the configuration names the store: `Rescord.Storage.S3`,
-with `req_s3`, for Garage in development and Tigris in production, and
-`Rescord.Storage.Disk` in the tests. Each key starts with the id of the
+with `req_s3`, for Garage in development and any service that is compatible
+with S3 in production, and `Rescord.Storage.Disk`, a directory, in the tests
+and by default in production (ADR 0044). Each key starts with the id of the
 organisation, and no part of it comes from what a person sends. A person
 reads a file through a controller that asks the policy, and the answer
 names the type that Rescord found in the first bytes of the file.
@@ -426,6 +423,16 @@ is not in `:grant_sources` has no grants.
 Not decided yet: whether a grant can name one record or a group of fields. The rule above stays whatever the answer: a
 refused read is empty and not an error, so a test that reads asserts a
 non-empty result.
+
+## Releases
+
+**A rescue runs Rescord on a server of its own** (ADR 0044). One `mix
+release` goes out as a Docker image with a Compose file, a Nix package with
+a NixOS module, and a tarball with a systemd unit. `Rescord.Release`
+migrates the database and each schema of an organisation, and makes the
+first root user, with no Mix. Each package migrates before each start.
+Each setting comes from the environment, and `docs/self-hosting.md` lists
+them. `GET /health` says whether the database answers.
 
 ## Libraries
 

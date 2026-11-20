@@ -25,6 +25,13 @@ mix setup                 # deps, database (ash.setup), assets
 iex -S mix phx.server     # http://localhost:4000
 ```
 
+## Self-hosting
+
+A rescue runs Rescord on a server of its own: with Docker Compose, on
+NixOS, or from a tarball with systemd. [`docs/self-hosting.md`](docs/self-hosting.md)
+says what the server needs, how to install, each setting, and how to back
+up and upgrade.
+
 Conventions are in [`AGENTS.md`](AGENTS.md), the design in
 [`docs/architecture.md`](docs/architecture.md), and each decision in
 [`docs/adr/`](docs/adr/).

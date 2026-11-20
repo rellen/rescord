@@ -1,0 +1,47 @@
+# The systemd unit of Rescord from the tarball (ADR 0044). Unpack the
+# tarball into /opt/rescord, put the settings in /etc/rescord/rescord.env
+# (mode 0600: it holds the secrets), and run:
+#
+#   useradd --system --home /var/lib/rescord --shell /usr/sbin/nologin rescord
+#   cp rescord.service /etc/systemd/system/
+#   systemctl enable --now rescord
+#
+# Each start runs the migrations that have not run, then the server.
+[Unit]
+Description=Rescord
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=rescord
+Group=rescord
+EnvironmentFile=/etc/rescord/rescord.env
+Environment=RESCORD_STORAGE=disk
+Environment=RESCORD_FILES_DIR=/var/lib/rescord/files
+Environment=RESCORD_LISTEN_ADDRESS=127.0.0.1
+Environment=RELEASE_DISTRIBUTION=none
+Environment=LANG=C.UTF-8
+StateDirectory=rescord rescord/files
+WorkingDirectory=/var/lib/rescord
+ExecStartPre=/opt/rescord/bin/migrate
+ExecStart=/opt/rescord/bin/server
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

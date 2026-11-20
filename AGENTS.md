@@ -42,6 +42,18 @@ mix precommit                     # compile --warnings-as-errors, unlock unused 
 mix usage_rules.sync              # write platform/AGENTS.md again, after a change to the deps
 ```
 
+The packages of a release (ADR 0044), from the root of the repository:
+
+```sh
+docker build -t rescord:local platform     # the image
+nix build .#rescord                        # the Nix package
+nix flake check                            # the package and a NixOS test of the module
+scripts/release-tarball.sh amd64 arm64     # the tarballs in dist/, with Docker buildx
+```
+
+After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
+`nix/package.nix` again: `nix build` prints the new one.
+
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
 too.
@@ -365,4 +377,9 @@ too.
 | `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin` (ADR 0044) |
+| `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
+| `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
+| `scripts/release-tarball.sh` | the tarballs of the release |
+| `docs/self-hosting.md` | the guide for an operator |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |
