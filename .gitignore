@@ -19,3 +19,7 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+
+# The tarballs of scripts/release-tarball.sh, and the link of nix build.
+/dist
+/result

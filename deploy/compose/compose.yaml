@@ -1,0 +1,62 @@
+# Rescord with Docker Compose (ADR 0044): the server, PostgreSQL 18, and
+# Caddy, which gives the server HTTPS. Copy `env.example` to `.env`, fill it
+# in, and run:
+#
+#   docker compose up -d
+#   docker compose exec rescord bin/bootstrap-root you@example.org
+#
+# `docs/self-hosting.md` explains each setting.
+
+name: rescord
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rescord
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?give POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: rescord
+    volumes:
+      - db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "rescord", "-d", "rescord"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rescord:
+    image: ${RESCORD_IMAGE:-rescord:local}
+    build: ../../platform
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: ecto://rescord:${POSTGRES_PASSWORD}@db/rescord
+      RESCORD_FILES_DIR: /var/lib/rescord/files
+    volumes:
+      - files:/var/lib/rescord/files
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - rescord
+    environment:
+      PHX_HOST: ${PHX_HOST:?give PHX_HOST in .env}
+      CADDY_TLS: ${CADDY_TLS:?give CADDY_TLS in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db:
+  files:
+  caddy_data:
+  caddy_config:

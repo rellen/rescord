@@ -1,0 +1,12 @@
+# What the image of Rescord does not need (ADR 0044).
+_build/
+deps/
+cover/
+doc/
+tmp/
+test/
+priv/static/assets/
+assets/node_modules/
+erl_crash.dump
+.elixir_ls/
+*.ez

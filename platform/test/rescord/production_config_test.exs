@@ -26,7 +26,7 @@ defmodule Rescord.ProductionConfigTest do
   @optional ~w(RESCORD_STORAGE RESCORD_S3_ENDPOINT RESCORD_S3_REGION RESCORD_S3_BUCKET
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
-               RESCORD_MAIL_FROM_NAME PHX_SERVER)
+               RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS)
 
   setup do
     names = Map.keys(@required) ++ @optional
@@ -62,6 +62,7 @@ defmodule Rescord.ProductionConfigTest do
     assert mailer[:auth] == :never
 
     assert config[:rescord][RescordWeb.Endpoint][:url][:host] == "rescord.example.org"
+    assert config[:rescord][RescordWeb.Endpoint][:http][:ip] == {0, 0, 0, 0}
   end
 
   test "an S3 store needs its endpoint, and has no default service" do
@@ -90,6 +91,18 @@ defmodule Rescord.ProductionConfigTest do
       System.delete_env(name)
 
       assert_raise System.EnvError, ~r/#{name}/, fn -> read(Map.delete(@required, name)) end
+    end
+  end
+
+  test "the web server listens on the address of the setting" do
+    config = read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "127.0.0.1"))
+    assert config[:rescord][RescordWeb.Endpoint][:http][:ip] == {127, 0, 0, 1}
+
+    config = read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "::"))
+    assert config[:rescord][RescordWeb.Endpoint][:http][:ip] == {0, 0, 0, 0, 0, 0, 0, 0}
+
+    assert_raise ArgumentError, ~r/RESCORD_LISTEN_ADDRESS/, fn ->
+      read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "localhost"))
     end
   end
 

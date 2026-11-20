@@ -145,17 +145,27 @@ if config_env() == :prod do
   # rescord.example.org. A reverse proxy in front of Rescord gives HTTPS.
   host = Shoddy.Env.string("PHX_HOST")
 
+  # The address that the web server listens on (ADR 0044): 0.0.0.0, each
+  # address of IPv4, by default, because a container often has no IPv6.
+  # "127.0.0.1" for a reverse proxy on the same machine, and "::" for each
+  # address of IPv6 and IPv4.
+  listen_text = Shoddy.Env.string("RESCORD_LISTEN_ADDRESS", default: "0.0.0.0")
+
+  listen_address =
+    case :inet.parse_address(String.to_charlist(listen_text)) do
+      {:ok, address} ->
+        address
+
+      {:error, _reason} ->
+        raise ArgumentError,
+              "the environment variable \"RESCORD_LISTEN_ADDRESS\" is not an IP address: #{inspect(listen_text)}"
+    end
+
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :rescord, RescordWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
-    http: [
-      # Enable IPv6 and bind on all interfaces.
-      # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
-      # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
-    ],
+    http: [ip: listen_address],
     secret_key_base: secret_key_base
 
   config :ash,

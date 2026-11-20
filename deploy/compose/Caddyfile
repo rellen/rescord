@@ -1,0 +1,10 @@
+# Caddy gives Rescord HTTPS (ADR 0044). CADDY_TLS in .env is one of:
+#   - an email address: for a name that the public internet can reach,
+#     Caddy asks Let's Encrypt for a certificate, with that address;
+#   - "internal": for a server on a private network alone, Caddy makes its
+#     own certificate, which each browser must trust one time.
+{$PHX_HOST} {
+	tls {$CADDY_TLS}
+	encode zstd gzip
+	reverse_proxy rescord:4000
+}
