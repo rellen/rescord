@@ -60,6 +60,9 @@ jobs:
       - name: Check the format
         run: devenv shell -- bash -c 'cd platform && mix format --check-formatted'
 
+      - name: Check the dependencies for advisories and retirements
+        run: devenv shell -- bash -c 'cd platform && mix hex.audit'
+
       - name: Check that each locked dependency is used
         run: devenv shell -- bash -c 'cd platform && mix deps.unlock --check-unused'
 

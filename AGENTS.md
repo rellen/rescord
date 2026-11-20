@@ -248,6 +248,10 @@ too.
   Read what `mix deps.get` prints, each time: it names a package with a
   security advisory (`VULNERABLE!`) or a retired one (`RETIRED!`). Update
   such a package, or say why it stays.
+  CI runs `mix hex.audit`, which fails on either (ADR 0048). An advisory that
+  cannot reach Rescord goes in `hex: [ignore_advisories: ...]` in `mix.exs`,
+  with the reason and when to take it out. A change to `mix.lock` also
+  changes the hash of `fetchMixDeps` in `nix/package.nix`.
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).

@@ -64,7 +64,10 @@ COPY --from=tarball-build /dist/ /
 
 FROM ${RUNNER_IMAGE} AS image
 
+# The base image has a date; the upgrade takes the security fixes of Debian
+# since then, at each build (ADR 0048).
 RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
   && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 locales ca-certificates curl \
   && rm -rf /var/lib/apt/lists/* \

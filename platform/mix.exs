@@ -14,6 +14,12 @@ defmodule Rescord.MixProject do
       compilers: [:boundary, :phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       releases: releases(),
+      # `mix hex.audit` runs in CI and fails on an advisory (ADR 0048).
+      # EEF-CVE-2026-117656 is in the Sign in with Apple code of assent 0.2,
+      # which ash_authentication 4.15 locks below 0.3. Rescord has no OAuth
+      # strategy and never calls that code. Take this out when
+      # ash_authentication allows assent 0.3.2 or later.
+      hex: [ignore_advisories: ["EEF-CVE-2026-117656"]],
       consolidate_protocols: Mix.env() != :dev
     ]
   end
