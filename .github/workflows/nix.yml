@@ -1,11 +1,23 @@
 # `nix flake check` (ADR 0044, ADR 0047): the Nix package, and a NixOS test of
 # the module that starts Rescord with PostgreSQL. It runs when a file that
-# the package reads for its dependencies changes, and for each release.
+# the package reads for its dependencies changes, on main and in a pull
+# request, and for each release. A pull request of Dependabot that changes
+# platform/mix.lock fails here until the hash in nix/package.nix follows.
 name: Nix
 
 on:
   push:
     branches: [main]
+    paths:
+      - flake.nix
+      - flake.lock
+      - nix/**
+      - platform/mix.exs
+      - platform/mix.lock
+      - platform/rel/**
+      - platform/config/**
+      - .github/workflows/nix.yml
+  pull_request:
     paths:
       - flake.nix
       - flake.lock
