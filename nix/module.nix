@@ -48,16 +48,21 @@ let
     DATABASE_URL = "ecto://rescord@localhost/rescord?socket_dir=/run/postgresql";
   }
   // cfg.settings;
-  # `rescord-bootstrap-root you@example.org`, as root: the first root user,
-  # with the environment of the service.
-  bootstrapRoot = pkgs.writeShellScriptBin "rescord-bootstrap-root" ''
-    exec ${config.systemd.package}/bin/systemd-run --quiet --pipe --wait --collect \
-      --property=DynamicUser=yes --property=User=rescord --property=Group=rescord \
-      --property=StateDirectory=rescord \
-      ${lib.optionalString (cfg.environmentFile != null) "--property=EnvironmentFile=${cfg.environmentFile}"} \
-      ${lib.concatMapStringsSep " " (name: "--setenv=${lib.escapeShellArg "${name}=${environment.${name}}"}") (lib.attrNames environment)} \
-      ${cfg.package}/bin/bootstrap-root "$@"
-  '';
+  # A command of the release, run as root with the user and the environment of
+  # the service: `rescord-bootstrap-root you@example.org` makes the first root
+  # user, and `rescord-check [you@example.org]` checks the server (ADR 0049).
+  releaseCommand =
+    commandName: command:
+    pkgs.writeShellScriptBin commandName ''
+      exec ${config.systemd.package}/bin/systemd-run --quiet --pipe --wait --collect \
+        --property=DynamicUser=yes --property=User=rescord --property=Group=rescord \
+        --property=StateDirectory="rescord rescord/files" \
+        ${lib.optionalString (cfg.environmentFile != null) "--property=EnvironmentFile=${cfg.environmentFile}"} \
+        ${lib.concatMapStringsSep " " (name: "--setenv=${lib.escapeShellArg "${name}=${environment.${name}}"}") (lib.attrNames environment)} \
+        ${cfg.package}/bin/${command} "$@"
+    '';
+  bootstrapRoot = releaseCommand "rescord-bootstrap-root" "bootstrap-root";
+  check = releaseCommand "rescord-check" "check";
 in
 {
   options.services.rescord = {
@@ -147,7 +152,10 @@ in
       }
     ];
 
-    environment.systemPackages = [ bootstrapRoot ];
+    environment.systemPackages = [
+      bootstrapRoot
+      check
+    ];
 
     services.postgresql = mkIf cfg.database.createLocally {
       enable = true;

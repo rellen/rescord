@@ -1,0 +1,26 @@
+#!/bin/sh
+# Checks that Rescord is ready before it goes live (ADR 0049): the
+# database, the migrations, the store and the SMTP server. With an email
+# address, it also sends a test email to it.
+#   bin/check
+#   bin/check you@example.org
+# It exits with 1 when a check fails.
+set -eu
+
+if [ "$#" -gt 1 ]; then
+  echo "Give at most one email address: bin/check you@example.org" >&2
+  exit 2
+fi
+
+cd -P -- "$(dirname -- "$0")"
+RESCORD_CHECK_ADDRESS="${1:-}" exec ./rescord eval '
+  address =
+    case System.get_env("RESCORD_CHECK_ADDRESS") do
+      "" -> nil
+      address -> address
+    end
+
+  case Rescord.Release.check(address) do
+    :ok -> :ok
+    :error -> System.halt(1)
+  end'

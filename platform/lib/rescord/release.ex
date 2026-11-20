@@ -16,6 +16,9 @@ defmodule Rescord.Release do
   before it does anything: `config/runtime.exs` reads each one
   (`docs/self-hosting.md` lists them).
 
+  `check/1` checks that the server is ready before it goes live
+  (`Rescord.Release.Check`, ADR 0049). `bin/check` runs it.
+
   `bootstrap_root/1` makes the first root user (`docs/domain.md`, section
   5.1). It does nothing when a root user exists.
   """
@@ -76,6 +79,25 @@ defmodule Rescord.Release do
       {:error, error} ->
         IO.puts("The root user was not made: #{Exception.message(error)}")
         {:error, error}
+    end
+  end
+
+  @doc """
+  Checks the database, the migrations, the store and the SMTP server, and
+  with an address sends a test email to it. Prints a line for each check.
+  """
+  @spec check(String.t() | nil) :: :ok | :error
+  def check(address \\ nil) do
+    load_app()
+    results = Rescord.Release.Check.run(address)
+    IO.puts(Rescord.Release.Check.format(results))
+
+    if Rescord.Release.Check.passed?(results) do
+      IO.puts("\nRescord is ready.")
+      :ok
+    else
+      IO.puts("\nFix each FAIL, and run bin/check again.")
+      :error
     end
   end
 

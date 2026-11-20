@@ -46,7 +46,14 @@ Nix an access token for `github.com`.
    docker compose up -d
    ```
 
-5. Make the first root user, and ask for a sign-in link on the sign-in page:
+5. Check the server, with your own address for a test email (see "Check
+   the server" below):
+
+   ```sh
+   docker compose exec rescord bin/check you@example.org
+   ```
+
+6. Make the first root user, and ask for a sign-in link on the sign-in page:
 
    ```sh
    docker compose exec rescord bin/bootstrap-root you@example.org
@@ -97,10 +104,12 @@ root reads, and never in the configuration: the configuration is in the Nix
 store, which each user of the machine reads. A tool such as sops-nix or
 agenix can make that file.
 
-The module installs `rescord-bootstrap-root`, which makes the first root
-user with the environment of the service. Run it as root:
+The module installs `rescord-check`, which checks the server (see "Check
+the server" below), and `rescord-bootstrap-root`, which makes the first
+root user. Each runs with the environment of the service. Run them as root:
 
 ```sh
+rescord-check you@example.org
 rescord-bootstrap-root you@example.org
 ```
 
@@ -151,15 +160,50 @@ sha256sum --check --ignore-missing SHA256SUMS
    default; nginx does with `proxy_set_header X-Forwarded-For
    $proxy_add_x_forwarded_for;` and the headers for WebSocket. A proxy on
    another machine goes in `RESCORD_TRUSTED_PROXIES`.
-6. Make the first root user, with the settings of the service:
+6. Check the server (see "Check the server" below), and make the first root
+   user, each with the settings of the service:
 
    ```sh
-   sudo systemd-run --pipe --wait --uid=rescord \
-     --property=EnvironmentFile=/etc/rescord/rescord.env \
-     --setenv=RESCORD_FILES_DIR=/var/lib/rescord/files \
-     --setenv=RELEASE_DISTRIBUTION=none \
-     /opt/rescord/bin/bootstrap-root you@example.org
+   rescord() {
+     sudo systemd-run --quiet --pipe --wait --uid=rescord \
+       --property=EnvironmentFile=/etc/rescord/rescord.env \
+       --setenv=RESCORD_FILES_DIR=/var/lib/rescord/files \
+       --setenv=RELEASE_DISTRIBUTION=none \
+       "/opt/rescord/bin/$@"
+   }
+   rescord check you@example.org
+   rescord bootstrap-root you@example.org
    ```
+
+## Check the server
+
+`bin/check` checks that the server is ready, before you go live and after
+you change a setting. It prints a line for each check, and exits with 1
+when one fails:
+
+```text
+ok    database   PostgreSQL 18.1
+ok    migrations each migration has run
+ok    store      the directory /var/lib/rescord/files takes, gives back and deletes a file
+ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and the user rescord
+ok    email      sent to you@example.org: look for it in that inbox, and in its spam
+
+Rescord is ready.
+```
+
+- **database**: Rescord reaches the database of `DATABASE_URL`, which is
+  PostgreSQL 18 or later.
+- **migrations**: a note, and no fault, when some have not run: the next
+  start runs them.
+- **store**: Rescord puts a small file in the store, reads it, and deletes
+  it.
+- **mail**: the SMTP server takes the connection, the TLS and the user of
+  the settings. This check sends nothing.
+- **email**: with an address, Rescord sends a short email to it. When the
+  email does not arrive, ask the provider of the SMTP server, and check
+  the SPF and DKIM records of the domain of `RESCORD_MAIL_FROM`.
+
+No line shows a password or a key.
 
 ## The settings
 
