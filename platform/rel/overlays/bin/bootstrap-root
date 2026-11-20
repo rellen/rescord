@@ -1,0 +1,12 @@
+#!/bin/sh
+# Makes the first root user of Rescord for an email address (ADR 0044):
+#   bin/bootstrap-root you@example.org
+set -eu
+
+if [ "$#" -ne 1 ]; then
+  echo "Give the email address of the first root user: bin/bootstrap-root you@example.org" >&2
+  exit 2
+fi
+
+cd -P -- "$(dirname -- "$0")"
+RESCORD_ROOT_ADDRESS="$1" exec ./rescord eval 'Rescord.Release.bootstrap_root(System.fetch_env!("RESCORD_ROOT_ADDRESS"))'

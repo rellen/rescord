@@ -13,6 +13,7 @@ defmodule Rescord.MixProject do
       usage_rules: usage_rules(),
       compilers: [:boundary, :phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
+      releases: releases(),
       consolidate_protocols: Mix.env() != :dev
     ]
   end
@@ -96,6 +97,8 @@ defmodule Rescord.MixProject do
       {:shoddy_phoenix,
        github: "rellen/shoddy_phoenix", ref: "acb06970c7138063303bdad28a3b2d699fef6e76"},
       {:swoosh, "~> 1.16"},
+      # SMTP for the adapter of Swoosh: each operator names a mail server (ADR 0044).
+      {:gen_smtp, "~> 1.2"},
       {:req, "~> 0.5"},
       # The store of the attachments, compatible with S3 (ADR 0038).
       {:req_s3, "~> 0.2.5"},
@@ -105,6 +108,17 @@ defmodule Rescord.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
+    ]
+  end
+
+  # The release (ADR 0044): the same build for the Docker image, the Nix
+  # package and the tarball. Each one runs `bin/migrate` before `bin/server`.
+  defp releases do
+    [
+      rescord: [
+        include_executables_for: [:unix],
+        applications: [runtime_tools: :permanent]
+      ]
     ]
   end
 

@@ -26,6 +26,11 @@ defmodule RescordWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # The health of the server (ADR 0044): no session, no page.
+  scope "/", RescordWeb do
+    get "/health", HealthController, :show
+  end
+
   scope "/", RescordWeb do
     pipe_through :browser
 

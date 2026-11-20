@@ -92,14 +92,47 @@ if config_env() == :prod do
   config :rescord, Rescord.Transfers.Keys,
     secret: Shoddy.Env.string("RESCORD_KEY_SECRET", min_bytes: 32)
 
-  # The store of the attachments: Tigris, or another service that is
-  # compatible with S3 (ADR 0038).
-  config :rescord, Rescord.Storage.S3,
-    endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT", default: "https://t3.storage.dev"),
-    region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
-    bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
-    access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
-    secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
+  # The store of the attachments (ADR 0038 and ADR 0044): a directory of
+  # this machine, or a service that is compatible with S3. Each setting of
+  # the chosen store is required, and there is no default service.
+  storage =
+    Shoddy.Env.one_of("RESCORD_STORAGE", [disk: Rescord.Storage.Disk, s3: Rescord.Storage.S3],
+      default: Rescord.Storage.Disk
+    )
+
+  config :rescord, :storage, storage
+
+  case storage do
+    Rescord.Storage.Disk ->
+      config :rescord, Rescord.Storage.Disk, root: Shoddy.Env.string("RESCORD_FILES_DIR")
+
+    Rescord.Storage.S3 ->
+      config :rescord, Rescord.Storage.S3,
+        endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT"),
+        region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
+        bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
+        access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
+        secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
+  end
+
+  # The mail: the sign-in links and the invitations go through the SMTP
+  # server that the operator names (ADR 0044). The user and the password
+  # are for a server that asks for them.
+  config :rescord, :mail_from, {
+    Shoddy.Env.string("RESCORD_MAIL_FROM_NAME", default: "Rescord"),
+    Shoddy.Env.string("RESCORD_MAIL_FROM")
+  }
+
+  config :rescord,
+         Rescord.Mailer,
+         Rescord.Mailer.smtp_options(%{
+           host: Shoddy.Env.string("RESCORD_SMTP_HOST"),
+           port: Shoddy.Env.integer("RESCORD_SMTP_PORT", default: 587, min: 1, max: 65_535),
+           username: Shoddy.Env.string("RESCORD_SMTP_USERNAME", default: nil),
+           password: Shoddy.Env.string("RESCORD_SMTP_PASSWORD", default: nil),
+           tls:
+             Shoddy.Env.one_of("RESCORD_SMTP_TLS", [:starttls, :tls, :none], default: :starttls)
+         })
 
   secret_key_base = Shoddy.Env.string("SECRET_KEY_BASE", min_bytes: 64)
 
@@ -108,7 +141,9 @@ if config_env() == :prod do
 
   config :rescord, token_signing_secret: token_signing_secret
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # The name of the host in each link that Rescord sends, such as
+  # rescord.example.org. A reverse proxy in front of Rescord gives HTTPS.
+  host = Shoddy.Env.string("PHX_HOST")
 
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

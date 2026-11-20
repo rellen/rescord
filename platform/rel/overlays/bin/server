@@ -1,0 +1,7 @@
+#!/bin/sh
+# Starts Rescord. The Docker image, the NixOS module and the systemd unit run
+# bin/migrate first (ADR 0044).
+set -eu
+
+cd -P -- "$(dirname -- "$0")"
+PHX_SERVER=true exec ./rescord start
