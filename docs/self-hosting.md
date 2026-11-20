@@ -18,6 +18,15 @@ install Rescord, each setting, and how to back up and upgrade.
 - A place for the photos and the PDFs of the journal: a directory of the
   server, or a bucket of a service that is compatible with S3.
 
+## The releases
+
+Each version of Rescord has a tag such as `v0.1.0`, a section in
+`CHANGELOG.md`, the image `ghcr.io/rellen/rescord` with the tag of the
+version, and a GitHub release with the tarballs. The repository is private
+for now, so the image, the releases and the flake need access to it: run
+`docker login ghcr.io` with a token of GitHub that may read packages, and give
+Nix an access token for `github.com`.
+
 ## Install
 
 ### With Docker Compose
@@ -26,6 +35,10 @@ install Rescord, each setting, and how to back up and upgrade.
 
 1. Copy `deploy/compose` to the server, and copy `env.example` to `.env`.
 2. Fill in `.env`. Make each secret with `openssl rand -base64 48`.
+   `RESCORD_IMAGE` names the image of a release, such as
+   `ghcr.io/rellen/rescord:0.1.0`. To build the image yourself, run
+   `docker build -t rescord:local platform` in the repository, and set
+   `RESCORD_IMAGE=rescord:local`.
 3. Point the name of the server at it, and open the ports 80 and 443.
 4. Start Rescord:
 
@@ -47,7 +60,7 @@ Add the flake of Rescord to the flake of the machine:
 
 ```nix
 {
-  inputs.rescord.url = "github:rellen/rescord";
+  inputs.rescord.url = "github:rellen/rescord/v0.1.0";
 
   outputs = { nixpkgs, rescord, ... }: {
     nixosConfigurations.refuge = nixpkgs.lib.nixosSystem {
@@ -98,7 +111,15 @@ without KVM.
 
 The tarball holds the release and its Erlang runtime. It runs on a system
 with glibc 2.36 or later and OpenSSL 3: Debian 12 and later, Ubuntu 24.04
-and later, and Fedora 37 and later. `scripts/release-tarball.sh` builds it.
+and later, and Fedora 37 and later. Each GitHub release of Rescord has the
+tarballs for amd64 and arm64, and `SHA256SUMS`. Check the tarball before you
+unpack it:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+`scripts/release-tarball.sh` builds a tarball from the repository.
 
 1. Install PostgreSQL 18, and make a database and a user:
 
@@ -205,8 +226,13 @@ Rescord.
 ## Upgrade
 
 1. Back up, as above.
-2. Take the new version: `docker compose pull` or a new build, a new input
-   of the flake, or a new tarball unpacked over `/opt/rescord`.
+2. Take the new version. `CHANGELOG.md` says what changed.
+   - With Docker Compose, put the new version in `RESCORD_IMAGE`, and run
+     `docker compose pull`.
+   - On NixOS, put the tag of the new version in the URL of the input, and
+     run `nix flake update rescord`.
+   - From the tarball, stop Rescord, and unpack the new tarball over
+     `/opt/rescord`.
 3. Start Rescord. Each start runs the migrations that have not run, for the
    database and for each organisation, and then the server starts.
 
