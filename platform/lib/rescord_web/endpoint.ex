@@ -49,6 +49,9 @@ defmodule RescordWeb.Endpoint do
     param_key: "request_logger",
     cookie_key: "request_logger"
 
+  # The address of the client behind a reverse proxy (ADR 0046).
+  plug RescordWeb.ClientAddress
+
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 

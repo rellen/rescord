@@ -55,7 +55,9 @@ decisions that the work made on the way.
 - A removed member is archived, and the user can be invited again.
 - The limit of a client counts the address of the connection. Behind a proxy
   that is the address of the proxy: the deployment has to pass the real one.
-  Not decided.
+  Not decided. (Decided later: ADR 0046 takes the address of the client
+  from a trusted proxy.)
 - A release still sends no email (`docs/architecture.md`, "Sign-in and
   organisations"). Until the mailer is set up, the sign-in works in
-  development only, where each email is at `/dev/mailbox`.
+  development only, where each email is at `/dev/mailbox`. (Changed later:
+  ADR 0044 sends the mail through the SMTP server of the operator.)

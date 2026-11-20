@@ -360,6 +360,11 @@ application starts it. A resource names it as the backend in its
 The first use is the request for a sign-in link: a limit for each address
 on the action, inside the task of ADR 0019. The numbers are not decided.
 
+The limit of a client counts the address of the client. Behind a reverse
+proxy, `RescordWeb.ClientAddress` takes it from `X-Forwarded-For`, and
+only when the connection comes from a proxy that the setting
+`RESCORD_TRUSTED_PROXIES` names (ADR 0046).
+
 ### Files
 
 **A file is in a store that is compatible with S3, and its record is in the
@@ -464,8 +469,6 @@ from GitHub, pinned to a commit (ADR 0005).
 
 - The open points of `docs/domain.md`, and so the domains and the pages
   that come after the residents.
-- For the sign-in: the mailer of a release, and how the limit of a client
-  finds the real address behind a proxy (ADR 0022).
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains

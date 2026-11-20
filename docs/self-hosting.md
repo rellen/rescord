@@ -125,7 +125,11 @@ and later, and Fedora 37 and later. `scripts/release-tarball.sh` builds it.
    ```
 
 5. Put a reverse proxy with HTTPS in front of `localhost:4000`. It must pass
-   WebSocket connections through: the pages of Rescord use them.
+   WebSocket connections through, because the pages of Rescord use them, and
+   add the address of the client to `X-Forwarded-For`. Caddy does both by
+   default; nginx does with `proxy_set_header X-Forwarded-For
+   $proxy_add_x_forwarded_for;` and the headers for WebSocket. A proxy on
+   another machine goes in `RESCORD_TRUSTED_PROXIES`.
 6. Make the first root user, with the settings of the service:
 
    ```sh
@@ -148,6 +152,7 @@ take, stop the start with the name of the setting.
 | `PHX_HOST` | yes | | The name of the server in each link that Rescord sends, such as `rescord.example.org`. |
 | `PORT` | no | `4000` | The port of the web server, behind the reverse proxy. |
 | `RESCORD_LISTEN_ADDRESS` | no | `0.0.0.0` | The address that the web server listens on. `127.0.0.1` for a reverse proxy on the same machine, which the NixOS module and the systemd unit set. `::` for IPv6 and IPv4. |
+| `RESCORD_TRUSTED_PROXIES` | no | `127.0.0.0/8, ::1` | The reverse proxies that say the address of each client in `X-Forwarded-For`, as addresses and networks separated by commas. Rescord counts the limits of the sign-in for each client by that address. The default trusts a proxy on the same machine; the Compose file trusts the networks of Docker. |
 | `SECRET_KEY_BASE` | yes | | A secret of 64 bytes or more, which signs the sessions. |
 | `TOKEN_SIGNING_SECRET` | yes | | A secret of 64 bytes or more, which signs the sign-in tokens. |
 | `RESCORD_KEY_SECRET` | yes | | A secret of 32 bytes or more, which guards the private keys of the transfers between servers (ADR 0043). Keep it with the backups. |

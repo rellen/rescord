@@ -27,7 +27,7 @@ defmodule Rescord.ProductionConfigTest do
                RESCORD_S3_ADDRESSING
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
-               RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS)
+               RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES)
 
   @s3 Map.merge(@required, %{
         "RESCORD_STORAGE" => "s3",
@@ -116,6 +116,22 @@ defmodule Rescord.ProductionConfigTest do
 
     assert_raise ArgumentError, ~r/RESCORD_LISTEN_ADDRESS/, fn ->
       read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "localhost"))
+    end
+  end
+
+  test "a proxy on the same machine is trusted, unless the setting names others" do
+    config = read(@required)
+
+    assert config[:rescord][RescordWeb.ClientAddress][:trusted] ==
+             [{{127, 0, 0, 0}, 8}, {{0, 0, 0, 0, 0, 0, 0, 1}, 128}]
+
+    config = read(Map.put(@required, "RESCORD_TRUSTED_PROXIES", "172.16.0.0/12, 10.0.0.1"))
+
+    assert config[:rescord][RescordWeb.ClientAddress][:trusted] ==
+             [{{172, 16, 0, 0}, 12}, {{10, 0, 0, 1}, 32}]
+
+    assert_raise ArgumentError, ~r/RESCORD_TRUSTED_PROXIES.*"172\.16\.0\.0\/40"/, fn ->
+      read(Map.put(@required, "RESCORD_TRUSTED_PROXIES", "127.0.0.1, 172.16.0.0/40"))
     end
   end
 

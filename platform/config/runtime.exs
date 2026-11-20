@@ -162,6 +162,20 @@ if config_env() == :prod do
               "the environment variable \"RESCORD_LISTEN_ADDRESS\" is not an IP address: #{inspect(listen_text)}"
     end
 
+  # The reverse proxies that may say the address of a client (ADR 0046): a
+  # proxy on the same machine by default.
+  trusted_text = Shoddy.Env.string("RESCORD_TRUSTED_PROXIES", default: "127.0.0.0/8, ::1")
+
+  case RescordWeb.ClientAddress.parse_networks(trusted_text) do
+    {:ok, trusted} ->
+      config :rescord, RescordWeb.ClientAddress, trusted: trusted
+
+    {:error, entry} ->
+      raise ArgumentError,
+            "the environment variable \"RESCORD_TRUSTED_PROXIES\" holds #{inspect(entry)}, " <>
+              "which is not an IP address or a network"
+  end
+
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :rescord, RescordWeb.Endpoint,

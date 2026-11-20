@@ -36,6 +36,9 @@ services:
     environment:
       DATABASE_URL: ecto://rescord:${POSTGRES_PASSWORD}@db/rescord
       RESCORD_FILES_DIR: /var/lib/rescord/files
+      # Only Caddy reaches Rescord, over the network of Compose, and it says
+      # the address of each client (ADR 0046).
+      RESCORD_TRUSTED_PROXIES: ${RESCORD_TRUSTED_PROXIES:-10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16}
     volumes:
       - files:/var/lib/rescord/files
 

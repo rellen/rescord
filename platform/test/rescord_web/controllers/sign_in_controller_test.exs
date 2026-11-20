@@ -152,6 +152,31 @@ defmodule RescordWeb.SignInControllerTest do
       conn = ask(conn, %{"email" => unique_address()})
       assert html_response(conn, 429) =~ "Too many requests"
     end
+
+    test "behind a proxy on the same machine, each client has a limit of its own", %{conn: conn} do
+      # Two clients that a proxy on 127.0.0.1 forwards (ADR 0046).
+      [first, second] =
+        for _ <- 1..2 do
+          number = System.unique_integer([:positive])
+          "203.0.#{rem(div(number, 256), 256)}.#{rem(number, 256)}"
+        end
+
+      behind_proxy = fn client ->
+        conn
+        |> Map.put(:remote_ip, {127, 0, 0, 1})
+        |> put_req_header("x-forwarded-for", client)
+      end
+
+      for _ <- 1..20 do
+        assert redirected_to(ask(behind_proxy.(first), %{"email" => unique_address()})) ==
+                 ~p"/sign-in/sent"
+      end
+
+      assert html_response(ask(behind_proxy.(first), %{"email" => unique_address()}), 429)
+
+      assert redirected_to(ask(behind_proxy.(second), %{"email" => unique_address()})) ==
+               ~p"/sign-in/sent"
+    end
   end
 
   describe "a link" do
