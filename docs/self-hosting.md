@@ -237,6 +237,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_S3_ACCESS_KEY_ID` | with `s3` | | The key of a user that may read and write the bucket. |
 | `RESCORD_S3_SECRET_ACCESS_KEY` | with `s3` | | Its secret. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |
+| `RESCORD_BACKUP_KEEP_DAYS` | no | `14` | The number of days that a backup keeps a dump of the database (see "Back up"). |
 | `ECTO_IPV6` | no | `false` | `true` to reach the database over IPv6. |
 
 `GET /health` answers `ok` while Rescord and its database work, and the
@@ -244,32 +245,71 @@ Docker image and the Compose file use it.
 
 ## Back up
 
-A backup of Rescord has three parts. Keep them together, and try a
-restore on another machine one time.
+Each way of installing backs Rescord up by itself, each day (ADR 0050). A
+backup is a dump of the database, with the schema of each organisation,
+and a copy of each new file of the store. A dump is kept for 14 days,
+`RESCORD_BACKUP_KEEP_DAYS`. A bucket of S3 is not copied: keep it with the
+versions of its provider.
 
-1. **The database**, with `pg_dump`. It holds each organisation in a schema
-   of its own, and `pg_dump` takes them all:
+The backups are on the server. Copy them to another place each day too,
+with the secrets: the environment file or `.env`. A backup does not hold
+the secrets, and without `RESCORD_KEY_SECRET`, Rescord cannot open the keys
+of the transfers between servers, and each partner must record a new
+partner card. Try a restore on another machine one time.
 
-   ```sh
-   pg_dump --format=custom --file=rescord.dump rescord
-   # With Docker Compose:
-   docker compose exec -T db pg_dump -U rescord --format=custom rescord > rescord.dump
-   ```
+- **Docker Compose**: the service `backup` backs up into `./backups` when it
+  starts and then each 24 hours. `docker compose run --rm backup now` makes
+  one at once.
+- **NixOS**: the service `rescord-backup` backs up into
+  `/var/lib/rescord-backup` each day. `services.rescord.backup` sets when,
+  and for how many days, or turns it off.
+- **The tarball**: copy `deploy/systemd/rescord-backup.service` and
+  `rescord-backup.timer` to `/etc/systemd/system/`, and run
+  `systemctl enable --now rescord-backup.timer`. It backs up into
+  `/var/lib/rescord-backup`, with the `pg_dump` of PostgreSQL 18.
 
-2. **The files**: the directory of `RESCORD_FILES_DIR`, or the bucket. A
-   file never changes after Rescord writes it, so a copy that adds the new
-   files is enough.
-3. **The secrets**: the environment file or `.env`. Without
-   `RESCORD_KEY_SECRET`, Rescord cannot open the keys of the transfers
-   between servers, and each partner must record a new partner card.
+### Restore
 
-To restore, stop Rescord, restore the database with `pg_restore` into an
-empty database, put the files back, give the same secrets, and start
-Rescord.
+Stop Rescord, give it an empty database with the same name and owner, and
+restore the newest backup, or the dump that you name. Then start Rescord
+with the same secrets.
+
+With Docker Compose:
+
+```sh
+docker compose stop rescord
+docker compose exec db psql -U rescord -d postgres \
+  -c 'DROP DATABASE rescord' -c 'CREATE DATABASE rescord'
+docker compose run --rm backup restore
+docker compose start rescord
+```
+
+On NixOS:
+
+```sh
+systemctl stop rescord
+runuser -u postgres -- dropdb rescord
+runuser -u postgres -- createdb --owner rescord rescord
+rescord-restore /var/lib/rescord-backup
+systemctl start rescord
+```
+
+From the tarball, with the `rescord` function of the install steps:
+
+```sh
+sudo systemctl stop rescord
+sudo -u postgres dropdb rescord
+sudo -u postgres createdb --owner rescord rescord
+rescord restore /var/lib/rescord-backup
+sudo systemctl start rescord
+```
+
+To restore an older dump, give its name after the directory, such as
+`rescord-20261120T020000Z.dump`.
 
 ## Upgrade
 
-1. Back up, as above.
+1. Make a backup, as "Back up" says, and copy it from the server.
 2. Take the new version. `CHANGELOG.md` says what changed.
    - With Docker Compose, put the new version in `RESCORD_IMAGE`, and run
      `docker compose pull`.

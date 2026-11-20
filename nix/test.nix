@@ -3,7 +3,9 @@
 # migrations, starts, answers its health check, and has its directory of
 # files, and `rescord-bootstrap-root` makes the first root user and no
 # second one. `rescord-check` passes each check with the Postfix of the
-# machine, and its test email arrives (ADR 0049).
+# machine, and its test email arrives (ADR 0049). The backup service backs
+# up a root user and a file; with the database and the file gone,
+# `rescord-restore` puts both back (ADR 0050).
 self:
 { ... }:
 {
@@ -49,5 +51,23 @@ self:
     for line in ["ok    database", "ok    migrations", "ok    store", "ok    mail", "ok    email", "Rescord is ready."]:
         assert line in report, f"{line!r} is not in the report:\n{report}"
     machine.wait_until_succeeds("grep -rl 'Rescord can send mail' /var/spool/mail /var/lib/postfix 2>/dev/null", timeout=120)
+
+    machine.succeed("echo 'a file of the store' > /var/lib/rescord/files/probe.txt")
+    machine.succeed("systemctl start rescord-backup.service")
+    machine.succeed("ls /var/lib/rescord-backup/database/rescord-*.dump")
+    machine.succeed("test -f /var/lib/rescord-backup/files/probe.txt")
+
+    # The server loses its database and its file.
+    machine.succeed("systemctl stop rescord.service")
+    machine.succeed("runuser -u postgres -- dropdb rescord")
+    machine.succeed("runuser -u postgres -- createdb --owner rescord rescord")
+    machine.succeed("rm /var/lib/rescord/files/probe.txt")
+
+    machine.succeed("rescord-restore /var/lib/rescord-backup")
+    machine.succeed("systemctl start rescord.service")
+    machine.wait_until_succeeds("curl -fsS http://localhost:4000/health | grep -x ok", timeout=900)
+    status, output = machine.execute("rescord-bootstrap-root third@rescord.test")
+    assert status == 1 and "has a root user already" in output, output
+    machine.succeed("grep -x 'a file of the store' /var/lib/rescord/files/probe.txt")
   '';
 }

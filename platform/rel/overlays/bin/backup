@@ -1,0 +1,56 @@
+#!/bin/sh
+# Backs up Rescord into a directory (ADR 0050):
+#   bin/backup /var/backup/rescord
+#
+# It writes database/rescord-<time>.dump, a dump of the whole database in the
+# custom format of pg_dump, with the schema of each organisation. It copies
+# the files of RESCORD_FILES_DIR into files/, and never writes over a file
+# that is there, because Rescord never changes a file. It deletes each dump
+# older than RESCORD_BACKUP_KEEP_DAYS days, 14 by default.
+#
+# It needs pg_dump of PostgreSQL 18 or later on PATH, and the settings of
+# the server: DATABASE_URL, RESCORD_STORAGE and RESCORD_FILES_DIR. With S3,
+# the bucket is not copied: keep it with the versions of the provider.
+# Keep the secrets of the server with the backups too: without
+# RESCORD_KEY_SECRET, the keys of the transfers do not open.
+set -eu
+
+# Copies each file of $1 that $2 does not have. Rescord never changes a file,
+# so a file that is there is the same. A key has no newline.
+copy_new_files() {
+  (cd "$1" && find . -type f) | while IFS= read -r file; do
+    if [ ! -e "$2/$file" ]; then
+      mkdir -p "$2/$(dirname "$file")"
+      cp -p "$1/$file" "$2/$file"
+    fi
+  done
+}
+
+if [ "$#" -ne 1 ]; then
+  echo "Give the directory of the backups: bin/backup /var/backup/rescord" >&2
+  exit 2
+fi
+
+dest=$1
+keep=${RESCORD_BACKUP_KEEP_DAYS:-14}
+# libpq reads the URL of Ecto, with `host` for the directory of a socket.
+url=$(printf '%s' "${DATABASE_URL:?give DATABASE_URL}" |
+  sed -e 's#^ecto://#postgresql://#' -e 's#socket_dir=#host=#')
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+
+umask 077
+mkdir -p "$dest/database"
+dump="$dest/database/rescord-$stamp.dump"
+pg_dump --format=custom --file="$dump.partial" "$url"
+mv "$dump.partial" "$dump"
+echo "The database is in $dump."
+
+if [ "${RESCORD_STORAGE:-disk}" = disk ] && [ -n "${RESCORD_FILES_DIR:-}" ]; then
+  mkdir -p "$dest/files"
+  copy_new_files "$RESCORD_FILES_DIR" "$dest/files"
+  echo "The files are in $dest/files."
+else
+  echo "The files are in the bucket of S3, which this backup does not copy."
+fi
+
+find "$dest/database" -name 'rescord-*.dump' -mtime +"$keep" -exec rm -f {} +

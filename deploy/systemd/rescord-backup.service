@@ -1,0 +1,33 @@
+# The backup of Rescord from the tarball (ADR 0050), which
+# rescord-backup.timer starts each day. It writes a dump of the database
+# and a copy of the files into /var/lib/rescord-backup, and keeps each dump
+# for RESCORD_BACKUP_KEEP_DAYS days. It needs pg_dump of PostgreSQL 18 or
+# later, which the packages of PostgreSQL 18 install.
+#
+#   cp rescord-backup.service rescord-backup.timer /etc/systemd/system/
+#   systemctl enable --now rescord-backup.timer
+#   systemctl start rescord-backup.service     # a backup now
+#
+# Copy /var/lib/rescord-backup to another place too, with
+# /etc/rescord/rescord.env: the backup does not hold the secrets.
+[Unit]
+Description=Back up Rescord
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=rescord
+Group=rescord
+EnvironmentFile=/etc/rescord/rescord.env
+Environment=RESCORD_STORAGE=disk
+Environment=RESCORD_FILES_DIR=/var/lib/rescord/files
+Environment=RESCORD_BACKUP_KEEP_DAYS=14
+StateDirectory=rescord-backup
+StateDirectoryMode=0700
+ExecStart=/opt/rescord/bin/backup /var/lib/rescord-backup
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077

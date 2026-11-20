@@ -44,6 +44,26 @@ services:
     volumes:
       - files:/var/lib/rescord/files
 
+  # A backup of the database and the files each 24 hours, into ./backups
+  # (ADR 0050). `docker compose run --rm backup now` makes one at once.
+  backup:
+    image: postgres:18
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: rescord
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: rescord
+      RESCORD_BACKUP_KEEP_DAYS: ${RESCORD_BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./backups:/backups
+      - files:/files
+
   caddy:
     image: caddy:2
     restart: unless-stopped

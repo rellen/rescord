@@ -1,0 +1,54 @@
+#!/bin/sh
+# Puts a backup of bin/backup back (ADR 0050):
+#   bin/restore /var/backup/rescord                         # the newest dump
+#   bin/restore /var/backup/rescord rescord-20261120T020000Z.dump
+#
+# Stop Rescord first, and restore into an empty database of the same name
+# and owner. The command restores the database with pg_restore, and copies
+# the files of the backup back into RESCORD_FILES_DIR. Then start Rescord
+# with the same secrets as before.
+#
+# It needs pg_restore of PostgreSQL 18 or later on PATH, and the settings of
+# the server: DATABASE_URL, RESCORD_STORAGE and RESCORD_FILES_DIR.
+set -eu
+
+# Copies each file of $1 that $2 does not have. Rescord never changes a file,
+# so a file that is there is the same. A key has no newline.
+copy_new_files() {
+  (cd "$1" && find . -type f) | while IFS= read -r file; do
+    if [ ! -e "$2/$file" ]; then
+      mkdir -p "$2/$(dirname "$file")"
+      cp -p "$1/$file" "$2/$file"
+    fi
+  done
+}
+
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  echo "Give the directory of the backups, and a dump if not the newest:" >&2
+  echo "  bin/restore /var/backup/rescord [rescord-<time>.dump]" >&2
+  exit 2
+fi
+
+source=$1
+if [ "$#" -eq 2 ]; then
+  dump="$source/database/$2"
+else
+  dump=$(find "$source/database" -name 'rescord-*.dump' | sort | tail -n 1)
+fi
+
+if [ -z "$dump" ] || [ ! -f "$dump" ]; then
+  echo "There is no dump to restore in $source/database." >&2
+  exit 1
+fi
+
+url=$(printf '%s' "${DATABASE_URL:?give DATABASE_URL}" |
+  sed -e 's#^ecto://#postgresql://#' -e 's#socket_dir=#host=#')
+
+pg_restore --exit-on-error --no-owner --no-privileges --dbname="$url" "$dump"
+echo "The database is back from $dump."
+
+if [ "${RESCORD_STORAGE:-disk}" = disk ] && [ -n "${RESCORD_FILES_DIR:-}" ] && [ -d "$source/files" ]; then
+  mkdir -p "$RESCORD_FILES_DIR"
+  copy_new_files "$source/files" "$RESCORD_FILES_DIR"
+  echo "The files are back in $RESCORD_FILES_DIR."
+fi

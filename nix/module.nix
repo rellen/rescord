@@ -48,21 +48,43 @@ let
     DATABASE_URL = "ecto://rescord@localhost/rescord?socket_dir=/run/postgresql";
   }
   // cfg.settings;
+  # The client of PostgreSQL for a backup: the one of the server on this
+  # machine, or PostgreSQL 18 for a database elsewhere.
+  postgresql =
+    if cfg.database.createLocally then config.services.postgresql.package else pkgs.postgresql_18;
+  backupDirectory = "/var/lib/rescord-backup";
+
   # A command of the release, run as root with the user and the environment of
   # the service: `rescord-bootstrap-root you@example.org` makes the first root
-  # user, and `rescord-check [you@example.org]` checks the server (ADR 0049).
+  # user, `rescord-check [you@example.org]` checks the server (ADR 0049), and
+  # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
       exec ${config.systemd.package}/bin/systemd-run --quiet --pipe --wait --collect \
         --property=DynamicUser=yes --property=User=rescord --property=Group=rescord \
-        --property=StateDirectory="rescord rescord/files" \
-        ${lib.optionalString (cfg.environmentFile != null) "--property=EnvironmentFile=${cfg.environmentFile}"} \
-        ${lib.concatMapStringsSep " " (name: "--setenv=${lib.escapeShellArg "${name}=${environment.${name}}"}") (lib.attrNames environment)} \
+        --property=StateDirectory="rescord rescord/files rescord-backup" \
+        --setenv=PATH=${
+          lib.makeBinPath [
+            postgresql
+            pkgs.coreutils
+            pkgs.findutils
+            pkgs.gnused
+          ]
+        } \
+        ${
+          lib.optionalString (cfg.environmentFile != null) "--property=EnvironmentFile=${cfg.environmentFile}"
+        } \
+        ${
+          lib.concatMapStringsSep " " (
+            name: "--setenv=${lib.escapeShellArg "${name}=${environment.${name}}"}"
+          ) (lib.attrNames environment)
+        } \
         ${cfg.package}/bin/${command} "$@"
     '';
   bootstrapRoot = releaseCommand "rescord-bootstrap-root" "bootstrap-root";
   check = releaseCommand "rescord-check" "check";
+  restore = releaseCommand "rescord-restore" "restore";
 in
 {
   options.services.rescord = {
@@ -132,6 +154,32 @@ in
       '';
     };
 
+    backup = {
+      enable = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Whether to back up the database and the files into
+          `/var/lib/rescord-backup` (ADR 0050). Copy that directory to another
+          place too, with `environmentFile`: the backup does not hold the
+          secrets. `rescord-restore /var/lib/rescord-backup` puts a backup back.
+        '';
+      };
+
+      startAt = mkOption {
+        type = types.str;
+        default = "daily";
+        example = "*-*-* 02:30:00";
+        description = "When the backup runs, as a calendar event of systemd.";
+      };
+
+      keepDays = mkOption {
+        type = types.ints.positive;
+        default = 14;
+        description = "The number of days that a dump of the database is kept.";
+      };
+    };
+
     nginx.enable = mkOption {
       type = types.bool;
       default = false;
@@ -146,8 +194,7 @@ in
     assertions = [
       {
         assertion =
-          !cfg.database.createLocally
-          || lib.versionAtLeast config.services.postgresql.package.version "18";
+          !cfg.database.createLocally || lib.versionAtLeast config.services.postgresql.package.version "18";
         message = "services.rescord needs PostgreSQL 18 or later in services.postgresql.package.";
       }
     ];
@@ -155,6 +202,7 @@ in
     environment.systemPackages = [
       bootstrapRoot
       check
+      restore
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {
@@ -212,6 +260,31 @@ in
         RestrictNamespaces = true;
         LockPersonality = true;
         CapabilityBoundingSet = "";
+        UMask = "0077";
+      };
+    };
+
+    systemd.services.rescord-backup = mkIf cfg.backup.enable {
+      description = "Back up Rescord";
+      after = lib.optional cfg.database.createLocally "postgresql.service";
+      startAt = cfg.backup.startAt;
+      path = [ postgresql ];
+      environment = environment // {
+        RESCORD_BACKUP_KEEP_DAYS = toString cfg.backup.keepDays;
+      };
+
+      serviceConfig = {
+        Type = "oneshot";
+        User = "rescord";
+        Group = "rescord";
+        DynamicUser = true;
+        StateDirectory = "rescord rescord/files rescord-backup";
+        EnvironmentFile = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
+        ExecStart = "${cfg.package}/bin/backup ${backupDirectory}";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
         UMask = "0077";
       };
     };

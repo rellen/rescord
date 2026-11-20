@@ -23,3 +23,5 @@ devenv.local.yaml
 # The tarballs of scripts/release-tarball.sh, and the link of nix build.
 /dist
 /result
+/deploy/compose/backups
+/deploy/compose/.env
