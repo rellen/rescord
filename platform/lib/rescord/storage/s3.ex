@@ -1,8 +1,9 @@
 defmodule Rescord.Storage.S3 do
   @moduledoc """
   A store of files in a bucket of a service that is compatible with S3
-  (ADR 0038): Tigris in production, and Garage on a machine for
-  development. `req_s3`, a plugin of `Req`, signs each request.
+  (ADR 0038, ADR 0045): Garage on a machine for development, and the service
+  that the operator of a server names. `req_s3` and `Req` sign each request
+  with AWS Signature Version 4.
 
   The configuration comes from the environment at run time
   (`config/runtime.exs`), and never from a file in the repository:
@@ -11,12 +12,20 @@ defmodule Rescord.Storage.S3 do
         endpoint: "https://t3.storage.dev",
         region: "auto",
         bucket: "rescord",
+        addressing: :virtual,
         access_key_id: "...",
         secret_access_key: "..."
 
-  For an endpoint that is not on `s3.amazonaws.com`, `req_s3` puts the
-  bucket in the path of the URL, which Garage and Tigris both take. The
-  module gives the keys to `req_s3` itself, so `req_s3` never reads the
+  `:addressing` says where the name of the bucket goes:
+
+    * `:path`, the default, puts it in the path, as in
+      `https://s3.example.org/rescord/KEY`. Garage and MinIO take it as
+      they are set up by default.
+    * `:virtual` puts it in the host, as in
+      `https://rescord.t3.storage.dev/KEY`. Tigris takes nothing else for a
+      bucket made after 19 February 2025.
+
+  The module gives the keys to `req_s3` itself, so `req_s3` never reads the
   `AWS_` variables of the environment.
 
   `:req_options`, in the configuration of a test alone, goes to `Req.new/1`:
@@ -56,7 +65,21 @@ defmodule Rescord.Storage.S3 do
 
   defp config, do: Application.fetch_env!(:rescord, __MODULE__)
 
-  defp url(key), do: "s3://#{Keyword.fetch!(config(), :bucket)}/#{key}"
+  defp url(key) do
+    config = config()
+    bucket = Keyword.fetch!(config, :bucket)
+
+    case Keyword.get(config, :addressing, :path) do
+      # `req_s3` turns this into the endpoint, the bucket and the key.
+      :path ->
+        "s3://#{bucket}/#{key}"
+
+      :virtual ->
+        endpoint = URI.parse(Keyword.fetch!(config, :endpoint))
+        path = String.trim_trailing(endpoint.path || "", "/") <> "/" <> key
+        URI.to_string(%{endpoint | host: "#{bucket}.#{endpoint.host}", path: path})
+    end
+  end
 
   defp request do
     config = config()
@@ -69,7 +92,10 @@ defmodule Rescord.Storage.S3 do
       aws_sigv4: [
         access_key_id: Keyword.fetch!(config, :access_key_id),
         secret_access_key: Keyword.fetch!(config, :secret_access_key),
-        region: Keyword.fetch!(config, :region)
+        region: Keyword.fetch!(config, :region),
+        # Req cannot tell the service from the host of a service that is not
+        # Amazon, and `req_s3` names it only for an `s3://` URL.
+        service: :s3
       ]
     )
   end

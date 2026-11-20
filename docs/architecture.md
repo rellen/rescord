@@ -367,7 +367,8 @@ schema of the organisation** (ADR 0038, ADR 0041). `Rescord.Storage` is the
 behaviour, and the configuration names the store: `Rescord.Storage.S3`,
 with `req_s3`, for Garage in development and any service that is compatible
 with S3 in production, and `Rescord.Storage.Disk`, a directory, in the tests
-and by default in production (ADR 0044). Each key starts with the id of the
+and by default in production (ADR 0044). A setting puts the bucket in the
+path or in the host of each address (ADR 0045). Each key starts with the id of the
 organisation, and no part of it comes from what a person sends. A person
 reads a file through a controller that asks the policy, and the answer
 names the type that Rescord found in the first bytes of the file.

@@ -24,9 +24,18 @@ defmodule Rescord.ProductionConfigTest do
   }
 
   @optional ~w(RESCORD_STORAGE RESCORD_S3_ENDPOINT RESCORD_S3_REGION RESCORD_S3_BUCKET
+               RESCORD_S3_ADDRESSING
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
                RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS)
+
+  @s3 Map.merge(@required, %{
+        "RESCORD_STORAGE" => "s3",
+        "RESCORD_S3_ENDPOINT" => "https://t3.storage.dev",
+        "RESCORD_S3_BUCKET" => "rescord",
+        "RESCORD_S3_ACCESS_KEY_ID" => "key",
+        "RESCORD_S3_SECRET_ACCESS_KEY" => "secret"
+      })
 
   setup do
     names = Map.keys(@required) ++ @optional
@@ -84,6 +93,10 @@ defmodule Rescord.ProductionConfigTest do
     assert config[:rescord][:storage] == Rescord.Storage.S3
     assert config[:rescord][Rescord.Storage.S3][:endpoint] == "https://s3.example.org"
     assert config[:rescord][Rescord.Storage.S3][:region] == "auto"
+    assert config[:rescord][Rescord.Storage.S3][:addressing] == :path
+
+    config = read(Map.put(@s3, "RESCORD_S3_ADDRESSING", "virtual"))
+    assert config[:rescord][Rescord.Storage.S3][:addressing] == :virtual
   end
 
   test "a missing required setting stops the start, and names the setting" do
@@ -113,6 +126,10 @@ defmodule Rescord.ProductionConfigTest do
 
     assert_raise ArgumentError, ~r/RESCORD_STORAGE/, fn ->
       read(Map.put(@required, "RESCORD_STORAGE", "tigris"))
+    end
+
+    assert_raise ArgumentError, ~r/RESCORD_S3_ADDRESSING.*"path", "virtual"/, fn ->
+      read(Map.put(@s3, "RESCORD_S3_ADDRESSING", "vhost"))
     end
   end
 

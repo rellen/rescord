@@ -163,6 +163,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_S3_ENDPOINT` | with `s3` | | The address of the service, such as `https://s3.example.org`. |
 | `RESCORD_S3_REGION` | no | `auto` | The region that the service asks for. |
 | `RESCORD_S3_BUCKET` | with `s3` | | The bucket. |
+| `RESCORD_S3_ADDRESSING` | no | `path` | Where the bucket goes in each address: `path`, as in `https://s3.example.org/rescord/...`, or `virtual`, as in `https://rescord.s3.example.org/...`. Garage and MinIO take `path` as they are set up by default. Tigris needs `virtual`, with the endpoint `https://t3.storage.dev` and the region `auto`. |
 | `RESCORD_S3_ACCESS_KEY_ID` | with `s3` | | The key of a user that may read and write the bucket. |
 | `RESCORD_S3_SECRET_ACCESS_KEY` | with `s3` | | Its secret. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |

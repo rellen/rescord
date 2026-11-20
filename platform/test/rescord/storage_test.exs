@@ -99,6 +99,37 @@ defmodule Rescord.StorageTest do
                ~r"^AWS4-HMAC-SHA256 Credential=GK0000000000000000000000ad/\d{8}/garage/s3/aws4_request"
     end
 
+    test "puts the bucket in the host, with a signature for S3, when the address is virtual" do
+      Application.put_env(
+        :rescord,
+        S3,
+        Keyword.merge(Application.get_env(:rescord, S3),
+          endpoint: "https://t3.storage.dev",
+          region: "auto",
+          addressing: :virtual
+        )
+      )
+
+      test = self()
+
+      Req.Test.stub(S3, fn conn ->
+        send(test, {:request, conn})
+        Plug.Conn.send_resp(conn, 200, "bytes")
+      end)
+
+      assert S3.get("org-1/attachments/abc") == {:ok, "bytes"}
+      assert_received {:request, conn}
+
+      assert conn.scheme == :https
+      assert conn.host == "rescord.t3.storage.dev"
+      assert conn.request_path == "/org-1/attachments/abc"
+
+      assert [authorization] = Plug.Conn.get_req_header(conn, "authorization")
+
+      assert authorization =~
+               ~r"^AWS4-HMAC-SHA256 Credential=GK0000000000000000000000ad/\d{8}/auto/s3/aws4_request"
+    end
+
     test "gets a file, and says when there is none" do
       Req.Test.stub(S3, fn conn ->
         case conn.request_path do

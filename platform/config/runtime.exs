@@ -111,6 +111,7 @@ if config_env() == :prod do
         endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT"),
         region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
         bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
+        addressing: Shoddy.Env.one_of("RESCORD_S3_ADDRESSING", [:path, :virtual], default: :path),
         access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
         secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
   end
