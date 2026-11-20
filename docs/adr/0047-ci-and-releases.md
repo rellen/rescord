@@ -32,6 +32,9 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
 - **A release is a tag on `main`**, after the version and the changelog
   change in one commit. A run from the Actions page refuses a tag that
   exists.
+- **A dry run** from the Actions page builds the image for both
+  architectures and the tarball of amd64, writes the notes, and pushes and
+  publishes nothing. It checks the release workflow after a change.
 
 ## Consequences
 

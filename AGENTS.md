@@ -56,6 +56,8 @@ its section at the top of `CHANGELOG.md`, and commit both on `main`. Then run
 the workflow Release on `main` from the Actions page, which makes the tag
 such as `v0.2.0`, or push that tag. `release.yml` checks the flake, and
 publishes the image, the tarballs and the GitHub release.
+After a change to a workflow, such as a new version of an action, run Release
+with `dry_run`: it builds and checks each part, and publishes nothing.
 
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`

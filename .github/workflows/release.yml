@@ -10,12 +10,21 @@
 # The flake is checked first. The arm64 builds run under QEMU on a runner of
 # amd64, which each plan of GitHub has: slower, and nothing waits for a
 # runner that the account does not have.
+#
+# A dry run from the Actions page builds the image for both architectures
+# and the tarball of amd64, writes the notes, and publishes nothing. It
+# checks the workflow after a change, such as a new version of an action.
 name: Release
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and check each part, with no push of the image, no tag and no release
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,8 +39,10 @@ jobs:
       minor: ${{ steps.version.outputs.minor }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - id: version
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           version=$(sed -nE 's/^ +version: "([^"]+)",$/\1/p' platform/mix.exs | head -1)
           tag="v$version"
@@ -44,7 +55,7 @@ jobs:
               echo "::error::A release from the Actions page runs on main."
               exit 1
             fi
-            if [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+            if [ "$DRY_RUN" != true ] && [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
               echo "::error::The tag $tag exists: change the version in platform/mix.exs."
               exit 1
             fi
@@ -73,10 +84,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -84,18 +95,18 @@ jobs:
       # The tags come from the version, because a run from the Actions page
       # has no tag yet.
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ needs.version.outputs.version }}
             type=raw,value=${{ needs.version.outputs.minor }}
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: platform
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ !inputs.dry_run }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=image
@@ -108,14 +119,14 @@ jobs:
     timeout-minutes: 150
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: ${{ fromJSON(inputs.dry_run && '["amd64"]' || '["amd64", "arm64"]') }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
       - name: Build the tarball
         run: scripts/release-tarball.sh ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tarball-${{ matrix.arch }}
           path: dist/rescord-linux-${{ matrix.arch }}.tar.gz
@@ -129,8 +140,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: tarball-*
           path: dist
@@ -152,6 +163,7 @@ jobs:
             echo "[docs/self-hosting.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/self-hosting.md) says how to install it."
           } >> notes.md
       - name: Publish the release
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.version.outputs.version }}
