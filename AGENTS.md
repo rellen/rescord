@@ -1,8 +1,4 @@
-| `platform/assets/css/layers/tokens.css` | the colours, the typeface and the sizes of Scrubs (ADR 0015) |
-| `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
-| `platform/assets/css/layers/vendor.css` || `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
-| `platform/assets/css/layers/vendor.css` | the look of the markup that Cinder renders |
-| `platform/lib/rescord_web/cinder_theme.ex` | the theme of each collection: almost no class |# AGENTS.md
+# AGENTS.md
 
 The Mix project is `platform/`. Code paths in this file are relative to it
 (`lib/rescord_web/widget.ex` means `platform/lib/rescord_web/widget.ex`), and
@@ -56,9 +52,10 @@ After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
 ADR 0047). To release a version: change `version` in `platform/mix.exs`, add
-its section at the top of `CHANGELOG.md`, commit both on `main`, and push a
-tag such as `v0.2.0`. `release.yml` then checks the flake, and publishes the
-image, the tarballs and the GitHub release.
+its section at the top of `CHANGELOG.md`, and commit both on `main`. Then run
+the workflow Release on `main` from the Actions page, which makes the tag
+such as `v0.2.0`, or push that tag. `release.yml` checks the flake, and
+publishes the image, the tarballs and the GitHub release.
 
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
@@ -381,6 +378,10 @@ too.
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |
 | `platform/assets/css/layers/` | the classless stylesheet, one file per layer |
+| `platform/assets/css/layers/tokens.css` | the colours, the typeface and the sizes of Scrubs (ADR 0015) |
+| `platform/assets/css/layers/vendor.css` | the look of the markup that Cinder renders |
+| `platform/lib/rescord_web/cinder_theme.ex` | the theme of each collection: almost no class |
+| `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
 | `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin` (ADR 0044) |

@@ -18,8 +18,11 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
   cannot pass with the browser tests left out.
 - **`nix.yml` runs `nix flake check`** with KVM, when a file that the
   package reads for its dependencies changes, and for each release.
-- **`release.yml` runs for a tag `vX.Y.Z`** that names the version of
-  `platform/mix.exs` and has a section in `CHANGELOG.md`. After the flake
+- **`release.yml` releases the version of `platform/mix.exs`**, which must
+  have a section in `CHANGELOG.md`: for a pushed tag `vX.Y.Z` that names
+  it, or from the Actions page on `main`, which then makes the tag. A
+  session of Claude Code can push a branch and not a tag, so it starts a
+  release from the Actions page. After the flake
   check, it publishes the image to `ghcr.io` for amd64 and arm64, and a
   GitHub release with the two tarballs, `SHA256SUMS`, and the section of the
   changelog.
@@ -27,7 +30,8 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
   in each plan of GitHub, and a job for a runner that the account does not
   have waits with no error.
 - **A release is a tag on `main`**, after the version and the changelog
-  change in one commit.
+  change in one commit. A run from the Actions page refuses a tag that
+  exists.
 
 ## Consequences
 

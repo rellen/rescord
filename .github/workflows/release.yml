@@ -1,5 +1,6 @@
-# A release (ADR 0047), for a tag such as v0.1.0 that names the version of
-# platform/mix.exs. It publishes:
+# A release (ADR 0047) of the version of platform/mix.exs, for a tag such as
+# v0.1.0 that names it, or from the Actions page on main, which then makes
+# the tag. It publishes:
 #
 #   * the image, for amd64 and arm64, at ghcr.io/<owner>/rescord with the
 #     tags of the version and `latest`;
@@ -14,31 +15,49 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   version:
-    name: The tag names the version
+    name: The version and its tag
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
+      minor: ${{ steps.version.outputs.minor }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
       - id: version
         run: |
           version=$(sed -nE 's/^ +version: "([^"]+)",$/\1/p' platform/mix.exs | head -1)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          tag="v$version"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$tag" != "$GITHUB_REF_NAME" ]; then
             echo "::error::The tag $GITHUB_REF_NAME does not name the version $version of platform/mix.exs."
             exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::A release from the Actions page runs on main."
+              exit 1
+            fi
+            if [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+              echo "::error::The tag $tag exists: change the version in platform/mix.exs."
+              exit 1
+            fi
           fi
           if ! grep -q "^## $version " CHANGELOG.md; then
             echo "::error::CHANGELOG.md has no section for $version."
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$version"
+            echo "minor=${version%.*}"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
 
   nix:
     name: Nix
@@ -62,13 +81,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # The tags come from the version, because a run from the Actions page
+      # has no tag yet.
       - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ needs.version.outputs.version }}
+            type=raw,value=${{ needs.version.outputs.minor }}
+            type=raw,value=latest
       - uses: docker/build-push-action@v6
         with:
           context: platform
@@ -116,6 +138,7 @@ jobs:
       - name: Write the checksums and the notes
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           (cd dist && sha256sum rescord-linux-*.tar.gz > SHA256SUMS && cat SHA256SUMS)
           awk -v heading="## $VERSION " '
@@ -126,12 +149,15 @@ jobs:
           {
             echo
             echo "The image: \`ghcr.io/${GITHUB_REPOSITORY}:${VERSION}\`."
-            echo "[docs/self-hosting.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/self-hosting.md) says how to install it."
+            echo "[docs/self-hosting.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/self-hosting.md) says how to install it."
           } >> notes.md
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+        # From the Actions page, the release makes the tag at the commit that
+        # was built.
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --verify-tag --title "Rescord $VERSION" --notes-file notes.md
+          gh release create "$TAG" dist/* --target "$GITHUB_SHA" \
+            --title "Rescord $VERSION" --notes-file notes.md
