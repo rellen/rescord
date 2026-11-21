@@ -26,9 +26,6 @@ older than `bin/check`, the backups and a security fix of Phoenix LiveView
 (the section "Unreleased" of `CHANGELOG.md`), and no new release is planned
 yet.
 
-The repository is private for now, so a server needs access to it: a token
-of GitHub that may read it, for `git clone` and for Nix.
-
 ## Install
 
 ### With Docker Compose
