@@ -52,7 +52,8 @@ After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
 `nix/package.nix` again: `nix build` prints the new one.
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
-ADR 0047). To release a version: change `version` in `platform/mix.exs`, add
+ADR 0047). No release is planned, and the version stays 0.1.0: a rescue
+installs from `main` (ADR 0052). For the day of one, to release a version: change `version` in `platform/mix.exs`, add
 its section at the top of `CHANGELOG.md`, and commit both on `main`. Then run
 the workflow Release on `main` from the Actions page, which makes the tag
 such as `v0.2.0`, or push that tag. `release.yml` checks the flake, and

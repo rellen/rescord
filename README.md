@@ -35,3 +35,9 @@ up and upgrade.
 Conventions are in [`AGENTS.md`](AGENTS.md), the design in
 [`docs/architecture.md`](docs/architecture.md), and each decision in
 [`docs/adr/`](docs/adr/).
+
+## Licence
+
+Rescord is under the MIT licence: see [`LICENSE`](LICENSE). The typeface
+Atkinson Hyperlegible, in `platform/priv/static/fonts/`, keeps its own
+licence, which is next to it.

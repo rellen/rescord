@@ -18,14 +18,16 @@ install Rescord, each setting, and how to back up and upgrade.
 - A place for the photos and the PDFs of the journal: a directory of the
   server, or a bucket of a service that is compatible with S3.
 
-## The releases
+## The version to install
 
-Each version of Rescord has a tag such as `v0.1.0`, a section in
-`CHANGELOG.md`, the image `ghcr.io/rellen/rescord` with the tag of the
-version, and a GitHub release with the tarballs. The repository is private
-for now, so the image, the releases and the flake need access to it: run
-`docker login ghcr.io` with a token of GitHub that may read packages, and give
-Nix an access token for `github.com`.
+Install Rescord from the branch `main` of the repository, which this guide
+describes. Each way below builds it from there. The one release, 0.1.0, is
+older than `bin/check`, the backups and a security fix of Phoenix LiveView
+(the section "Unreleased" of `CHANGELOG.md`), and no new release is planned
+yet.
+
+The repository is private for now, so a server needs access to it: a token
+of GitHub that may read it, for `git clone` and for Nix.
 
 ## Install
 
@@ -33,12 +35,17 @@ Nix an access token for `github.com`.
 
 `deploy/compose` holds the Compose file, a Caddyfile and `env.example`.
 
-1. Copy `deploy/compose` to the server, and copy `env.example` to `.env`.
-2. Fill in `.env`. Make each secret with `openssl rand -base64 48`.
-   `RESCORD_IMAGE` names the image of a release, such as
-   `ghcr.io/rellen/rescord:0.1.0`. To build the image yourself, run
-   `docker build -t rescord:local platform` in the repository, and set
-   `RESCORD_IMAGE=rescord:local`.
+1. Clone the repository on the server, and build the image:
+
+   ```sh
+   git clone https://github.com/rellen/rescord.git
+   cd rescord
+   docker build -t rescord:local platform
+   cd deploy/compose
+   ```
+
+2. Copy `env.example` to `.env`, and fill it in. Make each secret with
+   `openssl rand -base64 48`.
 3. Point the name of the server at it, and open the ports 80 and 443.
 4. Start Rescord:
 
@@ -67,7 +74,7 @@ Add the flake of Rescord to the flake of the machine:
 
 ```nix
 {
-  inputs.rescord.url = "github:rellen/rescord/v0.1.0";
+  inputs.rescord.url = "github:rellen/rescord";
 
   outputs = { nixpkgs, rescord, ... }: {
     nixosConfigurations.refuge = nixpkgs.lib.nixosSystem {
@@ -120,15 +127,15 @@ without KVM.
 
 The tarball holds the release and its Erlang runtime. It runs on a system
 with glibc 2.36 or later and OpenSSL 3: Debian 12 and later, Ubuntu 24.04
-and later, and Fedora 37 and later. Each GitHub release of Rescord has the
-tarballs for amd64 and arm64, and `SHA256SUMS`. Check the tarball before you
-unpack it:
+and later, and Fedora 37 and later. Build it from the repository on a
+machine with Docker, for the architecture of the server, and copy
+`dist/rescord-linux-amd64.tar.gz` or `-arm64` to the server:
 
 ```sh
-sha256sum --check --ignore-missing SHA256SUMS
+scripts/release-tarball.sh amd64
 ```
 
-`scripts/release-tarball.sh` builds a tarball from the repository.
+Copy `deploy/systemd` to the server too.
 
 1. Install PostgreSQL 18, and make a database and a user:
 
@@ -311,12 +318,13 @@ To restore an older dump, give its name after the directory, such as
 
 1. Make a backup, as "Back up" says, and copy it from the server.
 2. Take the new version. `CHANGELOG.md` says what changed.
-   - With Docker Compose, put the new version in `RESCORD_IMAGE`, and run
-     `docker compose pull`.
-   - On NixOS, put the tag of the new version in the URL of the input, and
-     run `nix flake update rescord`.
-   - From the tarball, stop Rescord, and unpack the new tarball over
-     `/opt/rescord`.
+   - With Docker Compose, run `git pull` in the repository, build the image
+     again with `docker build -t rescord:local platform`, and run
+     `docker compose up -d` in `deploy/compose`.
+   - On NixOS, run `nix flake update rescord`, which takes the newest
+     commit of `main`, and rebuild the machine.
+   - From the tarball, build a new tarball, stop Rescord, and unpack the new
+     tarball over `/opt/rescord`.
 3. Start Rescord. Each start runs the migrations that have not run, for the
    database and for each organisation, and then the server starts.
 
