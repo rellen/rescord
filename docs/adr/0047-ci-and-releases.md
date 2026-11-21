@@ -28,19 +28,21 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
   changelog.
 - **arm64 builds under QEMU** on a runner of amd64. A runner of arm64 is not
   in each plan of GitHub, and a job for a runner that the account does not
-  have waits with no error.
+  have waits with no error. (Changed later, when the repository became
+  public: each architecture builds on a runner of its own, arm64 on
+  `ubuntu-24.04-arm`, and a job `manifest` joins the two images, which each
+  push by their digest.)
 - **A release is a tag on `main`**, after the version and the changelog
   change in one commit. A run from the Actions page refuses a tag that
   exists.
-- **A dry run** from the Actions page builds the image for both
-  architectures and the tarball of amd64, writes the notes, and pushes and
-  publishes nothing. It checks the release workflow after a change.
+- **A dry run** from the Actions page builds the image and the tarball for
+  both architectures, writes the notes, and pushes and publishes nothing. It checks the release workflow after a change.
 
 ## Consequences
 
 - An image or a release of a private repository is private: a rescue needs
   access to the repository, or the maintainer makes the package public.
-- The builds under QEMU are slow, so a release takes most of an hour. Native
-  runners of arm64 can replace QEMU when the plan has them.
+- The builds under QEMU were slow, and a release took most of an hour.
+  With a runner for each architecture, they run side by side.
 - The CI of a push costs the minutes of one runner of Linux. The flake
   check runs only for the files of its paths.
