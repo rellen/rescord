@@ -16,6 +16,9 @@ section of a version in the notes of its GitHub release (ADR 0047).
   before it publishes anything.
 - CI fails on a dependency with a security advisory, and Dependabot
   proposes updates each week.
+- The dependencies are at their newest versions of 24 November 2026:
+  Ash 3.38, Phoenix LiveView 1.2.15, Postgrex 0.23, PostgreSQL 18.7, and
+  Debian 13 of 23 November 2026 in the image.
 
 ## 0.1.0 - 2026-11-20
 

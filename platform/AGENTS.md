@@ -392,4 +392,10 @@ _Small functions for tasks that occur frequently in Elixir code._
 
 [shoddy usage rules](deps/shoddy/usage-rules.md)
 <!-- shoddy-end -->
+<!-- shoddy_phoenix-start -->
+## shoddy_phoenix usage
+_Small functions for tasks that occur frequently in Phoenix code._
+
+[shoddy_phoenix usage rules](deps/shoddy_phoenix/usage-rules.md)
+<!-- shoddy_phoenix-end -->
 <!-- usage-rules-end -->

@@ -16,7 +16,7 @@
 set -euo pipefail
 
 root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
-debian="${DEBIAN_VERSION:-bookworm-20261104-slim}"
+debian="${DEBIAN_VERSION:-bookworm-20261123-slim}"
 dockerfile="${DOCKERFILE:-$root/platform/Dockerfile}"
 archs=("$@")
 if [ "${#archs[@]}" -eq 0 ]; then

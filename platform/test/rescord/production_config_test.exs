@@ -75,7 +75,7 @@ defmodule Rescord.ProductionConfigTest do
   end
 
   test "an S3 store needs its endpoint, and has no default service" do
-    assert_raise System.EnvError, ~r/RESCORD_S3_ENDPOINT/, fn ->
+    assert_raise ArgumentError, ~r/RESCORD_S3_ENDPOINT.*not set/, fn ->
       read(Map.put(@required, "RESCORD_STORAGE", "s3"))
     end
 
@@ -103,7 +103,9 @@ defmodule Rescord.ProductionConfigTest do
     for name <- Map.keys(@required) do
       System.delete_env(name)
 
-      assert_raise System.EnvError, ~r/#{name}/, fn -> read(Map.delete(@required, name)) end
+      assert_raise ArgumentError, ~r/#{name}.*not set/, fn ->
+        read(Map.delete(@required, name))
+      end
     end
   end
 
