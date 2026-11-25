@@ -9,7 +9,7 @@
 #   docker build --secret id=extra_ca,src=proxy-ca.pem -t rescord platform
 
 ARG ELIXIR_VERSION=1.20.5
-ARG OTP_VERSION=29.1.2
+ARG OTP_VERSION=29.1.3
 ARG DEBIAN_VERSION=trixie-20261123-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"

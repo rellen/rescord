@@ -16,6 +16,10 @@ section of a version in the notes of its GitHub release (ADR 0047).
   before it publishes anything.
 - CI fails on a dependency with a security advisory, and Dependabot
   proposes updates each week.
+- Security: Erlang/OTP 29.1.3 in the image, the tarball and the Nix
+  package, for nine CVEs, three of them in `binary_to_term`. db_connection
+  2.10.3 for EEF-CVE-2026-133555, and Ash 3.38.1 for EEF-CVE-2026-120299,
+  which Rescord did not reach.
 - The dependencies are at their newest versions of 24 November 2026:
   Ash 3.38, Phoenix LiveView 1.2.15, Postgrex 0.23, PostgreSQL 18.7, and
   Debian 13 of 23 November 2026 in the image.
