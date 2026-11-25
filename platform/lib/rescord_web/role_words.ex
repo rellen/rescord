@@ -16,7 +16,8 @@ defmodule RescordWeb.RoleWords do
     {"Journal", [:journal, :correct_journal]},
     {"Tasks", [:tasks, :routines]},
     {"Inventory", [:stock, :inventory]},
-    {"Transfers", [:transfers]}
+    {"Transfers", [:transfers]},
+    {"Export", [:export]}
   ]
 
   @words %{
@@ -34,7 +35,8 @@ defmodule RescordWeb.RoleWords do
     routines: "Start, change, pause and end routines",
     stock: "Record deliveries, uses, moves, discards and counts of stock",
     inventory: "Keep the items, the suppliers and the reorder levels",
-    transfers: "Agree partner refuges, send a resident to one, and answer a transfer"
+    transfers: "Agree partner refuges, send a resident to one, and answer a transfer",
+    export: "Export the data of the organisation as files of CSV"
   }
 
   @doc "The areas of work, each with its powers, in the order of the page."

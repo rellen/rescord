@@ -1,0 +1,241 @@
+defmodule Rescord.Export do
+  @moduledoc """
+  The export of the data of an organisation (ADR 0054): one ZIP with a CSV
+  file for each table, and a README that says what each file holds.
+
+  The person who asks needs the power `export`, which
+  `Rescord.Accounts.authorize_export/2` checks first. The export then reads
+  each table as that person, in the schema of the organisation.
+
+  A temporal resource is read as it stood at the end of the chosen day in
+  the time zone of the organisation, or now for today. A resource that keeps
+  no history, such as a task, is read as it is now; the README names those
+  files.
+
+  The tables are each resource of the domains of `@domains`, the
+  organisation, its roles and its members, and the shared base lists that
+  the lists of the organisation name. `excluded/0` gives each resource that
+  is left out, with the reason. `Rescord.ExportTest` holds each resource of
+  the domains of the configuration to one of the two.
+
+  The photos and the PDFs of the journal are not in the export:
+  `journal_attachments.csv` lists each one.
+  """
+
+  use Boundary,
+    top_level?: true,
+    deps: [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Lists,
+      Rescord.Residents,
+      Rescord.Locations,
+      Rescord.Journal,
+      Rescord.Tasks,
+      Rescord.Inventory
+    ]
+
+  alias Rescord.Accounts
+  alias Rescord.Accounts.{Member, Organisation, Role}
+  alias Rescord.Export.CSV
+
+  @domains [
+    Rescord.Lists,
+    Rescord.Residents,
+    Rescord.Locations,
+    Rescord.Journal,
+    Rescord.Tasks,
+    Rescord.Inventory
+  ]
+
+  # Columns that are calculations, after the attributes.
+  @calculations %{Member => [:email]}
+
+  @excluded %{
+    Rescord.Accounts.User =>
+      "A user can belong to several organisations. members.csv has the email of each member.",
+    Rescord.Accounts.Token => "The tokens of the sign-in are secrets of a session.",
+    Rescord.Transfers.Partnership => "A partnership belongs to two refuges.",
+    Rescord.Transfers.Transfer =>
+      "A transfer belongs to two refuges, and a transfer file carries a resident to another one.",
+    Rescord.Transfers.RemotePartner =>
+      "A partner on another server is the setting of the transfers between servers.",
+    Rescord.Transfers.RefugeKey => "The keys of a refuge are secrets of the transfers."
+  }
+
+  @typedoc "An export: the name of the file and the bytes of the ZIP."
+  @type t :: %{filename: String.t(), zip: binary}
+
+  @doc """
+  The export of `organisation` as it stood at the end of `date`, for the
+  person `actor`. Returns `{:error, :forbidden}` when the role of the person
+  has no power `export`, and an error with words for a date that is not a
+  date or that is after today.
+  """
+  @spec export(Ash.Resource.record(), Date.t(), keyword) ::
+          {:ok, t} | {:error, :forbidden | String.t()}
+  def export(%Organisation{} = organisation, date, opts) do
+    actor = Keyword.fetch!(opts, :actor)
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+
+    with :ok <- authorize(organisation, actor),
+         {:ok, instant} <- instant(organisation, date, now),
+         {:ok, tables} <- tables(organisation, actor, instant) do
+      folder = "rescord-#{organisation.short_name}-#{Date.to_iso8601(date)}"
+
+      files =
+        [{"README.txt", readme(organisation, date, instant, now, tables)}] ++
+          Enum.map(tables, fn {file, _resource, header, rows} ->
+            {file, IO.iodata_to_binary(CSV.encode(header, rows))}
+          end)
+
+      entries = for {file, bytes} <- files, do: {String.to_charlist("#{folder}/#{file}"), bytes}
+      {:ok, {_name, zip}} = :zip.create(~c"#{folder}.zip", entries, [:memory])
+      {:ok, %{filename: "#{folder}.zip", zip: zip}}
+    end
+  end
+
+  @doc "The resources of the export, in the order of their files."
+  @spec resources() :: [module]
+  def resources do
+    [Organisation, Role, Member] ++
+      for domain <- @domains,
+          resource <- Ash.Domain.Info.resources(domain),
+          not version?(resource),
+          do: resource
+  end
+
+  @doc "Each resource that the export leaves out, with the reason."
+  @spec excluded() :: %{module => String.t()}
+  def excluded, do: @excluded
+
+  @doc "Whether a resource is a version that a paper trail adds."
+  @spec version?(module) :: boolean
+  def version?(resource), do: String.ends_with?(inspect(resource), ".Version")
+
+  @doc "The name of the file of a resource in the export."
+  @spec file(module) :: String.t()
+  def file(Organisation), do: "organisation.csv"
+  def file(resource), do: "#{AshPostgres.DataLayer.Info.table(resource)}.csv"
+
+  defp authorize(organisation, actor) do
+    case Accounts.authorize_export(organisation.id, actor: actor) do
+      {:ok, true} -> :ok
+      {:error, _forbidden} -> {:error, :forbidden}
+    end
+  end
+
+  # The end of the day in the time zone of the organisation, and not after now.
+  defp instant(organisation, %Date{} = date, now) do
+    if Date.compare(date, Accounts.local_date(organisation, now)) == :gt do
+      {:error, "The date is after today."}
+    else
+      {_start, next} = Accounts.day_range(organisation, date)
+      last = DateTime.add(next, -1, :microsecond)
+      {:ok, if(DateTime.compare(last, now) == :gt, do: now, else: last)}
+    end
+  end
+
+  defp instant(_organisation, _date, _now), do: {:error, "The date is not a date."}
+
+  defp tables(organisation, actor, instant) do
+    Enum.reduce_while(resources(), {:ok, []}, fn resource, {:ok, tables} ->
+      case rows(resource, organisation, actor, instant) do
+        {:ok, records} ->
+          columns = columns(resource)
+          rows = for record <- records, do: Enum.map(columns, &Map.get(record, &1))
+          header = Enum.map(columns, &Atom.to_string/1)
+          {:cont, {:ok, [{file(resource), resource, header, rows} | tables]}}
+
+        {:error, error} ->
+          {:halt,
+           {:error, "The export could not read #{file(resource)}: #{Exception.message(error)}"}}
+      end
+    end)
+    |> case do
+      {:ok, tables} -> {:ok, Enum.reverse(tables)}
+      error -> error
+    end
+  end
+
+  defp columns(resource) do
+    Enum.map(Ash.Resource.Info.public_attributes(resource), & &1.name) ++
+      Map.get(@calculations, resource, [])
+  end
+
+  # Only a root user reads an organisation through its actions; the export
+  # is already allowed, and holds the one row of this organisation.
+  defp rows(Organisation, organisation, _actor, _instant), do: {:ok, [organisation]}
+
+  defp rows(resource, organisation, actor, instant) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context,
+        do: [tenant: organisation],
+        else: []
+
+    as_of = if Ash.Resource.Info.temporal?(resource), do: [as_of: instant], else: []
+    keys = Ash.Resource.Info.primary_key(resource)
+
+    resource
+    |> Ash.Query.sort(Enum.map(keys, &{&1, :asc}))
+    |> Ash.Query.load(Map.get(@calculations, resource, []))
+    |> Ash.read([actor: actor] ++ tenant ++ as_of)
+  end
+
+  defp readme(organisation, date, instant, now, tables) do
+    local = Accounts.local_time(organisation, instant)
+    exported = MapSet.new(tables, fn {_file, resource, _header, _rows} -> resource end)
+
+    {history, present} =
+      Enum.split_with(tables, fn {_file, resource, _header, _rows} ->
+        Ash.Resource.Info.temporal?(resource)
+      end)
+
+    """
+    The data of #{organisation.name} in Rescord
+
+    As of: the end of #{Date.to_iso8601(date)} in #{organisation.time_zone}, which is
+    #{Calendar.strftime(local, "%Y-%m-%d %H:%M:%S")} there and #{DateTime.to_iso8601(instant)}.
+    Made: #{DateTime.to_iso8601(now)}.
+
+    Each file is a table in CSV: UTF-8 with a byte order mark, commas, a header
+    row, and CRLF at the end of each row. A date and a time are in ISO 8601,
+    a time in UTC. A list has "; " between its values, and a map is JSON. A
+    text that starts with =, +, -, @, a tab or a carriage return has a ' before
+    it, so that a spreadsheet does not run it as a formula.
+
+    These files are as they stood at that time:
+
+    #{list(history)}
+
+    These files keep no history, so they are as they are now:
+
+    #{list(present)}
+
+    A column that ends in _id holds the id of a row of another file:
+
+    #{links(tables, exported)}
+
+    Not in the export:
+
+    - The photos and the PDFs of the journal. journal_attachments.csv lists
+      each one, and the person who exports can open each one in Rescord.
+    #{Enum.map_join(@excluded, "\n", fn {resource, why} -> "- #{inspect(resource)}: #{why}" end)}
+    """
+  end
+
+  defp list(tables) do
+    Enum.map_join(tables, "\n", fn {file, _resource, header, rows} ->
+      "- #{file} (#{length(rows)} rows): #{Enum.join(header, ", ")}"
+    end)
+  end
+
+  defp links(tables, exported) do
+    for {file, resource, _header, _rows} <- tables,
+        %{type: :belongs_to} = relationship <- Ash.Resource.Info.relationships(resource),
+        relationship.destination in exported do
+      "- #{file}: #{relationship.source_attribute} names a row of #{file(relationship.destination)}"
+    end
+    |> Enum.join("\n")
+  end
+end

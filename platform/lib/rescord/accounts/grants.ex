@@ -69,7 +69,8 @@ defmodule Rescord.Accounts.Grants do
     :routines,
     :stock,
     :inventory,
-    :transfers
+    :transfers,
+    :export
   ]
 
   # The powers of a member of ADR 0021.
@@ -91,7 +92,9 @@ defmodule Rescord.Accounts.Grants do
       {Organisation, :set_time_zone, :all},
       {Organisation, :set_task_days_ahead, :all},
       {Organisation, :set_transfer_parts, :all}
-    ]
+    ],
+    # The export of the data of the organisation (ADR 0054).
+    export: [{Organisation, :export, :all}]
   }
 
   # The sources of the other domains. A module name is an atom, so this is

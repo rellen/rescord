@@ -49,6 +49,9 @@ defmodule RescordWeb.Router do
     # The transfer files and the files of a copy (ADR 0043).
     post "/o/:organisation/transfers/export", TransferFileController, :export
     get "/o/:organisation/transfers/:id/files/:file", TransferFileController, :show
+
+    # The export of the data of an organisation (ADR 0054).
+    post "/o/:organisation/export", ExportController, :create
     post "/sign-in/link", SignInController, :confirm
     delete "/sign-out", SignInController, :delete
 
@@ -68,6 +71,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/transfers", TransfersLive
       live "/o/:organisation/transfers/:id", TransfersLive
       live "/o/:organisation/settings", SettingsLive
+      live "/o/:organisation/export", ExportLive
       live "/o/:organisation/lists", ListsLive, :organisation
       live "/o/:organisation/tasks", TasksLive
       live "/o/:organisation/routines", RoutinesLive, :index

@@ -430,6 +430,14 @@ Not decided yet: whether a grant can name one record or a group of fields. The r
 refused read is empty and not an error, so a test that reads asserts a
 non-empty result.
 
+### Export
+
+**An organisation exports its data as one ZIP of CSV files** (ADR 0054).
+`Rescord.Export` reads each table as the person, with the power `export`,
+as it stood at the end of a chosen day, and writes a README that says what
+each file holds and which file each id names. Each resource of the domains
+is in the export, or `Rescord.Export.excluded/0` says why not.
+
 ## Releases
 
 **A rescue runs Rescord on a server of its own** (ADR 0044). One `mix

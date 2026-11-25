@@ -59,6 +59,8 @@ defmodule Rescord.Accounts do
         action: :set_transfer_parts,
         args: [:transfer_parts]
 
+      define :authorize_export, action: :export, args: [:organisation_id]
+
       define :organisation_by_short_name,
         action: :by_short_name,
         args: [:short_name],
@@ -189,6 +191,10 @@ defmodule Rescord.Accounts do
 
   def role_can?(role, action, %Member{} = member, tenant),
     do: Grants.allows?(role, Member, action, member, tenant)
+
+  @doc "Whether a role can export the data of an organisation (ADR 0054)."
+  @spec role_can_export?(term) :: boolean
+  def role_can_export?(role), do: granted?(role, Organisation, :export)
 
   @doc "Whether a role can change the settings of an organisation."
   @spec role_can_change_settings?(term) :: boolean

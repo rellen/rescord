@@ -5,6 +5,9 @@ section of a version in the notes of its GitHub release (ADR 0047).
 
 ## Unreleased
 
+- An administrator exports the data of an organisation as one ZIP of CSV
+  files, as it stood at the end of a chosen day, with a README. The power
+  `export` can go to another role.
 - Security: Phoenix LiveView 1.2.14. In 1.2.13, a join of a page without a
   URL skipped the `on_mount` hooks of its `live_session`, which find the
   member and the role on the pages of an organisation.

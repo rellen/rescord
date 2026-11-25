@@ -210,6 +210,9 @@ too.
     only after `Rescord.Transfers.Snapshot.clean/1`. Never decode a file
     with `:erlang.binary_to_term/1`. The private keys stay encrypted under
     `RESCORD_KEY_SECRET`, and no page or log shows them (ADR 0043).
+  - A new resource of a domain is in the export of the data, or
+    `Rescord.Export.excluded/0` names it with the reason (ADR 0054).
+    `Rescord.ExportTest` fails for a resource in neither.
   - A file goes through `Rescord.Storage` (ADR 0041). Make each key with
     `Rescord.Storage.key/2`, and never from what a person sends. Read the
     type of a file from its first bytes, never from its name or from the
@@ -379,6 +382,7 @@ too.
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
+| `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |

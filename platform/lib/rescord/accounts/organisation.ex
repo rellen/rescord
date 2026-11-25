@@ -72,6 +72,15 @@ defmodule Rescord.Accounts.Organisation do
     update :rename do
       accept [:name]
     end
+
+    # The export of the data of an organisation (ADR 0054). The action reads
+    # nothing: it is what the power `export` grants, and `Rescord.Export`
+    # runs it before it reads the data, as the person who asks.
+    action :export, :boolean do
+      description "Allows an export of the data of the organisation"
+      argument :organisation_id, :uuid, allow_nil?: false
+      run fn _input, _context -> {:ok, true} end
+    end
   end
 
   policies do
@@ -82,7 +91,7 @@ defmodule Rescord.Accounts.Organisation do
 
     # An administrator changes the settings of their own organisation
     # (ADR 0026 and ADR 0033). Nobody else has a policy here.
-    policy action([:set_time_zone, :set_task_days_ahead, :set_transfer_parts]) do
+    policy action([:set_time_zone, :set_task_days_ahead, :set_transfer_parts, :export]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
     end
   end

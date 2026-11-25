@@ -46,6 +46,7 @@ defmodule RescordWeb.OrganisationLive do
           <a href={~p"/o/#{@organisation.short_name}/partners"}>See the partner refuges</a>
         </li>
         <li><a href={~p"/o/#{@organisation.short_name}/settings"}>See the settings</a></li>
+        <li><a href={~p"/o/#{@organisation.short_name}/export"}>Export the data</a></li>
       </ul>
     </Layouts.app>
     """
