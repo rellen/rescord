@@ -48,6 +48,10 @@ in
       # esbuild Hex package downloads won't run on NixOS, so the app's config
       # points at this one instead (MIX_ESBUILD_PATH).
       pkgs.esbuild
+      # The photos (ADR 0055): vix links against the libvips of nixpkgs, and
+      # finds it with pkg-config (VIX_COMPILATION_MODE below).
+      pkgs.vips
+      pkgs.pkg-config
     ]
     # Phoenix live reload: file_system's Linux backend uses inotifywait.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.inotify-tools ];
@@ -61,6 +65,10 @@ in
 
     # Used as the esbuild `path` in platform/config/config.exs.
     MIX_ESBUILD_PATH = lib.getExe pkgs.esbuild;
+
+    # vix builds its NIF against pkgs.vips, and never downloads a libvips
+    # that would not run on NixOS (ADR 0055).
+    VIX_COMPILATION_MODE = "PLATFORM_PROVIDED_LIBVIPS";
 
     # Read by platform/config/test.exs and by Playwright (ADR 0023).
     PLAYWRIGHT_ASSETS_DIR = "${playwrightAssets}";

@@ -11,8 +11,10 @@ defmodule Rescord.Journal.Attachment do
   `Rescord.Journal.Changes.StoreAttachment` reads the type from the first
   bytes, and not from the name or from what the browser says: a JPEG, a
   PNG, a GIF, a WebP image or a PDF. It refuses another type, an empty
-  file, and a file of more than 20 MB. It puts the file in the store after
-  the write, in the transaction, so a fault of the store writes no record.
+  file, and a file of more than 20 MB. A photo loses its metadata, the GPS
+  position with the rest, and gets a thumbnail (ADR 0055). It puts the
+  files in the store after the write, in the transaction, so a fault of the
+  store writes no record.
 
   A removal archives the record, and the file stays in the store: a file
   has no period, and the history of the entry can name it. The author is
@@ -103,6 +105,12 @@ defmodule Rescord.Journal.Attachment do
       public? true
       writable? false
       description "The key of the file in the store"
+    end
+
+    attribute :thumbnail_key, :string do
+      public? true
+      writable? false
+      description "The key of the thumbnail of a photo in the store, or nil for a PDF (ADR 0055)"
     end
 
     attribute :author_id, :uuid do

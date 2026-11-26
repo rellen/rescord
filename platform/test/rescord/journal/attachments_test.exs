@@ -60,15 +60,15 @@ defmodule Rescord.Journal.AttachmentsTest do
       assert {:ok, attachment} = attach(context, jpeg(), %{name: "  biscuit.png  "})
 
       assert attachment.content_type == "image/jpeg"
-      assert attachment.size == byte_size(jpeg())
+      assert attachment.size == byte_size(stored_jpeg())
       assert attachment.name == "biscuit.png"
       assert attachment.author_id == context.member.id
       assert attachment.key == "#{context.organisation.id}/attachments/#{attachment.id}"
-      assert File.read!(Path.join(context.tmp_dir, attachment.key)) == jpeg()
+      assert File.read!(Path.join(context.tmp_dir, attachment.key)) == stored_jpeg()
 
       assert {:ok, %{} = same, bytes} = Journal.attachment_file(attachment.id, context.options)
       assert same.id == attachment.id
-      assert bytes == jpeg()
+      assert bytes == stored_jpeg()
 
       assert {:ok, %{} = by_entry} = Journal.attachments_of([context.entry.id], context.options)
       assert [%{id: id}] = by_entry[context.entry.id]

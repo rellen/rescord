@@ -108,6 +108,9 @@ defmodule Rescord.MixProject do
       {:req, "~> 0.5"},
       # The store of the attachments, compatible with S3 (ADR 0038).
       {:req_s3, "~> 0.2.5"},
+      # The photos of a resident: their metadata, rotation and thumbnails,
+      # through libvips (ADR 0055).
+      {:image, "~> 0.74"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},

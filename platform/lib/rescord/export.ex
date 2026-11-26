@@ -31,6 +31,7 @@ defmodule Rescord.Export do
       Rescord.Residents,
       Rescord.Locations,
       Rescord.Journal,
+      Rescord.Photos,
       Rescord.Tasks,
       Rescord.Inventory
     ]
@@ -44,6 +45,7 @@ defmodule Rescord.Export do
     Rescord.Residents,
     Rescord.Locations,
     Rescord.Journal,
+    Rescord.Photos,
     Rescord.Tasks,
     Rescord.Inventory
   ]

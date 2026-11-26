@@ -86,7 +86,7 @@ defmodule RescordWeb.AttachmentPagesTest do
     assert has_element?(view, "#attachment-#{report.id} a", "report.pdf")
 
     conn = get(context.conn, ~p"/o/#{context.organisation.short_name}/attachments/#{photo.id}")
-    assert response(conn, 200) == jpeg()
+    assert response(conn, 200) == stored_jpeg()
     assert get_resp_header(conn, "content-type") == ["image/jpeg"]
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
     assert [policy] = get_resp_header(conn, "content-security-policy")

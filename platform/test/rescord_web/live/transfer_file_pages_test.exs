@@ -165,7 +165,7 @@ defmodule RescordWeb.TransferFilePagesTest do
       |> sign_in(context.banksia_member)
       |> get(~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}/files/#{photo["id"]}")
 
-    assert response(conn, 200) == jpeg()
+    assert response(conn, 200) == stored_jpeg()
     assert get_resp_header(conn, "content-type") == ["image/jpeg"]
     assert [policy] = get_resp_header(conn, "content-security-policy")
     assert policy =~ "sandbox"

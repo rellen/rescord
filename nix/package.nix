@@ -6,6 +6,8 @@
   lib,
   beamPackages,
   esbuild,
+  vips,
+  pkg-config,
 }:
 
 let
@@ -27,7 +29,7 @@ let
   mixFodDeps = beamPackages.fetchMixDeps {
     pname = "rescord-deps";
     inherit version src;
-    hash = "sha256-CL1Caf/nJhovvYVlNtdY3mPiErbA4IWNUhawTfx1rE4=";
+    hash = "sha256-/ygyjWgF/jA7mD4D7UMLl1oywFIsfd/S5T5Y5MG2sxM=";
   };
 in
 beamPackages.mixRelease {
@@ -37,6 +39,13 @@ beamPackages.mixRelease {
   # The esbuild of nixpkgs: the one that the esbuild of Hex would download
   # does not run here (ADR 0001).
   env.MIX_ESBUILD_PATH = lib.getExe esbuild;
+
+  # The photos (ADR 0055): vix builds its NIF against the libvips of
+  # nixpkgs, which it finds with pkg-config. The precompiled libvips that it
+  # downloads by default cannot reach the build, which has no network.
+  env.VIX_COMPILATION_MODE = "PLATFORM_PROVIDED_LIBVIPS";
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ vips ];
 
   # The assets go into the release, with their digests.
   postBuild = ''

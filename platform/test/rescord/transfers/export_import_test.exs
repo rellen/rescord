@@ -182,7 +182,7 @@ defmodule Rescord.Transfers.ExportImportTest do
                  actor: context.banksia_member
                )
 
-      assert bytes == jpeg()
+      assert bytes == stored_jpeg()
 
       # The refuge that sent it reads its record of the export.
       assert {:ok, [%{state: :exported}]} =

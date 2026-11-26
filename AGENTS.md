@@ -213,6 +213,12 @@ too.
   - A new resource of a domain is in the export of the data, or
     `Rescord.Export.excluded/0` names it with the reason (ADR 0054).
     `Rescord.ExportTest` fails for a resource in neither.
+  - A photo goes through `Rescord.Images.prepare/1` before it reaches the
+    store (ADR 0055): it removes the metadata, the GPS position with the
+    rest, and makes the thumbnail. Never store the bytes of a photo as a
+    person sent them. A test makes a real image with
+    `Rescord.StorageFixtures.photo/1`: libvips refuses a file that only
+    starts like a JPEG.
   - A file goes through `Rescord.Storage` (ADR 0041). Make each key with
     `Rescord.Storage.key/2`, and never from what a person sends. Read the
     type of a file from its first bytes, never from its name or from the
@@ -376,6 +382,8 @@ too.
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/photos/` | the photos of the residents, their albums and the profile pictures (ADR 0055) |
+| `platform/lib/rescord/images.ex` | a photo made safe to keep, and its thumbnail, with libvips (ADR 0055) |
 | `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |
 | `platform/lib/rescord/inventory/` | the items, the lots, the suppliers, the stock movements and the reorder levels |
 | `platform/lib/rescord/tasks/` | the tasks, their states and their subjects; the routines, their patterns and the job that makes their tasks |

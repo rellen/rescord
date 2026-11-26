@@ -11,6 +11,10 @@ defmodule Rescord.Application do
 
   @impl true
   def start(_type, _args) do
+    # libvips reads the photos that people send: it uses no loader that its
+    # authors do not trust with such a file (ADR 0055).
+    :ok = Rescord.Images.block_untrusted()
+
     children = [
       RescordWeb.Telemetry,
       Rescord.Repo,

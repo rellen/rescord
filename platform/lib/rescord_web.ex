@@ -34,6 +34,7 @@ defmodule RescordWeb do
       Rescord.Residents,
       Rescord.Locations,
       Rescord.Journal,
+      Rescord.Photos,
       Rescord.Tasks,
       Rescord.Inventory,
       Rescord.Transfers,

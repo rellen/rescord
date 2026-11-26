@@ -454,6 +454,29 @@ it and encrypted for the one that receives it. The file holds the photos and
 the PDFs of its entries. The other refuge imports it, and it waits for an
 answer as a transfer on one server does.
 
+### 5.10 Photos of a resident
+
+A resident has photos (ADR 0055). Each photo has a date and an optional
+caption. A member puts a photo in albums: an album is a named set of the
+photos of one resident, and a photo can be in many albums or in none. One
+photo of a resident can be its profile picture. The page of the resident
+shows it.
+
+The photos of the journal entries of a resident are also its photos. Each
+one shows the date of its entry and a link to the entry. A member can put
+such a photo in an album, or make it the profile picture. Rescord then
+keeps one record for it and no second copy of the file.
+
+Rescord removes the metadata of each photo before it keeps the photo. The
+metadata of a photo from a phone can hold the place where somebody took it,
+for example the house of a foster carer. Rescord also turns the photo as
+the camera recorded, and makes a small copy for the pages.
+
+The power `residents` adds the photos and changes them. A member removes
+the photos that they added. The power `remove_residents` removes each
+photo. A photo of the journal leaves the photos when a member takes it off
+its entry.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.

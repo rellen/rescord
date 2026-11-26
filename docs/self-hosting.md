@@ -15,8 +15,9 @@ install Rescord, each setting, and how to back up and upgrade.
 - An SMTP server that may send mail for your address. Rescord sends the
   sign-in links and the invitations through it. Postmark, Amazon SES,
   Mailgun, Fastmail and the mail host of your domain all give one.
-- A place for the photos and the PDFs of the journal: a directory of the
-  server, or a bucket of a service that is compatible with S3.
+- A place for the photos of the residents and the files of the journal: a
+  directory of the server, or a bucket of a service that is compatible
+  with S3.
 
 ## The version to install
 
@@ -122,7 +123,9 @@ without KVM.
 
 ### From the tarball, with systemd
 
-The tarball holds the release and its Erlang runtime. It runs on a system
+The tarball holds the release, its Erlang runtime, and the libvips that
+makes the photos safe to keep (ADR 0055), so the server needs no libvips of
+its own. It runs on a system
 with glibc 2.36 or later and OpenSSL 3: Debian 12 and later, Ubuntu 24.04
 and later, and Fedora 37 and later. Build it from the repository on a
 machine with Docker, for the architecture of the server, and copy

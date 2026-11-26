@@ -15,7 +15,7 @@ defmodule RescordWeb.ResidentLive do
 
   import RescordWeb.ResidentComponents
 
-  alias Rescord.{Journal, Lists, Locations, Residents}
+  alias Rescord.{Journal, Lists, Locations, Photos, Residents}
   alias RescordWeb.ResidentWords
 
   @impl true
@@ -53,7 +53,8 @@ defmodule RescordWeb.ResidentLive do
          desex_statuses: Residents.desex_history(resident.id, options(socket)),
          relations: Residents.relations(resident.id, options(socket)),
          homes: homes(resident.id, options(socket)),
-         measurements: measurements(resident.id, options(socket))
+         measurements: measurements(resident.id, options(socket)),
+         profile_photo: profile_photo(resident.id, options(socket))
        )
        |> assign_choices()}
     else
@@ -82,6 +83,12 @@ defmodule RescordWeb.ResidentLive do
       parent_form: to_form(%{"parent_id" => "", "role" => "mother"}, as: :parent),
       family_form: to_form(%{"family_id" => "", "name" => ""}, as: :family)
     )
+  end
+
+  # The profile picture of the resident, or nil (ADR 0055).
+  defp profile_photo(resident_id, options) do
+    {:ok, photo} = Photos.profile_photo(resident_id, options)
+    photo
   end
 
   # The newest measurement of each kind, for example the weight.
@@ -299,6 +306,9 @@ defmodule RescordWeb.ResidentLive do
           </.state>
         </:subtitle>
         <:actions>
+          <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/photos"}>
+            Photos
+          </.link>
           <.link
             :if={can?(@role, :resident, :revise)}
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/edit"}
@@ -310,6 +320,12 @@ defmodule RescordWeb.ResidentLive do
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
+
+      <RescordWeb.PhotoComponents.profile
+        photo={@profile_photo}
+        organisation={@organisation}
+        resident={@resident}
+      />
 
       <.about resident={@resident} today={@today} />
 

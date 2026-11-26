@@ -1,0 +1,340 @@
+defmodule RescordWeb.PhotoComponents do
+  @moduledoc """
+  The parts of the page of the photos of a resident (ADR 0037 and
+  ADR 0055): its profile picture, its albums, the form that adds photos,
+  and the grid of the photos with the form of each one.
+
+  A photo is an item of `Rescord.Photos.photos_of/2`: a photo record, or a
+  photo of a journal entry that is no record yet. Each part names an item
+  by its reference (`ref/1`), and the page finds the item again from that
+  reference among the items that it has.
+  """
+
+  use RescordWeb, :html
+
+  alias RescordWeb.ResidentWords
+
+  @doc """
+  The profile picture of a resident, with a link to its photos, or nothing
+  when it has none.
+  """
+  attr :photo, :any, required: true
+  attr :organisation, :any, required: true
+  attr :resident, :any, required: true
+
+  def profile(assigns) do
+    ~H"""
+    <figure :if={@photo} data-profile id="profile-photo">
+      <a href={photo_url(@organisation, @photo)}>
+        <img
+          src={thumbnail_url(@organisation, @photo)}
+          alt={@photo.caption || "The profile picture of #{name(@resident)}"}
+        />
+      </a>
+      <figcaption>Profile picture</figcaption>
+    </figure>
+    """
+  end
+
+  @doc "The albums of a resident as links, the open one marked, with the form of a new album."
+  attr :albums, :list, required: true
+  attr :album, :any, required: true, doc: "the open album, or nil for all the photos"
+  attr :counts, :map, required: true, doc: "the number of photos in each album, by its id"
+  attr :total, :integer, required: true
+  attr :path, :string, required: true
+  attr :can_make?, :boolean, required: true
+
+  def albums(assigns) do
+    ~H"""
+    <section aria-labelledby="albums-heading">
+      <h2 id="albums-heading">Albums</h2>
+      <nav aria-label="Albums">
+        <ul>
+          <li>
+            <.link patch={@path} aria-current={if is_nil(@album), do: "page"}>
+              All photos ({@total})
+            </.link>
+          </li>
+          <li :for={album <- @albums}>
+            <.link
+              patch={"#{@path}?album=#{album.id}"}
+              aria-current={if @album && @album.id == album.id, do: "page"}
+            >
+              {album.name} ({Map.get(@counts, album.id, 0)})
+            </.link>
+          </li>
+        </ul>
+      </nav>
+      <p :if={@albums == []}>No albums yet.</p>
+
+      <details :if={@can_make?} id="make-album-details">
+        <summary>Make an album</summary>
+        <form id="make-album" phx-submit="make_album">
+          <.input id="album-name" name="album[name]" label="Name of the album" value="" required />
+          <.button>Make the album</.button>
+        </form>
+      </details>
+    </section>
+    """
+  end
+
+  @doc "The heading of an open album, with its new name and its removal."
+  attr :album, :any, required: true
+  attr :can_rename?, :boolean, required: true
+  attr :can_remove?, :boolean, required: true
+
+  def album_actions(assigns) do
+    ~H"""
+    <div>
+      <details :if={@can_rename?} id="rename-album-details">
+        <summary>Rename the album</summary>
+        <form id="rename-album" phx-submit="rename_album">
+          <.input
+            id="album-new-name"
+            name="album[name]"
+            label="New name of the album"
+            value={@album.name}
+            required
+          />
+          <.button>Rename</.button>
+        </form>
+      </details>
+      <.button
+        :if={@can_remove?}
+        type="button"
+        phx-click="remove_album"
+        data-confirm={"Remove the album #{@album.name}? Its photos stay."}
+      >
+        Remove the album
+      </.button>
+    </div>
+    """
+  end
+
+  @doc """
+  The form that adds photos: ten at most, each 20 MB at most, with a
+  caption and a date for each of them. A new photo goes into the open
+  album.
+  """
+  attr :upload, :any, required: true
+  attr :album, :any, required: true
+  attr :max_date, :string, required: true
+
+  def add_form(assigns) do
+    ~H"""
+    <details id="add-photos-details">
+      <summary>Add photos</summary>
+      <form id="add-photos" phx-submit="add" phx-change="choose">
+        <fieldset id="add-photos-files">
+          <legend>Photos: JPEG, PNG, GIF or WebP, ten at most, each 20 MB at most</legend>
+          <label for={@upload.ref}>Choose photos</label>
+          <.live_file_input upload={@upload} />
+          <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
+          <ul :if={@upload.entries != []}>
+            <li :for={entry <- @upload.entries} id={"new-photo-#{entry.ref}"}>
+              {entry.client_name}
+              <progress value={entry.progress} max="100" aria-label={"Sent of #{entry.client_name}"}>
+                {entry.progress} percent
+              </progress>
+              <span :for={error <- upload_errors(@upload, entry)} role="alert">
+                {upload_words(error)}
+              </span>
+              <.button
+                type="button"
+                phx-click="cancel_photo"
+                phx-value-ref={entry.ref}
+                aria-label={"Take #{entry.client_name} out"}
+              >
+                Take out
+              </.button>
+            </li>
+          </ul>
+        </fieldset>
+        <.input id="add-caption" name="add[caption]" label="Caption (optional)" value="" />
+        <.input
+          id="add-taken-on"
+          name="add[taken_on]"
+          type="date"
+          label="Date (optional: the date of the camera, or today)"
+          value=""
+          max={@max_date}
+        />
+        <p :if={@album}>The photos go into the album {@album.name}.</p>
+        <.button>Add the photos</.button>
+      </form>
+    </details>
+    """
+  end
+
+  @doc "The words of a problem of a photo that the browser sends."
+  def upload_words(:too_large), do: "The photo is more than 20 MB."
+  def upload_words(:not_accepted), do: "Rescord takes a photo: JPEG, PNG, GIF or WebP."
+  def upload_words(:too_many_files), do: "Choose ten photos at most."
+  def upload_words(_other), do: "The photo did not arrive. Choose it again."
+
+  @doc "The photos, as a grid of cards, the newest first."
+  attr :items, :list, required: true
+  attr :albums, :list, required: true
+  attr :profile_id, :any, required: true, doc: "the id of the photo that is the profile picture"
+  attr :organisation, :any, required: true
+  attr :resident, :any, required: true
+  attr :role, :any, required: true
+  attr :current_user, :any, required: true
+  attr :can, :map, required: true
+  attr :max_date, :string, required: true
+
+  def grid(assigns) do
+    ~H"""
+    <p :if={@items == []} id="no-photos">No photos here yet.</p>
+    <ul :if={@items != []} data-photos id="photos">
+      <li :for={item <- @items} id={"item-#{ref(item)}"}>
+        <.card
+          item={item}
+          albums={@albums}
+          profile?={not is_nil(item.photo) and item.photo.id == @profile_id}
+          organisation={@organisation}
+          resident={@resident}
+          role={@role}
+          current_user={@current_user}
+          can={@can}
+          max_date={@max_date}
+        />
+      </li>
+    </ul>
+    """
+  end
+
+  attr :item, :map, required: true
+  attr :albums, :list, required: true
+  attr :profile?, :boolean, required: true
+  attr :organisation, :any, required: true
+  attr :resident, :any, required: true
+  attr :role, :any, required: true
+  attr :current_user, :any, required: true
+  attr :can, :map, required: true
+  attr :max_date, :string, required: true
+
+  defp card(assigns) do
+    assigns = assign(assigns, ref: ref(assigns.item), in_albums: in_albums(assigns))
+
+    ~H"""
+    <figure>
+      <a href={item_photo_url(@organisation, @item)}>
+        <img src={item_thumbnail_url(@organisation, @item)} alt={alt(@item, @resident)} />
+      </a>
+      <figcaption>
+        <span :if={@item.caption}>{@item.caption}</span>
+        <small>
+          <time datetime={Date.to_iso8601(@item.taken_on)}>{ResidentWords.date(@item.taken_on)}</time>
+        </small>
+        <.state :if={@profile?} kind="info">Profile picture</.state>
+        <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
+        <.link
+          :if={@item.entry_id}
+          navigate={
+            ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal" <>
+              "#entry-#{@item.entry_id}"
+          }
+        >
+          From the journal
+        </.link>
+      </figcaption>
+
+      <details :if={@can.keep?} id={"change-#{@ref}"}>
+        <summary>Change</summary>
+        <form id={"keep-#{@ref}"} phx-submit="keep">
+          <input type="hidden" name="photo[ref]" value={@ref} />
+          <.input id={"caption-#{@ref}"} name="photo[caption]" label="Caption" value={@item.caption} />
+          <.input
+            id={"taken-on-#{@ref}"}
+            name="photo[taken_on]"
+            type="date"
+            label="Date"
+            value={Date.to_iso8601(@item.taken_on)}
+            max={@max_date}
+            required
+          />
+          <fieldset :if={@albums != []} id={"albums-#{@ref}"}>
+            <legend>Albums</legend>
+            <input type="hidden" name="photo[album_ids][]" value="" />
+            <div :for={album <- @albums}>
+              <input
+                type="checkbox"
+                id={"album-#{@ref}-#{album.id}"}
+                name="photo[album_ids][]"
+                value={album.id}
+                checked={album.id in @item.album_ids}
+              />
+              <label for={"album-#{@ref}-#{album.id}"}>{album.name}</label>
+            </div>
+          </fieldset>
+          <.button>Save</.button>
+        </form>
+      </details>
+
+      <.button
+        :if={@can.profile? and not @profile?}
+        type="button"
+        phx-click="make_profile"
+        phx-value-ref={@ref}
+      >
+        Make it the profile picture
+      </.button>
+      <.button
+        :if={
+          @item.photo && is_nil(@item.attachment) &&
+            Rescord.Photos.can_remove_photo?(@role, @current_user, @item.photo)
+        }
+        type="button"
+        phx-click="remove_photo"
+        phx-value-ref={@ref}
+        data-confirm="Remove this photo?"
+      >
+        Remove
+      </.button>
+    </figure>
+    """
+  end
+
+  defp in_albums(%{item: item, albums: albums}) do
+    for album <- albums, album.id in item.album_ids, do: album.name
+  end
+
+  @doc """
+  The reference of an item, which a form and a button send: `photo-<id>`
+  for a photo record, and `attachment-<id>` for a photo of a journal entry
+  that is no record yet.
+  """
+  def ref(%{photo: %{id: id}}), do: "photo-#{id}"
+  def ref(%{attachment: %{id: id}}), do: "attachment-#{id}"
+
+  defp alt(item, resident) do
+    item.caption || "A photo of #{name(resident)}, #{ResidentWords.date(item.taken_on)}"
+  end
+
+  defp name(resident), do: resident.name || "a resident with no name"
+
+  @doc "The link to a photo record."
+  def photo_url(organisation, photo), do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}"
+
+  @doc "The link to the thumbnail of a photo record, or to the photo when it has none."
+  def thumbnail_url(organisation, photo) do
+    if photo.thumbnail_key,
+      do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}/thumbnail",
+      else: photo_url(organisation, photo)
+  end
+
+  defp item_photo_url(organisation, %{photo: %{} = photo}), do: photo_url(organisation, photo)
+
+  defp item_photo_url(organisation, %{attachment: attachment}),
+    do: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}"
+
+  defp item_thumbnail_url(organisation, %{photo: %{} = photo}),
+    do: thumbnail_url(organisation, photo)
+
+  defp item_thumbnail_url(organisation, %{attachment: %{thumbnail_key: nil} = attachment}),
+    do: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}"
+
+  defp item_thumbnail_url(organisation, %{attachment: attachment}),
+    do: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}/thumbnail"
+end

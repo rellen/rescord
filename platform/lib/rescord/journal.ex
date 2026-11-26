@@ -218,13 +218,25 @@ defmodule Rescord.Journal do
   """
   @spec attachment_file(String.t(), keyword) ::
           {:ok, map, binary} | {:error, :not_found | term}
-  def attachment_file(id, opts \\ []) do
+  def attachment_file(id, opts \\ []), do: file_of(id, :key, opts)
+
+  @doc """
+  An attachment and the bytes of the thumbnail of its photo, as
+  `attachment_file/2` gives the file (ADR 0055). A PDF, and a photo that
+  was attached before Rescord made thumbnails, have none.
+  """
+  @spec attachment_thumbnail(String.t(), keyword) ::
+          {:ok, map, binary} | {:error, :not_found | term}
+  def attachment_thumbnail(id, opts \\ []), do: file_of(id, :thumbnail_key, opts)
+
+  defp file_of(id, field, opts) do
     with {:ok, %{} = attachment} <- attachment(id, opts),
-         {:ok, bytes} <- Rescord.Storage.get(attachment.key) do
+         key when is_binary(key) <- Map.fetch!(attachment, field),
+         {:ok, bytes} <- Rescord.Storage.get(key) do
       {:ok, attachment, bytes}
     else
-      {:ok, nil} -> {:error, :not_found}
       {:error, error} -> {:error, error}
+      _nothing -> {:error, :not_found}
     end
   end
 

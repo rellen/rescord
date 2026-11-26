@@ -378,6 +378,20 @@ organisation, and no part of it comes from what a person sends. A person
 reads a file through a controller that asks the policy, and the answer
 names the type that Rescord found in the first bytes of the file.
 
+A photo goes through `Rescord.Images` before it reaches the store
+(ADR 0055): libvips turns it as its EXIF says, writes it again with no
+metadata, so no GPS position stays, and makes a thumbnail. A photo of the
+journal and a photo of a resident get the same treatment.
+
+### Photos
+
+**A resident has photos, each with a caption and a date, in albums, and one
+of them is its profile picture** (ADR 0055). `Rescord.Photos` holds them, and
+reads the photos of the journal of the resident as photos too: a photo of
+the journal becomes a record of its own, which names the same files, when a
+person puts it in an album or makes it the profile picture. The power
+`residents` does the work, and `remove_residents` removes any photo.
+
 ### Transfers
 
 **A partnership and a transfer are between two organisations, so they are

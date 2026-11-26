@@ -29,8 +29,13 @@ RUN --mount=type=secret,id=extra_ca,required=false \
     && update-ca-certificates; \
   fi
 
+# vix takes its NIF and a libvips for the web formats from its release on
+# GitHub, with checksums that its package holds, and the release carries
+# both in the priv of vix: the image and the tarball need no libvips of
+# the system (ADR 0055).
 ENV MIX_ENV=prod \
-  HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt
+  HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt \
+  VIX_COMPILATION_MODE=PRECOMPILED_NIF_AND_LIBVIPS
 
 WORKDIR /app
 RUN mix local.hex --force && mix local.rebar --force

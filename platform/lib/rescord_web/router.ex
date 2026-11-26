@@ -45,6 +45,11 @@ defmodule RescordWeb.Router do
     # The file of an attachment, which the person reads with their grants
     # (ADR 0041).
     get "/o/:organisation/attachments/:id", AttachmentController, :show
+    get "/o/:organisation/attachments/:id/thumbnail", PhotoController, :attachment_thumbnail
+
+    # The photos of the residents and their thumbnails (ADR 0055).
+    get "/o/:organisation/photos/:id", PhotoController, :show
+    get "/o/:organisation/photos/:id/thumbnail", PhotoController, :thumbnail
 
     # The transfer files and the files of a copy (ADR 0043).
     post "/o/:organisation/transfers/export", TransferFileController, :export
@@ -88,6 +93,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/residents/:id", ResidentLive
       live "/o/:organisation/residents/:id/edit", ResidentFormLive, :edit
       live "/o/:organisation/residents/:id/journal", JournalLive
+      live "/o/:organisation/residents/:id/photos", PhotosLive
       live "/o/:organisation/residents/:id/timeline", TimelineLive
     end
   end
