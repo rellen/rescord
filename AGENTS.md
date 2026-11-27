@@ -431,6 +431,13 @@ for Rescord.
   options of the caller, then the versions with `authorize?: false`, and
   returns nothing when the caller cannot read the record.
   `Rescord.History.changes/1` says what the versions mean.
+- **What needs somebody is a row of its domain** (ADR 0065). The first
+  page of an organisation shows what `Rescord.Attention.parts/2` gathers
+  from the function `attention` of each domain. For a new thing that a
+  member must act on, add a row there: read it as the actor, give it only
+  to a role with the grant that puts it right, keep the limit and the
+  total, and add its clause to `row/1` of `RescordWeb.AttentionComponents`
+  with a link to the page where the person acts. A row has no button.
 - **An action that changes a state has a filter on that state**
   (`change filter(expr(state == :due))`, ADR 0032). The state machine reads
   the record that the caller has in hand, which can be old. The filter
@@ -486,6 +493,7 @@ for Rescord.
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
+| `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |

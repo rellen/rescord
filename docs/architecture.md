@@ -500,6 +500,20 @@ as it stood at the end of a chosen day, and writes a README that says what
 each file holds and which file each id names. Each resource of the domains
 is in the export, or `Rescord.Export.excluded/0` says why not.
 
+### What needs attention
+
+**The first page of an organisation says what needs attention now**
+(ADR 0065): the tasks that are overdue or due today, the stock to count
+or to order, the residents that are late back or expected, the locations
+over their capacity, and the transfers and partner requests that wait.
+Each domain says what needs somebody in its part with a function
+`attention`, and `Rescord.Attention.parts/2` asks each of them. Three
+rules hold: a read runs as the person, so the policies decide what they
+see; a row is there only for a role that can act on it; and a part has a
+limit and a total. The page reads again each minute, because the time
+alone makes a task overdue. A row is a link to the page of its record,
+where the person acts.
+
 ## Releases
 
 **A rescue runs Rescord on a server of its own** (ADR 0044). One `mix
