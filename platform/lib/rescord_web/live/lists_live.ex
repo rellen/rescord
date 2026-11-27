@@ -186,7 +186,12 @@ defmodule RescordWeb.ListsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={assigns[:organisation]}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={assigns[:organisation]}
+      section={if assigns[:organisation], do: :lists, else: :root}
+    >
       <.header>
         {@page_title}
         <:subtitle :if={@shared?}>

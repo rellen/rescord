@@ -193,7 +193,12 @@ defmodule RescordWeb.TasksLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:tasks}
+    >
       <.header>
         Tasks
         <:subtitle>

@@ -52,7 +52,12 @@ defmodule RescordWeb.ResidentsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:residents}
+    >
       <.header>
         Residents
         <:subtitle>The animals in the care of {@organisation.name}</:subtitle>
@@ -108,7 +113,7 @@ defmodule RescordWeb.ResidentsLive do
           </.state>
         </:col>
         <:col :let={resident} field="arrived_on" label="Arrived" sort>
-          {ResidentWords.date(resident.arrived_on) || "Not yet"}
+          <span data-label="Arrived">{ResidentWords.date(resident.arrived_on) || "Not yet"}</span>
         </:col>
       </Cinder.collection>
     </Layouts.app>

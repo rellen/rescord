@@ -315,7 +315,12 @@ defmodule RescordWeb.ItemLive do
       )
 
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:inventory}
+    >
       <.header>
         {@item.name}
         <:subtitle>

@@ -58,6 +58,13 @@ its GitHub release (ADR 0047).
 
 ### Changed
 
+- Rescord is mobile first (ADR 0061). On a phone the site menu is one bar
+  with the button "Menu", which opens the menu below it, and the bar stays
+  at the top of the screen. The menu took five lines of each page before.
+  On a wide screen the menu is two rows: the name of the site and the
+  account, then the parts of the organisation, so a long email address no
+  longer wraps it. The menu marks the part that the page is in. A field
+  for a number asks a phone for its keyboard of digits.
 - The versions of Rescord follow Semantic Versioning, and this file follows
   Keep a Changelog, with the notes of an upgrade first (ADR 0060). A
   release now runs the tests too, before it publishes anything.

@@ -35,7 +35,12 @@ defmodule RescordWeb.ExportLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:settings}
+    >
       <.header>
         Export the data
         <:subtitle>A copy of the data of {@organisation.name}, as files of CSV.</:subtitle>

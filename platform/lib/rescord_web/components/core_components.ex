@@ -106,6 +106,9 @@ defmodule RescordWeb.CoreComponents do
   A control with errors gets `aria-invalid="true"` and an
   `aria-describedby` that names the `<small>` element with its errors.
 
+  A control of the type `number` gets an `inputmode`, so a phone shows its
+  keyboard of digits (ADR 0061).
+
   ## Types
 
   This function accepts all HTML input types, considering that:
@@ -159,8 +162,9 @@ defmodule RescordWeb.CoreComponents do
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
 
   attr :rest, :global,
-    include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
-                multiple pattern placeholder readonly required rows size step)
+    include: ~w(accept autocapitalize autocomplete capture cols disabled enterkeyhint form
+                inputmode list max maxlength min minlength multiple pattern placeholder readonly
+                required rows size spellcheck step)
 
   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
@@ -250,6 +254,8 @@ defmodule RescordWeb.CoreComponents do
 
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
+    assigns = assign(assigns, :rest, keyboard(assigns.type, assigns.rest))
+
     ~H"""
     <div>
       <label :if={@label} for={@id}>{@label}</label>
@@ -266,6 +272,16 @@ defmodule RescordWeb.CoreComponents do
     </div>
     """
   end
+
+  # The keyboard of a phone for a number (ADR 0061): the digits alone for a
+  # whole number, and the digits with a decimal mark where the step allows a
+  # part of a number. A page that states an `inputmode` keeps it.
+  defp keyboard("number", rest) do
+    mode = if rest[:step] in [nil, "1", 1], do: "numeric", else: "decimal"
+    Map.put_new(rest, :inputmode, mode)
+  end
+
+  defp keyboard(_type, rest), do: rest
 
   defp error_id(id), do: "#{id}-error"
 
@@ -305,6 +321,9 @@ defmodule RescordWeb.CoreComponents do
 
   @doc """
   Renders a table, with a header cell of scope `col` for each column.
+
+  On a phone each row is a card (ADR 0061): the first cell is its title, and
+  each other cell says its column with `data-label`.
 
   ## Examples
 
@@ -347,7 +366,11 @@ defmodule RescordWeb.CoreComponents do
       </thead>
       <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
         <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td :for={col <- @col} phx-click={@row_click && @row_click.(row)}>
+          <td
+            :for={{col, index} <- Enum.with_index(@col)}
+            data-label={index > 0 && col[:label]}
+            phx-click={@row_click && @row_click.(row)}
+          >
             {render_slot(col, @row_item.(row))}
           </td>
           <td :if={@action != []}>
@@ -445,7 +468,7 @@ defmodule RescordWeb.CoreComponents do
   attr :name, :string,
     required: true,
     values:
-      ~w(arrow-path check clock exclamation-circle exclamation-triangle information-circle mark x-mark)
+      ~w(arrow-path bars check clock exclamation-circle exclamation-triangle information-circle mark x-mark)
 
   attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
   attr :rest, :global
@@ -454,6 +477,15 @@ defmodule RescordWeb.CoreComponents do
     ~H"""
     <.svg spin={@spin} {@rest}>
       <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" />
+    </.svg>
+    """
+  end
+
+  # The three lines of a menu, beside the word Menu in the site bar.
+  def icon(%{name: "bars"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
     </.svg>
     """
   end

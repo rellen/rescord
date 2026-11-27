@@ -64,7 +64,12 @@ defmodule RescordWeb.TimelineLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:residents}
+    >
       <.header>
         Timeline of {name(@resident)}
         <:subtitle>

@@ -23,13 +23,18 @@ defmodule RescordWeb.OrganisationLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:home}
+    >
       <.header>
         {@organisation.name}
         <:subtitle>{role_words(@role)}</:subtitle>
       </.header>
 
-      <ul>
+      <ul data-links>
         <li><a href={~p"/o/#{@organisation.short_name}/tasks"}>See the tasks of today</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/routines"}>See the routines</a></li>
         <li><a href={~p"/o/#{@organisation.short_name}/residents"}>See the residents</a></li>

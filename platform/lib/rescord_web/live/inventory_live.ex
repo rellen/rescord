@@ -78,7 +78,12 @@ defmodule RescordWeb.InventoryLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:inventory}
+    >
       <.header>
         Inventory
         <:subtitle>The supplies of {@organisation.name}</:subtitle>

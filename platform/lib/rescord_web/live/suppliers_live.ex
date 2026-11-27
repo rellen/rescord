@@ -87,7 +87,12 @@ defmodule RescordWeb.SuppliersLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:inventory}
+    >
       <.header>
         Suppliers
         <:subtitle>Where {@organisation.name} gets its supplies</:subtitle>

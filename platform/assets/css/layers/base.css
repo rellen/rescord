@@ -15,13 +15,38 @@ html {
   text-size-adjust: 100%;
 }
 
+/*
+ * The stylesheet is mobile first (ADR 0061): a rule with no media query is
+ * the rule of a phone, and a query adds what a wider screen has room for.
+ * The body is 16px on a phone, and 15px where the screen is wide.
+ */
 body {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text);
+  /* A word that is longer than its line breaks: an email address, the
+     name of a file. */
+  overflow-wrap: break-word;
   background: var(--bg);
+}
+
+@media (width >= 48rem) {
+  body {
+    font-size: 0.9375rem;
+  }
+}
+
+/*
+ * The site bar stays at the top of a phone (layer layout). What the page
+ * scrolls to, such as the control with the focus, stops below the bar and
+ * not behind it.
+ */
+@media (width < 60rem) and (height >= 30rem) {
+  html {
+    scroll-padding-block-start: calc(var(--bar-size) + 0.5rem);
+  }
 }
 
 :focus-visible {

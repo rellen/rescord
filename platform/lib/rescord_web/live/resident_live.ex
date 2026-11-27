@@ -292,7 +292,12 @@ defmodule RescordWeb.ResidentLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:residents}
+    >
       <nav aria-label="Breadcrumb">
         <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
       </nav>
@@ -306,7 +311,10 @@ defmodule RescordWeb.ResidentLive do
           </.state>
         </:subtitle>
         <:actions>
-          <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/photos"}>
+          <.link
+            navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/photos"}
+            data-variant="secondary"
+          >
             Photos
           </.link>
           <.link

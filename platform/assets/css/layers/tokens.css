@@ -109,6 +109,14 @@
   --radius: 0.75rem;
   --pill: 999px;
 
+  /* The least height and width of what a finger presses: 44 CSS pixels
+     (ADR 0061). A button, a field, a summary and a link of a menu are at
+     least this high. */
+  --tap: 2.75rem;
+
+  /* The height of the site bar, which stays at the top of a phone. */
+  --bar-size: 3.5rem;
+
   /* Three grounds, one above the other: the page, a card on it, and a menu
      or a list of choices above a card. In the dark scheme a shadow does not
      show, so the raised ground is lighter than the card. */

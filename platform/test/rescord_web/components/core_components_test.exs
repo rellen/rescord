@@ -106,6 +106,40 @@ defmodule RescordWeb.CoreComponentsTest do
     assert attribute(doc, "svg", "focusable") == ["false"]
   end
 
+  test "a number control asks a phone for its keyboard of digits (ADR 0061)" do
+    assigns = %{}
+
+    doc =
+      rendered_to_string(~H"""
+      <.input id="whole" name="whole" type="number" label="Whole" value="" />
+      <.input id="part" name="part" type="number" step="any" label="Part" value="" />
+      <.input id="stated" name="stated" type="number" inputmode="tel" label="Stated" value="" />
+      <.input id="words" name="words" type="text" label="Words" value="" />
+      """)
+      |> parse()
+
+    assert attribute(doc, "input#whole", "inputmode") == ["numeric"]
+    assert attribute(doc, "input#part", "inputmode") == ["decimal"]
+    assert attribute(doc, "input#stated", "inputmode") == ["tel"]
+    assert attribute(doc, "input#words", "inputmode") == []
+  end
+
+  test "each cell of a table but the first says its column, for a phone (ADR 0061)" do
+    assigns = %{rows: [%{id: 1, name: "One", kind: "A"}]}
+
+    doc =
+      rendered_to_string(~H"""
+      <.table id="rows" rows={@rows}>
+        <:col :let={row} label="Name">{row.name}</:col>
+        <:col :let={row} label="Kind">{row.kind}</:col>
+      </.table>
+      """)
+      |> parse()
+
+    assert attribute(doc, "td:first-child", "data-label") == []
+    assert attribute(doc, "td:nth-child(2)", "data-label") == ["Kind"]
+  end
+
   test "no component renders a class attribute" do
     assigns = %{rows: [%{id: 1, name: "One"}]}
 

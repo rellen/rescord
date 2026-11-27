@@ -121,7 +121,12 @@ defmodule RescordWeb.MembersLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:members}
+    >
       <.header>
         Members
         <:subtitle>The people of {@organisation.name}</:subtitle>
