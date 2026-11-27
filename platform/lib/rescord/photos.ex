@@ -221,6 +221,19 @@ defmodule Rescord.Photos do
   def profile_photos(resident_ids, opts \\ []) when is_list(resident_ids) do
     ProfilePhoto
     |> Ash.Query.filter(resident_id in ^resident_ids)
+    |> read_profiles(opts)
+  end
+
+  @doc """
+  The profile picture of each resident of the organisation that has one, as
+  a map from the id of the resident to its photo. The list of the residents
+  reads them all at once: Cinder reads the residents, and their pictures
+  are in this domain, which the residents do not know (ADR 0055).
+  """
+  def all_profile_photos(opts \\ []), do: read_profiles(ProfilePhoto, opts)
+
+  defp read_profiles(query, opts) do
+    query
     |> Ash.Query.load(photo: [:attachment])
     |> Ash.read(opts)
     |> case do

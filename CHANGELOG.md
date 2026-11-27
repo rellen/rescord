@@ -6,8 +6,8 @@ section of a version in the notes of its GitHub release (ADR 0047).
 ## Unreleased
 
 - Each resident has photos, with a caption and a date, in albums, and a
-  profile picture that its page shows. The photos of its journal entries
-  are among them, with a link to each entry. Rescord removes the metadata
+  profile picture that its page and the list of the residents show. The
+  photos of its journal entries are among them, with a link to each entry. Rescord removes the metadata
   of each photo, the GPS position with the rest, turns it as the camera
   recorded, and makes a thumbnail, with libvips through the package
   `image`. A photo attached to a journal entry gets the same treatment.

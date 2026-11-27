@@ -3,7 +3,8 @@ defmodule RescordWeb.PhotoPagesTest do
   Holds the photos of a resident on the pages (ADR 0055): the page of the
   photos with the photos of the journal, new photos with their caption and
   album, the form of a photo, the albums, the profile picture on the page
-  of the resident, what the links send, and who sees which control.
+  of the resident and in the list of the residents, what the links send,
+  and who sees which control.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
@@ -36,6 +37,7 @@ defmodule RescordWeb.PhotoPagesTest do
      member: member,
      options: options,
      biscuit: biscuit,
+     lists: lists,
      path: ~p"/o/#{organisation.short_name}/residents/#{biscuit.id}/photos",
      conn: sign_in(conn, member)}
   end
@@ -205,6 +207,47 @@ defmodule RescordWeb.PhotoPagesTest do
       |> follow_redirect(context.conn)
 
     refute has_element?(view, "#profile-photo")
+  end
+
+  test "the list of the residents shows each profile picture beside the name, or a letter",
+       context do
+    photo = add!(context)
+    {:ok, _profile} = Photos.set_profile_photo(photo, context.options)
+    maple = resident!(context.lists, context.options, %{name: "maple"})
+
+    nameless =
+      Rescord.Residents.register_resident!(
+        %{species_id: context.lists.species.rabbit},
+        context.options
+      )
+
+    short = context.organisation.short_name
+    base = ~p"/o/#{short}/residents"
+    portrait = fn resident -> ~s(a[href="#{base}/#{resident.id}"] [data-portrait]) end
+
+    {:ok, view, _html} = live(context.conn, base)
+    render_async(view)
+
+    # The picture is decoration: the name alone is the words of the link.
+    assert has_element?(view, portrait.(context.biscuit) <> ~s([aria-hidden="true"]))
+
+    assert has_element?(
+             view,
+             portrait.(context.biscuit) <>
+               ~s( img[alt=""][src="/o/#{short}/photos/#{photo.id}/thumbnail"])
+           )
+
+    refute has_element?(view, portrait.(maple) <> " img")
+    assert has_element?(view, portrait.(maple) <> " span", "M")
+    assert has_element?(view, portrait.(nameless))
+    refute has_element?(view, portrait.(nameless) <> " img")
+
+    :ok = Photos.remove_photo(photo, context.options)
+    {:ok, view, _html} = live(context.conn, base)
+    render_async(view)
+
+    refute has_element?(view, "[data-portrait] img")
+    assert has_element?(view, portrait.(context.biscuit) <> " span", "B")
   end
 
   test "a member makes, renames and removes an album", context do

@@ -73,6 +73,13 @@ The maintainer answered four questions:
   the stored bytes with `Rescord.StorageFixtures.stored_jpeg/0`.
 - A transfer carries the files of the journal, and not the photo records,
   the albums or the profile picture. A transfer of those can come later.
-- The list of the residents shows no profile picture yet: Cinder reads the
-  residents, and their pictures are in another domain.
+- The list of the residents shows the profile picture of each resident
+  beside its name (27 November 2026). Cinder reads the residents, and their
+  pictures are in another domain, which the residents do not depend on. So
+  the page reads the profile pictures of the organisation once, when it
+  opens (`Photos.all_profile_photos/1`), and finds the picture of each row
+  among them. A resident with no picture shows the first letter of its
+  name in that place. The picture is decoration there, with an empty `alt`:
+  the name is the words of the link. A change of a picture shows when the
+  person opens the list again.
 - The export of the data has the four tables, and not the files.

@@ -460,7 +460,7 @@ A resident has photos (ADR 0055). Each photo has a date and an optional
 caption. A member puts a photo in albums: an album is a named set of the
 photos of one resident, and a photo can be in many albums or in none. One
 photo of a resident can be its profile picture. The page of the resident
-shows it.
+shows it, and the list of the residents shows it beside the name.
 
 The photos of the journal entries of a resident are also its photos. Each
 one shows the date of its entry and a link to the entry. A member can put

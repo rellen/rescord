@@ -2,7 +2,8 @@ defmodule RescordWeb.PhotoComponents do
   @moduledoc """
   The parts of the page of the photos of a resident (ADR 0037 and
   ADR 0055): its profile picture, its albums, the form that adds photos,
-  and the grid of the photos with the form of each one.
+  and the grid of the photos with the form of each one; and the small
+  profile picture of each resident in the list of the residents.
 
   A photo is an item of `Rescord.Photos.photos_of/2`: a photo record, or a
   photo of a journal entry that is no record yet. Each part names an item
@@ -35,6 +36,27 @@ defmodule RescordWeb.PhotoComponents do
     </figure>
     """
   end
+
+  @doc """
+  The small profile picture of a resident in the list of the residents, or
+  the first letter of its name in its place when it has none. It goes
+  beside the name, inside the link, so it is only decoration: the name says
+  which resident it is.
+  """
+  attr :url, :string, default: nil, doc: "the link to the thumbnail, or nil"
+  attr :name, :string, default: nil, doc: "the name of the resident, or nil"
+
+  def portrait(assigns) do
+    ~H"""
+    <span data-portrait aria-hidden="true">
+      <img :if={@url} src={@url} alt="" width="40" height="40" loading="lazy" decoding="async" />
+      <span :if={is_nil(@url)}>{initial(@name)}</span>
+    </span>
+    """
+  end
+
+  defp initial(name) when is_binary(name), do: String.upcase(String.first(name) || "")
+  defp initial(_no_name), do: nil
 
   @doc "The albums of a resident as links, the open one marked, with the form of a new album."
   attr :albums, :list, required: true

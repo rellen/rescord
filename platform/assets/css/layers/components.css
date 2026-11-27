@@ -372,6 +372,31 @@ figure[data-profile] figcaption {
   font-size: 0.875rem;
 }
 
+/* The small profile picture of a resident beside its name in the list of
+   the residents, or the first letter of the name on a tint when it has
+   none. It is a box of its own in the line, so the underline of the link
+   stays below the name alone. */
+[data-portrait] {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  margin-inline-end: 0.625rem;
+  overflow: hidden;
+  vertical-align: middle;
+  color: var(--muted);
+  font-weight: 700;
+  background: var(--tint);
+  border-radius: calc(var(--radius) - 0.25rem);
+}
+
+[data-portrait] > img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
 /* The albums of a resident: one line of links, the open one marked. */
 nav[aria-label="Albums"] > ul {
   display: flex;
