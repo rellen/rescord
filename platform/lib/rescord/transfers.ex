@@ -25,6 +25,9 @@ defmodule Rescord.Transfers do
   alias Rescord.Transfers.{Archive, Keys, Partnership, RemotePartner, Snapshot, Transfer}
 
   boundary do
+    # A relationship and a signal listener are checked too (ADR 0066).
+    check aliases: true
+
     deps [
       Rescord,
       Rescord.Accounts,

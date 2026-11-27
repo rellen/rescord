@@ -24,6 +24,8 @@ defmodule Rescord.Inventory do
   alias Rescord.Inventory.{Item, Levels, Lot, ReorderLevel, StockMovement, Supplier}
 
   boundary do
+    # A relationship and a signal listener are checked too (ADR 0066).
+    check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Locations]
   end
 

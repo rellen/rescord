@@ -24,6 +24,8 @@ defmodule Rescord.Lists do
   alias Rescord.Lists.Base
 
   boundary do
+    # A relationship and a signal listener are checked too (ADR 0066).
+    check aliases: true
     deps [Rescord, Rescord.Accounts]
   end
 
@@ -48,21 +50,68 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.Base.TaskKind
     resource Rescord.Lists.Base.ItemCategory
 
-    resource Rescord.Lists.Species
-    resource Rescord.Lists.Breed
-    resource Rescord.Lists.Colour
-    resource Rescord.Lists.SizeClass
-    resource Rescord.Lists.Coat
-    resource Rescord.Lists.Temperament
-    resource Rescord.Lists.IdentifierKind
-    resource Rescord.Lists.GroupKind
-    resource Rescord.Lists.LocationKind
-    resource Rescord.Lists.Condition
-    resource Rescord.Lists.MeasureKind
-    resource Rescord.Lists.ProcedureKind
-    resource Rescord.Lists.Unit
-    resource Rescord.Lists.TaskKind
-    resource Rescord.Lists.ItemCategory
+    # Another domain names a list of an organisation in a relationship, so
+    # each one is public: the `define` exports it (ADR 0066). A page reads a
+    # list with `values/2`, which gives the labels and the order.
+    resource Rescord.Lists.Species do
+      define :species_values, action: :read
+    end
+
+    resource Rescord.Lists.Breed do
+      define :breed_values, action: :read
+    end
+
+    resource Rescord.Lists.Colour do
+      define :colour_values, action: :read
+    end
+
+    resource Rescord.Lists.SizeClass do
+      define :size_class_values, action: :read
+    end
+
+    resource Rescord.Lists.Coat do
+      define :coat_values, action: :read
+    end
+
+    resource Rescord.Lists.Temperament do
+      define :temperament_values, action: :read
+    end
+
+    resource Rescord.Lists.IdentifierKind do
+      define :identifier_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.GroupKind do
+      define :group_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.LocationKind do
+      define :location_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.Condition do
+      define :condition_values, action: :read
+    end
+
+    resource Rescord.Lists.MeasureKind do
+      define :measure_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.ProcedureKind do
+      define :procedure_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.Unit do
+      define :unit_values, action: :read
+    end
+
+    resource Rescord.Lists.TaskKind do
+      define :task_kind_values, action: :read
+    end
+
+    resource Rescord.Lists.ItemCategory do
+      define :item_category_values, action: :read
+    end
   end
 
   # The key of each dimension, its name for a person, and its two resources.

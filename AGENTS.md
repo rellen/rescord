@@ -244,6 +244,10 @@ for Rescord.
   - Do not silence a boundary warning by widening `deps` or `exports` until
     you know that the reference is right. Never add `use Boundary` to a
     domain: `AshBoundary` declares it.
+  - Each domain sets `check [aliases: true]` in its `boundary` block
+    (ADR 0066), so a relationship and a signal listener are checked too. A
+    relationship into another domain needs a `define` for that resource on
+    its domain.
 - **Ash.**
   - Call a resource through the code interface on its domain
     (`define :open_alarms, action: :open` inside the domain's `resources`

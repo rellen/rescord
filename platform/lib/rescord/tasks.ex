@@ -19,6 +19,9 @@ defmodule Rescord.Tasks do
   alias Rescord.Tasks.{Routine, Task, TaskSubject}
 
   boundary do
+    # A relationship and a signal listener are checked too (ADR 0066).
+    check aliases: true
+
     deps [
       Rescord,
       Rescord.Accounts,

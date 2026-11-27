@@ -22,6 +22,8 @@ defmodule Rescord.Journal do
   alias Rescord.Journal.{EntryKind, JournalEntry}
 
   boundary do
+    # A relationship and a signal listener are checked too (ADR 0066).
+    check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
   end
 

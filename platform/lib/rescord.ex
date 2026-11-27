@@ -24,6 +24,9 @@ defmodule Rescord do
       Repo,
       Resource,
       Resource.Checks,
+      # `Rescord.Resource` names it in each resource of a domain, and a domain
+      # checks such a name too (ADR 0066).
+      Resource.VersionPolicies,
       Storage,
       Storage.Move
     ],

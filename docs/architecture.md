@@ -54,6 +54,11 @@ Each domain uses `extensions: [AshBoundary]`, which declares its boundary
 from the domain. The web layer reaches data only through the code interface
 of a domain.
 
+Each domain checks alias references too (ADR 0066): a relationship and a
+signal listener name a module, and the compiler checks that name as it
+checks a call. A resource that another domain names in a relationship has a
+`define` on its domain, which makes it public.
+
 ## The web layer
 
 ### The parts of a page
