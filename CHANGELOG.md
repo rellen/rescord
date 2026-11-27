@@ -11,6 +11,8 @@ its GitHub release (ADR 0047).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-28
+
 ### Upgrade notes
 
 - The first start of this version runs a migration of the database, and a
@@ -130,5 +132,6 @@ The first release, for a rescue that runs Rescord on a server of its own.
 - `docs/self-hosting.md` lists each setting, and says how to back up and
   upgrade.
 
-[Unreleased]: https://github.com/rellen/rescord/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/rellen/rescord/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/rellen/rescord/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rellen/rescord/releases/tag/v0.1.0
