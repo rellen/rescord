@@ -11,7 +11,11 @@
 }:
 
 let
-  version = "0.1.0";
+  # The version of `platform/mix.exs`, its one home (ADR 0060): the line
+  # `version: "X.Y.Z",` of `project/0`.
+  version = builtins.head (
+    builtins.match ".*\n +version: \"([^\"]+)\",\n.*" (builtins.readFile ../platform/mix.exs)
+  );
 
   src = lib.fileset.toSource {
     root = ../platform;
