@@ -45,6 +45,16 @@ defmodule Rescord.AccountsFixtures do
   end
 
   @doc """
+  Runs the jobs that wait, as Oban does after the commit: the email of each
+  invitation is one (ADR 0067). In a test Oban runs no job by itself. Returns
+  the counts of `Oban.drain_queue/1`. `with_scheduled: true` also runs a job
+  that waits for its next try after a fault.
+  """
+  def send_invitations(options \\ []) do
+    Oban.drain_queue([queue: :default] ++ options)
+  end
+
+  @doc """
   Gives a connection the session of a user who is signed in, with a token
   that Rescord stores, as the page of a sign-in link does.
   """

@@ -21,7 +21,9 @@ defmodule RescordWeb.OrganisationPagesTest do
     {_, administrator} = member!(organisation, :administrator, root)
     {_, member} = member!(organisation, :member, administrator)
 
-    # The emails of those invitations are not what a test looks at.
+    # The emails of those invitations are not what a test looks at. A job
+    # sends each one (ADR 0067), so the jobs run here.
+    send_invitations()
     flush_emails()
 
     {:ok, root: root, organisation: organisation, administrator: administrator, member: member}
@@ -322,6 +324,8 @@ defmodule RescordWeb.OrganisationPagesTest do
       view |> form("#invite", invite: %{email: address}) |> render_submit()
 
       assert render_async(view) =~ address
+      # A job sends the email of the invitation (ADR 0067).
+      send_invitations()
       assert_email_sent(fn email -> email.to == [{"", address}] end)
       assert role_key_of(context, address) == :member
     end
@@ -403,6 +407,8 @@ defmodule RescordWeb.OrganisationPagesTest do
                Accounts.member!(own.id, tenant: context.organisation, authorize?: false)
 
       assert role_id == role_with_key(context, :member).id
+      # The refused invitation wrote no job, so no email goes out.
+      assert %{success: 0, failure: 0} = send_invitations()
       assert_no_email_sent()
     end
 

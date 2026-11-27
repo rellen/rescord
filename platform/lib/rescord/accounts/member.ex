@@ -19,7 +19,9 @@ defmodule Rescord.Accounts.Member do
 
   An invitation makes the user when the address has none, makes the member,
   and sends an email that says where to sign in. The email has no token: the
-  person asks for a sign-in link, as each user does.
+  person asks for a sign-in link, as each user does. The invitation emits
+  `:member_invited`, and this resource listens in a job, which sends the
+  email after the commit and again after a fault (ADR 0067).
 
   What a role can do is in `Rescord.Accounts.Grants`, and the policy of this
   resource is the one check `Rescord.Accounts.Checks.Granted`. A root user is
@@ -53,6 +55,9 @@ defmodule Rescord.Accounts.Member do
       change {Rescord.Accounts.Changes.SetRole, key: :member}
       validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
       change Rescord.Accounts.Changes.Invite
+
+      emit Rescord.Accounts.Signals, :member_invited,
+        values: [email: arg(:email), invited_by: actor(:email)]
     end
 
     create :invite_administrator do
@@ -60,6 +65,9 @@ defmodule Rescord.Accounts.Member do
       argument :email, :ci_string, allow_nil?: false
       change {Rescord.Accounts.Changes.SetRole, key: :administrator}
       change Rescord.Accounts.Changes.Invite
+
+      emit Rescord.Accounts.Signals, :member_invited,
+        values: [email: arg(:email), invited_by: actor(:email)]
     end
 
     update :set_role do
@@ -89,6 +97,19 @@ defmodule Rescord.Accounts.Member do
     destroy :remove do
       description "Takes the member out of the organisation"
     end
+
+    action :send_invitation do
+      description "Sends the email of an invitation. A job runs this for `:member_invited`, and no role has a grant for it"
+
+      # Not the struct as the type: AshBoundary exports a type that a public
+      # resource names, and `boundary` does not know a struct that a signal
+      # module generates (ADR 0067).
+      argument :signal, :struct,
+        allow_nil?: false,
+        constraints: [instance_of: Rescord.Accounts.Signals.MemberInvited]
+
+      run Rescord.Accounts.Actions.SendInvitation
+    end
   end
 
   policies do
@@ -97,6 +118,9 @@ defmodule Rescord.Accounts.Member do
     end
 
     policy always() do
+      # The job of an invitation has no person: the invitation was the
+      # decision (ADR 0067).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_invited)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -118,6 +142,17 @@ defmodule Rescord.Accounts.Member do
       public? true
       # No action takes the user as input: an invitation finds the user.
       attribute_writable? false
+    end
+  end
+
+  # The email of an invitation goes in a job: Oban writes the job in the
+  # transaction of the invitation, runs it after the commit, and runs it
+  # again after a fault. Oban waits longer before each try, so 16 tries
+  # take about 18 hours (ADR 0067).
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_invited, :send_invitation,
+        delivery: {AshOban.Signals, queue: :default, max_attempts: 16}
     end
   end
 

@@ -27,6 +27,11 @@ its GitHub release (ADR 0047).
   opens the page where a member acts on it. A person sees only what their
   role can act on, and the page reads again each minute. The links to
   each part of the organisation are below it.
+- A background job now sends the email of an invitation, after the
+  invitation is saved. When the mail server does not answer, Rescord sends
+  the email again, with a longer wait before each try, for about 18 hours.
+  Before, a fault of the mail server lost the email, and only the log said
+  so. The person who invites sees the new member at once, as before.
 
 ### Fixed
 

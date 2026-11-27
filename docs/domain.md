@@ -191,7 +191,8 @@ of the release. The function does nothing when Rescord has a root user.
 
 An invitation makes the user and the member, and sends an email that says
 where to sign in. The email has no token: the person asks for a sign-in
-link.
+link. A job sends the email after the invitation is saved, and sends it
+again after a fault of the mail server, for about 18 hours (ADR 0067).
 
 ### 5.2 Residents
 

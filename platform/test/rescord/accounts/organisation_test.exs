@@ -22,6 +22,14 @@ defmodule Rescord.Accounts.OrganisationTest do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation}
 
+  defmodule Down do
+    @moduledoc "A mail server that does not answer."
+    use Swoosh.Adapter
+
+    @impl true
+    def deliver(_email, _config), do: {:error, :econnrefused}
+  end
+
   # The key of the role of a member: `:administrator` or `:member` (ADR 0040).
   defp role_key(member, organisation),
     do: Ash.load!(member, :role, tenant: organisation, authorize?: false).role.key
@@ -91,6 +99,10 @@ defmodule Rescord.Accounts.OrganisationTest do
       assert member.user_id == user.id
       refute user.root?
 
+      # The email is the work of a job, which the invitation wrote (ADR 0067).
+      assert_no_email_sent()
+      assert %{success: 1, failure: 0} = send_invitations()
+
       assert_email_sent(fn email ->
         assert email.to == [{"", address}]
         assert email.subject =~ "Wattle Creek"
@@ -100,6 +112,64 @@ defmodule Rescord.Accounts.OrganisationTest do
         refute email.text_body =~ "token"
         true
       end)
+    end
+
+    @tag :capture_log
+    test "sends its email again after a fault of the mail server", %{
+      root: root,
+      organisation: organisation
+    } do
+      mailer = Application.fetch_env!(:rescord, Rescord.Mailer)
+      on_exit(fn -> Application.put_env(:rescord, Rescord.Mailer, mailer) end)
+
+      Application.put_env(:rescord, Rescord.Mailer,
+        adapter: Rescord.Accounts.OrganisationTest.Down
+      )
+
+      address = unique_address()
+      {member, _user} = member!(organisation, :member, root, address)
+
+      # The mail server is down. The member is there, and the job waits.
+      assert %{success: 0, failure: 1} = send_invitations()
+      assert_no_email_sent()
+      assert Accounts.member!(member.id, tenant: organisation, authorize?: false)
+
+      Application.put_env(:rescord, Rescord.Mailer, mailer)
+
+      assert %{success: 1, failure: 0} = send_invitations(with_scheduled: true)
+      assert_email_sent(fn email -> email.to == [{"", address}] end)
+    end
+
+    test "writes no job when the invitation is refused", %{root: root, organisation: organisation} do
+      {_member, member} = member!(organisation, :member, root)
+      assert %{success: 1} = send_invitations()
+      assert_email_sent()
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Accounts.invite_member(unique_address(), actor: member, tenant: organisation)
+
+      assert %{success: 0, failure: 0} = send_invitations()
+      assert_no_email_sent()
+    end
+
+    test "has an email that no person sends by hand", %{root: root, organisation: organisation} do
+      {_member, administrator} = member!(organisation, :administrator, root)
+
+      signal =
+        struct!(Rescord.Accounts.Signals.MemberInvited,
+          signal_id: Ash.UUID.generate(),
+          email: unique_address()
+        )
+
+      for actor <- [administrator, nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Member
+                 |> Ash.ActionInput.for_action(:send_invitation, %{signal: signal},
+                   actor: actor,
+                   tenant: organisation
+                 )
+                 |> Ash.run_action()
+      end
     end
 
     test "uses the user that an address has already", %{root: root, organisation: organisation} do
