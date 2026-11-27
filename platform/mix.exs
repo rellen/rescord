@@ -11,7 +11,9 @@ defmodule Rescord.MixProject do
       aliases: aliases(),
       deps: deps(),
       usage_rules: usage_rules(),
-      compilers: [:boundary, :phoenix_live_view] ++ Mix.compilers(),
+      # `:ash_signals` finds the listeners of each signal one time, at the build
+      # (ADR 0067). It comes after `:boundary`.
+      compilers: [:boundary, :ash_signals, :phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       releases: releases(),
       # `mix hex.audit` runs in CI and fails on an advisory (ADR 0048).

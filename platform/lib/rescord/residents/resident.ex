@@ -48,9 +48,12 @@ defmodule Rescord.Residents.Resident do
 
     destroy :remove do
       description "Removes a resident that was recorded by mistake. The row and its history stay"
-      # The change ends the ties of the resident after the removal.
+      # The change ends the ties of the resident after the removal. The signal
+      # tells the domains that this one cannot know: the locations and the
+      # tasks (ADR 0067).
       require_atomic? false
       change Residents.Changes.EndTies
+      emit Residents.Signals, :resident_removed, fields: [resident_id: :id]
     end
 
     create :register do

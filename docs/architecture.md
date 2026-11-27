@@ -225,10 +225,19 @@ declared on a resource with `extensions: [AshWorkflow, AshOban]`. There is no
 workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 `deps/ash/usage-rules/signals.md` and `deps/ash_workflow/usage-rules.md`.
 
-A signal module that two domains share has to be in a boundary that both
-can use. Where that module lives is not decided. ADR 0062 assesses where
-signals and workflows fit in the code of today, and proposes the first
-ones.
+**A signal module is in the domain that emits it**, as
+`Rescord.<Domain>.Signals`, and that domain exports it when another domain
+listens (ADR 0067). There are two signals:
+
+| Signal | Emitted by | Listeners |
+| --- | --- | --- |
+| `:resident_removed` of `Rescord.Residents.Signals` | `Resident.remove` | `Placement` finishes the placement, `TaskSubject` archives the subjects, and `Routine` takes the resident out. They run in the transaction of the removal. |
+| `:member_invited` of `Rescord.Accounts.Signals` | the two invite actions of `Member` | `Member` sends the email in a job of Oban, which runs after the commit, and again after a fault of the mail server. |
+
+A listener action has the line `authorize_if signal_in(Module, :signal)` in
+its policy, because the person who acts often has no grant for it. ADR 0067
+has the rules for a new signal. ADR 0062 assesses where more signals and
+the first workflows fit.
 
 ### Tenancy
 
@@ -559,10 +568,9 @@ from GitHub, pinned to a commit (ADR 0005).
 - The open points of `docs/domain.md`, and so the domains and the pages
   that come after the residents.
 - The design of the grants: see "Policies and roles".
-- Whether a domain checks its relationships into other domains
-  (`check [aliases: true]`), and where a signal module that two domains
-  share lives (ADR 0009, "Signals and workflows"). ADR 0062 proposes an
-  answer to each, with a test.
+- The proposals of ADR 0062 that wait for the maintainer: what the
+  departure of a resident ends, the operation id of a version, and the
+  first workflow.
 - How a cloud session (which runs as root, where devenv's PostgreSQL cannot
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
 - The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice

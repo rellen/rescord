@@ -260,6 +260,23 @@ for Rescord.
     declared with `extensions: [AshWorkflow, AshOban]`, and its domain is
     in `ash_domains` in `config/config.exs`, or Oban gets no trigger from
     it (ADR 0010).
+  - A signal (ADR 0067) is in `Rescord.<Domain>.Signals`, in the domain that
+    emits it. That domain exports the module when another domain listens.
+    - A listener action needs `authorize_if signal_in(Module, :signal)` in
+      its policy, before `Rescord.Accounts.Checks.Granted`. Without it a
+      listener that updates or destroys records changes nothing and returns
+      no error. Test a listener as a person whose role has the grant of the
+      emitter and no other, and look at the records afterwards
+      (`Rescord.SignalsTest`).
+    - A listener that must hold with the action that emits runs inline, the
+      default. Work that reaches outside the database, such as an email,
+      runs in a job: `delivery: {AshOban.Signals, queue: :default}`. Such a
+      job has no actor.
+    - A test that reads the email of an invitation calls
+      `send_invitations/0` of `Rescord.AccountsFixtures` first. Oban runs
+      no job by itself in a test.
+    - Do not take `:ash_signals` out of the compilers in `mix.exs`, or the
+      line `:temporal_safe_modules` out of `config/config.exs`.
   - A widget that shows a resource reloads on that resource's
     `Ash.Notifier.PubSub` notification, on a topic named `<resources>:changed`.
   - Once there is authentication, every Ash call from a LiveView passes the

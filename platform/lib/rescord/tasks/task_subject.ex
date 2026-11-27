@@ -6,12 +6,14 @@ defmodule Rescord.Tasks.TaskSubject do
 
   `Rescord.Tasks.Task` writes the subjects of a new task: no role has a
   grant to write one in another way.
+
+  A subject goes when its resident is removed (ADR 0067): the row is
+  archived, and the task stays, for its other subjects or for none.
   """
 
   use Rescord.Resource,
     domain: Rescord.Tasks,
     temporal?: false,
-    archive?: false,
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
@@ -38,6 +40,10 @@ defmodule Rescord.Tasks.TaskSubject do
     create :add do
       accept [:task_id, :resident_id, :group_id, :location_id]
     end
+
+    destroy :drop do
+      description "Takes a subject that is not there any more out of its task. A listener runs this, and no role has a grant for it"
+    end
   end
 
   policies do
@@ -46,6 +52,8 @@ defmodule Rescord.Tasks.TaskSubject do
     end
 
     policy always() do
+      # The removal of a resident is the decision (ADR 0067).
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -82,6 +90,14 @@ defmodule Rescord.Tasks.TaskSubject do
       define_attribute? false
       source_attribute :location_id
       temporal_keys {nil, :valid_at}
+    end
+  end
+
+  signals_in do
+    from Rescord.Residents.Signals do
+      on :resident_removed, :drop_of_removed_resident,
+        action: :drop,
+        get_by: [resident_id: :resident_id]
     end
   end
 end

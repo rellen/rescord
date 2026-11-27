@@ -78,6 +78,14 @@ defmodule Rescord.Tasks.Routine do
   actions do
     defaults [:read]
 
+    read :for_resident do
+      description "The routines that name a resident"
+      argument :resident_id, :uuid, allow_nil?: false
+      filter expr(^arg(:resident_id) in resident_ids)
+      # The listener reads the routines in pages: its change is not atomic.
+      pagination keyset?: true, required?: false
+    end
+
     create :start do
       description "Starts a routine, and makes its first tasks"
       accept @facts ++ [:prescription_id]
@@ -124,6 +132,15 @@ defmodule Rescord.Tasks.Routine do
       change set_attribute(:generated_until, arg(:until))
     end
 
+    update :forget_resident do
+      description "Takes a resident that is not there any more out of the routine. A listener runs this, and no role has a grant for it"
+
+      accept []
+      require_atomic? false
+      argument :resident_id, :uuid, allow_nil?: false
+      change Rescord.Tasks.Changes.ForgetResident
+    end
+
     destroy :remove do
       description "Ends the routine. Its tasks that are due after now are cancelled"
       require_atomic? false
@@ -137,6 +154,8 @@ defmodule Rescord.Tasks.Routine do
     end
 
     policy always() do
+      # The removal of a resident is the decision (ADR 0067).
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -240,6 +259,17 @@ defmodule Rescord.Tasks.Routine do
       define_attribute? false
       source_attribute :kind_id
       temporal_keys {nil, :valid_at}
+    end
+  end
+
+  # A routine does not keep a resident that an administrator removed
+  # (ADR 0067).
+  signals_in do
+    from Rescord.Residents.Signals do
+      on :resident_removed, :forget_resident,
+        read_action: :for_resident,
+        args: [:resident_id],
+        inputs: [:resident_id]
     end
   end
 end

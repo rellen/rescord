@@ -11,6 +11,12 @@ its GitHub release (ADR 0047).
 
 ## [Unreleased]
 
+### Upgrade notes
+
+- The first start of this version runs a migration of each organisation,
+  which adds a column to the subjects of the tasks. Make a backup first,
+  as `docs/self-hosting.md` says. No new setting is needed.
+
 ### Changed
 
 - The first page of an organisation now says what needs attention: the
@@ -21,6 +27,14 @@ its GitHub release (ADR 0047).
   opens the page where a member acts on it. A person sees only what their
   role can act on, and the page reads again each minute. The links to
   each part of the organisation are below it.
+
+### Fixed
+
+- An administrator who removes a resident that was recorded by mistake
+  now ends its placement too, and takes the resident out of each task and
+  each routine that named it. Before, those records still named a resident
+  that was not there. The tasks stay due, and a routine goes on for its
+  other residents.
 
 ### Security
 

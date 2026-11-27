@@ -9,6 +9,13 @@ import Config
 
 config :ash_oban, pro?: false
 
+# The change that `emit` adds to an action does not say that it is temporal
+# safe (Ash 3.38.1), so Ash refuses a signal of a temporal resource. The
+# change only reads the record and runs the listeners through Ash, as of the
+# instant of the action (ADR 0067). Ash reads this when it compiles. Take it
+# out when Ash declares the change temporal safe.
+config :ash, :temporal_safe_modules, [Ash.Resource.Change.EmitSignal]
+
 config :rescord, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

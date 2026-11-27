@@ -52,6 +52,9 @@ defmodule Rescord.Locations.Placement do
     end
 
     policy always() do
+      # The person who removes a resident needs no grant for its placement:
+      # the removal is the decision (ADR 0067).
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -75,6 +78,16 @@ defmodule Rescord.Locations.Placement do
     belongs_to :group, Rescord.Residents.Group do
       public? true
       temporal_keys {:valid_at, :valid_at}
+    end
+  end
+
+  # The removal of a resident ends its placement, in the transaction of the
+  # removal and as of its instant (ADR 0067).
+  signals_in do
+    from Rescord.Residents.Signals do
+      on :resident_removed, :finish_of_removed_resident,
+        action: :finish,
+        get_by: [resident_id: :resident_id]
     end
   end
 

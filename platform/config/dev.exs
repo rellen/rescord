@@ -32,6 +32,9 @@ config :rescord, RescordWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
   code_reloader: true,
+  # `:ash_signals` first, so that a listener added while the server runs is
+  # found (ADR 0067). The others are the list of Phoenix.
+  reloadable_compilers: [:ash_signals, :phoenix_live_view, :gettext, :elixir, :app],
   debug_errors: true,
   secret_key_base: "dNDjC3Dii9wKVpGrelfFCHjXXpGaxcWVazbkIrPJyoNZXkzJ5KeK14M830CmSkpD",
   watchers: [

@@ -36,6 +36,8 @@ defmodule Rescord.Residents do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Lists]
+    # The domains that listen name the signals (ADR 0067).
+    exports [Rescord.Residents.Signals]
   end
 
   paper_trail do
