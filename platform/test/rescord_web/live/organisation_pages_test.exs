@@ -91,6 +91,11 @@ defmodule RescordWeb.OrganisationPagesTest do
       assert html =~ "Wattle Creek"
     end
 
+    test "says which version of Rescord the server runs", context do
+      {_view, html} = open(context.conn, context.root, ~p"/root")
+      assert html =~ "This server runs Rescord #{Mix.Project.config()[:version]}."
+    end
+
     test "closes each open page of a user who gets or loses the root grant", context do
       other = root!()
       plain = user!()

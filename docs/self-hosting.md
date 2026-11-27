@@ -187,10 +187,12 @@ Copy `deploy/systemd` to the server too.
 ## Check the server
 
 `bin/check` checks that the server is ready, before you go live and after
-you change a setting. It prints a line for each check, and exits with 1
-when one fails:
+you change a setting. It prints the version of Rescord and a line for each
+check, and exits with 1 when one fails:
 
 ```text
+Rescord 0.2.0
+
 ok    database   PostgreSQL 18.1
 ok    migrations each migration has run
 ok    store      the directory /var/lib/rescord/files takes, gives back and deletes a file

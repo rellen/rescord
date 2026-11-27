@@ -53,6 +53,8 @@ its GitHub release (ADR 0047).
   migrations, the store, the SMTP server, and a test email.
 - Backups each day in each way of installing, and `bin/restore` to put one
   back.
+- `bin/check` and the page of a root user say which version of Rescord the
+  server runs.
 
 ### Changed
 

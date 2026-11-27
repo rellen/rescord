@@ -41,4 +41,12 @@ defmodule Rescord do
   catch
     :exit, _reason -> false
   end
+
+  @doc """
+  The version of Rescord that runs, such as `"0.2.0"`: the version of
+  `mix.exs`, which a release carries (ADR 0060). `bin/check` and the page
+  of a root user show it.
+  """
+  @spec version() :: String.t()
+  def version, do: :rescord |> Application.spec(:vsn) |> to_string()
 end

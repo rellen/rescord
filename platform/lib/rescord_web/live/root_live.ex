@@ -118,6 +118,8 @@ defmodule RescordWeb.RootLive do
       />
 
       <.root_users roots={@roots} current_user={@current_user} root_form={@root_form} />
+
+      <p>This server runs Rescord {Rescord.version()}.</p>
     </Layouts.app>
     """
   end

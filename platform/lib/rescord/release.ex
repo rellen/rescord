@@ -90,11 +90,13 @@ defmodule Rescord.Release do
 
   @doc """
   Checks the database, the migrations, the store and the SMTP server, and
-  with an address sends a test email to it. Prints a line for each check.
+  with an address sends a test email to it. Prints the version of Rescord
+  (ADR 0060), and then a line for each check.
   """
   @spec check(String.t() | nil) :: :ok | :error
   def check(address \\ nil) do
     load_app()
+    IO.puts("Rescord #{Rescord.version()}\n")
     results = Rescord.Release.Check.run(address)
     IO.puts(Rescord.Release.Check.format(results))
 
