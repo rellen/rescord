@@ -7,10 +7,10 @@
 #   * a tarball of the release for each architecture, with SHA256SUMS, on a
 #     GitHub release whose notes are the section of CHANGELOG.md.
 #
-# The flake is checked first, and the image of the last release is upgraded
-# to the new version with its data (ADR 0051). Each architecture builds on a
-# runner of its own: arm64 on ubuntu-24.04-arm, which GitHub gives a public
-# repository.
+# The flake and the checks of CI run first (ADR 0060), and the image of the
+# last release is upgraded to the new version with its data (ADR 0051). Each
+# architecture builds on a runner of its own: arm64 on ubuntu-24.04-arm,
+# which GitHub gives a public repository.
 #
 # A dry run from the Actions page builds the image and the tarball for both
 # architectures, writes the notes, and publishes nothing. It
@@ -61,8 +61,9 @@ jobs:
               exit 1
             fi
           fi
-          if ! grep -q "^## $version " CHANGELOG.md; then
-            echo "::error::CHANGELOG.md has no section for $version."
+          # The heading of Keep a Changelog (ADR 0060): ## [0.2.0] - 2026-11-28
+          if ! grep -qE "^## \[${version//./\\.}\] - " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section \"## [$version] - ...\"."
             exit 1
           fi
           {
@@ -75,6 +76,12 @@ jobs:
     name: Nix
     needs: version
     uses: ./.github/workflows/nix.yml
+
+  # The format, the compile and the tests of each push (ADR 0060).
+  ci:
+    name: CI
+    needs: version
+    uses: ./.github/workflows/ci.yml
 
   # The new version takes over the data of the last release, or nothing is
   # published (ADR 0051).
@@ -111,7 +118,7 @@ jobs:
   # digest; the job manifest joins the two under the tags of the version.
   image:
     name: Image (${{ matrix.arch }})
-    needs: [version, upgrade]
+    needs: [version, ci, upgrade]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     permissions:
@@ -226,7 +233,7 @@ jobs:
 
   release:
     name: GitHub release
-    needs: [version, nix, manifest, tarball]
+    needs: [version, nix, ci, manifest, tarball]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -244,8 +251,11 @@ jobs:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           (cd dist && sha256sum rescord-linux-*.tar.gz > SHA256SUMS && cat SHA256SUMS)
-          awk -v heading="## $VERSION " '
+          # The section of the version, up to the next one or to the links at
+          # the end of the file.
+          awk -v heading="## [$VERSION] - " '
             /^## / { inside = (index($0, heading) == 1); next }
+            /^\[[^]]+\]: / { inside = 0 }
             inside
           ' CHANGELOG.md > notes.md
           test -s notes.md
