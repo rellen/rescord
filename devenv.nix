@@ -44,6 +44,8 @@ in
   packages =
     [
       pkgs.git
+      # The scan for secrets of scripts/check-secrets.sh (ADR 0064).
+      pkgs.gitleaks
       # esbuild bundles the JS and the classless CSS. The binary that the
       # esbuild Hex package downloads won't run on NixOS, so the app's config
       # points at this one instead (MIX_ESBUILD_PATH).
@@ -109,17 +111,24 @@ in
     '';
   };
 
-  # The last lines install the hook commit-msg of Git, which checks that the
-  # message of a commit follows Conventional Commits (ADR 0060). A hook that
-  # is there stays.
+  # The last lines install two hooks of Git. The hook commit-msg checks that
+  # the message of a commit follows Conventional Commits (ADR 0060). The hook
+  # pre-commit scans what the commit holds for secrets (ADR 0064). A hook
+  # that is there stays.
   enterShell = ''
     mix local.hex --force --if-missing >/dev/null
     mix local.rebar --force --if-missing >/dev/null
 
-    if hooks=$(git rev-parse --git-path hooks 2>/dev/null) &&
-      [ ! -e "$hooks/commit-msg" ] && [ ! -L "$hooks/commit-msg" ]; then
+    if hooks=$(git rev-parse --git-path hooks 2>/dev/null); then
       mkdir -p "$hooks"
-      ln -s "$DEVENV_ROOT/scripts/check-commit-message.sh" "$hooks/commit-msg"
+
+      if [ ! -e "$hooks/commit-msg" ] && [ ! -L "$hooks/commit-msg" ]; then
+        ln -s "$DEVENV_ROOT/scripts/check-commit-message.sh" "$hooks/commit-msg"
+      fi
+
+      if [ ! -e "$hooks/pre-commit" ] && [ ! -L "$hooks/pre-commit" ]; then
+        ln -s "$DEVENV_ROOT/scripts/check-secrets.sh" "$hooks/pre-commit"
+      fi
     fi
   '';
 
@@ -129,5 +138,6 @@ in
     wait_for_port 5432
     psql -U postgres -h 127.0.0.1 -d postgres -c 'select version()' | grep --color=auto "PostgreSQL 18"
     test -x "$PLAYWRIGHT_ASSETS_DIR/node_modules/playwright/cli.js"
+    gitleaks version
   '';
 }

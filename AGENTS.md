@@ -58,6 +58,31 @@ Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
 too.
 
+## Nothing confidential, and nothing of one deployment
+
+This repository is public (ADR 0064). It never holds a secret, a token, a
+password, the address or the name of a real person, or what belongs to one
+deployment: its host name, its `fly.toml`, the name of its database. Such a
+thing belongs in the environment of a server, or in the private repository
+of that deployment. An example uses `example.org` and a refuge that does
+not exist, such as Wattle Creek.
+
+- `scripts/check-secrets.sh` scans the history with Gitleaks and the rules
+  of `.gitleaks.toml`. CI runs it for each push. A commit on `main` cannot
+  be changed, so CI is too late for a secret: run the script **before each
+  push**. The devenv shell installs it as the hook `pre-commit`, which scans
+  what the commit holds. Outside the shell:
+  `nix shell --inputs-from . nixpkgs#gitleaks -c scripts/check-secrets.sh`.
+- The names of a deployment cannot be in the rules, which are public. Give
+  them to the script as a list of private terms: the file that
+  `RESCORD_PRIVATE_TERMS` names, or `.private-terms` at the root, which Git
+  ignores. In CI the list is the secret `PRIVATE_TERMS` of the repository.
+- A finding that is no secret takes an allowlist in `.gitleaks.toml`, with
+  its reason, as narrow as it can be. A comment `gitleaks:allow` does
+  nothing. After a change to the rules, run
+  `scripts/check-secrets.sh --self-test`, and give a new rule a sample
+  there.
+
 ## Commits, the changelog and releases
 
 ADR 0060 holds the rules, and says what a major, a minor and a patch mean
@@ -483,5 +508,6 @@ for Rescord.
 | `scripts/release-tarball.sh` | the tarballs of the release |
 | `docs/self-hosting.md` | the guide for an operator |
 | `.github/workflows/` | CI, the flake check, and the release (ADR 0047) |
+| `.gitleaks.toml`, `scripts/check-secrets.sh` | the scan for secrets and for what belongs to one deployment (ADR 0064) |
 | `CHANGELOG.md` | the changes of each release, which become its notes |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |

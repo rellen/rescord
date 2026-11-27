@@ -25,3 +25,6 @@ devenv.local.yaml
 /result
 /deploy/compose/backups
 /deploy/compose/.env
+
+# The names of a deployment, for scripts/check-secrets.sh (ADR 0064).
+.private-terms

@@ -1,8 +1,9 @@
 # The checks of each push to main and of each pull request (ADR 0047). They
 # run inside the devenv shell, so CI has the toolchain of devenv.lock, its
 # PostgreSQL 18, and the Playwright of nixpkgs for the browser tests. A push
-# also checks the messages of its commits (ADR 0060). A release runs these
-# checks too, before it publishes anything.
+# also checks the messages of its commits (ADR 0060), and each run scans the
+# history for secrets (ADR 0064). A release runs these checks too, before it
+# publishes anything.
 name: CI
 
 on:
@@ -38,6 +39,37 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
         run: scripts/check-commit-message.sh --range "$BEFORE..$GITHUB_SHA"
+
+  # The scan for secrets, and for what belongs to one deployment (ADR 0064).
+  # A job of its own, so a finding shows in a minute, beside the tests.
+  # Gitleaks is the one of the nixpkgs of flake.lock.
+  scan:
+    name: The scan for secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # The whole history: the scan reads each commit.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: cachix/install-nix-action@v32
+
+      - name: Show that each rule finds its sample
+        run: nix shell --inputs-from . nixpkgs#gitleaks -c scripts/check-secrets.sh --self-test
+
+      # The secret PRIVATE_TERMS of the repository holds the names of the
+      # deployments of the maintainer, one on each line. A pull request from
+      # a fork has no secret, and the scan then runs with the rules alone.
+      - name: Scan each commit
+        env:
+          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
+        run: |
+          if [ -n "$PRIVATE_TERMS" ]; then
+            printf '%s\n' "$PRIVATE_TERMS" > "$RUNNER_TEMP/private-terms"
+            export RESCORD_PRIVATE_TERMS="$RUNNER_TEMP/private-terms"
+          fi
+          nix shell --inputs-from . nixpkgs#gitleaks -c scripts/check-secrets.sh
 
   test:
     name: Format, compile and test

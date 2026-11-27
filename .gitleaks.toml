@@ -1,0 +1,69 @@
+# The rules of the scan for secrets (ADR 0064). `scripts/check-secrets.sh`
+# runs Gitleaks with this file: over the history at each push in CI, and
+# over the next commit as the hook pre-commit that the devenv shell
+# installs.
+#
+# The rules are those of Gitleaks, and three of Rescord. The three find what
+# belongs to one deployment or to one person, and they name no deployment:
+# this repository is public, so it cannot hold the names that it must not
+# hold. The names of a deployment come from a list outside the repository,
+# which the script reads.
+#
+# A finding that is no secret gets an allowlist in this file, with its
+# reason: as narrow as it can be, a path with the text of the line. A
+# comment `gitleaks:allow` in a file does nothing, because the script turns
+# it off: each exception is here, where a person reviews it.
+title = "Rescord"
+
+[extend]
+useDefault = true
+
+# The secrets of development and of the tests are fixed values in the
+# configuration, as the generator of Phoenix writes them. They open nothing:
+# a server reads each secret from its environment
+# (`platform/config/runtime.exs`), and `Rescord.ProductionConfigTest` holds
+# that. The allowlist is these three settings in these two files, and not
+# the files.
+[[allowlists]]
+description = "The fixed secrets of development and of the tests"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^platform/config/(?:dev|test)\.exs$''']
+regexTarget = "line"
+regexes = ['''^\s*(?:secret_key_base|token_signing_secret|keyset_signing_secret): "[^"]+",?\s*$''']
+
+[[rules]]
+id = "rescord-email-address"
+description = "An email address that is not an example. The address of a person or of an organisation is a personal detail"
+# The last part of the domain has letters only, so `package@1.2.3` is no
+# address.
+regex = '''[A-Za-z0-9][A-Za-z0-9._%+-]*@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}'''
+keywords = ["@"]
+
+  # The names that RFC 2606 and RFC 6761 keep for examples and tests, the
+  # address that GitHub gives a user who hides their own, and the user of a
+  # Git URL.
+  [[rules.allowlists]]
+  regexTarget = "match"
+  regexes = [
+    '''(?i)@(?:[a-z0-9-]+\.)*example\.(?:com|org|net)$''',
+    '''(?i)@(?:[a-z0-9-]+\.)*[a-z0-9-]+\.(?:test|example|invalid|localhost)$''',
+    '''(?i)@users\.noreply\.github\.com$''',
+    '''^git@''',
+  ]
+
+[[rules]]
+id = "rescord-deployment-host"
+description = "The host name of one deployment on a hosting service. It belongs in the private repository of that deployment"
+regex = '''(?i)\b[a-z0-9][a-z0-9-]*\.(?:fly\.dev|flycast|herokuapp\.com|onrender\.com|gigalixirapp\.com|up\.railway\.app)\b'''
+keywords = ["fly.dev", "flycast", "herokuapp.com", "onrender.com", "gigalixirapp.com", "railway.app"]
+
+  # A name that is plainly a placeholder.
+  [[rules.allowlists]]
+  regexTarget = "match"
+  regexes = ['''(?i)^(?:example|my-?app|your-?app|app-?name)\.''']
+
+[[rules]]
+id = "rescord-fly-config"
+description = "The configuration of a deployment on Fly.io. It belongs in the private repository of that deployment"
+path = '''(?:^|/)fly(?:\.[a-z0-9-]+)?\.toml$'''

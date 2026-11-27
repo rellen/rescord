@@ -18,6 +18,16 @@ directly. It covers the platform; no part of the domain is built yet.
 
 The repository root holds no `mix.exs`. Mix runs in `platform/`.
 
+**The repository is public, and a scan holds it clean** (ADR 0064).
+`scripts/check-secrets.sh` runs Gitleaks over each commit, in CI for each
+push and as a hook before a commit. Beside the rules of Gitleaks for
+secrets, `.gitleaks.toml` has rules for what belongs to one deployment or to
+one person: an email address that is not an example, the host name of an
+app on a hosting service, and a `fly.toml`. The names of a deployment are in
+no rule, because a rule is public. They come from a list of private terms
+outside the repository: a file on the machine of a developer, and a secret
+of the repository in CI.
+
 ## The toolchain
 
 devenv provides Elixir 1.20.5 on Erlang/OTP 29, an elixir-ls built against
