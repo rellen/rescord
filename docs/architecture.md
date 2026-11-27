@@ -211,7 +211,9 @@ workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 `deps/ash/usage-rules/signals.md` and `deps/ash_workflow/usage-rules.md`.
 
 A signal module that two domains share has to be in a boundary that both
-can use. Where that module lives is not decided.
+can use. Where that module lives is not decided. ADR 0062 assesses where
+signals and workflows fit in the code of today, and proposes the first
+ones.
 
 ### Tenancy
 
@@ -516,7 +518,8 @@ from GitHub, pinned to a commit (ADR 0005).
 - The design of the grants: see "Policies and roles".
 - Whether a domain checks its relationships into other domains
   (`check [aliases: true]`), and where a signal module that two domains
-  share lives (ADR 0009, "Signals and workflows").
+  share lives (ADR 0009, "Signals and workflows"). ADR 0062 proposes an
+  answer to each, with a test.
 - How a cloud session (which runs as root, where devenv's PostgreSQL cannot
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
 - The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice
