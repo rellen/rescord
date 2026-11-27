@@ -218,7 +218,9 @@ too.
     rest, and makes the thumbnail. Never store the bytes of a photo as a
     person sent them. A test makes a real image with
     `Rescord.StorageFixtures.photo/1`: libvips refuses a file that only
-    starts like a JPEG.
+    starts like a JPEG. `prepare/1` runs the work of libvips through
+    `Rescord.Images.Limit` (ADR 0056), which bounds the memory: call
+    libvips for a file of a person through it, and nowhere else.
   - A file goes through `Rescord.Storage` (ADR 0041). Make each key with
     `Rescord.Storage.key/2`, and never from what a person sends. Read the
     type of a file from its first bytes, never from its name or from the

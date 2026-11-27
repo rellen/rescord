@@ -35,6 +35,9 @@ defmodule Rescord.Application do
       # The tasks of the requests for a sign-in link (ADR 0019). The limit stops
       # a flood of requests from starting a flood of tasks.
       {Task.Supervisor, name: Rescord.Accounts.sign_in_tasks(), max_children: 100},
+      # The slots of libvips (ADR 0056): only a few photos go through it at
+      # the same time, so that a batch of large photos cannot fill the memory.
+      Rescord.Images.Limit,
       # Start to serve requests, typically the last entry
       RescordWeb.Endpoint
     ]

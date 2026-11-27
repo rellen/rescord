@@ -142,6 +142,11 @@ config :phoenix_live_view,
 # directory.
 config :rescord, :storage, Rescord.Storage.S3
 
+# The photos that go through libvips at the same time, and the milliseconds
+# that a photo waits for its turn (ADR 0056). `config/runtime.exs` reads the
+# slots of a server from `RESCORD_PHOTO_SLOTS`.
+config :rescord, Rescord.Images.Limit, slots: 2, wait: 30_000
+
 # Configure the mailer
 #
 # By default it uses the "Local" adapter which stores the emails

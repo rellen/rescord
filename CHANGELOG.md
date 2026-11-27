@@ -15,6 +15,9 @@ section of a version in the notes of its GitHub release (ADR 0047).
   of each photo, the GPS position with the rest, turns it as the camera
   recorded, and makes a thumbnail, with libvips through the package
   `image`. A photo attached to a journal entry gets the same treatment.
+  Rescord works on two photos at the same time, and the others wait for
+  their turn, so a batch of large photos does not fill the memory of a
+  small server. `RESCORD_PHOTO_SLOTS` sets the number.
 - An administrator exports the data of an organisation as one ZIP of CSV
   files, as it stood at the end of a chosen day, with a README. The power
   `export` can go to another role.

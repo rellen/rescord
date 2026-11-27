@@ -27,7 +27,8 @@ defmodule Rescord.ProductionConfigTest do
                RESCORD_S3_ADDRESSING
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
-               RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES)
+               RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES
+               RESCORD_PHOTO_SLOTS)
 
   @s3 Map.merge(@required, %{
         "RESCORD_STORAGE" => "s3",
@@ -118,6 +119,18 @@ defmodule Rescord.ProductionConfigTest do
 
     assert_raise ArgumentError, ~r/RESCORD_LISTEN_ADDRESS/, fn ->
       read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "localhost"))
+    end
+  end
+
+  test "two photos go through libvips at once, unless the setting gives another number" do
+    config = read(@required)
+    assert config[:rescord][Rescord.Images.Limit][:slots] == 2
+
+    config = read(Map.put(@required, "RESCORD_PHOTO_SLOTS", "6"))
+    assert config[:rescord][Rescord.Images.Limit][:slots] == 6
+
+    assert_raise ArgumentError, ~r/RESCORD_PHOTO_SLOTS/, fn ->
+      read(Map.put(@required, "RESCORD_PHOTO_SLOTS", "0"))
     end
   end
 

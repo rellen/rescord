@@ -92,6 +92,11 @@ if config_env() == :prod do
   config :rescord, Rescord.Transfers.Keys,
     secret: Shoddy.Env.string("RESCORD_KEY_SECRET", min_bytes: 32)
 
+  # The photos that go through libvips at the same time (ADR 0056). Each can
+  # take 150 MB to 300 MB while it works.
+  config :rescord, Rescord.Images.Limit,
+    slots: Shoddy.Env.integer("RESCORD_PHOTO_SLOTS", default: 2, min: 1, max: 64)
+
   # The store of the attachments (ADR 0038 and ADR 0044): a directory of
   # this machine, or a service that is compatible with S3. Each setting of
   # the chosen store is required, and there is no default service.

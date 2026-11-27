@@ -63,8 +63,8 @@ The maintainer answered four questions:
 - The image is about 36 MB larger, 321 MB in all.
 - libvips decodes a photo to turn it: a photo of 48 million pixels from a
   phone takes about 150 MB while Rescord works on it, and one at the limit
-  about 300 MB. A server of 2 GB takes a few at a time. A limit on how many
-  run at once can come when a server needs one.
+  about 300 MB. A server of 2 GB takes a few at a time. ADR 0056 limits how
+  many run at once.
 - The new dependencies are `image`, `vix` and `color`. A security fix of
   libvips reaches the Docker image and the tarball with a new version of
   vix, and the Nix package with nixpkgs.

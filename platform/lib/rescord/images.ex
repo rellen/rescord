@@ -20,10 +20,16 @@ defmodule Rescord.Images do
     * An animated GIF keeps its frames, and loses its metadata. Its
       thumbnail is its first frame.
 
+  Only a few photos go through libvips at the same time, each in a process
+  of its own (`Rescord.Images.Limit`, ADR 0056). A photo that waits too
+  long for its turn is refused, with words that ask the person to try
+  again.
+
   The date that the camera recorded, `DateTimeOriginal` of EXIF, is read
   before the metadata goes, as a suggestion for the date of the photo.
   """
 
+  alias Rescord.Images.Limit
   alias Vix.Vips.Image, as: Vimage
 
   @max_pixels 100_000_000
@@ -81,7 +87,16 @@ defmodule Rescord.Images do
   def prepare(bytes) when is_binary(bytes) do
     case type_of(bytes) do
       nil -> {:error, "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"}
-      type -> prepare(bytes, type)
+      type -> one_of_few(fn -> prepare(bytes, type) end)
+    end
+  end
+
+  # libvips takes about 150 MB for a photo of a phone while it works, so
+  # only a few photos go through it at once (ADR 0056).
+  defp one_of_few(work) do
+    case Limit.run(work) do
+      {:error, :busy} -> {:error, "waited too long behind other photos. Try again in a minute"}
+      result -> result
     end
   end
 

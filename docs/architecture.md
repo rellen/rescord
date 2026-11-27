@@ -381,7 +381,11 @@ names the type that Rescord found in the first bytes of the file.
 A photo goes through `Rescord.Images` before it reaches the store
 (ADR 0055): libvips turns it as its EXIF says, writes it again with no
 metadata, so no GPS position stays, and makes a thumbnail. A photo of the
-journal and a photo of a resident get the same treatment.
+journal and a photo of a resident get the same treatment. Only a few photos
+go through libvips at the same time (ADR 0056): `Rescord.Images.Limit` has
+two slots by default, a photo waits for a slot for 30 seconds at most, and
+its work runs in a process of its own, so the memory of libvips is free
+again when the slot is.
 
 ### Photos
 
