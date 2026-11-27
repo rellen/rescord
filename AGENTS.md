@@ -161,6 +161,26 @@ for Rescord.
     Our own markup still has no class, inside a slot of Cinder too.
   - The output of `phx.gen.*` and of the Ash generators has Tailwind classes
     and Heroicon names. Restyle it by hand before you commit it.
+- **Mobile first** (ADR 0061, `docs/mobile.md`). Write a page for a phone,
+  and look at it with a width of 360px and of 320px, in both schemes, before
+  a wide screen.
+  - A CSS rule with no media query is the rule of a phone. A query adds
+    what a wider screen has room for. Nothing scrolls sideways.
+  - What a finger presses is as high as `--tap` (44px): a button, a field, a
+    summary, the label of a box, a link of a menu. The elements layer does
+    this, so do not make a control smaller in a component.
+  - A table is a list of cards on a phone. Give each `<td>` but the first
+    `data-label="<its column>"`. In a cell that Cinder writes, put the label
+    on a `<span data-label="…">` around the value. A cell of buttons and a
+    state need no label.
+  - A list of things with a button each is a `<ul>` with the button as a
+    child of the `<li>`: the stylesheet makes rows of it.
+  - Pass `section` to `Layouts.app`, so that the site menu marks the part
+    that the page is in.
+  - Prefer HTML and CSS to a script: `popover`, `<details>`, `:has()`.
+  - Wrap a `:hover` rule in `@media (hover: hover)`.
+  - `RescordWeb.Features.PhoneTest` visits each kind of page with the
+    screen of a phone. Add a new page to it.
 - **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
   a list or a grid with filters, a sort, a search and pages. Do not write
   those by hand.

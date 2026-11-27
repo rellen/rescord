@@ -108,6 +108,18 @@ We do not write those by hand.
     a menu above a card (`raised`).
   - Only `tokens.css` writes a colour, and `RescordWeb.TokensTest` holds each
     pair of a colour and its ground to WCAG AA in both schemes.
+- **Rescord is mobile first** (ADR 0061). The phone is the first screen
+  that a page is written for and looked at on, and `docs/mobile.md` holds the
+  assessment.
+  - No page is wider than a screen of 320px, and nothing scrolls sideways.
+  - What a finger presses is 44px high or more (`--tap`), and the text of a
+    control is 16px.
+  - The site menu is a popover of HTML on a phone, with no script, and it is
+    in the page on a wide screen.
+  - A table is a list of cards on a phone: each cell says its column with
+    `data-label`.
+  - `RescordWeb.Features.PhoneTest` holds the rules in a browser with the
+    screen of a phone.
 - **The stylesheet is one cascade layer per file, and a layer is a role**
   (ADR 0007). `assets/css/app.css` states the order of the layers and imports
   one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,
