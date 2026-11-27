@@ -52,19 +52,47 @@ After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
 `nix/package.nix` again: `nix build` prints the new one.
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
-ADR 0047). No release is planned, and the version stays 0.1.0: a rescue
-installs from `main` (ADR 0052). For the day of one, to release a version:
-change `version` in `platform/mix.exs`, add its section at the top of
-`CHANGELOG.md`, and commit both on `main`. Then run
-the workflow Release on `main` from the Actions page, which makes the tag
-such as `v0.2.0`, or push that tag. `release.yml` checks the flake, and
-publishes the image, the tarballs and the GitHub release.
-After a change to a workflow, such as a new version of an action, run Release
-with `dry_run`: it builds and checks each part, and publishes nothing.
+ADR 0047).
 
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
 too.
+
+## Commits, the changelog and releases
+
+ADR 0060 holds the rules, and says what a major, a minor and a patch mean
+for Rescord.
+
+- **The message of a commit follows Conventional Commits**:
+  `type(scope)!: subject`. The type is `feat`, `fix`, `perf`, `refactor`,
+  `docs`, `test`, `build`, `ci`, `chore` or `revert`, and the scope is
+  optional. `fix(security)` marks a security fix. A `!`, or a footer
+  `BREAKING CHANGE:`, marks a change after which an upgrade needs a step by
+  hand, or that breaks a setting, a command or a format that an operator or
+  a partner server relies on. The types give the size of the next release,
+  so `feat` is only for what a user or an operator gets. A commit on `main`
+  cannot be changed: `scripts/check-commit-message.sh` checks a message, as
+  the hook `commit-msg` that the devenv shell installs, and as a job of CI
+  for the commits after the release 0.2.0. Write each message so now.
+- **A commit that an operator or a user can notice adds its entry to
+  `CHANGELOG.md`**, in the same commit, under `## [Unreleased]`: in Added,
+  Changed, Deprecated, Removed, Fixed or Security, and in "Upgrade notes",
+  the first section, for what an operator must do or know at the upgrade.
+  An entry is full sentences for a person who runs a server. It is not the
+  subject of the commit.
+- **Release only when the maintainer asks.** On the newest commit of
+  `main`, run `scripts/release.sh`. It finds the new version from the
+  commits since the last tag, writes it in `platform/mix.exs`, which is its
+  one home (the Nix package reads it there), gives the section "Unreleased"
+  its version and its date, and commits `chore(release): X.Y.Z`. Push the
+  commit to `main`. Then run the workflow Release on `main` from the Actions
+  page, which makes the tag such as `v0.2.0`, or push that tag.
+  `release.yml` runs the checks of CI, the flake check and the test of an
+  upgrade, and publishes the image, the tarballs and the GitHub release.
+- Until the release 0.2.0, a rescue installs from `main` (ADR 0052).
+- After a change to a workflow, such as a new version of an action, run
+  Release with `dry_run`: it builds and checks each part, and publishes
+  nothing.
 
 ## Conventions
 

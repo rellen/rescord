@@ -1,7 +1,6 @@
 # ADR 0060: Versions, releases and the changelog
 
-Status: proposed (27 November 2026). The maintainer chose the changelog and
-the commit messages of this ADR. The other parts wait for an answer.
+Status: accepted (the maintainer, 28 November 2026).
 
 ## Context
 
@@ -81,10 +80,11 @@ written for them.
   major, or a minor before 1.0.0. A `feat` gives a minor. All else gives a
   patch.
 - **A commit that does not follow the rule cannot be changed on `main`**,
-  so three things keep the rule: `AGENTS.md` states it, a `commit-msg` hook
-  of devenv refuses a bad message, and a step of `ci.yml` fails on one. A
-  merge commit is exempt. Dependabot writes its commits with the prefix
-  `chore(deps)`.
+  so three things keep the rule: `AGENTS.md` states it, the devenv shell
+  installs a hook `commit-msg` of Git that refuses a bad message, and a job
+  of `ci.yml` fails on one. `scripts/check-commit-message.sh` is the check
+  of both. A merge commit is exempt. Dependabot writes its commits with the
+  prefix `chore(deps)`.
 - The rule starts with the commit after the release 0.2.0. The older
   commits stay as they are.
 
@@ -96,9 +96,10 @@ written for them.
   since the last tag and finds the new version, writes it in `mix.exs`,
   gives the section "Unreleased" its version and its date, opens a new
   empty one, updates the links, and makes the commit
-  `chore(release): X.Y.Z`. It stops when the tree is not clean, when it is
-  not on `main`, or when "Unreleased" is empty. `major`, `minor`, `patch`
-  or a version as an argument overrules what the commits give.
+  `chore(release): X.Y.Z`. It stops when the tree is not clean, when HEAD is
+  not the newest commit of `main`, or when "Unreleased" has no entry.
+  `major`, `minor`, `patch` or a version as an argument overrules what the
+  commits give.
 - **The workflow Release then runs on `main` from the Actions page**, as
   ADR 0047 says, and makes the tag `vX.Y.Z` at the commit that it built,
   after each check passed. A pushed tag still starts the same workflow.
@@ -106,11 +107,12 @@ written for them.
   now it checked the flake and the upgrade, and not the tests.
 - **Rescord says its version**: `bin/check` prints it, and a page of the
   root user shows it.
-- **The guide installs a release again**: the image by its tag, the flake
-  by its tag, and the tarball of the GitHub release. This ends the part
-  "install from `main`" of ADR 0052. The MIT licence of that ADR stays.
 - **The first release under these rules is 0.2.0**, with what is under
-  "Unreleased" now.
+  "Unreleased" now. The maintainer says when.
+- **From 0.2.0, the guide installs a release again**: the image by its tag,
+  the flake by its tag, and the tarball of the GitHub release. This ends
+  the part "install from `main`" of ADR 0052. The MIT licence of that ADR
+  stays.
 
 ### The repository that deploys an instance
 
@@ -133,10 +135,6 @@ written for them.
 - Between two releases, a build from `main` carries the version of the last
   release. A version such as `0.3.0-dev` on `main` was not taken, because
   the size of the next release is not known before its commits are.
-
-## Open
-
-- The tag that the workflow makes is a lightweight tag. If the maintainer
-  wants an annotated or a signed tag, the maintainer pushes the tag, and
-  the workflow runs for it.
-- Whether 0.2.0 is released as soon as these changes are on `main`.
+- The tag that the workflow makes is a lightweight tag. For an annotated
+  or a signed tag, the maintainer pushes the tag, and the workflow runs for
+  it.
