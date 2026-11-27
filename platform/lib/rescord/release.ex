@@ -21,9 +21,15 @@ defmodule Rescord.Release do
 
   `bootstrap_root/1` makes the first root user (`docs/domain.md`, section
   5.1). It does nothing when a root user exists.
+
+  `move_storage/2` copies the files of one store into the other, for a
+  server that changes its store (`Rescord.Storage.Move`, ADR 0059).
+  `bin/move-storage` runs it.
   """
 
   use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts]
+
+  alias Rescord.Storage.Move
 
   @app :rescord
 
@@ -98,6 +104,49 @@ defmodule Rescord.Release do
     else
       IO.puts("\nFix each FAIL, and run bin/check again.")
       :error
+    end
+  end
+
+  @doc """
+  Copies each file of the store `from` into the store `to`, each `"disk"`
+  or `"s3"`, checks each copy, and prints what happened. It deletes
+  nothing, and a second run copies only what is missing (ADR 0059).
+
+  It needs the settings of both stores. `bin/move-storage` sets
+  `RESCORD_BOTH_STORES`, so that `config/runtime.exs` reads both.
+  """
+  @spec move_storage(String.t(), String.t()) :: :ok | :error
+  def move_storage(from, to) do
+    load_app()
+    {:ok, _apps} = Application.ensure_all_started(:req)
+
+    case {store(from), store(to)} do
+      {{:ok, from}, {:ok, to}} when from != to ->
+        move(from, to)
+
+      _refused ->
+        IO.puts("Give the store of the files and the store to copy them to: disk s3, or s3 disk.")
+        :error
+    end
+  end
+
+  defp store("disk"), do: {:ok, Rescord.Storage.Disk}
+  defp store("s3"), do: {:ok, Rescord.Storage.S3}
+  defp store(_other), do: :error
+
+  defp move(from, to) do
+    progress = fn report ->
+      if line = Move.progress_line(report, from, to), do: IO.puts(line)
+    end
+
+    case Move.run(from, to, progress: progress) do
+      {:ok, report} ->
+        IO.puts(Move.format(report, from, to))
+        if Move.complete?(report), do: :ok, else: :error
+
+      {:error, fault} ->
+        IO.puts(Move.format_fault(fault, from, to))
+        :error
     end
   end
 

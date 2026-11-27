@@ -24,7 +24,8 @@ defmodule Rescord do
       Repo,
       Resource,
       Resource.Checks,
-      Storage
+      Storage,
+      Storage.Move
     ],
     check: [aliases: true, apps: [:phoenix, :phoenix_live_view, :phoenix_html, :shoddy_phoenix]]
 

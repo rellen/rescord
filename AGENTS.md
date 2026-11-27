@@ -230,6 +230,13 @@ too.
     type of a file from its first bytes, never from its name or from the
     browser. A page sends a file only through a controller that reads the
     record with the grants of the person.
+  - A key gets its bytes one time: never put other bytes under a key that
+    has a file. `bin/move-storage` copies the files of a server that
+    works, and relies on it (ADR 0059). A new store implements each
+    callback of `Rescord.Storage`, `list/0` too.
+  - A test of the store of S3 with more than one request uses
+    `Rescord.StorageFixtures.s3_store!/1`, which starts `Rescord.FakeS3`,
+    a service in the memory of the test.
   - Limit how often an action runs with `extensions: [AshRateLimiter]` and a
     `rate_limit` section whose backend is `Rescord.RateLimit` (ADR 0020). Do
     not write a counter by hand. A test of a limit counts under a key of its
@@ -411,7 +418,8 @@ too.
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup` and `restore` (ADR 0044, ADR 0049, ADR 0050) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore` and `move-storage` (ADR 0044, ADR 0049, ADR 0050, ADR 0059) |
+| `platform/lib/rescord/storage.ex`, `storage/` | the stores of the files, a directory and a bucket of S3, and the move from one into the other (ADR 0038, ADR 0059) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
 | `scripts/release-tarball.sh` | the tarballs of the release |

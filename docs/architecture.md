@@ -378,6 +378,12 @@ organisation, and no part of it comes from what a person sends. A person
 reads a file through a controller that asks the policy, and the answer
 names the type that Rescord found in the first bytes of the file.
 
+A key gets its bytes one time, and no page deletes a file. So
+`bin/move-storage` (`Rescord.Storage.Move`, ADR 0059) can copy the files
+of one store into the other while the server works, for a server that
+changes its store: it lists the old store, puts each file that the new
+store does not have, reads it back, and compares it. It deletes nothing.
+
 A photo goes through `Rescord.Images` before it reaches the store
 (ADR 0055): libvips turns it as its EXIF says, writes it again with no
 metadata, so no GPS position stays, and makes a thumbnail. A photo of the

@@ -56,8 +56,10 @@ let
 
   # A command of the release, run as root with the user and the environment of
   # the service: `rescord-bootstrap-root you@example.org` makes the first root
-  # user, `rescord-check [you@example.org]` checks the server (ADR 0049), and
-  # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050).
+  # user, `rescord-check [you@example.org]` checks the server (ADR 0049),
+  # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050),
+  # and `rescord-move-storage disk s3` copies the files into the other
+  # store (ADR 0059).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
@@ -85,6 +87,7 @@ let
   bootstrapRoot = releaseCommand "rescord-bootstrap-root" "bootstrap-root";
   check = releaseCommand "rescord-check" "check";
   restore = releaseCommand "rescord-restore" "restore";
+  moveStorage = releaseCommand "rescord-move-storage" "move-storage";
 in
 {
   options.services.rescord = {
@@ -203,6 +206,7 @@ in
       bootstrapRoot
       check
       restore
+      moveStorage
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {

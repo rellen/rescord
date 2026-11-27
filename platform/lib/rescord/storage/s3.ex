@@ -63,6 +63,116 @@ defmodule Rescord.Storage.S3 do
     end
   end
 
+  @doc """
+  Lists the key of each file in the bucket, with ListObjectsV2: a page of
+  1000 keys at most for each request, until the service says that no page
+  is left.
+  """
+  @impl true
+  def list, do: list(nil, [])
+
+  defp list(token, found) do
+    with {:ok, %{status: 200, body: body}} <-
+           Req.get(request(), url: list_url(token), decode_body: false),
+         {:ok, page} <- parse_page(body) do
+      found = [page.keys | found]
+
+      case page do
+        %{truncated?: false} -> {:ok, found |> Enum.reverse() |> Enum.concat()}
+        %{token: token} when is_binary(token) -> list(token, found)
+        # More pages, and no way to ask for the next one.
+        _no_token -> {:error, :bad_listing}
+      end
+    else
+      {:ok, %{status: status}} -> {:error, {:status, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # The address of the bucket itself, with the query of ListObjectsV2. The
+  # query is in the address, and not in `:params` of Req: Req signs the
+  # query as it is written, and a signature needs `%20` for a space, where
+  # `:params` writes `+`.
+  defp list_url(token) do
+    config = config()
+    bucket = Keyword.fetch!(config, :bucket)
+
+    query =
+      [{"list-type", "2"}] ++ if(token, do: [{"continuation-token", token}], else: [])
+
+    query =
+      Enum.map_join(query, "&", fn {name, value} ->
+        name <> "=" <> URI.encode(value, &URI.char_unreserved?/1)
+      end)
+
+    case Keyword.get(config, :addressing, :path) do
+      :path ->
+        "s3://#{bucket}?#{query}"
+
+      :virtual ->
+        endpoint = URI.parse(Keyword.fetch!(config, :endpoint))
+        path = String.trim_trailing(endpoint.path || "", "/") <> "/"
+        URI.to_string(%{endpoint | host: "#{bucket}.#{endpoint.host}", path: path, query: query})
+    end
+  end
+
+  # Reads a page of ListObjectsV2: the keys, whether more pages follow, and
+  # the token that asks for the next page. The parser of Erlang reads no
+  # entity of the document and nothing from outside it.
+  defp parse_page(xml) do
+    page = %{listing?: false, path: [], text: "", keys: [], truncated?: false, token: nil}
+
+    options = [
+      :disallow_entities,
+      event_fun: &page_event/3,
+      event_state: page,
+      external_entities: :none,
+      fail_undeclared_ref: false
+    ]
+
+    case :xmerl_sax_parser.stream(xml, options) do
+      {:ok, %{listing?: true, keys: keys} = page, _rest} ->
+        {:ok, %{page | keys: Enum.reverse(keys)}}
+
+      # A document that is no XML, or the XML of something else.
+      _fault ->
+        {:error, :bad_listing}
+    end
+  end
+
+  defp page_event({:startElement, _uri, ~c"ListBucketResult", _qualified, _attributes}, _, page)
+       when page.path == [],
+       do: %{page | listing?: true, path: [~c"ListBucketResult"], text: ""}
+
+  defp page_event({:startElement, _uri, name, _qualified, _attributes}, _location, page),
+    do: %{page | path: [name | page.path], text: ""}
+
+  # The parser can give the text of one element in several parts.
+  defp page_event({:characters, text}, _location, page),
+    do: %{page | text: page.text <> List.to_string(text)}
+
+  defp page_event({:endElement, _uri, _name, _qualified}, _location, page) do
+    [name | above] = page.path
+    text = page.text
+    page = %{page | path: above, text: ""}
+
+    case {name, above} do
+      {~c"Key", [~c"Contents", ~c"ListBucketResult"]} ->
+        %{page | keys: [text | page.keys]}
+
+      {~c"IsTruncated", [~c"ListBucketResult"]} ->
+        %{page | truncated?: String.trim(text) == "true"}
+
+      {~c"NextContinuationToken", [~c"ListBucketResult"]} ->
+        %{page | token: text}
+
+      _other ->
+        page
+    end
+  end
+
+  defp page_event(_event, _location, page), do: page
+
   defp config, do: Application.fetch_env!(:rescord, __MODULE__)
 
   defp url(key) do

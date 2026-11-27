@@ -30,7 +30,8 @@ defmodule Rescord.MixProject do
   def application do
     [
       mod: {Rescord.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      # xmerl reads the list of the files of a bucket (ADR 0059).
+      extra_applications: [:logger, :runtime_tools, :xmerl]
     ]
   end
 

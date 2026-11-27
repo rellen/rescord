@@ -109,10 +109,11 @@ defmodule Rescord.Release.Check do
          {:get, {:ok, ^bytes}} <- {:get, store.get(key)},
          {:delete, :ok} <- {:delete, store.delete(key)} do
       remove_empty_directories(store)
-      {:ok, "store", "#{describe(store)} takes, gives back and deletes a file"}
+      {:ok, "store", "#{Storage.describe(store)} takes, gives back and deletes a file"}
     else
       {step, result} ->
-        {:fail, "store", "#{describe(store)}: the #{step} of a file gave #{inspect(result)}"}
+        {:fail, "store",
+         "#{Storage.describe(store)}: the #{step} of a file gave #{inspect(result)}"}
     end
   rescue
     error -> {:fail, "store", Exception.message(error)}
@@ -207,17 +208,6 @@ defmodule Rescord.Release.Check do
     end
 
     :ok
-  end
-
-  # The store in words, from its settings: a directory, or a bucket.
-  defp describe(store) do
-    config = Application.get_env(:rescord, store, [])
-
-    cond do
-      config[:root] -> "the directory #{config[:root]}"
-      config[:bucket] -> "the bucket #{config[:bucket]} at #{config[:endpoint]}"
-      true -> inspect(store)
-    end
   end
 
   defp count_pending(migrations), do: Enum.count(migrations, &match?({:down, _, _}, &1))

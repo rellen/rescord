@@ -111,7 +111,9 @@ agenix can make that file.
 
 The module installs `rescord-check`, which checks the server (see "Check
 the server" below), and `rescord-bootstrap-root`, which makes the first
-root user. Each runs with the environment of the service. Run them as root:
+root user. It also installs `rescord-restore` (see "Restore") and
+`rescord-move-storage` (see "Move the files to another store"). Each runs
+with the environment of the service. Run them as root:
 
 ```sh
 rescord-check you@example.org
@@ -314,6 +316,86 @@ sudo systemctl start rescord
 
 To restore an older dump, give its name after the directory, such as
 `rescord-20261120T020000Z.dump`.
+
+## Move the files to another store
+
+`bin/move-storage` copies the files from the directory into a bucket of
+S3, or from the bucket into the directory, for a server that changes
+`RESCORD_STORAGE` (ADR 0059). It puts each file that the new store does
+not have, reads it back, and compares it with the file of the old store. A
+file that the new store has already is read and compared, and not copied.
+It deletes nothing in either store, and it writes over no file that the
+new store has.
+
+The database needs no change: a record names its file by a key, which is
+the same in both stores.
+
+1. Make a backup, as "Back up" says.
+2. Add the settings of the new store, and keep each setting of the old
+   one. Do not change `RESCORD_STORAGE` yet. For a bucket, add each
+   `RESCORD_S3_` setting, and make the bucket at the provider. For a
+   directory, `RESCORD_FILES_DIR` is set already in each way of installing.
+   The bucket can be empty or not: the command leaves each file that it
+   does not know.
+3. Copy the files, while Rescord runs. This is the long step. Each line
+   below copies from the directory into the bucket; for the other
+   direction, write `s3 disk`.
+
+   - With Docker Compose, in a container of its own, which reads `.env`
+     again:
+
+     ```sh
+     docker compose run --rm rescord bin/move-storage disk s3
+     ```
+
+   - On NixOS, as root, after you rebuild the machine with the new
+     settings:
+
+     ```sh
+     rescord-move-storage disk s3
+     ```
+
+   - From the tarball, with the `rescord` function of the install steps:
+
+     ```sh
+     rescord move-storage disk s3
+     ```
+
+   The command prints what it did, and exits with 1 when a file is not
+   copied:
+
+   ```text
+   The directory /var/lib/rescord/files has 1204 files, and the bucket rescord at https://t3.storage.dev has 0.
+     100 of 1204
+     ...
+   copied  1204 files (2.31 GB), and read each one back
+
+   Each file of the directory /var/lib/rescord/files is in the bucket rescord at https://t3.storage.dev.
+   Nothing was deleted: the directory /var/lib/rescord/files keeps its files.
+   ```
+
+   When a line says `FAIL`, fix what it names and run the command again:
+   it copies only what is missing. A run that stopped in the middle is
+   safe to start again in the same way.
+4. Set `RESCORD_STORAGE` to the new store, and start Rescord again
+   (`docker compose up -d` with Docker Compose). Keep the settings of the
+   old store.
+5. Run the command of step 3 one more time. It copies each file that a
+   person added between step 3 and step 4. Until then, the page of such a
+   file does not show it. To have no such time, stop Rescord before step 3
+   and start it at step 4: the command needs the two stores, and not the
+   server or the database.
+6. Run `bin/check`, and open a photo and a PDF in Rescord.
+
+Keep the old store until the new one has served for a time, and then
+delete it yourself. After a move to S3, the backup of each day no longer
+copies the files: keep the bucket with the versions of its provider. After
+a move to a directory, the next backup copies each file.
+
+A name in the old store that Rescord did not make, such as the
+`lost+found` of a volume, stays there, and the report names it. The
+command does not move the files of one bucket into another bucket: move
+them through a directory.
 
 ## Upgrade
 

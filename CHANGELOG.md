@@ -5,6 +5,11 @@ section of a version in the notes of its GitHub release (ADR 0047).
 
 ## Unreleased
 
+- `bin/move-storage disk s3`, or `s3 disk`, copies the files of a server
+  from its directory into a bucket of S3, or back, for a server that
+  changes `RESCORD_STORAGE`. It reads each copy back and compares it,
+  copies only what is missing when it runs again, and deletes nothing.
+  `docs/self-hosting.md` has the steps.
 - The tab of a browser shows the mark of Rescord, in the colour of the
   light or of the dark scheme, and a home screen shows it too.
 - A transfer of a resident can carry its photos, its albums and its

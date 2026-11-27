@@ -107,18 +107,26 @@ if config_env() == :prod do
 
   config :rescord, :storage, storage
 
-  case storage do
-    Rescord.Storage.Disk ->
-      config :rescord, Rescord.Storage.Disk, root: Shoddy.Env.string("RESCORD_FILES_DIR")
+  # `bin/move-storage` copies the files of one store into the other
+  # (ADR 0059), so it needs the settings of both, and sets
+  # RESCORD_BOTH_STORES. No operator sets it.
+  stores =
+    if Shoddy.Env.boolean("RESCORD_BOTH_STORES", default: false),
+      do: [Rescord.Storage.Disk, Rescord.Storage.S3],
+      else: [storage]
 
-    Rescord.Storage.S3 ->
-      config :rescord, Rescord.Storage.S3,
-        endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT"),
-        region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
-        bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
-        addressing: Shoddy.Env.one_of("RESCORD_S3_ADDRESSING", [:path, :virtual], default: :path),
-        access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
-        secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
+  if Rescord.Storage.Disk in stores do
+    config :rescord, Rescord.Storage.Disk, root: Shoddy.Env.string("RESCORD_FILES_DIR")
+  end
+
+  if Rescord.Storage.S3 in stores do
+    config :rescord, Rescord.Storage.S3,
+      endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT"),
+      region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
+      bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
+      addressing: Shoddy.Env.one_of("RESCORD_S3_ADDRESSING", [:path, :virtual], default: :path),
+      access_key_id: Shoddy.Env.string("RESCORD_S3_ACCESS_KEY_ID"),
+      secret_access_key: Shoddy.Env.string("RESCORD_S3_SECRET_ACCESS_KEY")
   end
 
   # The mail: the sign-in links and the invitations go through the SMTP

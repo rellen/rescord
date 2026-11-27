@@ -1,0 +1,32 @@
+#!/bin/sh
+# Copies the files of Rescord from one store into the other (ADR 0059), for
+# a server that changes its store:
+#   bin/move-storage disk s3     # from the directory into the bucket
+#   bin/move-storage s3 disk     # from the bucket into the directory
+#
+# It puts each file that the new store does not have, reads it back, and
+# compares it. A file that the new store has already is read and compared,
+# and not copied. So a second run copies only what is missing, and a run
+# that stopped is safe to start again. It deletes nothing in either store.
+#
+# It needs the settings of both stores: RESCORD_FILES_DIR, and each
+# RESCORD_S3_ setting. RESCORD_STORAGE stays the store that Rescord reads
+# until each file is copied. It exits with 1 when a file is not copied.
+set -eu
+
+if [ "$#" -ne 2 ] || { [ "$1 $2" != "disk s3" ] && [ "$1 $2" != "s3 disk" ]; }; then
+  echo "Give the store of the files and the store to copy them to:" >&2
+  echo "  bin/move-storage disk s3" >&2
+  echo "  bin/move-storage s3 disk" >&2
+  exit 2
+fi
+
+cd -P -- "$(dirname -- "$0")"
+RESCORD_BOTH_STORES=true RESCORD_MOVE_FROM="$1" RESCORD_MOVE_TO="$2" exec ./rescord eval '
+  from = System.fetch_env!("RESCORD_MOVE_FROM")
+  to = System.fetch_env!("RESCORD_MOVE_TO")
+
+  case Rescord.Release.move_storage(from, to) do
+    :ok -> :ok
+    :error -> System.halt(1)
+  end'

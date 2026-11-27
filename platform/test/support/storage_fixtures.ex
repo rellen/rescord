@@ -1,8 +1,8 @@
 defmodule Rescord.StorageFixtures do
   @moduledoc """
   Files for the tests of the attachments and the photos (ADR 0041 and
-  ADR 0055): real images that libvips reads, a small PDF, and a store in
-  the temporary directory of a test.
+  ADR 0055): real images that libvips reads, a small PDF, a store in the
+  temporary directory of a test, and a store of S3 in its memory.
   """
 
   import ExUnit.Callbacks, only: [on_exit: 1]
@@ -73,5 +73,33 @@ defmodule Rescord.StorageFixtures do
     Application.put_env(:rescord, Rescord.Storage.Disk, root: tmp_dir)
     on_exit(fn -> Application.put_env(:rescord, Rescord.Storage.Disk, previous) end)
     :ok
+  end
+
+  @doc """
+  Starts a service of S3 in the memory of the test (`Rescord.FakeS3`),
+  names it in the settings of `Rescord.Storage.S3`, and puts the settings
+  back after the test. It returns the service, for `Rescord.FakeS3`. The
+  options go to `Rescord.FakeS3.start_link/1`.
+  """
+  def s3_store!(opts \\ []) do
+    service = ExUnit.Callbacks.start_supervised!({Rescord.FakeS3, opts})
+    previous = Application.get_env(:rescord, Rescord.Storage.S3)
+
+    Application.put_env(:rescord, Rescord.Storage.S3,
+      endpoint: "http://s3.test:3900",
+      region: "garage",
+      bucket: Keyword.get(opts, :bucket, "rescord"),
+      access_key_id: "GK0000000000000000000000ad",
+      secret_access_key: "000000000000000000000000000000000000000000000000000000000000dec0",
+      req_options: [plug: &Rescord.FakeS3.call(&1, service), retry: false]
+    )
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:rescord, Rescord.Storage.S3, previous),
+        else: Application.delete_env(:rescord, Rescord.Storage.S3)
+    end)
+
+    service
   end
 end

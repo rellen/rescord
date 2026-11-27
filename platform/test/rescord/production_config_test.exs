@@ -28,7 +28,7 @@ defmodule Rescord.ProductionConfigTest do
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
                RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES
-               RESCORD_PHOTO_SLOTS)
+               RESCORD_PHOTO_SLOTS RESCORD_BOTH_STORES)
 
   @s3 Map.merge(@required, %{
         "RESCORD_STORAGE" => "s3",
@@ -98,6 +98,34 @@ defmodule Rescord.ProductionConfigTest do
 
     config = read(Map.put(@s3, "RESCORD_S3_ADDRESSING", "virtual"))
     assert config[:rescord][Rescord.Storage.S3][:addressing] == :virtual
+  end
+
+  test "the move of the files reads the settings of both stores, and needs each one" do
+    # The server reads the settings of its own store alone.
+    config = read(Map.put(@s3, "RESCORD_STORAGE", "disk"))
+    assert config[:rescord][:storage] == Rescord.Storage.Disk
+    assert config[:rescord][Rescord.Storage.S3] == nil
+
+    config = read(@s3)
+    assert config[:rescord][:storage] == Rescord.Storage.S3
+    assert config[:rescord][Rescord.Storage.Disk] == nil
+
+    # bin/move-storage sets RESCORD_BOTH_STORES (ADR 0059).
+    for storage <- ["disk", "s3"] do
+      env = Map.merge(@s3, %{"RESCORD_STORAGE" => storage, "RESCORD_BOTH_STORES" => "true"})
+      config = read(env)
+
+      assert config[:rescord][:storage] ==
+               %{"disk" => Rescord.Storage.Disk, "s3" => Rescord.Storage.S3}[storage]
+
+      assert config[:rescord][Rescord.Storage.Disk][:root] == "/var/lib/rescord/files"
+      assert config[:rescord][Rescord.Storage.S3][:bucket] == "rescord"
+
+      for name <- ["RESCORD_FILES_DIR", "RESCORD_S3_BUCKET", "RESCORD_S3_SECRET_ACCESS_KEY"] do
+        System.delete_env(name)
+        assert_raise ArgumentError, ~r/#{name}.*not set/, fn -> read(Map.delete(env, name)) end
+      end
+    end
   end
 
   test "a missing required setting stops the start, and names the setting" do

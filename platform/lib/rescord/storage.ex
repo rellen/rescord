@@ -1,7 +1,7 @@
 defmodule Rescord.Storage do
   @moduledoc """
   What Rescord needs from a store of files (ADR 0038): put a file, get it,
-  and delete it.
+  delete it, and list the files.
 
   The configuration names the store, `config :rescord, :storage`:
 
@@ -14,6 +14,10 @@ defmodule Rescord.Storage do
   A key is a path of segments. The key of each file of an organisation
   starts with the id of the organisation (`key/2`), so the files of two
   organisations never share a key. No key comes from what a person sends.
+
+  Rescord never changes a file: a key gets its bytes one time. So
+  `Rescord.Storage.Move` can copy the files of one store into another
+  while Rescord runs (ADR 0059).
   """
 
   @typedoc "The key of a file in the store, for example `<organisation id>/attachments/<id>`."
@@ -27,6 +31,12 @@ defmodule Rescord.Storage do
 
   @doc "Deletes the file under `key`. A key with no file is no error."
   @callback delete(key) :: :ok | {:error, term}
+
+  @doc """
+  Lists the name of each file in the store. A store can hold a file that
+  Rescord did not put there, so a name is a key only when `key?/1` says so.
+  """
+  @callback list() :: {:ok, [String.t()]} | {:error, term}
 
   @doc "The module of the store that the configuration names."
   @spec store() :: module
@@ -61,6 +71,45 @@ defmodule Rescord.Storage do
       else: raise(ArgumentError, "a key is made of ids and words: #{inspect(segments)}")
   end
 
-  defp segment?(segment),
+  @doc """
+  Whether `name` has the shape of a key that `key/2` makes: two segments or
+  more, each an id or a word.
+
+      iex> Rescord.Storage.key?("8f0c/attachments/b51e")
+      true
+      iex> Rescord.Storage.key?("lost+found")
+      false
+      iex> Rescord.Storage.key?("8f0c/photos/b51e.part-1a2b")
+      false
+  """
+  @spec key?(String.t()) :: boolean
+  def key?(name) when is_binary(name) do
+    case String.split(name, "/") do
+      [_one] -> false
+      segments -> Enum.all?(segments, &segment?/1)
+    end
+  end
+
+  @doc """
+  Whether `segment` can be a part of a key: 1 to 64 letters, digits, `_`
+  and `-`.
+  """
+  @spec segment?(term) :: boolean
+  def segment?(segment),
     do: is_binary(segment) and Regex.match?(~r/\A[A-Za-z0-9_-]{1,64}\z/, segment)
+
+  @doc """
+  The store `store` in words, from its settings: a directory, or a bucket
+  at its address. The words name no key and no secret.
+  """
+  @spec describe(module) :: String.t()
+  def describe(store) do
+    config = Application.get_env(:rescord, store, [])
+
+    cond do
+      config[:root] -> "the directory #{config[:root]}"
+      config[:bucket] -> "the bucket #{config[:bucket]} at #{config[:endpoint]}"
+      true -> inspect(store)
+    end
+  end
 end
