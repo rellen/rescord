@@ -90,6 +90,42 @@ defmodule Rescord.Tasks do
     |> Ash.read(opts)
   end
 
+  @doc """
+  The tasks that need somebody now (ADR 0065): each task that is due and
+  whose time is before the end of today in the organisation, the oldest
+  first. A task of an earlier day that is still due is one of them.
+
+  Returns `%{rows: rows, total: total}`. A row is
+  `%{kind: :task, record: task, phase: phase}`, with the phase `:overdue` or
+  `:due` at the instant `:now` of `opts`. There are at most `:limit` rows,
+  and `total` counts each such task. A role that cannot complete a task
+  gets no row: it can do nothing about one.
+  """
+  @spec attention(term, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}} | {:error, term}
+  def attention(role, opts \\ []) do
+    {now, opts} = Keyword.pop(opts, :now, DateTime.utc_now())
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+
+    if role_can?(role, :complete) do
+      today = Rescord.Accounts.local_date(opts[:tenant], now)
+      {_start, finish} = Rescord.Accounts.day_range(opts[:tenant], today)
+      query = Ash.Query.filter(Task, state == :due and due_at < ^finish)
+
+      with {:ok, total} <- Ash.count(query, opts),
+           {:ok, tasks} <-
+             query
+             |> Ash.Query.sort(due_at: :asc, title: :asc, id: :asc)
+             |> Ash.Query.limit(limit)
+             |> Ash.Query.load(@facts)
+             |> Ash.read(opts) do
+        rows = for task <- tasks, do: %{kind: :task, record: task, phase: phase(task, now)}
+        {:ok, %{rows: rows, total: total}}
+      end
+    else
+      {:ok, %{rows: [], total: 0}}
+    end
+  end
+
   @doc "One task with its kind and its subjects, or `nil`."
   def task_with_facts(id, opts \\ []), do: task(id, Keyword.put(opts, :load, @facts))
 

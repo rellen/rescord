@@ -11,6 +11,17 @@ its GitHub release (ADR 0047).
 
 ## [Unreleased]
 
+### Changed
+
+- The first page of an organisation now says what needs attention: the
+  tasks that are overdue or due today, the items to count or to order and
+  the stock that is past its expiry date or expires soon, the residents
+  that are late back or expected, the locations over their capacity, and
+  the transfers and partner requests that wait for an answer. Each row
+  opens the page where a member acts on it. A person sees only what their
+  role can act on, and the page reads again each minute. The links to
+  each part of the organisation are below it.
+
 ### Security
 
 - The history of a record is closed to each request that asks for it by

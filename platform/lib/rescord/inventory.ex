@@ -220,6 +220,67 @@ defmodule Rescord.Inventory do
     Enum.filter(whole ++ places, &(Decimal.compare(&1.level, &1.wanted) == :lt))
   end
 
+  @typedoc """
+  What is wrong with the stock of an item: a place of a lot is below zero,
+  the stock is below a reorder level, a part of it is past its expiry date,
+  or a part of it expires soon.
+  """
+  @type fault :: :below_zero | :short | :expired | :soon
+
+  # The stock movement that puts each fault right.
+  @cures [below_zero: :count, short: :receive, expired: :discard, soon: :use]
+
+  @doc """
+  What is wrong with the stock of an item, as `stock/1` gives it: what a
+  member must know first is first. An empty list is stock with no fault.
+  """
+  @spec faults(map) :: [fault]
+  def faults(stock) do
+    Enum.filter(Keyword.keys(@cures), fn
+      :below_zero -> Map.get(stock, :below_zero, []) != []
+      :short -> stock.short != []
+      :expired -> Decimal.positive?(stock.expired)
+      :soon -> Decimal.positive?(stock.soon)
+    end)
+  end
+
+  @doc """
+  The items whose stock needs somebody now (ADR 0065), in the order of the
+  names, the ones with a fault that cannot wait first: an item to count, to
+  order, or with stock past its expiry date. An item whose one fault is
+  stock that expires soon is after them.
+
+  Returns `%{rows: rows, total: total}`. A row is
+  `%{kind: :stock, record: item, stock: stock, faults: faults}`. There are
+  at most `:limit` rows, and `total` counts each such item. A fault is in
+  a row only for a role that can record the stock movement that puts it
+  right: a count, a delivery, a discard or a use.
+  """
+  @spec attention(term, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}} | {:error, term}
+  def attention(role, opts \\ []) do
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+    opts = Keyword.delete(opts, :now)
+
+    case for {fault, action} <- @cures, role_can?(role, :movement, action), do: fault do
+      [] ->
+        {:ok, %{rows: [], total: 0}}
+
+      curable ->
+        with {:ok, stock} <- stock(opts) do
+          rows =
+            for stock <- stock,
+                faults = Enum.filter(faults(stock), &(&1 in curable)),
+                faults != [] do
+              %{kind: :stock, record: stock.item, stock: stock, faults: faults}
+            end
+
+          # The sort is stable, so each half keeps the order of the names.
+          rows = Enum.sort_by(rows, &(&1.faults == [:soon]))
+          {:ok, %{rows: Enum.take(rows, limit), total: length(rows)}}
+        end
+    end
+  end
+
   @doc """
   Where a lot is with its expiry date on a day of the organisation:
   `:expired` after the date, `:soon` in the `soon_days` before it and on it,

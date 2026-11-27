@@ -182,6 +182,72 @@ defmodule Rescord.Residents do
     end
   end
 
+  @doc """
+  The residents that need somebody now (ADR 0065): each resident that is
+  away and whose day to be back is before today, the one that is the most
+  late first, and then each resident that is expected, in the order of the
+  names.
+
+  Returns `%{rows: rows, total: total}`. A row is
+  `%{kind: :late_back, record: resident, absence: absence}` or
+  `%{kind: :expected, record: resident}`, each resident with its name. There
+  are at most `:limit` rows, and `total` counts each such resident. A row
+  is there only for a role that can do something about it: say that the
+  resident is back, or record the arrival.
+  """
+  @spec attention(term, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}} | {:error, term}
+  def attention(role, opts \\ []) do
+    {now, opts} = Keyword.pop(opts, :now, DateTime.utc_now())
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+    today = Rescord.Accounts.local_date(opts[:tenant], now)
+
+    with {:ok, late} <- late_back(role_can?(role, :absence, :finish), today, limit, opts),
+         {:ok, expected} <- expected(role_can?(role, :arrival, :record), limit, opts) do
+      {:ok,
+       %{
+         rows: Enum.take(late.rows ++ expected.rows, limit),
+         total: late.total + expected.total
+       }}
+    end
+  end
+
+  defp late_back(false, _today, _limit, _opts), do: {:ok, %{rows: [], total: 0}}
+
+  defp late_back(true, today, limit, opts) do
+    # A resident that left is not away, whatever its absence says.
+    query = Ash.Query.filter(Absence, expected_back_on < ^today and resident.status == :away)
+
+    with {:ok, total} <- Ash.count(query, opts),
+         {:ok, absences} <-
+           query
+           |> Ash.Query.sort(expected_back_on: :asc, id: :asc)
+           |> Ash.Query.limit(limit)
+           |> Ash.Query.load(resident: [:name])
+           |> Ash.read(opts) do
+      rows =
+        for absence <- absences,
+            do: %{kind: :late_back, record: absence.resident, absence: absence}
+
+      {:ok, %{rows: rows, total: total}}
+    end
+  end
+
+  defp expected(false, _limit, _opts), do: {:ok, %{rows: [], total: 0}}
+
+  defp expected(true, limit, opts) do
+    query = Ash.Query.filter(Resident, status == :expected)
+
+    with {:ok, total} <- Ash.count(query, opts),
+         {:ok, residents} <-
+           query
+           |> Ash.Query.sort(name: :asc, id: :asc)
+           |> Ash.Query.limit(limit)
+           |> Ash.Query.load(:name)
+           |> Ash.read(opts) do
+      {:ok, %{rows: Enum.map(residents, &%{kind: :expected, record: &1}), total: total}}
+    end
+  end
+
   defp history(resource, attribute, resident_id, opts) do
     # The policy of the versions refuses each actor: the resident decides.
     case resident(resident_id, opts) do

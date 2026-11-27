@@ -676,3 +676,129 @@ li > :is(details[open], form) {
   flex: 1 0 100%;
   margin-block: 0.25rem 0.5rem;
 }
+
+/* ------------------------------------------------------------- attention */
+
+/*
+ * What needs somebody now, on the first page of an organisation
+ * (ADR 0065). A part of the organisation is a card, and each thing in it
+ * is a row: the name of the record, which is a link, on a line of its own,
+ * then its states and its facts on the lines below.
+ *
+ *   <ul data-attention>
+ *     <li><a href="…">Feed the herd</a> <span data-state="alert">…</span>
+ *       <small>Today, 08:00</small></li>
+ *   </ul>
+ */
+ul[data-attention] {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+ul[data-attention] > li {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  min-block-size: var(--tap);
+  padding: 0.75rem 1rem;
+}
+
+ul[data-attention] > li + li {
+  border-block-start: 1px solid var(--border);
+}
+
+ul[data-attention] a {
+  flex: 1 0 100%;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* A finger presses the whole row, and not only the words of the link. */
+ul[data-attention] a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+/* The focus is around the row that the link fills. */
+ul[data-attention] a:focus-visible {
+  outline: none;
+}
+
+ul[data-attention] > li:has(a:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+ul[data-attention] > li:first-child {
+  border-start-start-radius: var(--radius);
+  border-start-end-radius: var(--radius);
+}
+
+ul[data-attention] > li:last-child {
+  border-end-start-radius: var(--radius);
+  border-end-end-radius: var(--radius);
+}
+
+ul[data-attention] small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  ul[data-attention] > li:hover {
+    background: var(--tint);
+  }
+
+  ul[data-attention] > li:hover a {
+    color: var(--accent);
+  }
+}
+
+/* The number of things in a part, beside its title. */
+h3:has(+ ul[data-attention]) > small {
+  margin-inline-start: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--pill);
+}
+
+/* The line below a part: how many more there are, and the link to all. */
+ul[data-attention] + p {
+  margin-block: 0 1.25rem;
+  color: var(--muted);
+}
+
+/* A wide screen has room for two parts side by side. A part that is alone
+   takes the whole row. */
+@media (width >= 60rem) {
+  section:has(> section > ul[data-attention]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  section:has(> section > ul[data-attention]) > :is(:not(section), section:only-of-type) {
+    grid-column: 1 / -1;
+  }
+
+  section:has(> section > ul[data-attention]) > section > h3 {
+    margin-block-start: 0.75rem;
+  }
+}
+
+/* The links to each part of the organisation, below what needs somebody. */
+main > section + nav {
+  margin-block-start: 2rem;
+}

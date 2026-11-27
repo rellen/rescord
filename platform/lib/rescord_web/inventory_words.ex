@@ -14,6 +14,13 @@ defmodule RescordWeb.InventoryWords do
     none: {"No expiry date", "none"}
   ]
 
+  @faults [
+    below_zero: {"Count the stock", "alert"},
+    short: {"Order more", "alert"},
+    expired: {"Has stock past its expiry date", "alert"},
+    soon: {"Has stock that expires soon", "info"}
+  ]
+
   @movements [
     received: "Received",
     used: "Used",
@@ -85,23 +92,20 @@ defmodule RescordWeb.InventoryWords do
   must know first is first. An item with stock and no fault is `In stock`.
   """
   def states(stock) do
-    zero = Decimal.new(0)
-
-    [
-      Map.get(stock, :below_zero, []) != [] && {"Count the stock", "alert"},
-      stock.short != [] && {"Order more", "alert"},
-      Decimal.positive?(stock.expired) && {"Has stock past its expiry date", "alert"},
-      Decimal.positive?(stock.soon) && {"Has stock that expires soon", "info"}
-    ]
-    |> Enum.filter(& &1)
-    |> case do
+    case Rescord.Inventory.faults(stock) do
       [] ->
-        if Decimal.compare(stock.level, zero) == :gt,
+        if Decimal.compare(stock.level, Decimal.new(0)) == :gt,
           do: [{"In stock", "ok"}],
           else: [{"None in stock", "none"}]
 
-      states ->
-        states
+      faults ->
+        Enum.map(faults, &fault/1)
     end
   end
+
+  @doc "A fault of the stock of an item (`Rescord.Inventory.faults/1`), as `{words, kind}`."
+  def fault(fault), do: Keyword.fetch!(@faults, fault)
+
+  @doc "The faults that have words, for the test that holds them."
+  def faults, do: Keyword.keys(@faults)
 end

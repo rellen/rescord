@@ -146,6 +146,57 @@ defmodule Rescord.Transfers do
     |> with_organisations([:remote_partner])
   end
 
+  @doc """
+  What waits for an answer from an organisation (ADR 0065): each transfer
+  that it received and did not answer, and then each refuge that asks it to
+  be a partner, the oldest first in each.
+
+  Returns `%{rows: rows, total: total}`. A row is
+  `%{kind: :transfer, record: transfer}` or
+  `%{kind: :partner_request, record: partnership}`, each with its two
+  organisations. There are at most `:limit` rows, and `total` counts each
+  thing that waits. A row is there only for a role that can answer it.
+  """
+  @spec attention(term, Ash.Resource.record(), keyword) ::
+          {:ok, %{rows: [map], total: non_neg_integer}} | {:error, term}
+  def attention(role, organisation, opts \\ []) do
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+    opts = Keyword.drop(opts, [:now, :tenant])
+    id = organisation.id
+
+    transfers =
+      Transfer
+      |> Ash.Query.filter(to_organisation_id == ^id and state == :sent)
+      |> Ash.Query.deselect([:snapshot])
+      |> Ash.Query.sort(sent_at: :asc, id: :asc)
+
+    requests =
+      Partnership
+      |> Ash.Query.filter(to_organisation_id == ^id and state == :asked)
+      |> Ash.Query.sort(inserted_at: :asc, id: :asc)
+
+    with {:ok, transfers} <-
+           waiting(role_can?(role, :transfer, :accept), transfers, [:remote_partner], limit, opts),
+         {:ok, requests} <-
+           waiting(role_can?(role, :partnership, :accept), requests, [], limit, opts) do
+      rows =
+        Enum.map(transfers.rows, &%{kind: :transfer, record: &1}) ++
+          Enum.map(requests.rows, &%{kind: :partner_request, record: &1})
+
+      {:ok, %{rows: Enum.take(rows, limit), total: transfers.total + requests.total}}
+    end
+  end
+
+  defp waiting(false, _query, _more, _limit, _opts), do: {:ok, %{rows: [], total: 0}}
+
+  defp waiting(true, query, more, limit, opts) do
+    with {:ok, total} <- Ash.count(query, opts),
+         {:ok, records} <-
+           query |> Ash.Query.limit(limit) |> Ash.read(opts) |> with_organisations(more) do
+      {:ok, %{rows: records, total: total}}
+    end
+  end
+
   # The two organisations of each record that the actor read. Only a root
   # user reads an organisation through its actions, and a person who reads
   # a partnership or a transfer reads the names of its two refuges.

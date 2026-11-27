@@ -156,10 +156,14 @@ defmodule Rescord.Locations do
     * `over?` - whether `count` is more than the capacity.
   """
   def tree(opts \\ []) do
+    with {:ok, groups} <- Residents.groups_with_facts(opts), do: tree_with(groups, opts)
+  end
+
+  # The tree, with the groups that the caller read: each with its members.
+  defp tree_with(groups, opts) do
     with {:ok, locations} <- locations([load: [kind: [:label]]] ++ opts),
          {:ok, ties} <- location_parents(opts),
-         {:ok, placements} <- placements([load: [resident: [:name]]] ++ opts),
-         {:ok, groups} <- Residents.groups_with_facts(opts) do
+         {:ok, placements} <- placements([load: [resident: [:name]]] ++ opts) do
       groups = Map.new(groups, &{&1.id, &1})
 
       # A placement of a resident that the actor cannot read, such as one that
@@ -209,6 +213,40 @@ defmodule Rescord.Locations do
       count: count,
       over?: is_integer(location.capacity) and count > location.capacity
     }
+  end
+
+  @doc """
+  The locations that need somebody now (ADR 0065): each location with more
+  residents in it than its capacity, as `tree/1` counts them, the outer
+  location before the ones inside it.
+
+  Returns `%{rows: rows, total: total}`. A row is
+  `%{kind: :over_capacity, record: location, count: count}`. There are at
+  most `:limit` rows, and `total` counts each such location. A role that
+  cannot move a resident or a group gets no row: it can do nothing about
+  one.
+  """
+  @spec attention(term, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}} | {:error, term}
+  def attention(role, opts \\ []) do
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+    opts = Keyword.delete(opts, :now)
+
+    with true <- role_can?(role, :placement, :move),
+         # Most housing has no capacity: then no location is over it.
+         {:ok, [_ | _]} <- Location |> Ash.Query.filter(not is_nil(capacity)) |> Ash.read(opts),
+         # The count needs the members of each group, and not its words.
+         {:ok, groups} <- Residents.groups(Keyword.put(opts, :load, [:members])),
+         {:ok, tree} <- tree_with(groups, opts) do
+      rows =
+        for {%{over?: true} = node, _depth} <- flat(tree) do
+          %{kind: :over_capacity, record: node.location, count: node.count}
+        end
+
+      {:ok, %{rows: Enum.take(rows, limit), total: length(rows)}}
+    else
+      {:error, error} -> {:error, error}
+      _nothing -> {:ok, %{rows: [], total: 0}}
+    end
   end
 
   @doc "The node of one location in the tree, or `nil`."
