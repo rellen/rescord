@@ -99,7 +99,9 @@ defmodule RescordWeb.PhotoPagesTest do
     render_upload(upload, "fake.jpg")
     view |> form("#add-photos", add: %{caption: ""}) |> render_submit()
 
-    assert has_element?(view, "main p[role=alert]", "is a photo that Rescord cannot read")
+    # The form that the person sent says why, and not the top of the page.
+    assert has_element?(view, "#add-photos p[role=alert]", "is a photo that Rescord cannot read")
+    refute has_element?(view, "main > p[role=alert]")
     assert {:ok, []} = Photos.photos_of(context.biscuit.id, context.options)
   end
 
@@ -148,6 +150,33 @@ defmodule RescordWeb.PhotoPagesTest do
     assert {item.caption, item.taken_on, item.album_ids} == {"Warm", ~D[2026-11-02], [album.id]}
     assert has_element?(view, "#item-photo-#{item.photo.id} figcaption", "Warm")
     assert has_element?(view, "#item-photo-#{item.photo.id} figcaption", "In Sun")
+  end
+
+  test "the form of a photo says what it refused, and the other forms do not", context do
+    photo = add!(context, %{caption: "Before"})
+    other = add!(context)
+    {:ok, view, _html} = live(context.conn, context.path)
+
+    # The browser holds the date to today with `max`; a request does not.
+    tomorrow = context.organisation |> Accounts.today() |> Date.add(1) |> Date.to_iso8601()
+
+    view
+    |> form("#keep-photo-#{photo.id}", photo: %{caption: "After", taken_on: tomorrow})
+    |> render_submit()
+
+    assert has_element?(
+             view,
+             "#keep-photo-#{photo.id} p[role=alert]",
+             "Taken on cannot be after today"
+           )
+
+    refute has_element?(view, "#keep-photo-#{other.id} p[role=alert]")
+    refute has_element?(view, "#add-photos p[role=alert]")
+    refute has_element?(view, "main > p[role=alert]")
+
+    # The photo is as it was.
+    {:ok, items} = Photos.photos_of(context.biscuit.id, context.options)
+    assert Enum.sort(Enum.map(items, & &1.caption)) == [nil, "Before"]
   end
 
   test "an album that the browser names and the page does not have changes nothing", context do

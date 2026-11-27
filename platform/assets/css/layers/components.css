@@ -306,41 +306,99 @@ li > details:not([open]) > summary {
   color: var(--link);
 }
 
+/* --------------------------------------------------------------- uploads */
+
+/*
+ * A file that a form is about to send is an item with a progress element:
+ * its name, how much of it went, and the button that takes it out. The name
+ * of a file from a phone is long and has no space, so it breaks anywhere,
+ * and the item is never wider than its form.
+ */
+ul:has(> li > progress) {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li:has(> progress) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+
+li:has(> progress) > progress {
+  grid-column: 1;
+  inline-size: 100%;
+  accent-color: var(--accent);
+}
+
+li:has(> progress) > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+li:has(> progress) > [role="alert"] {
+  grid-column: 1 / -1;
+  font-weight: 600;
+  color: var(--alert);
+}
+
 /* ---------------------------------------------------------------- photos */
 
 /*
  * The photos of a resident are a grid of cards, as many columns as fit
- * (ADR 0055). Each card is a figure: the thumbnail, which links to the
- * photo, and its caption, its date and its actions below it.
+ * (ADR 0055). Each card is an article: a figure with the thumbnail, which
+ * links to the photo, and its caption and its date, then the form of the
+ * photo, closed at first, and its buttons. A column is wide enough for the
+ * longest button on one line.
  */
 [data-photos] {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
   gap: 0.75rem;
   margin: 0 0 1rem;
   padding: 0;
   list-style: none;
 }
 
+/* The cards of one row are of one height, and the buttons of each card are
+   at its foot. */
 [data-photos] > li {
+  display: grid;
   min-width: 0;
+}
+
+/* While the form of a photo is open, each card is as high as it needs. */
+[data-photos]:has(details[open]) > li {
+  align-self: start;
+}
+
+[data-photos] article {
+  grid-template-rows: 1fr;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem;
 }
 
 [data-photos] figure {
   margin: 0;
-  padding: 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
 }
 
-/* Each thumbnail is a square, whatever the shape of the photo. */
+/* Each thumbnail is a square, whatever the shape of the photo. Its edge
+   keeps a pale photo apart from a pale card, and a dark one from a dark
+   card. */
 [data-photos] img,
 figure[data-profile] img {
   display: block;
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
+  border: 1px solid var(--border);
   border-radius: calc(var(--radius) - 0.25rem);
   background: var(--tint);
 }
@@ -360,6 +418,32 @@ figure[data-profile] img {
   justify-self: start;
 }
 
+/* The open form of a photo is in a narrow card. */
+[data-photos] details[open] {
+  padding: 0.5rem 0.75rem;
+}
+
+[data-photos] details form {
+  margin-block-end: 0.5rem;
+}
+
+[data-photos] details fieldset {
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* The buttons of a card are small, side by side when the card has room. */
+[data-photos] article > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+[data-photos] article > footer > button {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
 /* The profile picture of a resident, beside the header of its pages. */
 figure[data-profile] {
   width: min(10rem, 100%);
@@ -372,21 +456,30 @@ figure[data-profile] figcaption {
   font-size: 0.875rem;
 }
 
-/* The small profile picture of a resident beside its name in the list of
-   the residents, or the first letter of the name on a tint when it has
-   none. It is a box of its own in the line, so the underline of the link
-   stays below the name alone. */
+/*
+ * The small profile picture of a resident beside its name in the list of
+ * the residents, or the first letter of the name on a tint when it has
+ * none. The link is a row of the picture and the name: a long name breaks
+ * beside the picture and not below it, and no space between the two has an
+ * underline.
+ */
+a:has(> [data-portrait]) {
+  display: inline-flex;
+  gap: 0.625rem;
+  align-items: center;
+}
+
 [data-portrait] {
-  display: inline-grid;
-  place-items: center;
+  flex: none;
   inline-size: 2.5rem;
   block-size: 2.5rem;
-  margin-inline-end: 0.625rem;
   overflow: hidden;
-  vertical-align: middle;
   color: var(--muted);
   font-weight: 700;
+  line-height: 2.5rem;
+  text-align: center;
   background: var(--tint);
+  border: 1px solid var(--border);
   border-radius: calc(var(--radius) - 0.25rem);
 }
 
@@ -395,6 +488,12 @@ figure[data-profile] figcaption {
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;
+}
+
+/* The letter is a box of its own in its line, so the underline of the link
+   stays below the name alone. */
+[data-portrait] > span {
+  display: inline-block;
 }
 
 /* The albums of a resident: one line of links, the open one marked. */
@@ -410,4 +509,17 @@ nav[aria-label="Albums"] > ul {
 nav[aria-label="Albums"] a[aria-current="page"] {
   font-weight: 700;
   text-decoration-thickness: 0.15em;
+}
+
+/* What a member does with the open album: its new name, and its removal. */
+[data-album-actions] {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  margin-block-end: 1rem;
+}
+
+[data-album-actions] > details {
+  justify-self: stretch;
+  margin: 0;
 }

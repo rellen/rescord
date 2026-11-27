@@ -83,4 +83,16 @@ The maintainer answered four questions:
   name in that place. The picture is decoration there, with an empty `alt`:
   the name is the words of the link. A change of a picture shows when the
   person opens the list again.
+- The pages were seen in a browser, in the light and the dark scheme, on a
+  wide screen and on a phone (27 November 2026). What that showed is in the
+  stylesheet and the markup now. A card of a photo is an `article`: the
+  figure, then the form of the photo as one quiet line while it is closed,
+  then small buttons in a row. A form that sends files lists each file as
+  its name, its progress and its button, and a long name of a file breaks:
+  on a phone it made the page wider than the screen, for the journal too.
+  A `fieldset` is never wider than its form. Each form of the page has a
+  primary button. The form that adds photos and the form of a photo say
+  what they refused, since both can be far below the header.
+  `RescordWeb.Features.PhotosTest` adds a photo through the browser, and
+  holds the width of the page on a phone.
 - The export of the data has the four tables, and not the files.

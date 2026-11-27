@@ -14,6 +14,11 @@ defmodule RescordWeb.PhotosLive do
   The page reads only the fields that it knows from what the browser sends,
   finds each photo and album among those that it has, and makes no atom
   from it. The policy of each resource decides when an action runs.
+
+  The page says what an action refused in the form that the person sent,
+  for the form that adds photos and the form of a photo, which can both
+  be far below the header: `problems_at` is `:add`, the reference of a
+  photo, or `:page` for each other action.
   """
 
   use RescordWeb, :live_view
@@ -34,6 +39,7 @@ defmodule RescordWeb.PhotosLive do
          resident: resident,
          page_title: "Photos of #{resident.name || "a resident with no name"}",
          problems: [],
+         problems_at: :page,
          max_date: Date.to_iso8601(Accounts.today(socket.assigns.organisation)),
          can: %{
            add?: Photos.role_can?(role, :photo, :add),
@@ -137,7 +143,7 @@ defmodule RescordWeb.PhotosLive do
 
     case Enum.flat_map(results, &problems_of/1) do
       [] when results == [] ->
-        {:noreply, assign(socket, problems: ["Choose a photo to add"])}
+        {:noreply, problems(socket, :add, ["Choose a photo to add"])}
 
       [] ->
         words = if length(results) == 1, do: "The photo is added.", else: "The photos are added."
@@ -145,7 +151,7 @@ defmodule RescordWeb.PhotosLive do
 
       problems ->
         # The photos that went in are on the page, and the problems say why the others did not.
-        {:noreply, socket |> assign(problems: Enum.uniq(problems)) |> refresh()}
+        {:noreply, socket |> problems(:add, Enum.uniq(problems)) |> refresh()}
     end
   end
 
@@ -166,7 +172,7 @@ defmodule RescordWeb.PhotosLive do
         },
         options(socket)
       )
-      |> after_write(socket, "The photo is saved.")
+      |> after_write(socket, "The photo is saved.", ref)
     end)
   end
 
@@ -211,7 +217,7 @@ defmodule RescordWeb.PhotosLive do
          |> push_navigate(to: "#{path(socket)}?album=#{album.id}")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+        {:noreply, problems(socket, :page, Accounts.error_messages(error))}
     end
   end
 
@@ -230,7 +236,7 @@ defmodule RescordWeb.PhotosLive do
              |> push_navigate(to: "#{path(socket)}?album=#{album.id}")}
 
           {:error, error} ->
-            {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+            {:noreply, problems(socket, :page, Accounts.error_messages(error))}
         end
     end
   end
@@ -286,14 +292,17 @@ defmodule RescordWeb.PhotosLive do
     socket |> assign_photos() |> open_album(album_id)
   end
 
-  # Opens the page again after a write, or shows what was wrong. A form that
-  # stays on the page keeps what the person typed.
-  defp after_write(result, socket, words) do
+  # Opens the page again after a write, or shows what was wrong at `place`.
+  # A form that stays on the page keeps what the person typed.
+  defp after_write(result, socket, words, place \\ :page) do
     case result do
-      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+      {:error, error} -> {:noreply, problems(socket, place, Accounts.error_messages(error))}
       _done -> reopen(socket, words)
     end
   end
+
+  # What an action refused, and the part of the page that says it.
+  defp problems(socket, place, list), do: assign(socket, problems: list, problems_at: place)
 
   defp reopen(socket, words) do
     query = if socket.assigns.album, do: "?album=#{socket.assigns.album.id}", else: ""
@@ -323,7 +332,7 @@ defmodule RescordWeb.PhotosLive do
         </:subtitle>
       </.header>
 
-      <.problems list={@problems} />
+      <.problems :if={@problems_at == :page} list={@problems} />
 
       <.profile photo={@profile} organisation={@organisation} resident={@resident} />
       <.button
@@ -357,6 +366,7 @@ defmodule RescordWeb.PhotosLive do
           upload={assigns[:uploads][:photos]}
           album={@album}
           max_date={@max_date}
+          problems={if @problems_at == :add, do: @problems, else: []}
         />
         <.grid
           items={@shown}
@@ -368,6 +378,8 @@ defmodule RescordWeb.PhotosLive do
           current_user={@current_user}
           can={@can}
           max_date={@max_date}
+          problems={@problems}
+          problems_ref={@problems_at}
         />
       </section>
     </Layouts.app>

@@ -93,7 +93,7 @@ defmodule RescordWeb.PhotoComponents do
         <summary>Make an album</summary>
         <form id="make-album" phx-submit="make_album">
           <.input id="album-name" name="album[name]" label="Name of the album" value="" required />
-          <.button>Make the album</.button>
+          <footer><.button type="submit">Make the album</.button></footer>
         </form>
       </details>
     </section>
@@ -107,7 +107,7 @@ defmodule RescordWeb.PhotoComponents do
 
   def album_actions(assigns) do
     ~H"""
-    <div>
+    <div data-album-actions>
       <details :if={@can_rename?} id="rename-album-details">
         <summary>Rename the album</summary>
         <form id="rename-album" phx-submit="rename_album">
@@ -118,7 +118,7 @@ defmodule RescordWeb.PhotoComponents do
             value={@album.name}
             required
           />
-          <.button>Rename</.button>
+          <footer><.button type="submit">Rename</.button></footer>
         </form>
       </details>
       <.button
@@ -136,17 +136,20 @@ defmodule RescordWeb.PhotoComponents do
   @doc """
   The form that adds photos: ten at most, each 20 MB at most, with a
   caption and a date for each of them. A new photo goes into the open
-  album.
+  album. The form says what was wrong with the photos that it sent, since
+  the header of the page can be far above it.
   """
   attr :upload, :any, required: true
   attr :album, :any, required: true
   attr :max_date, :string, required: true
+  attr :problems, :list, default: []
 
   def add_form(assigns) do
     ~H"""
     <details id="add-photos-details">
       <summary>Add photos</summary>
       <form id="add-photos" phx-submit="add" phx-change="choose">
+        <.problems list={@problems} />
         <fieldset id="add-photos-files">
           <legend>Photos: JPEG, PNG, GIF or WebP, ten at most, each 20 MB at most</legend>
           <label for={@upload.ref}>Choose photos</label>
@@ -182,7 +185,7 @@ defmodule RescordWeb.PhotoComponents do
           max={@max_date}
         />
         <p :if={@album}>The photos go into the album {@album.name}.</p>
-        <.button>Add the photos</.button>
+        <footer><.button type="submit">Add the photos</.button></footer>
       </form>
     </details>
     """
@@ -194,7 +197,10 @@ defmodule RescordWeb.PhotoComponents do
   def upload_words(:too_many_files), do: "Choose ten photos at most."
   def upload_words(_other), do: "The photo did not arrive. Choose it again."
 
-  @doc "The photos, as a grid of cards, the newest first."
+  @doc """
+  The photos, as a grid of cards, the newest first. The card of the photo
+  with the reference `problems_ref` says what its form refused.
+  """
   attr :items, :list, required: true
   attr :albums, :list, required: true
   attr :profile_id, :any, required: true, doc: "the id of the photo that is the profile picture"
@@ -204,6 +210,8 @@ defmodule RescordWeb.PhotoComponents do
   attr :current_user, :any, required: true
   attr :can, :map, required: true
   attr :max_date, :string, required: true
+  attr :problems, :list, default: []
+  attr :problems_ref, :any, default: nil
 
   def grid(assigns) do
     ~H"""
@@ -220,12 +228,15 @@ defmodule RescordWeb.PhotoComponents do
           current_user={@current_user}
           can={@can}
           max_date={@max_date}
+          problems={if ref(item) == @problems_ref, do: @problems, else: []}
         />
       </li>
     </ul>
     """
   end
 
+  # A card is an article: the figure with the thumbnail and the words of the
+  # photo, then its form, closed at first, then its buttons.
   attr :item, :map, required: true
   attr :albums, :list, required: true
   attr :profile?, :boolean, required: true
@@ -235,36 +246,48 @@ defmodule RescordWeb.PhotoComponents do
   attr :current_user, :any, required: true
   attr :can, :map, required: true
   attr :max_date, :string, required: true
+  attr :problems, :list, default: []
 
   defp card(assigns) do
-    assigns = assign(assigns, ref: ref(assigns.item), in_albums: in_albums(assigns))
+    assigns =
+      assign(assigns,
+        ref: ref(assigns.item),
+        in_albums: in_albums(assigns),
+        make_profile?: assigns.can.profile? and not assigns.profile?,
+        remove?: removable?(assigns)
+      )
 
     ~H"""
-    <figure>
-      <a href={item_photo_url(@organisation, @item)}>
-        <img src={item_thumbnail_url(@organisation, @item)} alt={alt(@item, @resident)} />
-      </a>
-      <figcaption>
-        <span :if={@item.caption}>{@item.caption}</span>
-        <small>
-          <time datetime={Date.to_iso8601(@item.taken_on)}>{ResidentWords.date(@item.taken_on)}</time>
-        </small>
-        <.state :if={@profile?} kind="info">Profile picture</.state>
-        <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
-        <.link
-          :if={@item.entry_id}
-          navigate={
-            ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal" <>
-              "#entry-#{@item.entry_id}"
-          }
-        >
-          From the journal
-        </.link>
-      </figcaption>
+    <article>
+      <figure>
+        <a href={item_photo_url(@organisation, @item)}>
+          <img src={item_thumbnail_url(@organisation, @item)} alt={alt(@item, @resident)} />
+        </a>
+        <figcaption>
+          <span :if={@item.caption}>{@item.caption}</span>
+          <small>
+            <time datetime={Date.to_iso8601(@item.taken_on)}>
+              {ResidentWords.date(@item.taken_on)}
+            </time>
+          </small>
+          <.state :if={@profile?} kind="info">Profile picture</.state>
+          <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
+          <.link
+            :if={@item.entry_id}
+            navigate={
+              ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal" <>
+                "#entry-#{@item.entry_id}"
+            }
+          >
+            From the journal
+          </.link>
+        </figcaption>
+      </figure>
 
       <details :if={@can.keep?} id={"change-#{@ref}"}>
         <summary>Change</summary>
         <form id={"keep-#{@ref}"} phx-submit="keep">
+          <.problems list={@problems} />
           <input type="hidden" name="photo[ref]" value={@ref} />
           <.input id={"caption-#{@ref}"} name="photo[caption]" label="Caption" value={@item.caption} />
           <.input
@@ -279,7 +302,7 @@ defmodule RescordWeb.PhotoComponents do
           <fieldset :if={@albums != []} id={"albums-#{@ref}"}>
             <legend>Albums</legend>
             <input type="hidden" name="photo[album_ids][]" value="" />
-            <div :for={album <- @albums}>
+            <label :for={album <- @albums} for={"album-#{@ref}-#{album.id}"}>
               <input
                 type="checkbox"
                 id={"album-#{@ref}-#{album.id}"}
@@ -287,36 +310,37 @@ defmodule RescordWeb.PhotoComponents do
                 value={album.id}
                 checked={album.id in @item.album_ids}
               />
-              <label for={"album-#{@ref}-#{album.id}"}>{album.name}</label>
-            </div>
+              {album.name}
+            </label>
           </fieldset>
-          <.button>Save</.button>
+          <footer><.button type="submit">Save</.button></footer>
         </form>
       </details>
 
-      <.button
-        :if={@can.profile? and not @profile?}
-        type="button"
-        phx-click="make_profile"
-        phx-value-ref={@ref}
-      >
-        Make it the profile picture
-      </.button>
-      <.button
-        :if={
-          @item.photo && is_nil(@item.attachment) &&
-            Rescord.Photos.can_remove_photo?(@role, @current_user, @item.photo)
-        }
-        type="button"
-        phx-click="remove_photo"
-        phx-value-ref={@ref}
-        data-confirm="Remove this photo?"
-      >
-        Remove
-      </.button>
-    </figure>
+      <footer :if={@make_profile? or @remove?}>
+        <.button :if={@make_profile?} type="button" phx-click="make_profile" phx-value-ref={@ref}>
+          Make it the profile picture
+        </.button>
+        <.button
+          :if={@remove?}
+          type="button"
+          phx-click="remove_photo"
+          phx-value-ref={@ref}
+          data-confirm="Remove this photo?"
+        >
+          Remove
+        </.button>
+      </footer>
+    </article>
     """
   end
+
+  # The page offers no removal of a photo of the journal: it leaves the
+  # photos when somebody takes it off its entry.
+  defp removable?(%{item: %{photo: %{} = photo, attachment: nil}} = assigns),
+    do: Rescord.Photos.can_remove_photo?(assigns.role, assigns.current_user, photo)
+
+  defp removable?(_assigns), do: false
 
   defp in_albums(%{item: item, albums: albums}) do
     for album <- albums, album.id in item.album_ids, do: album.name
