@@ -26,7 +26,9 @@ defmodule RescordWeb.AccountComponents do
       tenant={@organisation}
     >
       <:col :let={member} field="email" label="Email address">{member.email}</:col>
-      <:col :let={member} field="role_id" label="Role">{member.role.name}</:col>
+      <:col :let={member} field="role_id" label="Role">
+        <span data-label="Role">{member.role.name}</span>
+      </:col>
       <:col :let={member} field="id" label="Actions">
         <form
           :if={@roles != [] and Accounts.role_can?(@role, :set_role, member, @organisation)}
@@ -101,10 +103,10 @@ defmodule RescordWeb.AccountComponents do
           <a href={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</a>
         </:col>
         <:col :let={organisation} field="time_zone" label="Time zone" sort>
-          {organisation.time_zone}
+          <span data-label="Time zone">{organisation.time_zone}</span>
         </:col>
         <:col :let={organisation} field="short_name" label="Short name" sort>
-          {organisation.short_name}
+          <span data-label="Short name">{organisation.short_name}</span>
         </:col>
       </Cinder.collection>
 
@@ -114,6 +116,8 @@ defmodule RescordWeb.AccountComponents do
         <.input
           field={@organisation_form[:short_name]}
           label="Short name, for the address of its pages"
+          autocapitalize="none"
+          spellcheck="false"
           required
         />
         <.input

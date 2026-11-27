@@ -134,7 +134,8 @@
 
 [data-key="filter_inputs_class"] {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  /* A column is never wider than the card of the filters. */
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
   gap: 0.75rem 1rem;
   align-items: start;
 }
@@ -195,6 +196,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-block-size: var(--tap);
   margin: 0;
   padding: 0.25rem 0.5rem;
   font-weight: 400;
@@ -222,7 +224,8 @@
 
 /* The result. */
 
-/* The table is in a card, which scrolls it sideways on a narrow screen. */
+/* The table is in a card. On a phone each row is a card of its own (layer
+   elements), and nothing scrolls sideways. */
 [data-key="table_wrapper_class"] {
   overflow-x: auto;
   background: var(--surface);
@@ -241,6 +244,59 @@
 [data-key="th_class"] > [phx-click] {
   white-space: nowrap;
   user-select: none;
+}
+
+/*
+ * On a phone the header of a table is not shown (layer elements). The sort
+ * controls of Cinder are in the header, so a header with a sort stays: its
+ * row is a line of the sort controls, each as high as a finger. A column
+ * with no sort keeps its header for a screen reader alone.
+ */
+@media (width < 40rem) {
+  [data-key="thead_class"]:has([phx-click]) {
+    position: static;
+    display: block;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+
+  [data-key="thead_class"]:has([phx-click]) > [data-key="header_row_class"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-block-end: 1px solid var(--border);
+  }
+
+  [data-key="thead_class"]:has([phx-click]) [data-key="th_class"] {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+
+  [data-key="thead_class"]:has([phx-click]) [data-key="th_class"]:not(:has([phx-click])) {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  [data-key="th_class"] > [phx-click] {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap);
+    padding-inline: 0.5rem;
+  }
+
+  /* The words when a table has no row are in the middle of its card. */
+  tbody > tr:has(> [data-key="empty_class"], > [data-key="error_class"]) {
+    display: block;
+  }
 }
 
 [data-key="sort_indicator_class"] {
@@ -356,7 +412,7 @@
 
 [data-key="grid_container_class"] {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
   gap: 1rem;
 }
 
@@ -468,6 +524,7 @@
 [data-key="page_size_option_class"] {
   display: flex;
   inline-size: 100%;
+  justify-content: start;
   padding: 0.25rem 0.5rem;
   font-weight: 400;
   background: none;
@@ -491,7 +548,11 @@
 }
 
 [data-key="pagination_current_class"] {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--tap);
+  min-inline-size: var(--tap);
   padding: 0.25rem 0.625rem;
   font-weight: 600;
   line-height: 1.25;

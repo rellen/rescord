@@ -89,12 +89,12 @@ defmodule RescordWeb.RoutineComponents do
                 <small :if={routine.prescription_id}>Writes a dose to the journal</small>
                 <small :if={routine.note}>{routine.note}</small>
               </td>
-              <td>
+              <td data-label="When">
                 {TaskWords.pattern(routine)}, at {TaskWords.times(routine.times)}
                 <small>{TaskWords.span(routine)}</small>
               </td>
-              <td>{for_words(routine, @residents, @groups, @locations)}</td>
-              <td>{who(routine, @members)}</td>
+              <td data-label="For">{for_words(routine, @residents, @groups, @locations)}</td>
+              <td data-label="Who">{who(routine, @members)}</td>
               <td>
                 <.state kind={state_kind(routine, @today)}>{state_words(routine, @today)}</.state>
                 <small :if={next = Tasks.next_task_at(routine)}>

@@ -10,7 +10,7 @@
     <p :if={@organisations == []}>
       You are not a member of an organisation. An administrator of a refuge can invite you.
     </p>
-    <ul :if={@organisations != []}>
+    <ul :if={@organisations != []} data-links>
       <li :for={organisation <- @organisations}>
         <a href={~p"/o/#{organisation.short_name}"}>{organisation.name}</a>
       </li>

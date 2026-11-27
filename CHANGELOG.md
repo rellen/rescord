@@ -65,6 +65,13 @@ its GitHub release (ADR 0047).
   account, then the parts of the organisation, so a long email address no
   longer wraps it. The menu marks the part that the page is in. A field
   for a number asks a phone for its keyboard of digits.
+- On a phone each row of a table is a card, with the name of the column
+  before each value, and no page scrolls sideways at a width of 320px.
+  Each button, field, summary and tick box is 44px high or more, on each
+  screen, and the text of a field is 16px, so Safari on a phone does not
+  make the page larger at a focus. The photos of a resident are two
+  columns on a phone, a flash message is at the foot of the screen there,
+  and the button of a form is as wide as the form.
 - The versions of Rescord follow Semantic Versioning, and this file follows
   Keep a Changelog, with the notes of an upgrade first (ADR 0060). A
   release now runs the tests too, before it publishes anything.

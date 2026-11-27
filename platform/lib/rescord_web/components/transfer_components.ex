@@ -34,7 +34,7 @@ defmodule RescordWeb.TransferComponents do
           <tbody>
             <tr :for={partnership <- @partnerships} id={"partnership-#{partnership.id}"}>
               <td>{Transfers.other(partnership, @organisation).name}</td>
-              <td>
+              <td data-label="Who asked">
                 {if partnership.from_organisation_id == @organisation.id,
                   do: "This refuge",
                   else: "That refuge"}
@@ -93,6 +93,8 @@ defmodule RescordWeb.TransferComponents do
           label="The short name of the refuge, from the address of its pages"
           value=""
           maxlength="40"
+          autocapitalize="none"
+          spellcheck="false"
           required
         />
         <footer><.button type="submit">Ask the refuge</.button></footer>
@@ -129,7 +131,7 @@ defmodule RescordWeb.TransferComponents do
           <tbody>
             <tr :for={partner <- @remote} id={"remote-#{partner.id}"}>
               <td>{partner.name}</td>
-              <td><code>{partner.fingerprint}</code></td>
+              <td data-label="Fingerprint"><code>{partner.fingerprint}</code></td>
               <td><.badge state={partner.state} /></td>
               <td>
                 <.button
@@ -337,8 +339,8 @@ defmodule RescordWeb.TransferComponents do
                 </span>
                 <small :if={transfer.note}>{transfer.note}</small>
               </td>
-              <td>{Transfers.other(transfer, @organisation).name}</td>
-              <td>
+              <td data-label="Refuge">{Transfers.other(transfer, @organisation).name}</td>
+              <td data-label="Sent">
                 {TransferWords.time(DateTime.to_iso8601(transfer.sent_at), @organisation.time_zone)}
               </td>
               <td><.badge state={transfer.state} /></td>

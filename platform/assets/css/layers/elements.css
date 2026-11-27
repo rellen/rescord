@@ -60,8 +60,12 @@ a {
   text-underline-offset: 0.15em;
 }
 
-a:hover {
-  text-decoration-thickness: 2px;
+/* A hover is for a pointer that can hover. After a touch it would stay on
+   the element until the next touch, and say nothing. */
+@media (hover: hover) {
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
 }
 
 code,
@@ -119,28 +123,45 @@ video {
   block-size: auto;
 }
 
+/*
+ * The summary of a details element is what a finger presses, so it is as
+ * high as `--tap` and as wide as the box: its padding is the padding of the
+ * box. `--pad` is that padding, and a part that wants another one sets it.
+ */
 details {
-  padding: 0.5rem 1rem;
+  --pad: 1rem;
+
+  padding: 0 var(--pad);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
 summary {
+  min-block-size: var(--tap);
+  margin-inline: calc(-1 * var(--pad));
+  padding: 0.625rem var(--pad);
   font-weight: 600;
   cursor: pointer;
+  border-radius: var(--radius);
 }
 
 /* The words that open a part are apart from what they open. */
+details[open] {
+  padding-block-end: var(--pad);
+}
+
 details[open] > summary {
-  margin-block-end: 0.75rem;
+  margin-block-end: 0.25rem;
 }
 
 /* ------------------------------------------------------------ data lists */
 
+/* A title and its value are side by side on a phone too. The titles take
+   what they need, and never more than 45% of the width: a long title breaks. */
 dl {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.5rem 1.5rem;
+  grid-template-columns: fit-content(45%) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
 }
 
 dl > div {
@@ -152,17 +173,14 @@ dt {
 }
 
 dd {
+  min-inline-size: 0;
   margin: 0;
 }
 
-@media (width < 40rem) {
+@media (width >= 40rem) {
   dl {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  dd {
-    margin-block-end: 0.75rem;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 1.5rem;
   }
 }
 
@@ -193,12 +211,124 @@ thead th {
   color: var(--muted);
 }
 
-tbody tr:hover {
-  background: var(--tint);
+/* The header cell of a row is the name of the row: the title of a task. */
+tbody th {
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  tbody tr:hover {
+    background: var(--tint);
+  }
 }
 
 td > :is(a, button) + :is(a, button) {
   margin-inline-start: 0.75rem;
+}
+
+/*
+ * On a phone a table is a list of cards, and not a grid that the reader
+ * pulls sideways (ADR 0061). Each row is a card. Its first cell is its
+ * title, on a line of its own. The other cells follow one after the other,
+ * and each says its column with `data-label`, which the cell has, or an
+ * element inside the cell where a dependency writes the cell:
+ *
+ *   <td data-label="For">Biscuit</td>
+ *
+ * The header cells stay in the page for a screen reader, which reads a
+ * table as a table whatever its `display` is. So the label is drawn with no
+ * text of its own for a screen reader, where the browser can do that.
+ */
+@media (width < 40rem) {
+  table,
+  caption,
+  tbody,
+  tfoot {
+    display: block;
+  }
+
+  thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    align-items: baseline;
+    padding: 0.75rem 1rem;
+    border-block-end: 1px solid var(--border);
+  }
+
+  tbody :is(td, th) {
+    display: block;
+    min-inline-size: 0;
+    padding: 0;
+    border: none;
+  }
+
+  /* The title of the card: the first cell, and the header cell of the row
+     where the first cell is not its name, such as the time of a task. */
+  td:first-child,
+  tbody th {
+    flex: 1 0 100%;
+    font-weight: 600;
+  }
+
+  /* A cell with nothing in it takes no line and no gap. */
+  td:empty {
+    display: none;
+  }
+
+  [data-label]::before {
+    margin-inline-end: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--muted);
+    content: attr(data-label);
+    content: attr(data-label) / "";
+  }
+
+  /* The cell of the actions is the last line of the card: its buttons
+     are side by side, with room for a finger between them. */
+  td:has(> :is(button, details, form, a[data-variant])) {
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-block-start: 0.25rem;
+  }
+
+  td > :is(a, button) + :is(a, button) {
+    margin-inline-start: 0;
+  }
+
+  /*
+   * A link in a cell is a line of words, 24px high. What a finger presses
+   * is larger than what the eye sees: it reaches into the space above and
+   * below the line.
+   */
+  tbody :is(td, th) > a:not([data-variant]) {
+    position: relative;
+  }
+
+  tbody :is(td, th) > a:not([data-variant])::after {
+    position: absolute;
+    inset: -0.625rem -0.5rem;
+    content: "";
+  }
+
+  /* An open form in a cell takes the whole line. */
+  td > details[open],
+  td > form {
+    flex: 1 0 100%;
+  }
 }
 
 [phx-click] {
@@ -221,6 +351,8 @@ article,
 
 article {
   display: grid;
+  /* The column is as wide as the card, and never as wide as what is in it. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   align-content: start;
   margin-block: 0 1rem;
@@ -234,6 +366,9 @@ article > * {
 
 form {
   display: grid;
+  /* The column is as wide as the form, and never as wide as a control
+     that does not shrink, such as a file control. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   max-inline-size: 40rem;
   margin-block: 0 1.5rem;
@@ -262,6 +397,12 @@ label {
   font-weight: 500;
 }
 
+/*
+ * The text of a control is never below 16px. Safari on a phone makes the
+ * whole page larger when a control with smaller text gets the focus, and
+ * the page stays larger after it (ADR 0061).
+ */
+
 input:not(
     [type="checkbox"],
     [type="radio"],
@@ -276,9 +417,11 @@ select,
 textarea {
   display: block;
   inline-size: 100%;
+  min-block-size: var(--tap);
   margin-block-start: 0.25rem;
   padding: 0.5rem 0.75rem;
   font: inherit;
+  font-size: 1rem;
   color: inherit;
   background: var(--bg);
   border: 1px solid var(--field);
@@ -296,17 +439,30 @@ textarea {
 }
 
 input:is([type="checkbox"], [type="radio"]) {
-  inline-size: 1.125rem;
-  block-size: 1.125rem;
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
   margin: 0;
   accent-color: var(--accent);
 }
 
+/* The label of a box is what a finger presses: the whole line, as high as
+   `--tap`. Its words break where they must, such as an email address. */
 label:has(> input:is([type="checkbox"], [type="radio"])) {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
+  min-block-size: var(--tap);
   font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+/* Boxes one below the other are a list: the height of each label is the
+   space between them. */
+fieldset
+  > label:has(> input:is([type="checkbox"], [type="radio"]))
+  + label:has(> input:is([type="checkbox"], [type="radio"])) {
+  margin-block-start: -1rem;
 }
 
 :is(input, select, textarea)[aria-invalid="true"] {
@@ -346,6 +502,18 @@ form > :is(button, input[type="submit"]) {
   justify-self: start;
 }
 
+/* On a phone the button that sends a form is as wide as the form: a thumb
+   of either hand reaches it. */
+@media (width < 40rem) {
+  form > footer > :is(button, a[data-variant], input[type="submit"]) {
+    flex: 1 1 100%;
+  }
+
+  form > :is(button, input[type="submit"]) {
+    justify-self: stretch;
+  }
+}
+
 /* --------------------------------------------------------------- buttons */
 
 /*
@@ -360,11 +528,14 @@ input:is([type="submit"], [type="button"], [type="reset"]) {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  min-block-size: var(--tap);
+  min-inline-size: var(--tap);
   padding: 0.5rem 1rem;
   font: inherit;
   font-weight: 600;
   line-height: 1.25;
   color: var(--text);
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
   background: var(--surface);
@@ -372,8 +543,10 @@ input:is([type="submit"], [type="button"], [type="reset"]) {
   border-radius: var(--pill);
 }
 
-:is(button, a[data-variant], input[type="submit"]):hover {
-  border-color: var(--accent);
+@media (hover: hover) {
+  :is(button, a[data-variant], input[type="submit"]):hover {
+    border-color: var(--accent);
+  }
 }
 
 /* The button of a file control is a quiet button, in both schemes. The
@@ -381,9 +554,11 @@ input:is([type="submit"], [type="button"], [type="reset"]) {
 input[type="file"] {
   max-inline-size: 100%;
   font: inherit;
+  font-size: 1rem;
 }
 
 input[type="file"]::file-selector-button {
+  min-block-size: var(--tap);
   margin-inline-end: 0.75rem;
   padding: 0.5rem 1rem;
   font: inherit;
@@ -396,8 +571,10 @@ input[type="file"]::file-selector-button {
   border-radius: var(--pill);
 }
 
-input[type="file"]::file-selector-button:hover {
-  border-color: var(--accent);
+@media (hover: hover) {
+  input[type="file"]::file-selector-button:hover {
+    border-color: var(--accent);
+  }
 }
 
 /* `:is(a, button)` gives the variant the weight of `a[data-variant]` above. */
@@ -409,6 +586,14 @@ input[type="submit"],
   border-color: var(--accent);
 }
 
-:is(button[type="submit"], input[type="submit"], [data-variant="primary"]):hover {
-  filter: brightness(1.1);
+@media (hover: hover) {
+  :is(button[type="submit"], input[type="submit"], [data-variant="primary"]):hover {
+    filter: brightness(1.1);
+  }
+}
+
+/* Buttons side by side in a paragraph have room for a finger between
+   them, also when the second one is on a line below the first. */
+p > :is(a[data-variant], button) {
+  margin: 0.25rem 0.5rem 0.25rem 0;
 }

@@ -68,7 +68,7 @@ defmodule RescordWeb.InventoryComponents do
                 <small :if={lot_stock.lot.supplier}>From {lot_stock.lot.supplier.name}</small>
                 <small :if={lot_stock.lot.note}>{lot_stock.lot.note}</small>
               </td>
-              <td>
+              <td data-label="Expiry">
                 <.state kind={InventoryWords.expiry_kind(lot_stock.expiry)}>
                   {InventoryWords.expiry(lot_stock.expiry)}
                 </.state>
@@ -76,7 +76,7 @@ defmodule RescordWeb.InventoryComponents do
                   {ResidentWords.date(lot_stock.lot.expires_on)}
                 </small>
               </td>
-              <td>
+              <td data-label="Where">
                 <ul>
                   <li :for={{place, level} <- lot_stock.places}>
                     {String.capitalize(place_words(place, @place_names))}: {InventoryWords.quantity(
@@ -86,7 +86,7 @@ defmodule RescordWeb.InventoryComponents do
                   </li>
                 </ul>
               </td>
-              <td>{InventoryWords.quantity(lot_stock.level, @item)}</td>
+              <td data-label="In the lot">{InventoryWords.quantity(lot_stock.level, @item)}</td>
             </tr>
           </tbody>
         </table>
@@ -420,12 +420,14 @@ defmodule RescordWeb.InventoryComponents do
           <tbody>
             <tr :for={movement <- @history} id={"movement-#{movement.id}"}>
               <td>{when_words(movement.happened_at, @organisation)}</td>
-              <td>{InventoryWords.movement(movement)}</td>
-              <td>{InventoryWords.change(movement.quantity)}</td>
-              <td>{InventoryWords.lot(movement.lot)}</td>
-              <td>{String.capitalize(place_words(movement.location_id, @place_names))}</td>
-              <td>{author(@members, movement, @user)}</td>
-              <td>{movement.note}</td>
+              <td data-label="What">{InventoryWords.movement(movement)}</td>
+              <td data-label="Change">{InventoryWords.change(movement.quantity)}</td>
+              <td data-label="Lot">{InventoryWords.lot(movement.lot)}</td>
+              <td data-label="Where">
+                {String.capitalize(place_words(movement.location_id, @place_names))}
+              </td>
+              <td data-label="Who">{author(@members, movement, @user)}</td>
+              <td data-label="Note">{movement.note}</td>
             </tr>
           </tbody>
         </table>
@@ -646,8 +648,10 @@ defmodule RescordWeb.InventoryComponents do
       <td>
         <.link navigate={item_path(@organisation, @stock.item)}>{@stock.item.name}</.link>
       </td>
-      <td>{(@stock.item.category && @stock.item.category.label) || "Not recorded"}</td>
-      <td>{InventoryWords.quantity(@stock.level, @stock.item)}</td>
+      <td data-label="Category">
+        {(@stock.item.category && @stock.item.category.label) || "Not recorded"}
+      </td>
+      <td data-label="In stock">{InventoryWords.quantity(@stock.level, @stock.item)}</td>
       <td>
         <.state :for={{words, kind} <- InventoryWords.states(@stock)} kind={kind}>
           {words}
@@ -789,8 +793,8 @@ defmodule RescordWeb.InventoryComponents do
     ~H"""
     <tr id={"supplier-#{@supplier.id}"}>
       <td>{@supplier.name}</td>
-      <td>{@supplier.contact || "Not recorded"}</td>
-      <td>{@supplier.note}</td>
+      <td data-label="How to reach it">{@supplier.contact || "Not recorded"}</td>
+      <td data-label="Note">{@supplier.note}</td>
       <td :if={@can_change?}>
         <.supplier_form supplier={@supplier} />
         <.remove_supplier supplier={@supplier} />

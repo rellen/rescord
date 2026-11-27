@@ -90,15 +90,15 @@ defmodule RescordWeb.TaskComponents do
         <tbody>
           <tr :for={task <- @tasks} id={"task-#{task.id}"}>
             <td>{due(task, @organisation, @with_day)}</td>
-            <td>
+            <th scope="row">
               {task.title}
               <small :if={task.kind}>{task.kind.label}</small>
               <small :if={task.routine_id}>From a routine</small>
               <small :if={task.note}>{task.note}</small>
               <small :if={task.skip_reason}>Skipped: {task.skip_reason}</small>
-            </td>
-            <td>{for_words(task)}</td>
-            <td>{who(task, @members, @user)}</td>
+            </th>
+            <td data-label="For">{for_words(task)}</td>
+            <td data-label="Who">{who(task, @members, @user)}</td>
             <td>
               <.state kind={TaskWords.phase_kind(Tasks.phase(task, @now))}>
                 {TaskWords.phase(Tasks.phase(task, @now))}

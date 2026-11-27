@@ -31,9 +31,11 @@ defmodule RescordWeb.GroupComponents do
                 {Residents.group_name(group)}
               </.link>
             </td>
-            <td>{Residents.words(group) || "No relation is recorded"}</td>
-            <td>{if group.kind, do: group.kind.label, else: "Not recorded"}</td>
-            <td>{length(group.members)}</td>
+            <td data-label="How they are related">
+              {Residents.words(group) || "No relation is recorded"}
+            </td>
+            <td data-label="Kind">{if group.kind, do: group.kind.label, else: "Not recorded"}</td>
+            <td data-label="Members">{length(group.members)}</td>
           </tr>
         </tbody>
       </table>
