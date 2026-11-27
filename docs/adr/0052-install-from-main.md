@@ -1,6 +1,8 @@
 # ADR 0052: Install from main, and the MIT licence
 
-Status: accepted (the maintainer, 21 November 2026).
+Status: accepted (the maintainer, 21 November 2026). ADR 0060 ended the part
+"install from `main`" with the release 0.2.0: the guide installs a release
+again. The MIT licence stays.
 
 ## Context
 

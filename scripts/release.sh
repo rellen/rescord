@@ -11,7 +11,9 @@
 # 1.0.0; a `feat` gives a minor; all else gives a patch. It writes the new
 # version in platform/mix.exs, gives the section "Unreleased" of
 # CHANGELOG.md the version and the date, opens a new empty one, updates the
-# links at the end of the file, and commits `chore(release): X.Y.Z`.
+# links at the end of the file, puts the new version where the guide and
+# the example of the settings name the old one, and commits
+# `chore(release): X.Y.Z`.
 #
 # The date is today, or RELEASE_DATE, such as 2026-11-28. The script does not
 # push, and it makes no tag. Push the commit to main, and run the
@@ -135,7 +137,14 @@ awk -v old="$old" -v new="$new" '
 mv platform/mix.exs.new platform/mix.exs
 grep -qE "^ +version: \"$new\",$" platform/mix.exs || stop "platform/mix.exs did not take the version $new."
 
-git add CHANGELOG.md platform/mix.exs
+# The version that the guide and the example of the settings name.
+old_pattern=${old//./\\.}
+for file in docs/self-hosting.md deploy/compose/env.example; do
+  sed -E "s/(^|[^0-9.])$old_pattern(\$|[^0-9.])/\\1$new\\2/g" "$file" >"$file.new"
+  mv "$file.new" "$file"
+done
+
+git add CHANGELOG.md platform/mix.exs docs/self-hosting.md deploy/compose/env.example
 git commit --quiet -m "chore(release): $new"
 
 cat <<EOF

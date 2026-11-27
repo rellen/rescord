@@ -26,9 +26,11 @@ services:
       retries: 5
 
   rescord:
-    # The image that `docker build -t rescord:local ../../platform` makes from
-    # the repository, or another that RESCORD_IMAGE in .env names.
-    image: ${RESCORD_IMAGE:-rescord:local}
+    # The image of a release (ADR 0047), which RESCORD_IMAGE in .env names by
+    # its version. For an image of your own, build it with
+    # `docker build -t rescord:local ../../platform` and set
+    # RESCORD_IMAGE=rescord:local in .env.
+    image: ${RESCORD_IMAGE:-ghcr.io/rellen/rescord:latest}
     restart: unless-stopped
     depends_on:
       db:

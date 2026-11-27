@@ -95,7 +95,8 @@ written for them.
 - **`scripts/release.sh`**, in bash, with no argument: reads the commits
   since the last tag and finds the new version, writes it in `mix.exs`,
   gives the section "Unreleased" its version and its date, opens a new
-  empty one, updates the links, and makes the commit
+  empty one, updates the links, puts the new version where the guide and
+  `deploy/compose/env.example` name the old one, and makes the commit
   `chore(release): X.Y.Z`. It stops when the tree is not clean, when HEAD is
   not the newest commit of `main`, or when "Unreleased" has no entry.
   `major`, `minor`, `patch` or a version as an argument overrules what the

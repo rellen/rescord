@@ -89,7 +89,9 @@ for Rescord.
   page, which makes the tag such as `v0.2.0`, or push that tag.
   `release.yml` runs the checks of CI, the flake check and the test of an
   upgrade, and publishes the image, the tarballs and the GitHub release.
-- Until the release 0.2.0, a rescue installs from `main` (ADR 0052).
+- A rescue installs a release, and `docs/self-hosting.md` names the newest
+  one: `scripts/release.sh` writes the new version there and in
+  `deploy/compose/env.example`.
 - After a change to a workflow, such as a new version of an action, run
   Release with `dry_run`: it builds and checks each part, and publishes
   nothing.

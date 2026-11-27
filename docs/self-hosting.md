@@ -19,13 +19,21 @@ install Rescord, each setting, and how to back up and upgrade.
   directory of the server, or a bucket of a service that is compatible
   with S3.
 
-## The version to install
+## The releases
 
-Install Rescord from the branch `main` of the repository, which this guide
-describes. Each way below builds it from there. The one release, 0.1.0, is
-older than `bin/check`, the backups and a security fix of Phoenix LiveView
-(the section "Unreleased" of `CHANGELOG.md`), and no new release is planned
-yet.
+Each version of Rescord has a tag such as `v0.2.0`, a section in
+`CHANGELOG.md`, the image `ghcr.io/rellen/rescord` with the tag of the
+version, and a GitHub release with the tarballs. Install the newest one:
+<https://github.com/rellen/rescord/releases/latest>. This guide names
+`v0.2.0`.
+
+The number of a version says what an upgrade needs (ADR 0060). A new patch
+or a new minor needs a backup, the new version and a start. A new major
+needs a step by hand, and before 1.0.0 a new minor can need one too. The
+section "Upgrade notes" of the release in `CHANGELOG.md` says which.
+
+The branch `main` has changes that no release has yet. Read this guide at
+the tag of the version that you install.
 
 ## Install
 
@@ -33,17 +41,18 @@ yet.
 
 `deploy/compose` holds the Compose file, a Caddyfile and `env.example`.
 
-1. Clone the repository on the server, and build the image:
+1. Take the files of the release on the server:
 
    ```sh
-   git clone https://github.com/rellen/rescord.git
-   cd rescord
-   docker build -t rescord:local platform
-   cd deploy/compose
+   git clone --branch v0.2.0 https://github.com/rellen/rescord.git
+   cd rescord/deploy/compose
    ```
 
 2. Copy `env.example` to `.env`, and fill it in. Make each secret with
-   `openssl rand -base64 48`.
+   `openssl rand -base64 48`. `RESCORD_IMAGE` names the image of the
+   release, `ghcr.io/rellen/rescord:0.2.0`. To build the image yourself,
+   run `docker build -t rescord:local platform` in the repository, and set
+   `RESCORD_IMAGE=rescord:local`.
 3. Point the name of the server at it, and open the ports 80 and 443.
 4. Start Rescord:
 
@@ -72,7 +81,7 @@ Add the flake of Rescord to the flake of the machine:
 
 ```nix
 {
-  inputs.rescord.url = "github:rellen/rescord";
+  inputs.rescord.url = "github:rellen/rescord/v0.2.0";
 
   outputs = { nixpkgs, rescord, ... }: {
     nixosConfigurations.refuge = nixpkgs.lib.nixosSystem {
@@ -129,15 +138,17 @@ The tarball holds the release, its Erlang runtime, and the libvips that
 makes the photos safe to keep (ADR 0055), so the server needs no libvips of
 its own. It runs on a system
 with glibc 2.36 or later and OpenSSL 3: Debian 12 and later, Ubuntu 24.04
-and later, and Fedora 37 and later. Build it from the repository on a
-machine with Docker, for the architecture of the server, and copy
-`dist/rescord-linux-amd64.tar.gz` or `-arm64` to the server:
+and later, and Fedora 37 and later. Each GitHub release of Rescord has the
+tarballs for amd64 and arm64, and `SHA256SUMS`. Take the tarball for the
+architecture of the server, and check it before you unpack it:
 
 ```sh
-scripts/release-tarball.sh amd64
+sha256sum --check --ignore-missing SHA256SUMS
 ```
 
-Copy `deploy/systemd` to the server too.
+Copy `deploy/systemd` of the repository, at the tag of the release, to the
+server too. `scripts/release-tarball.sh amd64` builds a tarball from the
+repository, on a machine with Docker.
 
 1. Install PostgreSQL 18, and make a database and a user:
 
@@ -402,16 +413,18 @@ them through a directory.
 ## Upgrade
 
 1. Make a backup, as "Back up" says, and copy it from the server.
-2. Take the new version. `CHANGELOG.md` says what changed.
-   - With Docker Compose, run `git pull` in the repository, build the image
-     again with `docker build -t rescord:local platform`, and run
-     `docker compose up -d` in `deploy/compose`.
-   - On NixOS, run `nix flake update rescord`, which takes the newest
-     commit of `main`, and rebuild the machine.
-   - From the tarball, build a new tarball, stop Rescord, and unpack the new
-     tarball over `/opt/rescord`.
-3. Start Rescord. Each start runs the migrations that have not run, for the
+2. Read the section "Upgrade notes" of each release after yours in
+   `CHANGELOG.md`, and do what each one says.
+3. Take the new version.
+   - With Docker Compose, put the new version in `RESCORD_IMAGE`, and run
+     `docker compose pull` and `docker compose up -d`.
+   - On NixOS, put the tag of the new version in the URL of the input, run
+     `nix flake update rescord`, and rebuild the machine.
+   - From the tarball, stop Rescord, and unpack the new tarball over
+     `/opt/rescord`.
+4. Start Rescord. Each start runs the migrations that have not run, for the
    database and for each organisation, and then the server starts.
+5. Run `bin/check`: its first line says the version that runs.
 
 A migration changes the database for the new version, and the old version
 may not run on it. To go back, restore the backup of step 1.
