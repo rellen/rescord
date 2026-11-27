@@ -109,9 +109,18 @@ in
     '';
   };
 
+  # The last lines install the hook commit-msg of Git, which checks that the
+  # message of a commit follows Conventional Commits (ADR 0060). A hook that
+  # is there stays.
   enterShell = ''
     mix local.hex --force --if-missing >/dev/null
     mix local.rebar --force --if-missing >/dev/null
+
+    if hooks=$(git rev-parse --git-path hooks 2>/dev/null) &&
+      [ ! -e "$hooks/commit-msg" ] && [ ! -L "$hooks/commit-msg" ]; then
+      mkdir -p "$hooks"
+      ln -s "$DEVENV_ROOT/scripts/check-commit-message.sh" "$hooks/commit-msg"
+    fi
   '';
 
   # https://devenv.sh/tests/

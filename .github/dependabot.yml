@@ -1,5 +1,7 @@
 # Dependabot (ADR 0048): a weekly pull request for the Mix packages and one
 # for the actions. A security update comes as soon as GitHub knows of it.
+# The message of each commit starts with `chore(deps):`, as Conventional
+# Commits asks (ADR 0060).
 #
 # Not here, and updated by hand:
 #   * shoddy and shoddy_phoenix, pinned to a commit on purpose (ADR 0005);
@@ -12,6 +14,9 @@ updates:
     directory: /platform
     schedule:
       interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
     ignore:
       - dependency-name: shoddy
       - dependency-name: shoddy_phoenix
@@ -23,6 +28,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
     groups:
       actions:
         patterns: ["*"]
