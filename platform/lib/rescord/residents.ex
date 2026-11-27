@@ -152,8 +152,8 @@ defmodule Rescord.Residents do
   one is a change of `Rescord.History` with a `subject`: `:name`,
   `:arrival`, `:departure`, `:absence` or `:group_member`.
 
-  Returns `[]` when the actor can read no such resident: the versions have
-  no policy of their own, so the resident decides.
+  Returns `[]` when the actor can read no such resident: the policy of the
+  versions refuses each actor (ADR 0063), so the resident decides.
   """
   def changes(resident_id, opts \\ []) do
     subjects = [
@@ -183,7 +183,7 @@ defmodule Rescord.Residents do
   end
 
   defp history(resource, attribute, resident_id, opts) do
-    # The versions have no policy of their own: the resident decides.
+    # The policy of the versions refuses each actor: the resident decides.
     case resident(resident_id, opts) do
       {:ok, %Resident{}} ->
         resource

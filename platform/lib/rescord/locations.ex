@@ -229,8 +229,8 @@ defmodule Rescord.Locations do
   one is a change of `Rescord.History` with the `subject` `:placement`.
   The placements of the groups of the resident are not here.
 
-  Returns `[]` when the actor can read no such resident: the versions have
-  no policy of their own, so the resident decides.
+  Returns `[]` when the actor can read no such resident: the policy of the
+  versions refuses each actor (ADR 0063), so the resident decides.
   """
   def changes(resident_id, opts \\ []) do
     case Residents.resident(resident_id, opts) do

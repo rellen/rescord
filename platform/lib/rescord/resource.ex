@@ -28,7 +28,9 @@ defmodule Rescord.Resource do
     * The resource keeps a paper trail. On a temporal resource the trail is on
       the version rows (`mode :temporal_inline`), and a version resource lists
       them. On any other resource AshPaperTrail writes to a version resource
-      with a table of its own.
+      with a table of its own. The policy of a version resource refuses each
+      actor (`Rescord.Resource.VersionPolicies`, ADR 0063): a domain reads
+      the versions after the record has decided.
     * A destroy archives the row (AshArchival).
 
   A section that the resource writes again adds to these defaults, and an
@@ -164,6 +166,8 @@ defmodule Rescord.Resource do
         change_tracking_mode :previous_values
         store_action_name? true
         version_resource? true
+        version_extensions authorizers: [Ash.Policy.Authorizer]
+        mixin Rescord.Resource.VersionPolicies
       end
     end
   end
@@ -173,6 +177,8 @@ defmodule Rescord.Resource do
       paper_trail do
         change_tracking_mode :changes_only
         store_action_name? true
+        version_extensions authorizers: [Ash.Policy.Authorizer]
+        mixin Rescord.Resource.VersionPolicies
       end
     end
   end

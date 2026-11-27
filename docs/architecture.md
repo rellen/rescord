@@ -354,6 +354,10 @@ table (ADR 0025).
   (ADR 0013). By default a resource is temporal, keeps a paper trail,
   archives on a destroy, and is in the schema of an organisation. The
   compiler refuses a resource that is temporal and has a workflow.
+- **No actor reads a version through a policy** (ADR 0063). AshPaperTrail
+  gives a version resource no authorizer, so `Rescord.Resource` gives each
+  one a policy that refuses each actor. A domain reads the versions of its
+  own resources, after the record that they belong to has decided.
 - A fact that needs a history is a temporal resource in 6NF: the key, the
   period and one value (`docs/domain.md`, section 6).
 - Temporal resources are experimental in Ash, and need PostgreSQL 18 and
@@ -463,6 +467,16 @@ organisation (`docs/domain.md`, section 5.1).
 A domain other than the accounts holds its own grants, in a module that the
 configuration names (ADR 0024): `reads/0` and `powers/0`. A domain that
 is not in `:grant_sources` has no grants.
+
+**What no grant gives, a policy refuses, and a test holds that for each
+action** (ADR 0063). `Rescord.PolicySweepTest` asks the policies about each
+action of each resource of each domain, as nobody, as a person of another
+refuge, and as a member with each of three roles. An action that an actor
+can run is a grant of the role of that actor, or it is in the short list of
+the test of what is open on purpose, with its reason. A new resource or
+action is thus closed until a person decides otherwise. A version resource
+of the paper trail has a policy that refuses each actor: a domain reads the
+versions itself, after the record that they belong to has decided.
 
 Not decided yet: whether a grant can name one record or a group of fields. The rule above stays whatever the answer: a
 refused read is empty and not an error, so a test that reads asserts a

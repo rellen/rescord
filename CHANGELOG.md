@@ -11,6 +11,16 @@ its GitHub release (ADR 0047).
 
 ## [Unreleased]
 
+### Security
+
+- The history of a record is closed to each request that asks for it by
+  itself. Rescord keeps each change of a record as a version, and the
+  versions had no rule of their own about who reads them. A page shows the
+  history of a resident only after the resident has passed the rules of
+  the role of the person, and that stays so. No page read the versions
+  another way: this closes the gap before a page or an interface could use
+  it. No step is needed at the upgrade.
+
 ## [0.2.0] - 2026-11-28
 
 ### Upgrade notes

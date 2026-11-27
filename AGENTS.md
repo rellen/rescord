@@ -339,6 +339,13 @@ for Rescord.
   - `Rescord.AccountsFixtures` makes a user, a root user, an organisation
     and a member, and signs a connection in.
   - For a rule about who can do what, change the rule and see a test fail.
+  - `Rescord.PolicySweepTest` asks the policies about each action of each
+    resource as the actors who must be refused (ADR 0063). It fails for a
+    new action that an actor can run with no grant. Then give the resource
+    its policy, or add the grant to the grants of the domain. Add the
+    action to `open_on_purpose/0` of the test only when it is open on
+    purpose, with the reason and the test that holds what it still keeps
+    from the actor.
   - **A browser test** uses `RescordWeb.FeatureCase` and is in
     `platform/test/rescord_web/features/` (ADR 0023). It drives a real
     Chromium with `PhoenixTest.Playwright`. Write one for what only a
@@ -394,10 +401,11 @@ for Rescord.
   dates at one instant uses two zones that are far apart, and no clock of
   its own.
 - **A domain reads the versions of its own resources**, and no other domain
-  does (ADR 0035). The versions have no policy: the function reads the
-  record that decides first, with the options of the caller, and returns
-  nothing when the caller cannot read it. `Rescord.History.changes/1` says
-  what the versions mean.
+  does (ADR 0035). The policy of a version resource refuses each actor
+  (ADR 0063): the function reads the record that decides first, with the
+  options of the caller, then the versions with `authorize?: false`, and
+  returns nothing when the caller cannot read the record.
+  `Rescord.History.changes/1` says what the versions mean.
 - **An action that changes a state has a filter on that state**
   (`change filter(expr(state == :due))`, ADR 0032). The state machine reads
   the record that the caller has in hand, which can be old. The filter
