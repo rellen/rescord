@@ -41,6 +41,14 @@ defmodule RescordWeb.TransferFilePagesTest do
     {:ok, _photo} =
       Journal.attach_file(%{entry_id: entry.id, name: "card.jpg", content: jpeg()}, options)
 
+    {:ok, lawn} =
+      Rescord.Photos.add_photo(
+        %{resident_id: biscuit.id, content: photo(), caption: "On the lawn"},
+        options
+      )
+
+    {:ok, _profile} = Rescord.Photos.set_profile_photo(lawn, options)
+
     {:ok,
      root: root,
      wattle: wattle,
@@ -120,7 +128,7 @@ defmodule RescordWeb.TransferFilePagesTest do
         "export" => %{
           "resident_id" => context.biscuit.id,
           "remote_partner_id" => partner.id,
-          "parts" => ["stay", "no_such_part"],
+          "parts" => ["stay", "photos", "no_such_part"],
           "note" => "Shy at first."
         }
       })
@@ -146,7 +154,7 @@ defmodule RescordWeb.TransferFilePagesTest do
     assert has_element?(view, "#received tbody td", "Biscuit")
     assert has_element?(view, "#received tbody td", "Wattle Creek")
     [transfer] = Transfers.transfers!(actor: context.banksia_admin)
-    assert transfer.parts == [:stay]
+    assert transfer.parts == [:stay, :photos]
 
     {:ok, _view, _html} =
       view |> render_click("accept", %{"id" => transfer.id}) |> follow_redirect(conn)
@@ -159,6 +167,24 @@ defmodule RescordWeb.TransferFilePagesTest do
     assert has_element?(view, "h2", "Stay at the first refuge")
     [%{"files" => [photo]}] = transfer.snapshot["medical"]
     assert has_element?(view, "a", "card.jpg")
+
+    # The photos of the copy: the photo of the journal and the photo with a
+    # caption, which is the profile picture, each as its thumbnail.
+    assert has_element?(view, "h2", "Photos")
+    assert has_element?(view, "#copy-photo-list figcaption", "On the lawn")
+    assert has_element?(view, "#copy-profile-photo img[alt='On the lawn']")
+
+    %{"photos" => photos, "profile" => profile} = transfer.snapshot["photos"]
+    assert length(photos) == 2
+    %{"thumbnail" => %{"id" => thumbnail_id}} = Enum.find(photos, &(&1["id"] == profile))
+
+    thumbnail =
+      ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}/files/#{thumbnail_id}"
+
+    assert has_element?(view, "#copy-photo-#{profile} img[src='#{thumbnail}']")
+    conn = build_conn() |> sign_in(context.banksia_member) |> get(thumbnail)
+    assert <<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>> = response(conn, 200)
+    assert get_resp_header(conn, "content-type") == ["image/webp"]
 
     conn =
       build_conn()

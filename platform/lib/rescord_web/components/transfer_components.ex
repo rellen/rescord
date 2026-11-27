@@ -227,8 +227,8 @@ defmodule RescordWeb.TransferComponents do
         />
         <fieldset id="export-parts">
           <legend>
-            What the file holds: the facts and the medical history always, with their photos and
-            PDFs, and the parts that you tick
+            What the file holds: the facts and the medical history always, with the photos and
+            PDFs of their entries, and the parts that you tick
           </legend>
           <label :for={{part, words} <- TransferWords.parts()}>
             <input type="checkbox" name="export[parts][]" value={part} checked={part in @parts} />
@@ -481,6 +481,13 @@ defmodule RescordWeb.TransferComponents do
       </dl>
     </section>
 
+    <.photos
+      :if={@copy["photos"]}
+      part={@copy["photos"]}
+      name={@facts["name"]}
+      file_path={file_path(@transfer, @organisation)}
+    />
+
     <.entries
       id="copy-medical"
       title="Medical history"
@@ -592,6 +599,94 @@ defmodule RescordWeb.TransferComponents do
       </article>
     </section>
     """
+  end
+
+  attr :part, :map, required: true, doc: "the part of the copy with the photos"
+  attr :name, :any, required: true, doc: "the name of the resident, or nil"
+  attr :file_path, :any, required: true, doc: "the path of a file of the copy, or nil"
+
+  # The photos of a copy (ADR 0057), the newest first, with the profile
+  # picture and the albums. The copy of an export has no file on this
+  # server, so it shows the words of each photo alone.
+  def photos(assigns) do
+    albums = for %{"name" => _name} = album <- List.wrap(assigns.part["albums"]), do: album
+    profile = assigns.part["profile"]
+
+    cards =
+      for %{"id" => id} = photo <- List.wrap(assigns.part["photos"]) do
+        %{
+          id: id,
+          href: assigns.file_path && assigns.file_path.(id),
+          src: assigns.file_path && assigns.file_path.(thumbnail_id(photo)),
+          alt: photo_alt(photo, assigns.name),
+          caption: photo["caption"],
+          taken_on: photo["taken_on"],
+          date: TransferWords.date(photo["taken_on"]),
+          profile?: is_binary(profile) and profile == id,
+          albums:
+            for(album <- albums, id in List.wrap(album["photos"]), do: album["name"])
+            |> Enum.join(", ")
+        }
+      end
+
+    assigns =
+      assign(assigns,
+        cards: cards,
+        albums: albums,
+        profile: Enum.find(cards, &(&1.profile? and &1.src))
+      )
+
+    ~H"""
+    <section aria-labelledby="copy-photos">
+      <h2 id="copy-photos">Photos</h2>
+      <p :if={@cards == []}>The copy has no photo.</p>
+      <figure :if={@profile} data-profile id="copy-profile-photo">
+        <a href={@profile.href}><img src={@profile.src} alt={@profile.alt} /></a>
+        <figcaption>Profile picture</figcaption>
+      </figure>
+      <ul :if={@cards != []} data-photos id="copy-photo-list">
+        <li :for={card <- @cards} id={"copy-photo-#{card.id}"}>
+          <figure>
+            <a :if={card.src} href={card.href}>
+              <img src={card.src} alt={card.alt} loading="lazy" />
+            </a>
+            <figcaption>
+              <span :if={card.caption}>{card.caption}</span>
+              <small :if={card.date}><time datetime={card.taken_on}>{card.date}</time></small>
+              <.state :if={card.profile?} kind="info">Profile picture</.state>
+              <small :if={card.albums != ""}>In {card.albums}</small>
+            </figcaption>
+          </figure>
+        </li>
+      </ul>
+      <h3 :if={@albums != []} id="copy-albums">Albums</h3>
+      <ul :if={@albums != []} aria-labelledby="copy-albums">
+        <li :for={album <- @albums}>
+          {album["name"]}: {album_size(album)}
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  # The file that shows a photo in the grid: its thumbnail, or the photo
+  # itself for an old photo of the journal that has none.
+  defp thumbnail_id(%{"thumbnail" => %{"id" => id}}), do: id
+  defp thumbnail_id(%{"id" => id}), do: id
+
+  defp photo_alt(%{"caption" => caption}, _name) when is_binary(caption), do: caption
+
+  defp photo_alt(photo, name) do
+    ["A photo of #{name || "a resident with no name"}", TransferWords.date(photo["taken_on"])]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(", ")
+  end
+
+  defp album_size(album) do
+    case length(List.wrap(album["photos"])) do
+      1 -> "1 photo"
+      count -> "#{count} photos"
+    end
   end
 
   # The path of a file of the copy. A file exported to another server is

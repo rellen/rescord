@@ -17,7 +17,7 @@ defmodule Rescord.Transfers.ExportImportTest do
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
 
-  alias Rescord.{Accounts, Journal, Transfers}
+  alias Rescord.{Accounts, Journal, Photos, Transfers}
   alias Rescord.Transfers.{Archive, Keys, Snapshot}
 
   @moduletag :tmp_dir
@@ -81,6 +81,147 @@ defmodule Rescord.Transfers.ExportImportTest do
     }
     |> Map.merge(extra)
     |> Transfers.export_transfer(actor: context.wattle_admin)
+  end
+
+  # A photo with a caption and a photo of the journal, both in one album,
+  # and the first as the profile picture.
+  defp photos!(context) do
+    options = [actor: context.wattle_admin, tenant: context.wattle]
+
+    {:ok, added} =
+      Photos.add_photo(
+        %{resident_id: context.biscuit.id, content: photo(), caption: "On the lawn"},
+        options
+      )
+
+    {:ok, adopted} = Photos.adopt(context.photo.id, options)
+
+    {:ok, album} =
+      Photos.make_album(%{resident_id: context.biscuit.id, name: "Surgery"}, options)
+
+    for photo <- [added, adopted] do
+      {:ok, _tie} = Photos.add_to_album(%{album_id: album.id, photo_id: photo.id}, options)
+    end
+
+    {:ok, _profile} = Photos.set_profile_photo(added, options)
+    %{added: added, adopted: adopted}
+  end
+
+  # The part of a copy with the photos holds what `photos!/1` made, and
+  # the refuge `organisation` has each file of it.
+  defp assert_photos(transfer, organisation, actor, context, %{added: added}) do
+    part = transfer.snapshot["photos"]
+    assert %{"photos" => photos, "albums" => [album], "profile" => profile} = part
+    assert profile == added.id
+
+    assert [%{"caption" => "On the lawn"} = lawn] = Enum.filter(photos, &(&1["id"] == added.id))
+    assert [of_journal] = Enum.reject(photos, &(&1["id"] == added.id))
+    assert lawn["taken_on"] == Date.to_iso8601(added.taken_on)
+
+    # The photo of the journal is the file of its entry, one time.
+    assert [%{"files" => [%{"id" => file_id}]}] = transfer.snapshot["medical"]
+    assert of_journal["id"] == file_id
+    assert of_journal["id"] == context.photo.id
+
+    assert album["name"] == "Surgery"
+    assert Enum.sort(album["photos"]) == Enum.sort([added.id, file_id])
+
+    for photo <- photos do
+      assert {:ok, %{"content_type" => "image/jpeg"}, bytes} =
+               Transfers.transfer_file(organisation, transfer.id, photo["id"], actor: actor)
+
+      assert byte_size(bytes) == photo["size"]
+
+      assert %{"id" => thumbnail_id, "content_type" => "image/webp", "size" => size} =
+               photo["thumbnail"]
+
+      assert {:ok, %{"content_type" => "image/webp"}, small} =
+               Transfers.transfer_file(organisation, transfer.id, thumbnail_id, actor: actor)
+
+      assert byte_size(small) == size
+      assert <<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>> = small
+    end
+  end
+
+  describe "the photos of a resident" do
+    test "go to a refuge on another server with the part, and not without it", context do
+      %{banksia_there: banksia_there} = partners!(context)
+      made = photos!(context)
+
+      assert {:ok, plain, _file} = export!(context, banksia_there)
+      refute Map.has_key?(plain.snapshot, "photos")
+
+      assert {:ok, exported, file} = export!(context, banksia_there, %{parts: [:photos]})
+      assert exported.parts == [:photos]
+
+      assert {:ok, imported} =
+               Transfers.import_transfer(context.banksia, file, actor: context.banksia_admin)
+
+      assert imported.parts == [:photos]
+      {:ok, _accepted} = Transfers.accept_transfer(imported, actor: context.banksia_admin)
+      assert_photos(imported, context.banksia, context.banksia_member, context, made)
+    end
+
+    test "go to a partner refuge on this server with the part", context do
+      made = photos!(context)
+
+      {:ok, asked} =
+        Transfers.ask_partner(context.wattle, context.banksia.short_name,
+          actor: context.wattle_admin
+        )
+
+      {:ok, _partnership} = Transfers.accept_partner(asked, actor: context.banksia_admin)
+
+      assert {:ok, sent} =
+               Transfers.send_transfer(
+                 %{
+                   organisation_id: context.wattle.id,
+                   partner_id: context.banksia.id,
+                   resident_id: context.biscuit.id,
+                   parts: [:photos]
+                 },
+                 actor: context.wattle_admin
+               )
+
+      {:ok, _accepted} = Transfers.accept_transfer(sent, actor: context.banksia_admin)
+      assert_photos(sent, context.banksia, context.banksia_member, context, made)
+    end
+
+    test "are refused in a file that does not hold a thumbnail that its copy names", context do
+      %{banksia_there: banksia_there} = partners!(context)
+      banksia_keys = Keys.of(context.banksia)
+      {:ok, [wattle_there | _]} = Transfers.remote_partners_of(context.banksia, authorize?: false)
+      photo_id = Ash.UUID.generate()
+      bytes = stored_jpeg()
+
+      transfer = %{
+        "export_id" => Ash.UUID.generate(),
+        "from_refuge" => context.wattle.id,
+        "to_refuge" => context.banksia.id,
+        "copy" => %{
+          "facts" => %{"name" => "Biscuit"},
+          "photos" => %{
+            "photos" => [
+              %{
+                "id" => photo_id,
+                "content_type" => "image/jpeg",
+                "size" => byte_size(bytes),
+                "thumbnail" => %{
+                  "id" => Ash.UUID.generate(),
+                  "content_type" => "image/webp",
+                  "size" => 10
+                }
+              }
+            ]
+          }
+        }
+      }
+
+      file = Archive.write(transfer, [{photo_id, bytes}], Keys.of(context.wattle), banksia_there)
+
+      assert {:error, "has files that do not match its copy"} =
+               Archive.read(file, context.banksia.id, banksia_keys, fn _ -> wattle_there end)
+    end
   end
 
   describe "a partner card" do
@@ -417,6 +558,60 @@ defmodule Rescord.Transfers.ExportImportTest do
 
       assert Snapshot.clean(%{"no" => "facts"}) == :error
       assert Snapshot.clean("text") == :error
+    end
+
+    test "keeps the photos that are images, and the albums and the profile that name them" do
+      [one, two, small] = for _ <- 1..3, do: Ash.UUID.generate()
+      image = %{"content_type" => "image/jpeg", "size" => 10}
+
+      assert {:ok, %{"photos" => part}} =
+               Snapshot.clean(%{
+                 "facts" => %{"name" => "Biscuit"},
+                 "photos" => %{
+                   "photos" => [
+                     Map.merge(image, %{
+                       "id" => one,
+                       "caption" => "On the lawn",
+                       "taken_on" => "2026-10-03",
+                       "thumbnail" => %{
+                         "id" => small,
+                         "content_type" => "image/webp",
+                         "size" => 4
+                       },
+                       "key" => "dropped"
+                     }),
+                     Map.merge(image, %{"id" => one, "caption" => "The same id again"}),
+                     Map.merge(image, %{"id" => two, "taken_on" => "no date", "thumbnail" => "x"}),
+                     %{"id" => Ash.UUID.generate(), "content_type" => "text/html", "size" => 10},
+                     %{"id" => "no id", "content_type" => "image/png", "size" => 10},
+                     "not a photo"
+                   ],
+                   "albums" => [
+                     %{"name" => "Surgery", "photos" => [one, one, Ash.UUID.generate(), 3]},
+                     %{"photos" => [one]},
+                     "not an album"
+                   ],
+                   "profile" => Ash.UUID.generate()
+                 }
+               })
+
+      assert [
+               %{
+                 "id" => ^one,
+                 "caption" => "On the lawn",
+                 "taken_on" => "2026-10-03",
+                 "thumbnail" => %{"id" => ^small, "content_type" => "image/webp", "size" => 4}
+               } = first,
+               %{"id" => ^two, "caption" => nil, "taken_on" => nil, "thumbnail" => nil}
+             ] = part["photos"]
+
+      refute Map.has_key?(first, "key")
+      assert part["albums"] == [%{"name" => "Surgery", "photos" => [one]}]
+      assert part["profile"] == nil
+
+      # A part that is no map is a part with no photo.
+      assert {:ok, %{"photos" => %{"photos" => [], "albums" => [], "profile" => nil}}} =
+               Snapshot.clean(%{"facts" => %{}, "photos" => "text"})
     end
   end
 end

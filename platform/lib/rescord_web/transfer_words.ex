@@ -11,7 +11,8 @@ defmodule RescordWeb.TransferWords do
     journal: "The other journal entries",
     stay: "The stay: the arrival, an absence and the departure",
     placements: "The placements",
-    relations: "The families, the groups, the parents and the young"
+    relations: "The families, the groups, the parents and the young",
+    photos: "The photos, the albums and the profile picture"
   ]
 
   @doc "The parts that a sender can add, each with its words, in order."

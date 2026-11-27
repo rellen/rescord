@@ -25,7 +25,14 @@ defmodule Rescord.Transfers do
   alias Rescord.Transfers.{Archive, Keys, Partnership, RemotePartner, Snapshot, Transfer}
 
   boundary do
-    deps [Rescord, Rescord.Accounts, Rescord.Residents, Rescord.Journal, Rescord.Locations]
+    deps [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Residents,
+      Rescord.Journal,
+      Rescord.Locations,
+      Rescord.Photos
+    ]
   end
 
   paper_trail do

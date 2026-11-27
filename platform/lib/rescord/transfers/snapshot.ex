@@ -18,10 +18,16 @@ defmodule Rescord.Transfers.Snapshot do
     * `"placements"` - with the part `:placements`: each change of the
       placement of the resident, with the name of the location;
     * `"relations"` - with the part `:relations`: the parents, the young,
-      the families and the groups, by name.
+      the families and the groups, by name;
+    * `"photos"` - with the part `:photos` (ADR 0057): each photo of the
+      resident with its caption, its date and its thumbnail, the albums
+      with the photos of each, and the profile picture. A photo of a
+      journal entry is the file of its entry, and the copy holds it once.
 
   `build/3` also returns the source of each file: its id, its key in the
-  store, and its type. The copy names no key.
+  store, and its type. The source of a thumbnail holds its bytes too,
+  because the copy states the size of each file, and no record holds the
+  size of a thumbnail. The copy names no key.
 
   `clean/1` rebuilds a copy that came from another server, with the keys
   and the types of values above alone, so a page that shows it meets
@@ -32,9 +38,9 @@ defmodule Rescord.Transfers.Snapshot do
   refuge that sends it, other than in the record of the transfer.
   """
 
-  alias Rescord.{Journal, Locations, Residents}
+  alias Rescord.{Journal, Locations, Photos, Residents, Storage}
 
-  @parts [:journal, :stay, :placements, :relations]
+  @parts [:journal, :stay, :placements, :relations, :photos]
 
   @doc "The parts that a sender can add to the facts and the medical history."
   @spec parts() :: [atom]
@@ -53,6 +59,9 @@ defmodule Rescord.Transfers.Snapshot do
       {:ok, files_of} = Journal.attachments_of(Enum.map(included, & &1.id), opts)
       entry = &entry(&1, Map.get(files_of, &1.id, []))
 
+      {photos, photo_sources} =
+        if :photos in parts, do: photos(resident_id, opts), else: {nil, []}
+
       copy =
         %{
           "facts" => facts(resident),
@@ -63,6 +72,7 @@ defmodule Rescord.Transfers.Snapshot do
         |> put_part(:stay in parts, "stay", fn -> stay(resident) end)
         |> put_part(:placements in parts, "placements", fn -> placements(resident_id, opts) end)
         |> put_part(:relations in parts, "relations", fn -> relations(resident_id, opts) end)
+        |> put_part(:photos in parts, "photos", fn -> photos end)
 
       sources =
         for {_entry_id, attachments} <- files_of, attachment <- attachments do
@@ -73,11 +83,35 @@ defmodule Rescord.Transfers.Snapshot do
           }
         end
 
-      {:ok, copy, sources}
+      # A photo of a journal entry is a file of its entry too: one source.
+      {:ok, copy, Enum.uniq_by(sources ++ photo_sources, & &1["id"])}
     else
       _no_resident -> :error
     end
   end
+
+  @doc """
+  Each file that a copy names, one time: the files of its entries, its
+  photos and their thumbnails, each with `"id"`, `"content_type"` and
+  `"size"`.
+  """
+  @spec files(map) :: [map]
+  def files(copy) do
+    of_entries =
+      for entry <- List.wrap(copy["medical"]) ++ List.wrap(copy["journal"]),
+          file <- entry["files"] || [],
+          do: file
+
+    photos = photos_of(copy)
+    thumbnails = for %{"thumbnail" => %{} = thumbnail} <- photos, do: thumbnail
+
+    Enum.uniq_by(of_entries ++ photos ++ thumbnails, & &1["id"])
+  end
+
+  @doc "The photos of a copy, the newest first, or `[]` for a copy with no such part."
+  @spec photos_of(map) :: [map]
+  def photos_of(%{"photos" => %{"photos" => photos}}) when is_list(photos), do: photos
+  def photos_of(_copy), do: []
 
   defp put_part(copy, true, key, value), do: Map.put(copy, key, value.())
   defp put_part(copy, false, _key, _value), do: copy
@@ -209,6 +243,85 @@ defmodule Rescord.Transfers.Snapshot do
     end
   end
 
+  # The photos of a resident, its albums and its profile picture, and the
+  # sources of the files. A photo has the id of its file: the id of the
+  # attachment for a photo of a journal entry, so that the copy holds the
+  # file once, and the id of the photo record for each other photo.
+  defp photos(resident_id, opts) do
+    with {:ok, items} <- Photos.photos_of(resident_id, opts),
+         {:ok, albums} <- Photos.albums(resident_id, opts),
+         {:ok, profile} <- Photos.profile_photo(resident_id, opts) do
+      files = Enum.map(items, &photo_file/1)
+      thumbnails = Map.new(files, &{&1.id, thumbnail(&1.thumbnail_key)})
+
+      copy = %{
+        "photos" =>
+          for {item, file} <- Enum.zip(items, files) do
+            %{
+              "id" => file.id,
+              "caption" => item.caption,
+              "taken_on" => date(item.taken_on),
+              "content_type" => file.content_type,
+              "size" => file.size,
+              "thumbnail" =>
+                case thumbnails[file.id] do
+                  {id, type, bytes} ->
+                    %{"id" => id, "content_type" => type, "size" => byte_size(bytes)}
+
+                  nil ->
+                    nil
+                end
+            }
+          end,
+        "albums" =>
+          for album <- albums do
+            %{
+              "name" => album.name,
+              "photos" =>
+                for(
+                  {item, file} <- Enum.zip(items, files),
+                  album.id in item.album_ids,
+                  do: file.id
+                )
+            }
+          end,
+        "profile" => profile && (profile.attachment_id || profile.id)
+      }
+
+      sources =
+        Enum.map(files, &%{"id" => &1.id, "key" => &1.key, "content_type" => &1.content_type}) ++
+          for {_photo_id, {id, type, bytes}} <- thumbnails do
+            %{"id" => id, "content_type" => type, "bytes" => bytes}
+          end
+
+      {copy, sources}
+    else
+      _refused -> {%{"photos" => [], "albums" => [], "profile" => nil}, []}
+    end
+  end
+
+  defp photo_file(%{attachment: %{} = attachment}) do
+    Map.take(attachment, [:id, :key, :thumbnail_key, :content_type, :size])
+  end
+
+  defp photo_file(%{photo: photo}) do
+    Map.take(photo, [:id, :key, :thumbnail_key, :content_type, :size])
+  end
+
+  # The thumbnail of a photo, with an id of its own in the copy, or `nil`
+  # for an old photo of the journal that has none, and for one that the
+  # store does not give: the page of the copy then shows the photo.
+  defp thumbnail(key) when is_binary(key) do
+    with {:ok, bytes} <- Storage.get(key),
+         "image/" <> _ = type <- Journal.file_type(bytes) do
+      {Ecto.UUID.generate(), type, bytes}
+    else
+      _no_thumbnail -> nil
+    end
+  end
+
+  defp thumbnail(_none), do: nil
+
   defp label(%{label: label}), do: to_string(label)
   defp label(_none), do: nil
 
@@ -241,6 +354,7 @@ defmodule Rescord.Transfers.Snapshot do
         &clean_list(&1, fn p -> pick(p, ~w(kind location), at: ["at"]) end)
       )
       |> maybe("relations", copy, &clean_relations/1)
+      |> maybe("photos", copy, &clean_photos/1)
 
     {:ok, cleaned}
   end
@@ -285,6 +399,59 @@ defmodule Rescord.Transfers.Snapshot do
   end
 
   defp clean_file(_other), do: nil
+
+  # The photos, each with an id that no other photo has, and the albums
+  # and the profile picture, which name photos of the copy alone.
+  defp clean_photos(%{} = part) do
+    photos = part["photos"] |> clean_list(&clean_photo/1) |> Enum.uniq_by(& &1["id"])
+    ids = MapSet.new(photos, & &1["id"])
+    known = fn id -> is_binary(id) and MapSet.member?(ids, id) end
+
+    %{
+      "photos" => photos,
+      "albums" =>
+        clean_list(part["albums"], fn
+          %{"name" => name} = album when is_binary(name) ->
+            %{
+              "name" => string(name),
+              "photos" => album["photos"] |> List.wrap() |> Enum.filter(known) |> Enum.uniq()
+            }
+
+          _other ->
+            nil
+        end),
+      "profile" => if(known.(part["profile"]), do: part["profile"])
+    }
+  end
+
+  defp clean_photos(_other), do: %{"photos" => [], "albums" => [], "profile" => nil}
+
+  defp clean_photo(%{} = photo) do
+    with %{"id" => id, "size" => size, "content_type" => type} <- clean_image(photo) do
+      photo
+      |> pick(~w(caption), dates: ~w(taken_on))
+      |> Map.merge(%{
+        "id" => id,
+        "size" => size,
+        "content_type" => type,
+        "thumbnail" => clean_image(photo["thumbnail"])
+      })
+    end
+  end
+
+  defp clean_photo(_other), do: nil
+
+  # The id, the type and the size of a photo or a thumbnail, or `nil` for
+  # one that is no image.
+  defp clean_image(%{"id" => id, "size" => size, "content_type" => "image/" <> _ = type})
+       when is_integer(size) and size >= 0 do
+    case Ecto.UUID.cast(id) do
+      {:ok, id} -> %{"id" => id, "size" => size, "content_type" => String.slice(type, 0, 100)}
+      :error -> nil
+    end
+  end
+
+  defp clean_image(_other), do: nil
 
   defp clean_stay(%{} = stay) do
     for key <- ~w(arrival absence departure), into: %{} do

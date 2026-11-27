@@ -132,7 +132,7 @@ defmodule Rescord.Accounts.Organisation do
       allow_nil? false
       default []
       public? true
-      constraints items: [one_of: [:journal, :stay, :placements, :relations]]
+      constraints items: [one_of: [:journal, :stay, :placements, :relations, :photos]]
 
       description "The parts that a copy of a resident holds at first, other than the facts and the medical history (ADR 0042)"
     end

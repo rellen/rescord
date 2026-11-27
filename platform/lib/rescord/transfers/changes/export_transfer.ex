@@ -9,7 +9,9 @@ defmodule Rescord.Transfers.Changes.ExportTransfer do
   it reads the files of the copy, writes the file
   (`Rescord.Transfers.Archive.write/4`), signed with the key of this refuge
   and encrypted for the partner, and puts it in the metadata of the record
-  under `:file`. The record keeps the state `exported`, and no file.
+  under `:file`. The record keeps the state `exported`, and no file. It
+  refuses a file larger than an import takes, which the photos of a
+  resident can make (ADR 0057).
   """
 
   use Ash.Resource.Change
@@ -81,7 +83,17 @@ defmodule Rescord.Transfers.Changes.ExportTransfer do
             partner
           )
 
-        {:ok, Ash.Resource.put_metadata(transfer, :file, file)}
+        if byte_size(file) > Archive.max_size() do
+          {:error,
+           Ash.Error.Changes.InvalidArgument.exception(
+             field: :resident_id,
+             message:
+               "has more photos and files than a transfer file takes, which is " <>
+                 "#{div(Archive.max_size(), 1_000_000)} MB. Leave a part out, such as the photos"
+           )}
+        else
+          {:ok, Ash.Resource.put_metadata(transfer, :file, file)}
+        end
 
       {:error, _error} ->
         {:error,

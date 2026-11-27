@@ -54,10 +54,10 @@ defmodule Rescord.Transfers.Changes.SendTransfer do
       |> Changeset.after_action(fn changeset, transfer ->
         sources = changeset.context[:sources] || []
 
-        with {:ok, files} <- Files.read(sources),
-             :ok <- Files.store(files, transfer.to_organisation_id, transfer.id) do
-          {:ok, transfer}
-        else
+        case Files.copy(sources, transfer.to_organisation_id, transfer.id) do
+          :ok ->
+            {:ok, transfer}
+
           {:error, _error} ->
             {:error,
              Ash.Error.Changes.InvalidArgument.exception(

@@ -5,6 +5,10 @@ section of a version in the notes of its GitHub release (ADR 0047).
 
 ## Unreleased
 
+- A transfer of a resident can carry its photos, its albums and its
+  profile picture, as a part that the sender ticks, on one server and in a
+  transfer file. The refuge that receives sees them on the page of the
+  copy.
 - Each resident has photos, with a caption and a date, in albums, and a
   profile picture that its page and the list of the residents show. The
   photos of its journal entries are among them, with a link to each entry. Rescord removes the metadata

@@ -71,8 +71,9 @@ The maintainer answered four questions:
 - A file of a JPEG, a PNG or a WebP image that Rescord keeps is not the
   file that the person sent: the bytes and the size differ. A test compares
   the stored bytes with `Rescord.StorageFixtures.stored_jpeg/0`.
-- A transfer carries the files of the journal, and not the photo records,
-  the albums or the profile picture. A transfer of those can come later.
+- A transfer carried the files of the journal, and not the photo records,
+  the albums or the profile picture. ADR 0057 adds those as a part of the
+  copy.
 - The list of the residents shows the profile picture of each resident
   beside its name (27 November 2026). Cinder reads the residents, and their
   pictures are in another domain, which the residents do not depend on. So

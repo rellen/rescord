@@ -135,7 +135,7 @@ These subjects are out of scope for now:
 | Can a task name more than one member? | Yes. The task is done when one of them completes it. |
 | Which parts does the copy of a transferred resident hold, other than the facts and the medical history? | The parts that the first refuge chooses. An administrator gives the default parts as a setting, and a member can change them for each transfer. |
 | Which library reads the storage of the attachments? | `req_s3`, a plugin of `Req`. The maintainer approved it. |
-| Which parts can a refuge add to the copy of a transferred resident? | The other journal entries, the stay, the placements, and the families and the groups. |
+| Which parts can a refuge add to the copy of a transferred resident? | The other journal entries, the stay, the placements, the families and the groups, and the photos with the albums and the profile picture. |
 | To which refuge can a refuge transfer a resident? | To a partner. An administrator asks another refuge by its short name, and it becomes a partner when an administrator there accepts. No member sees a list of the other refuges. |
 | Must the receiving refuge accept a transfer? | Yes. Nothing appears there until a member with that power accepts it, and it can decline. |
 | Does the copy of a transferred resident change later? | No. It holds the record as it was at the transfer. |
@@ -438,8 +438,9 @@ change (ADR 0042). An administrator asks another refuge by its short name,
 and the two are partners when an administrator there accepts. An
 administrator sends a resident to a partner. The copy holds the facts and
 the medical history of the resident, and the parts that the sender ticks:
-the other journal entries, the stay, the placements, and the families and
-the groups. The settings of the refuge tick the parts at first.
+the other journal entries, the stay, the placements, the families and the
+groups, and the photos with the albums and the profile picture (ADR 0057).
+The settings of the refuge tick the parts at first.
 
 Nothing appears at the partner until an administrator there accepts the
 transfer, and that administrator can decline it. After the acceptance, each

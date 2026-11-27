@@ -17,7 +17,8 @@ defmodule Rescord.Transfers.Archive do
       it.
 
   The zip holds `transfer.json`, with the copy of the resident,
-  and one entry `files/<id>` for each file of the copy.
+  and one entry `files/<id>` for each file of the copy: the files of its
+  entries, and its photos and their thumbnails (ADR 0057).
 
   `read/4` checks the signature with the key of a recorded partner before
   it decrypts anything, and the zip after that before it decompresses
@@ -34,7 +35,8 @@ defmodule Rescord.Transfers.Archive do
 
   # The largest archive, and the largest decompressed contents, in bytes.
   @max_size 300_000_000
-  @max_entries 1001
+  # The copy, and the files: a photo is two of them, with its thumbnail.
+  @max_entries 5001
 
   @doc "The largest transfer file that an import takes, in bytes."
   def max_size, do: @max_size
@@ -146,7 +148,7 @@ defmodule Rescord.Transfers.Archive do
   # Each file that the copy names is in the archive, with its size and a
   # type that Rescord takes, and the archive has no other file.
   defp files(copy, contents) do
-    named = for entry <- entries(copy), file <- entry["files"], into: %{}, do: {file["id"], file}
+    named = for file <- Snapshot.files(copy), into: %{}, do: {file["id"], file}
     present = for {"files/" <> id, bytes} <- contents, into: %{}, do: {id, bytes}
 
     if Map.keys(named) |> Enum.sort() == Map.keys(present) |> Enum.sort() and
@@ -159,9 +161,6 @@ defmodule Rescord.Transfers.Archive do
        do: {:ok, present},
        else: {:error, :files}
   end
-
-  @doc "The entries of a copy that can name files: the medical history and the journal."
-  def entries(copy), do: (copy["medical"] || []) ++ (copy["journal"] || [])
 
   defp parts(list) when is_list(list) do
     for text <- list, part <- Snapshot.parts(), Atom.to_string(part) == text, uniq: true, do: part
