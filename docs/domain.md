@@ -104,7 +104,7 @@ These subjects are out of scope for now:
 | How does a routine repeat? | With a small set of patterns: each day at set times, on given days of the week, or after a number of days. |
 | What does a reorder level apply to? | An item in the whole organisation, and also an item in one location when the organisation gives one. |
 | Which part does the project build first? | The sign-in and the organisations. |
-| Which service sends the email of a sign-in and of an invitation? | Postmark, through SMTP. |
+| Which service sends the email of a sign-in and of an invitation? | An SMTP service that the operator chooses (ADR 0044). |
 | How does a page name its organisation? | In the path, and not in a subdomain. The path starts with `/o/` and the short name of the organisation. |
 | How does a resident name a value of a dimension? | The list of the organisation holds each value that the organisation uses. A resident names a row of that list (ADR 0025). |
 | How does a resident get its status? | Rescord calculates it from the arrival, the departure and an absence. A member sets only `away for a time`. |
