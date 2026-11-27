@@ -482,7 +482,9 @@ defmodule RescordWeb.CoreComponents do
     """
   end
 
-  # The mark of Rescord, beside its name in the site bar.
+  # The mark of Rescord, beside its name in the site bar. The icon of a tab
+  # is the same mark, drawn again in `priv/static/images/favicon.svg`
+  # (ADR 0058).
   def icon(%{name: "mark"} = assigns) do
     ~H"""
     <.svg spin={@spin} {@rest}>

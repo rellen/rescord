@@ -108,6 +108,10 @@ too.
     layer only for a new role.
   - Icons are our own inline SVGs in `CoreComponents.icon/1`, always
     `aria-hidden`. There is no icon library.
+  - The icon of a tab is the mark of the site bar, drawn again in
+    `priv/static/images/favicon.svg` (ADR 0058). After a change to it, run
+    `scripts/favicons.sh` from the root of the repository, which writes
+    `favicon.ico` and `apple-touch-icon.png` again.
   - The look is the design direction Scrubs (ADR 0015). Only
     `assets/css/layers/tokens.css` writes a colour: read a token in every
     other layer. A colour has one meaning: `ok` (green) is well and done,

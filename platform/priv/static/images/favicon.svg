@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <title>Rescord</title>
+  <!-- The mark of the site bar, drawn on a grid of 16 (ADR 0058). The two
+       colours are the token `accent` of `assets/css/layers/tokens.css`. -->
+  <style>
+    g { stroke: #0a6a5c; }
+    @media (prefers-color-scheme: dark) { g { stroke: #62d2bd; } }
+  </style>
+  <g><rect x="1" y="1" width="14" height="14" rx="4"/><path d="M8 5v6M5 8h6"/></g>
+</svg>

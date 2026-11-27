@@ -5,6 +5,8 @@ section of a version in the notes of its GitHub release (ADR 0047).
 
 ## Unreleased
 
+- The tab of a browser shows the mark of Rescord, in the colour of the
+  light or of the dark scheme, and a home screen shows it too.
 - A transfer of a resident can carry its photos, its albums and its
   profile picture, as a part that the sender ticks, on one server and in a
   transfer file. The refuge that receives sees them on the page of the
