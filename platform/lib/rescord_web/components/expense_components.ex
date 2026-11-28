@@ -11,7 +11,7 @@ defmodule RescordWeb.ExpenseComponents do
 
   use RescordWeb, :html
 
-  alias RescordWeb.{ExpenseWords, ResidentWords}
+  alias RescordWeb.{ExpenseWords, ResidentWords, UploadWords}
 
   @doc """
   The three sums at the top of the list. A person who manages the expenses
@@ -193,7 +193,7 @@ defmodule RescordWeb.ExpenseComponents do
             {entry.progress} percent
           </progress>
           <span :for={error <- upload_errors(@upload, entry)} role="alert">
-            {upload_words(error)}
+            {UploadWords.of(error, entry, &upload_words/1)}
           </span>
           <.button
             type="button"

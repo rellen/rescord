@@ -56,7 +56,7 @@ defmodule Rescord.Storage.Upload do
   def prepare(content) when is_binary(content) do
     case type_of(content) do
       nil ->
-        refused(:not_a_photo_or_pdf)
+        refused(if Images.heif?(content), do: :heic, else: :not_a_photo_or_pdf)
 
       "application/pdf" ->
         {:ok, %{bytes: content, content_type: "application/pdf", thumbnail: nil}}

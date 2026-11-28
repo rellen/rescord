@@ -9,6 +9,7 @@ defmodule Rescord.Images do
     * The type comes from the first bytes (`type_of/1`): JPEG, PNG, GIF or
       WebP. libvips reads only those, and `block_untrusted/0` blocks each
       loader that libvips does not trust, at the start of the application.
+      A HEIC or an AVIF photo gets words of its own (`heif?/1`).
     * A photo of more than `max_pixels/0` pixels is refused before libvips
       decodes it, so a small file cannot fill the memory.
     * The photo turns as its EXIF orientation says, and then loses all of
@@ -80,6 +81,28 @@ defmodule Rescord.Images do
   def type_of(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: "image/webp"
   def type_of(_other), do: nil
 
+  # The brands of the box `ftyp` of a HEIF file: the HEIC of a phone, HEIF,
+  # and AVIF.
+  @heif_brands ~w(heic heix hevc hevx heim heis mif1 msf1 avif avis)
+
+  @doc """
+  Whether the first bytes are those of a HEIF file: a HEIC photo of a
+  phone, or an AVIF image. Rescord reads neither: the libvips of the
+  precompiled NIF of vix has no HEVC decoder. So `prepare/1` refuses such a
+  photo with the reason `:heic`, whose words say what to do (issue 34).
+
+      iex> Rescord.Images.heif?(<<0, 0, 0, 24, "ftypheic", 0, 0, 0, 0>>)
+      true
+
+      iex> Rescord.Images.heif?(<<0, 0, 0, 24, "ftypisom", 0, 0, 0, 0>>)
+      false
+  """
+  @spec heif?(binary) :: boolean
+  def heif?(<<_size::binary-size(4), "ftyp", brand::binary-size(4), _rest::binary>>),
+    do: brand in @heif_brands
+
+  def heif?(_other), do: false
+
   @doc """
   The photo that Rescord keeps, with its thumbnail, or a `RefusedFile`
   error with the reason that it cannot keep it.
@@ -87,7 +110,7 @@ defmodule Rescord.Images do
   @spec prepare(binary) :: {:ok, prepared} | {:error, RefusedFile.t()}
   def prepare(bytes) when is_binary(bytes) do
     case type_of(bytes) do
-      nil -> refused(:not_a_photo)
+      nil -> refused(if heif?(bytes), do: :heic, else: :not_a_photo)
       type -> one_of_few(fn -> prepare(bytes, type) end)
     end
   end

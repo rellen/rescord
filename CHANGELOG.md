@@ -610,6 +610,12 @@ release (ADR 0047).
 
 ### Changed
 
+- A HEIC or an AVIF photo, which Rescord cannot read, is refused with
+  words that say what to do: on an iPhone, pick it from Photos, which
+  sends a JPEG, or set the camera to Most Compatible; elsewhere, save it as
+  a JPEG first. The forms of the photos, the journal and the receipts say
+  so for a file that the browser refuses, and Rescord for a file whose
+  first bytes are those of HEIF (issue 34).
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is

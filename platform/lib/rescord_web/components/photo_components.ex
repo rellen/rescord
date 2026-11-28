@@ -13,7 +13,7 @@ defmodule RescordWeb.PhotoComponents do
 
   use RescordWeb, :html
 
-  alias RescordWeb.ResidentWords
+  alias RescordWeb.{ResidentWords, UploadWords}
 
   @doc """
   The profile picture of a resident, with a link to its photos, or nothing
@@ -162,7 +162,7 @@ defmodule RescordWeb.PhotoComponents do
                 {entry.progress} percent
               </progress>
               <span :for={error <- upload_errors(@upload, entry)} role="alert">
-                {upload_words(error)}
+                {UploadWords.of(error, entry, &upload_words/1)}
               </span>
               <.button
                 type="button"

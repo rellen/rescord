@@ -8,7 +8,7 @@ defmodule RescordWeb.JournalComponents do
   use RescordWeb, :html
 
   alias Rescord.{Accounts, Journal}
-  alias RescordWeb.JournalWords
+  alias RescordWeb.{JournalWords, UploadWords}
 
   @doc "The form of a new journal entry, with the fields of the kind that the member chooses."
   attr :form, :any, required: true
@@ -283,7 +283,11 @@ defmodule RescordWeb.JournalComponents do
           <progress value={entry.progress} max="100" aria-label={"Sent of #{entry.client_name}"}>
             {entry.progress} percent
           </progress>
-          <span :for={error <- upload_errors(@upload, entry)} role="alert">{upload_words(error)}</span>
+          <span :for={error <- upload_errors(@upload, entry)} role="alert">{UploadWords.of(
+            error,
+            entry,
+            &upload_words/1
+          )}</span>
           <.button
             type="button"
             phx-click="cancel_file"

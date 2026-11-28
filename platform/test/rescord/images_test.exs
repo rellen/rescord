@@ -101,6 +101,19 @@ defmodule Rescord.ImagesTest do
     assert Exception.message(error) == "is a photo that Rescord cannot read"
   end
 
+  test "refuses a HEIC or an AVIF photo with words that say what to do (issue 34)" do
+    for brand <- ~w(heic heix mif1 avif) do
+      bytes = <<0, 0, 0, 24, "ftyp", brand::binary, 0, 0, 0, 0, "mif1heic">>
+      assert {:error, %RefusedFile{reason: :heic} = error} = Images.prepare(bytes)
+      assert Exception.message(error) =~ "HEIC or AVIF photo"
+      assert Exception.message(error) =~ "JPEG"
+    end
+
+    # An MP4 has a box `ftyp` too, with another brand.
+    assert {:error, %RefusedFile{reason: :not_a_photo}} =
+             Images.prepare(<<0, 0, 0, 24, "ftypisom", 0, 0, 0, 0>>)
+  end
+
   test "refuses a photo of more than 100 million pixels before it decodes it" do
     # A PNG whose header says 20000 by 20000 pixels, with almost no data:
     # libvips reads the header, and decodes nothing.

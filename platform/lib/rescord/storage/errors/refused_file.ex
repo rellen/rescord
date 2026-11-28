@@ -15,6 +15,8 @@ defmodule Rescord.Storage.Errors.RefusedFile do
   - `:not_a_photo_or_pdf`: the first bytes are not those of a type that a
     journal or a receipt takes.
   - `:not_a_photo`: the first bytes are not those of a photo.
+  - `:heic`: the first bytes are those of a HEIC or an AVIF photo, which
+    Rescord cannot read (`Rescord.Images.heif?/1`, issue 34).
   - `:busy`: other photos took each place in libvips for too long (ADR 0056).
   - `:unreadable`: the bytes say photo, and libvips cannot read them.
   - `:too_many_pixels`: the photo has more than 100 million pixels.
@@ -28,6 +30,7 @@ defmodule Rescord.Storage.Errors.RefusedFile do
           | :too_large
           | :not_a_photo_or_pdf
           | :not_a_photo
+          | :heic
           | :busy
           | :unreadable
           | :too_many_pixels
@@ -42,6 +45,12 @@ defmodule Rescord.Storage.Errors.RefusedFile do
     do: "is not a photo or a PDF: Rescord takes JPEG, PNG, GIF, WebP and PDF"
 
   defp words(:not_a_photo), do: "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"
+
+  defp words(:heic),
+    do:
+      "is a HEIC or AVIF photo, which Rescord cannot read. Save it as a JPEG first, or on an " <>
+        "iPhone pick it from Photos, which sends a JPEG"
+
   defp words(:busy), do: "waited too long behind other photos. Try again in a minute"
   defp words(:unreadable), do: "is a photo that Rescord cannot read"
   defp words(:too_many_pixels), do: "has more than 100 million pixels"
