@@ -28,31 +28,29 @@ config :rescord, RescordWeb.LiveChanges, wait: 0
 config :rescord,
   token_signing_secret: "VDTYZSc078CDlK1BowcxqaEqUjVYsKD9V8fnz9wwyYrAsRYDWwZLvr8fATXrUJCM"
 
-# Configure your database
-#
-# The MIX_TEST_PARTITION environment variable can be used
-# to provide built-in test partitioning in CI environment.
-# Run `mix help test` for more information.
+# Several runs of `mix test` at one time need a database, a port and a
+# directory of files each (the server on the port is for the browser
+# tests). The slot k of scripts/test-in-parts.sh
+# (RESCORD_TEST_SLOT, ADR 0103), or else the part k of
+# `mix test --partitions` (MIX_TEST_PARTITION), gives the database
+# rescord_test<k>, the port 4002 + k and its own directory of files.
+test_slot = System.get_env("RESCORD_TEST_SLOT") || System.get_env("MIX_TEST_PARTITION", "")
+
+# The database of the tests.
 config :rescord, Rescord.Repo,
   username: "postgres",
   password: "postgres",
   # devenv sets PGHOST and PGPORT; it can move Postgres off 5432 when that port is taken.
   hostname: System.get_env("PGHOST", "localhost"),
   port: String.to_integer(System.get_env("PGPORT", "5432")),
-  database: "rescord_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "rescord_test#{test_slot}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
-
-# The tests run a server on port 4002, for the browser tests. Two runs of
-# `mix test` at one time cannot both have that port, so part k of
-# `mix test --partitions` (MIX_TEST_PARTITION) takes 4002 + k:
-# scripts/test-in-parts.sh runs several parts side by side (ADR 0103).
-test_partition = System.get_env("MIX_TEST_PARTITION", "")
 
 config :rescord, RescordWeb.Endpoint,
   http: [
     ip: {127, 0, 0, 1},
-    port: 4002 + if(test_partition == "", do: 0, else: String.to_integer(test_partition))
+    port: 4002 + if(test_slot == "", do: 0, else: String.to_integer(test_slot))
   ],
   secret_key_base: "9iDnT6galUTuMetbw7HGDpETn9kOplPWofCu2/hsMdMN7kGHzrwJ4iTte0GffAyG",
   # A browser test needs a real server (ADR 0023). A run of muex starts
@@ -78,7 +76,7 @@ config :rescord, Rescord.Transfers.Keys, secret: "the secret of the test keys, 3
 config :rescord, Rescord.Vault, secret: "the secret of the test keys, 32 bytes or more"
 # The store of the files, a directory for each part of the tests.
 config :rescord, Rescord.Storage.Disk,
-  root: Path.join(System.tmp_dir!(), "rescord-test-store#{test_partition}")
+  root: Path.join(System.tmp_dir!(), "rescord-test-store#{test_slot}")
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false

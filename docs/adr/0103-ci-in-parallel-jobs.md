@@ -38,11 +38,16 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   fails when a resource needs a migration that nobody generated. Each step
   runs even when one before it failed, so one run shows each fault.
 - **The tests run in parts.** `mix test --exclude playwright --partitions N`
-  on J runners, each with its own PostgreSQL. Each runner runs N / J parts
-  at once (`scripts/test-in-parts.sh`; J is 8 and N is 32), and each part
-  has its database `rescord_test<k>` and its port 4002 + k. Mix deals all
-  the sorted test files out in turn, before `--only` or `--exclude` picks
-  the tests, so a part gets files, not a share of the time.
+  on J runners, each with its own PostgreSQL. Mix deals all the sorted
+  test files out in turn, before `--only` or `--exclude` picks the tests,
+  so a part gets files, not a share of the time, and parts differ a lot.
+  So each runner has N / J small parts and runs them in 4 slots
+  (`scripts/test-in-parts.sh`; J is 8 and N is 96): a slot takes the next
+  part that no slot has taken when its part ends, so the slots stay busy
+  to the end with no file of test times. Slot k has the database
+  `rescord_test<k>`, the port 4002 + k and a directory of files of its own
+  (RESCORD_TEST_SLOT). The floor is the slowest test file: a few files
+  take about 2 minutes each, and a part holds one file or more.
 - **The browser tests run apart**, in M parts (M is 2), with
   `mix test --only playwright --partitions M`. `--only` finds a browser
   test in any file. A part with no browser test fails with "no test was
