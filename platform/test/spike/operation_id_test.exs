@@ -173,6 +173,15 @@ defmodule Rescord.Spike.OperationIdTest do
       end)
 
     show("remove_resident", groups)
+
+    %{rows: rows} =
+      Repo.query!(
+        ~s|select version_action_name, operation_id::text, upper(valid_at) is not null from "#{schema(context.organisation)}".placements where resident_id = $1|,
+        [Ecto.UUID.dump!(fern.id)]
+      )
+
+    IO.inspect(rows, label: "SPIKE the placement of the removed resident (action, id, ended)")
+    IO.inspect(Enum.map(groups, &elem(&1, 0)), label: "SPIKE the id of the removal")
   end
 
   test "4. bulk actions", context do
@@ -287,6 +296,29 @@ defmodule Rescord.Spike.OperationIdTest do
       end)
 
     show("complete_task", groups)
+  end
+
+  test "8. a function of a domain that runs two actions, with a given id", context do
+    admin = context.admin
+    shed = Locations.add_location!(%{name: "Shed"}, admin)
+    yard = Locations.add_location!(%{name: "Yard"}, admin)
+    pen = Locations.add_location!(%{name: "Pen"}, admin)
+    {:ok, _} = Locations.move_location(pen, shed.id, admin)
+
+    {{:ok, _}, groups} =
+      written(schema(context.organisation), fn ->
+        Locations.move_location(pen, yard.id, admin)
+      end)
+
+    show("move_location, no id given", groups)
+    mine = Ash.UUIDv7.generate()
+
+    {{:ok, _}, groups} =
+      written(schema(context.organisation), fn ->
+        Locations.move_location(pen, shed.id, admin ++ given(mine))
+      end)
+
+    show("move_location, id given #{mine}", groups)
   end
 
   test "7. the public schema: an organisation and its first member", context do
