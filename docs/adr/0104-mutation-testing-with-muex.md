@@ -36,9 +36,9 @@ runs `mix test` again for each mutant, and `lib/` has about 470 files.
   muex, not the time of the run. A mutant of a domain recompiles hundreds
   of files, and at 60 seconds four such mutants timed out.
 - **A `mix test` of muex skips the set-up of the alias `test`.** muex runs
-  each mutant in a copy of the project that has no `assets/`, so
-  `assets.build` fails there, and `ash.setup` costs seconds for each
-  mutant. `mix test.mutation` sets `RESCORD_MUTATION_RUN=1`, the runs of
+  each mutant in a copy of the project, where `ash.setup` and
+  `assets.build` cost seconds for each mutant, and `assets.build` would
+  write into the real `priv/static`, which the copy links to. `mix test.mutation` sets `RESCORD_MUTATION_RUN=1`, the runs of
   muex inherit it, and the alias `test` then has no set-up. Set up the test
   database and the assets once, before a run.
 - **`--no-tce`.** The check of muex 0.13.1 for a mutant that compiles to the
@@ -50,6 +50,20 @@ runs `mix test` again for each mutant, and `lib/` has about 470 files.
   for them. A resource of Ash has modules inside it too. With `--no-tce` the
   same mutants were killed or survived. muex still drops the mutants that
   its rules of the syntax prove equivalent.
+- **`--mirror assets`.** Beside `lib/`, `test/` and `deps/`, a copy of muex
+  links `config/` and `priv/` only.
+  The tests that read `assets/` (the tokens, the icons, the favicon,
+  Cinder and the mail) then failed for each mutant, and muex called it
+  killed: in the first runs on `main`, 51 of 72 kills and 29 of 193 kills.
+  With `--mirror assets` the copy links `assets/` too.
+- **muex misses the tests of `alias A.{B, C}`.** muex 0.13.1 finds the
+  test files of a module from the `alias`, `import` and calls of each test
+  file, and does not expand an alias with braces or read `doctest`. 73 of
+  the 163 test files have such an alias. So muex does not run them for a
+  mutant of those modules, and a mutant that one of them kills can
+  survive: 6 of the 15 survivors of the first runs were killed by a test
+  that muex did not choose. Read a survivor with that in mind. When each
+  alias of the tests names one module, muex chooses those files too.
 - **`.github/workflows/mutation.yml` runs it, and no push starts it.** It
   runs by hand, with the files, the preset of muex and the time budget as
   inputs, and each Monday at 16:00 UTC on the lines that changed since the

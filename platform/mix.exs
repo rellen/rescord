@@ -193,8 +193,9 @@ defmodule Rescord.MixProject do
   end
 
   # muex runs `mix test` for each mutant, in a copy of the project (a
-  # sandbox) that has no `assets/`. The set-up of the alias `test` would then
-  # fail, and it would cost seconds for each mutant. So `mix test.mutation`
+  # sandbox). The set-up of the alias `test` would cost seconds for each
+  # mutant, and `assets.build` would write into the real `priv/static`,
+  # which the copy links to. So `mix test.mutation`
   # sets RESCORD_MUTATION_RUN, each `mix test` of muex inherits it, and its
   # alias `test` skips the set-up. The workflow and a person set up the test
   # database and the assets once, before the run.
@@ -224,13 +225,18 @@ defmodule Rescord.MixProject do
   # calls nearly each mutant of the outer module equivalent and runs no test
   # (ADR 0104). --timeout is the time with no output from `mix test`: a
   # mutant of a domain recompiles hundreds of files, and at 60 seconds four
-  # such mutants timed out on 4 cores.
+  # such mutants timed out on 4 cores. --mirror assets: some tests read
+  # `assets/`, which a copy of muex lacks without it, so they failed for
+  # each mutant and "killed" it.
   defp muex_command do
     test_files =
       Path.wildcard("test/**/*_test.exs") -- Path.wildcard("test/rescord_web/features/**")
 
     Enum.join(
-      ["muex --fail-at 0 --timeout 180000 --no-tce --test-paths", Enum.join(test_files, ",")],
+      [
+        "muex --fail-at 0 --timeout 180000 --no-tce --mirror assets --test-paths",
+        Enum.join(test_files, ",")
+      ],
       " "
     )
   end
