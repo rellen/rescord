@@ -215,15 +215,10 @@ header > nav ul [aria-current] {
     padding-inline: 0.375rem;
   }
 
+  /* A long address breaks onto a second line, as on a phone: all of it
+     shows, with no tooltip (WCAG 1.4.13). */
   header > nav ul:last-child > li:has(> span) {
     min-inline-size: 0;
-  }
-
-  /* A long address ends in an ellipsis, and its `title` has all of it. */
-  header > nav ul span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   header > nav ul a {

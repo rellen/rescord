@@ -775,9 +775,24 @@ release (ADR 0047).
   now at the top of one list, each with its day, and not in a table of
   their own, so a filter holds for both. After Take, Done, Skip or Open
   again the page stays where it was (ADR 0097).
+- The help beside a tick box is tied to the box, so a screen reader reads
+  it with the box: the notes of a calendar feed, and the two kinds of
+  notification of a server. The whole email address shows in the menu,
+  on two lines where it is long, and the whole public key of the push
+  service shows on its page: before, each was cut short and the rest was
+  only in a tooltip (ADR 0108).
+- The page names the language and region of the organisation, such as
+  `en-AU`, for a screen reader and a browser. The words of a calendar
+  feed, and the month of the expenses, have the forms of the organisation
+  as its pages do (ADR 0108).
+- A location with room for a number of residents says "2 residents, room
+  for 3". A group in a location says "here: 2 of the 3 in the group".
 
 ### Fixed
 
+- The warning of an expiry on the lists page said "1 days" for a value of
+  one day, and a location with room for one resident said "1 of 1
+  residents".
 - The table "Owed to members" of the expense report put every person who
   had left in one row "A person who left". Each payer has their own row
   now (ADR 0105).

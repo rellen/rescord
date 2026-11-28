@@ -49,6 +49,10 @@ defmodule RescordWeb.CalendarFeedController do
 
     case Calendars.fetch(short_name, token, now) do
       {:ok, feed, user, organisation} ->
+        # The words of an event, such as a dose, have the forms of the
+        # organisation, as its pages do (ADR 0075).
+        :ok = RescordWeb.Locale.put(organisation)
+
         # A fault in the read is a fault of Rescord, and not an empty calendar.
         {:ok, entries} = Calendars.entries(feed, user, organisation, now)
 

@@ -57,6 +57,25 @@ defmodule RescordWeb.CoreComponentsTest do
            ]
   end
 
+  test "a checkbox with a hint is described by it, below its label" do
+    doc =
+      render_component(&input/1,
+        type: "checkbox",
+        id: "notes",
+        name: "notes",
+        label: "Include the notes",
+        hint: "A calendar service keeps a copy."
+      )
+      |> parse()
+
+    assert attribute(doc, ~s(label > input[type="checkbox"]), "aria-describedby") == [
+             "notes-hint"
+           ]
+
+    assert doc |> LazyHTML.query("label + small#notes-hint[data-hint]") |> LazyHTML.text() ==
+             "A calendar service keeps a copy."
+  end
+
   test "a primary button and a link button carry their variant" do
     assigns = %{}
 

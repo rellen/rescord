@@ -72,7 +72,7 @@ defmodule RescordWeb.HousingPagesTest do
       |> visit(context.base <> "/housing")
       |> assert_has(main() |> article("Long room") |> heading("Long room", level: 2))
       |> assert_has(east |> heading("East 1", level: 3))
-      |> assert_has(east, text: "1 of 1 residents")
+      |> assert_has(east, text: "1 resident, room for 1")
       |> assert_has(east |> item(~r/^Fern$/) |> link("Fern"))
       # A member has no form for a new location.
       |> refute_has(button("Add the location"))
@@ -94,7 +94,7 @@ defmodule RescordWeb.HousingPagesTest do
         article("East 1"),
         &assert_has(&1, "[data-state=alert]", text: "Over its capacity")
       )
-      |> assert_has(article("East 1"), text: "2 of 1 residents")
+      |> assert_has(article("East 1"), text: "2 residents, room for 1")
     end
 
     test "lets an administrator add a location inside another", context do
@@ -128,7 +128,7 @@ defmodule RescordWeb.HousingPagesTest do
       |> select("A resident", option: "Fern")
       |> click_button("Put here")
       |> assert_has(who_lives_here() |> link("Fern"))
-      |> assert_has(main(), text: "1 of 1 residents")
+      |> assert_has(main(), text: "1 resident, room for 1")
       |> click(who_lives_here() |> button("End the placement of Fern"))
       |> assert_has(who_lives_here(), text: "Nobody has a placement here.")
     end
@@ -160,7 +160,9 @@ defmodule RescordWeb.HousingPagesTest do
       |> select("Or a group", option: "Fern and Sage")
       |> fill_in("When the move happened, if not now", with: at)
       |> click_button("Put here")
-      |> assert_has(who_lives_here() |> item(~r/^Fern and Sage/), text: "(2 of 2 members here)")
+      |> assert_has(who_lives_here() |> item(~r/^Fern and Sage/),
+        text: "(here: 2 of the 2 in the group)"
+      )
       |> within(main(), &assert_has(&1, "[data-state=alert]", text: "Over its capacity"))
 
       # The group was not there before the time that the member gave.

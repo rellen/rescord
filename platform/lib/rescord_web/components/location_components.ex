@@ -92,15 +92,15 @@ defmodule RescordWeb.LocationComponents do
     """
   end
 
-  @doc "The words for how full a location is: `2 of 2 residents`, `3 residents`, `Free`."
+  @doc "The words for how full a location is: `2 residents, room for 2`, `3 residents`, `Free`."
   def occupancy(%{count: 0}), do: "Free"
 
   def occupancy(%{count: count, location: %{capacity: capacity}}) when is_integer(capacity),
-    do: "#{count} of #{capacity} residents"
+    do: "#{residents(count)}, room for #{RescordWeb.Locale.number(capacity)}"
 
-  def occupancy(%{count: 1}), do: "1 resident"
+  def occupancy(%{count: count}), do: residents(count)
 
-  def occupancy(%{count: count}), do: "#{count} residents"
+  defp residents(count), do: RescordWeb.Locale.count(count, "resident", "residents")
   @doc "The form that puts a resident or a group in a location."
   attr :place_form, :any, required: true
   attr :residents, :any, required: true
@@ -168,7 +168,7 @@ defmodule RescordWeb.LocationComponents do
             <.icon name={Icons.section(:groups)} /> {Residents.group_name(group)}
           </.link>
           <span>
-            ({length(members)} of {length(group.members)} members here)
+            (here: {length(members)} of the {length(group.members)} in the group)
           </span>
           <.button
             :if={can?(@role, :placement, :finish)}

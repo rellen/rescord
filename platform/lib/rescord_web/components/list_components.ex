@@ -177,7 +177,9 @@ defmodule RescordWeb.ListComponents do
   def value_soon_days(assigns) do
     ~H"""
     <small>
-      Expires soon: {if @value.soon_days, do: "#{@value.soon_days} days", else: "30 days, the default"} before its date
+      Expires soon: {if @value.soon_days,
+        do: "#{RescordWeb.Locale.count(@value.soon_days, "day", "days")} before its date",
+        else: "30 days before its date (the default)"}
     </small>
     <details :if={@can_change?} id={"soon-details-#{@value.id}"}>
       <summary>Days before expiry of {@value.label}</summary>

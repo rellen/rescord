@@ -215,12 +215,13 @@ defmodule RescordWeb.CoreComponents do
           value="true"
           checked={@checked}
           aria-invalid={@errors != [] && "true"}
-          aria-describedby={@errors != [] && error_id(@id)}
+          aria-describedby={described_by(@id, @errors, @hint)}
           {@rest}
         />
         {@label}
       </label>
       <.errors id={@id} errors={@errors} />
+      <.hint id={@id} hint={@hint} />
     </div>
     """
   end

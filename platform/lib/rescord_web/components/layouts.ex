@@ -190,7 +190,7 @@ defmodule RescordWeb.Layouts do
               </.link>
             </li>
             <li>
-              <span title={@current_user.email}><.icon name="user-circle" /> {@current_user.email}</span>
+              <span><.icon name="user-circle" /> {@current_user.email}</span>
             </li>
             <li>
               <.link href={~p"/sign-out"} method="delete">
@@ -286,7 +286,6 @@ defmodule RescordWeb.Layouts do
     <.link
       navigate={~p"/o/#{@organisation.short_name}/notifications"}
       data-inbox
-      title={gettext("Notifications")}
       aria-current={@current && "true"}
     >
       <.icon name="bell" /><span>{gettext("Notifications")}</span>

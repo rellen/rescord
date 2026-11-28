@@ -116,12 +116,6 @@ defmodule RescordWeb.RootPushLive do
   defp made(nil), do: nil
   defp made(%DateTime{} = at), do: ResidentWords.date(DateTime.to_date(at))
 
-  # The public key in short, as the page shows it.
-  defp short_key(key) when is_binary(key) and byte_size(key) > 12,
-    do: String.slice(key, 0, 6) <> "…" <> String.slice(key, -4, 4)
-
-  defp short_key(key), do: key
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -152,9 +146,7 @@ defmodule RescordWeb.RootPushLive do
         <dl :if={@settings.vapid_public_key}>
           <dt>Public key</dt>
           <dd>
-            <code title={@settings.vapid_public_key}>{short_key(@settings.vapid_public_key)}</code>, made on {made(
-              @settings.keys_made_at
-            )}
+            <code>{@settings.vapid_public_key}</code>, made on {made(@settings.keys_made_at)}
           </dd>
         </dl>
         <p :if={is_nil(@settings.vapid_public_key)}>
@@ -184,12 +176,12 @@ defmodule RescordWeb.RootPushLive do
           label="Contact for the push services"
           hint="An address that starts with mailto: or https://. Apple, Google, Mozilla and Microsoft can write to it about the notifications of this server."
         />
-        <.input field={@form[:push_on]} type="checkbox" label="Send notifications to devices" />
-        <p>
-          <small>
-            A notification holds the name of the refuge and one sentence of its kind, encrypted for the device. It names no resident, no person and no words of a comment.
-          </small>
-        </p>
+        <.input
+          field={@form[:push_on]}
+          type="checkbox"
+          label="Send notifications to devices"
+          hint="A notification holds the name of the organisation and one sentence of its kind, encrypted for the device. It names no resident, no person and no words of a comment."
+        />
         <.input
           field={@form[:ntfy_url]}
           type="url"
@@ -197,12 +189,12 @@ defmodule RescordWeb.RootPushLive do
           placeholder="https://ntfy.sh"
           hint="The address of a server of ntfy, which starts with https://. Each person gets a topic of their own there, with a name that nobody can guess."
         />
-        <.input field={@form[:ntfy_on]} type="checkbox" label="Send notifications to ntfy" />
-        <p>
-          <small>
-            ntfy gets the name of the refuge, one sentence of its kind and a link to the page of notifications, with no encryption of its own. A server of your own keeps that with you.
-          </small>
-        </p>
+        <.input
+          field={@form[:ntfy_on]}
+          type="checkbox"
+          label="Send notifications to ntfy"
+          hint="ntfy gets the name of the organisation, one sentence of its kind and a link to the page of notifications, with no encryption of its own. A server of your own keeps that with you."
+        />
         <footer><button type="submit">Save</button></footer>
       </.form>
 
