@@ -52,6 +52,7 @@ defmodule RescordWeb.Usage do
     RescordWeb.ExpenseLive => :expenses,
     RescordWeb.ExpenseFormLive => :expenses,
     RescordWeb.ReportsLive => :reports,
+    RescordWeb.CareInsightsLive => :reports,
     RescordWeb.TransfersLive => :transfers,
     RescordWeb.PartnersLive => :transfers,
     RescordWeb.ExportLive => :export,
@@ -70,7 +71,8 @@ defmodule RescordWeb.Usage do
     RescordWeb.RootUsageLive => :server,
     RescordWeb.RootPushLive => :server,
     RescordWeb.RootPrivacyLive => :server,
-    RescordWeb.RootScanLive => :server
+    RescordWeb.RootScanLive => :server,
+    RescordWeb.RootHealthLive => :server
   }
 
   # The feature and the item of each file, by the controller and its action.
@@ -100,7 +102,8 @@ defmodule RescordWeb.Usage do
     RescordWeb.PhotoController => "the pictures of a page",
     RescordWeb.ReceiptController => "a file of a record: the page that links it counts",
     RescordWeb.MailPreviewController => "the emails in development",
-    RescordWeb.CatalogueController => "the catalogue of the components, in development"
+    RescordWeb.CatalogueController => "the catalogue of the components, in development",
+    Oban.Web.Assets => "the stylesheet, the script and the font of Oban Web (ADR 0110)"
   }
 
   @doc "Starts to listen to the pages and the requests. A second call changes nothing."
