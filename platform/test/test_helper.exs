@@ -26,5 +26,10 @@ exclude =
     [:playwright]
   end
 
-ExUnit.start(exclude: exclude)
+# render_async/1 and assert_receive/2 wait for assert_receive_timeout, 100 ms
+# by default. CI runs 4 parts of the tests at once on a runner of 4 cores
+# (ADR 0103), and there an async load or a task of a page took longer than
+# that. A longer wait costs nothing when the message comes, only when a test
+# fails. refute_receive keeps its own short wait.
+ExUnit.start(exclude: exclude, assert_receive_timeout: 2_000)
 Ecto.Adapters.SQL.Sandbox.mode(Rescord.Repo, :manual)

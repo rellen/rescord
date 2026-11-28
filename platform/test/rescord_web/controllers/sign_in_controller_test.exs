@@ -111,7 +111,7 @@ defmodule RescordWeb.SignInControllerTest do
       conn = post(conn, ~p"/sign-in", %{"email" => to_string(user.email)})
       assert redirected_to(conn) == ~p"/sign-in/sent"
 
-      assert_receive {:building, task}, 1_000
+      assert_receive {:building, task}
       assert Process.alive?(task)
       assert_no_email_sent()
 
