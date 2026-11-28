@@ -410,6 +410,120 @@ defmodule Rescord.Inventory do
     |> Ash.Query.load(:lot)
   end
 
+  # The days of the use that gives a rate (ADR 0123).
+  @use_days 30
+
+  @doc """
+  The level of an item at the end of each day from `first` to `last`, both
+  in, in the time zone of the organisation, and the quantity that was used
+  or discarded in the #{@use_days} days to `last` (ADR 0123). A level is
+  the sum of the movements of each lot of the item up to the end of its
+  day, as `stock/1` sums them.
+
+  Returns `%{levels: [{date, level}], used: quantity}`. The read is as the
+  actor of `opts`, and selects only the quantity, the kind and the time of
+  each movement.
+  """
+  @spec levels_by_day(String.t(), Date.t(), Date.t(), keyword) :: {:ok, map} | {:error, term}
+  def levels_by_day(item_id, %Date{} = first, %Date{} = last, opts \\ []) do
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+    since = Date.add(last, -(@use_days - 1))
+
+    StockMovement
+    |> Ash.Query.filter(lot.item_id == ^item_id and happened_at < ^to)
+    |> Ash.Query.select([:quantity, :kind, :happened_at])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, movements} ->
+        dated =
+          Enum.map(movements, fn movement ->
+            {Rescord.Accounts.local_date(opts[:tenant], movement.happened_at), movement}
+          end)
+
+        {before, within} = Enum.split_with(dated, fn {on, _} -> Date.before?(on, first) end)
+        start = before |> Enum.map(fn {_, movement} -> movement.quantity end) |> Levels.sum()
+        changes = Enum.group_by(within, &elem(&1, 0), fn {_, movement} -> movement.quantity end)
+
+        {levels, _} =
+          Enum.map_reduce(Date.range(first, last), start, fn date, level ->
+            level = Decimal.add(level, changes |> Map.get(date, []) |> Levels.sum())
+            {{date, level}, level}
+          end)
+
+        used =
+          for {on, %{kind: kind, quantity: quantity}} <- dated,
+              kind in [:used, :discarded],
+              not Date.before?(on, since) do
+            Decimal.negate(quantity)
+          end
+          |> Levels.sum()
+
+        {:ok, %{levels: levels, used: used}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
+  The quantity of each item that was used or discarded in the
+  #{@use_days} days to `last` (ADR 0123): a map from the id of each item
+  with a use to the quantity. The read is as the actor of `opts`.
+  """
+  @spec use_by_item(Date.t(), keyword) :: {:ok, %{String.t() => Decimal.t()}} | {:error, term}
+  def use_by_item(%Date{} = last, opts \\ []) do
+    {from, _} = Rescord.Accounts.day_range(opts[:tenant], Date.add(last, -(@use_days - 1)))
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+
+    StockMovement
+    |> Ash.Query.filter(
+      kind in [:used, :discarded] and happened_at >= ^from and happened_at < ^to
+    )
+    |> Ash.Query.select([:quantity, :lot_id])
+    |> Ash.Query.load(:lot)
+    |> Ash.read(opts)
+    |> case do
+      {:ok, movements} ->
+        {:ok,
+         movements
+         |> Enum.filter(& &1.lot)
+         |> Enum.group_by(& &1.lot.item_id, &Decimal.negate(&1.quantity))
+         |> Map.new(fn {item_id, quantities} -> {item_id, Levels.sum(quantities)} end)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
+  The whole days that a level lasts, at the rate of the quantity `used` in
+  #{@use_days} days (ADR 0123): `nil` when nothing was used, and `0` when
+  the level is none.
+
+      iex> Rescord.Inventory.days_left(Decimal.new(10), Decimal.new(30))
+      10
+
+      iex> Rescord.Inventory.days_left(Decimal.new("10.5"), Decimal.new(7))
+      45
+
+      iex> Rescord.Inventory.days_left(Decimal.new(10), Decimal.new(0))
+      nil
+
+      iex> Rescord.Inventory.days_left(Decimal.new(-2), Decimal.new(3))
+      0
+  """
+  @spec days_left(Decimal.t(), Decimal.t()) :: non_neg_integer | nil
+  def days_left(%Decimal{} = level, %Decimal{} = used) do
+    cond do
+      not Decimal.gt?(used, 0) -> nil
+      not Decimal.gt?(level, 0) -> 0
+      true -> level |> Decimal.mult(@use_days) |> Decimal.div_int(used) |> Decimal.to_integer()
+    end
+  end
+
+  @doc "The days of the use that `days_left/2` takes."
+  def use_days, do: @use_days
+
   @doc """
   Gives an item a reorder level in one location, changes the one that it
   has, or removes it when `quantity` is `nil`. Returns the level, or `nil`

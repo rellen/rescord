@@ -62,6 +62,15 @@ defmodule RescordWeb.InsightComponents do
         </small>
       </li>
       <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/stock"}>
+          Stock and days left
+        </.link>
+        <small>
+          When will we run out of each item? The days left of each item at the use of the last
+          30 days.
+        </small>
+      </li>
+      <li>
         <.link navigate={~p"/o/#{@organisation.short_name}/insights/hours"}>
           When the care is done
         </.link>

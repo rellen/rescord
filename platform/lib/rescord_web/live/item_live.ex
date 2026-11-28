@@ -22,7 +22,7 @@ defmodule RescordWeb.ItemLive do
   alias Rescord.{Accounts, Inventory, Lists, Locations}
   import RescordWeb.InventoryComponents
 
-  alias RescordWeb.InventoryWords
+  alias RescordWeb.{InventoryWords, StockTrend}
 
   # The name of each form in the fields that the browser sends, and its assign.
   @forms [
@@ -100,8 +100,19 @@ defmodule RescordWeb.ItemLive do
       places: places,
       place_names: Map.new(places, fn {name, id} -> {id, String.trim_leading(name, "– ")} end),
       suppliers: suppliers |> Enum.map(&{&1.name, &1.id}) |> Enum.sort(),
-      wanted: Enum.filter(wanted, &(&1.item_id == id))
+      wanted: Enum.filter(wanted, &(&1.item_id == id)),
+      trend: trend(stock, options)
     )
+  end
+
+  # The stock of the last 90 days, and the forecast (ADR 0123).
+  defp trend(stock, options) do
+    today = Accounts.today(options[:tenant])
+
+    case Inventory.levels_by_day(stock.item.id, Date.add(today, -89), today, options) do
+      {:ok, levels} -> StockTrend.build(stock, levels, today)
+      {:error, _error} -> nil
+    end
   end
 
   # Another person changed the inventory or the locations (ADR 0096). The
@@ -430,6 +441,8 @@ defmodule RescordWeb.ItemLive do
         refused={@refused}
         problems={@problems}
       />
+
+      <.stock_trend :if={@trend} trend={@trend} item={@item} />
 
       <.stock_history
         as_of={@as_of}

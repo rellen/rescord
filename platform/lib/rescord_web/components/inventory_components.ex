@@ -12,9 +12,66 @@ defmodule RescordWeb.InventoryComponents do
 
   import RescordWeb.ToolComponents, only: [strength_controls: 1]
   import Shoddy.Strings, only: [upcase_first: 1]
+  import RescordWeb.ChartComponents, only: [line_chart: 1]
+  import RescordWeb.InsightComponents, only: [key: 1]
 
   alias Rescord.{Accounts, Dosage, Inventory}
-  alias RescordWeb.{InventoryWords, ResidentWords, TaskWords, ToolWords}
+  alias RescordWeb.{InventoryWords, Locale, ResidentWords, TaskWords, ToolWords}
+
+  @doc """
+  The stock of an item over time (ADR 0123): a step line of the level at
+  the end of each day of the last 90 days, the forecast dashed to the day
+  when it runs out, the reorder level as a rule, and a dotted line where a
+  lot expires. The level at the end of each week is a table below it.
+  `RescordWeb.StockTrend.build/3` makes `trend`.
+  """
+  attr :trend, :map, required: true
+  attr :item, :map, required: true
+
+  def stock_trend(assigns) do
+    ~H"""
+    <section aria-labelledby="trend-heading">
+      <h2 id="trend-heading">Stock over time</h2>
+      <.line_chart
+        id="trend"
+        title={"The stock of #{@item.name} at the end of each day"}
+        summary={@trend.summary}
+        points={@trend.points}
+        scale={@trend.scale}
+        rules={@trend.rules}
+        ahead={@trend.ahead}
+        moments={@trend.moments}
+        step
+        from={@trend.from}
+        to={@trend.to}
+      />
+      <.key items={
+        [{"line", "In stock"}] ++
+          if(@trend.ahead != [], do: [{"ahead", "At the use of the last 30 days"}], else: []) ++
+          if(@trend.rules != [], do: [{"rule", "Reorder level"}], else: []) ++
+          if(@trend.moments != [], do: [{"moment", "A lot expires"}], else: [])
+      } />
+      <details id="trend-table">
+        <summary>The stock at the end of each week as a table</summary>
+        <table>
+          <caption>The stock of {@item.name} at the end of each week</caption>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col">In stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={{date, level} <- @trend.weeks}>
+              <th scope="row">{Locale.date(date)}</th>
+              <td data-label="In stock">{InventoryWords.quantity(level, @item)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </section>
+    """
+  end
 
   @doc "The stock of an item: its level, its state, and each lot in each place."
   attr :stock, :map, required: true

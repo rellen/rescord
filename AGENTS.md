@@ -1018,6 +1018,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `Chart.span/4` on a scale of days.
     A row can have `marks`, a tick or a ring, and the line `now`
     (ADR 0122): shapes, never the colour of a state.
+  - A forecast on a line chart is `ahead`, drawn dashed, and an instant
+    such as an expiry is a `moment` (ADR 0123). The days that stock lasts
+    are `Rescord.Inventory.days_left/2`, at the use of the last 30 days.
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the

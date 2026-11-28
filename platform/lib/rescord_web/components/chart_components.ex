@@ -80,6 +80,16 @@ defmodule RescordWeb.ChartComponents do
     doc:
       "values drawn as a dashed rule across the plot, such as a capacity; give a scale that holds them"
 
+  attr :ahead, :list,
+    default: [],
+    doc:
+      "points of a forecast after the last point, drawn dashed (ADR 0123); give a scale that holds them"
+
+  attr :moments, :list,
+    default: [],
+    doc:
+      "instants drawn as a dotted line from top to bottom, such as the expiry of a lot (ADR 0123)"
+
   def line_chart(assigns) do
     scale = assigns.scale || Chart.scale(assigns.points)
     marks = Chart.marks(assigns.points, scale)
@@ -93,6 +103,8 @@ defmodule RescordWeb.ChartComponents do
         newest: List.last(marks),
         line: if(assigns.step, do: Chart.step_path(marks), else: Chart.path(marks)),
         rule_places: for(value <- assigns.rules, do: Chart.y(value, scale)),
+        ahead_line: assigns.ahead != [] && assigns.ahead |> Chart.marks(scale) |> Chart.path(),
+        moment_places: for(at <- assigns.moments, do: Chart.x(at, scale)),
         behind: Enum.map(assigns.context, &(&1 |> Chart.marks(scale) |> Chart.path())),
         grid: for(tick <- scale.ticks, do: Chart.y(tick, scale)),
         dots?: count <= @dots,
@@ -117,9 +129,18 @@ defmodule RescordWeb.ChartComponents do
             y1={"#{y}%"}
             y2={"#{y}%"}
           />
+          <line
+            :for={x <- @moment_places}
+            data-moment
+            x1={"#{x}%"}
+            x2={"#{x}%"}
+            y1="0"
+            y2="100%"
+          />
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%">
             <path :for={path <- @behind} data-context d={path} />
             <path data-line d={@line} />
+            <path :if={@ahead_line} data-ahead d={@ahead_line} />
           </svg>
           <g :if={@dots?} data-dots>
             <circle :for={mark <- @marks} cx={"#{mark.x}%"} cy={"#{mark.y}%"} r="4" />

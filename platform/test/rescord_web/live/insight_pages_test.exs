@@ -448,4 +448,67 @@ defmodule RescordWeb.InsightPagesTest do
       )
     end
   end
+
+  describe "stock and days left (ADR 0123)" do
+    setup context do
+      admin = [actor: context.administrator, tenant: context.organisation]
+      shed = Rescord.Locations.add_location!(%{name: "Feed shed"}, admin)
+
+      hay =
+        Rescord.Inventory.add_item!(
+          %{name: "Meadow hay", unit_id: context.lists.unit.bag, reorder_level: 2},
+          admin
+        )
+
+      Rescord.Inventory.add_item!(%{name: "Aspen bedding"}, admin)
+
+      lot =
+        Rescord.Inventory.receive_lot!(
+          %{
+            item_id: hay.id,
+            quantity: 10,
+            location_id: shed.id,
+            happened_at: DateTime.add(DateTime.utc_now(), -20, :day)
+          },
+          context.options
+        )
+
+      {:ok, _} =
+        Rescord.Inventory.use_stock(
+          %{lot_id: lot.id, location_id: shed.id, quantity: 6},
+          context.options
+        )
+
+      {:ok, hay: hay}
+    end
+
+    test "the page has the days left of each item that was used", context do
+      runs_out = Locale.date(Date.add(context.today, 20))
+
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/stock")
+      |> assert_has(heading("Stock and days left", level: 1))
+      |> assert_has(list("The items") |> link("Meadow hay"))
+      |> assert_has(list("The items"),
+        text:
+          "4 bag in stock, and 6 bag used or discarded in 30 days: about 20 days left, to #{runs_out}."
+      )
+      |> assert_has(region("Days left of each item"),
+        text:
+          "1 item was used or discarded in the last 30 days, and 0 run out in the next 14 days at that rate. Meadow hay runs out first, on #{runs_out}."
+      )
+      |> assert_has(region("Days left of each item"),
+        text: "With no use in the last 30 days: Aspen bedding."
+      )
+    end
+
+    test "the page of an item has its stock over time", context do
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/inventory/#{context.hay.id}")
+      |> assert_has(region("Stock over time"),
+        text:
+          "4 bag in stock that has not expired. In the last 30 days, members used or discarded 6 bag, so it lasts about 20 more days, to #{Locale.date(Date.add(context.today, 20))}. The reorder level is 2 bag."
+      )
+    end
+  end
 end

@@ -19,6 +19,7 @@ defmodule Rescord.InventoryTest do
   alias Rescord.Inventory.{Levels, StockMovement}
 
   doctest Levels
+  doctest Inventory, only: [days_left: 2]
 
   setup do
     root = root!()
@@ -766,6 +767,51 @@ defmodule Rescord.InventoryTest do
       refute Inventory.role_can?(:member, :item, :add)
       assert Inventory.role_can?(:administrator, :item, :add)
       refute Inventory.role_can?(:member, :reorder_level, :set)
+    end
+  end
+
+  describe "the stock over time and the days left (ADR 0123)" do
+    test "has the level at the end of each day, and the use of the last 30 days", context do
+      now = DateTime.utc_now()
+      lot = lot!(context, %{happened_at: DateTime.add(now, -40, :day)})
+      here = %{lot_id: lot.id, location_id: context.shed.id}
+
+      {:ok, _} =
+        Inventory.use_stock(
+          Map.merge(here, %{quantity: 2, happened_at: DateTime.add(now, -35, :day)}),
+          context.options
+        )
+
+      {:ok, _} =
+        Inventory.use_stock(Map.merge(here, %{quantity: 3, happened_at: now}), context.options)
+
+      {:ok, _} =
+        Inventory.discard_stock(Map.put(here, :quantity, "1.5"), context.options)
+
+      today = context.today
+
+      {:ok, trend} =
+        Inventory.levels_by_day(context.hay.id, Date.add(today, -2), today, context.options)
+
+      assert Enum.map(trend.levels, fn {date, level} -> {date, number(level)} end) == [
+               {Date.add(today, -2), "8"},
+               {Date.add(today, -1), "8"},
+               {today, "3.5"}
+             ]
+
+      assert number(trend.used) == "4.5"
+      assert {:ok, %{} = used} = Inventory.use_by_item(today, context.options)
+      assert number(used[context.hay.id]) == "4.5"
+      assert Inventory.days_left(Decimal.new("3.5"), trend.used) == 23
+    end
+
+    test "read nothing for a user of another organisation", context do
+      lot!(context)
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      assert {:ok, used} = Inventory.use_by_item(context.today, actor: outsider, tenant: other)
+      assert used == %{}
     end
   end
 end

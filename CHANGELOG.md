@@ -476,6 +476,13 @@ release (ADR 0047).
   that a task asked for and that was skipped or is overdue, and a line at
   now. Each course links to its prescription in the journal. Each member
   can open it.
+- The seventh insight, "Stock and days left" (issue 36, ADR 0123): a bar
+  for each item that was used or discarded in the last 30 days, from today
+  to the day when its stock that has not expired runs out at that rate,
+  the soonest first. The page of an item has a new section "Stock over
+  time": the level at the end of each day of the last 90 days, the
+  forecast to the day when it runs out, the reorder level, and the expiry
+  of each lot with stock.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A
