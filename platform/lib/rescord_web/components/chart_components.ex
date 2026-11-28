@@ -275,7 +275,8 @@ defmodule RescordWeb.ChartComponents do
       (optional)
 
   The variant `"numbers"` shows the words of each cell, for a table of
-  counts. With no variant, the cells are squares and their words are for a
+  counts. The variant `"dots"` draws a dot as large as the step of each
+  cell, for a punch card (ADR 0120). With no variant, the cells are squares and their words are for a
   screen reader. Like a point of a line chart, a cell takes a press and no
   keyboard focus: the table itself holds each value.
 
@@ -294,7 +295,7 @@ defmodule RescordWeb.ChartComponents do
   attr :columns, :list, required: true
   attr :rows, :list, required: true
   attr :corner, :string, default: nil, doc: "the header of the column of the names of the rows"
-  attr :variant, :string, default: nil, values: [nil, "numbers"]
+  attr :variant, :string, default: nil, values: [nil, "numbers", "dots"]
   attr :pick, :string, default: nil, doc: "the event of a press on a cell"
   attr :selected, :any, default: nil, doc: "the id of the cell that the person chose"
 

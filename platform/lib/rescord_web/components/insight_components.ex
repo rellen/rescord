@@ -43,6 +43,15 @@ defmodule RescordWeb.InsightComponents do
           and the cases that go on now.
         </small>
       </li>
+      <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/hours"}>
+          When the care is done
+        </.link>
+        <small>
+          Which hours are busy, and which hours slip? The tasks done in each hour of the week over
+          the last 12 weeks, and the share done late for each hour.
+        </small>
+      </li>
     </ul>
     """
   end

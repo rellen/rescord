@@ -414,6 +414,12 @@ release (ADR 0047).
   with a row for each condition and a column for each of the last 12
   weeks, with the new cases of the week, stronger in colour for more, the
   cases that go on now, and the totals. Each member can open it.
+- The fourth insight, "When the care is done" (issue 36, ADR 0120): a
+  punch card of the tasks done in each hour of each day of the week over
+  the last 12 weeks, with a dot as large as the tasks, and for each hour
+  the share of the tasks due in it that were done more than an hour late.
+  It counts the tasks of the refuge, and never the work of a person. Each
+  member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

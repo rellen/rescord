@@ -1463,6 +1463,54 @@ table[data-heat="numbers"] thead :is(td, th):first-child {
   inline-size: 3.5rem;
 }
 
+/* A punch card (ADR 0120): a dot as large as the step of its cell, in the
+   lead colour, and nothing for a count of none. */
+table[data-heat="dots"] td[data-level] {
+  block-size: 1.25rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+table[data-heat="dots"] td[data-level]:not([data-level="0"], [data-level="none"])::after {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: min(var(--dot), 100%);
+  aspect-ratio: 1;
+  content: "";
+  background: var(--accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* An hour with no task keeps its place on the grid with a point. */
+table[data-heat="dots"] td[data-level="0"]::after {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 2px;
+  block-size: 2px;
+  content: "";
+  background: var(--border);
+  transform: translate(-50%, -50%);
+}
+
+table[data-heat="dots"] td[data-level="1"] {
+  --dot: 0.3rem;
+}
+
+table[data-heat="dots"] td[data-level="2"] {
+  --dot: 0.55rem;
+}
+
+table[data-heat="dots"] td[data-level="3"] {
+  --dot: 0.8rem;
+}
+
+table[data-heat="dots"] td[data-level="4"] {
+  --dot: 1.05rem;
+}
+
 /* A wider screen has room for the whole name of a row. */
 @media (min-width: 40rem) {
   table[data-heat="numbers"] tbody th,
