@@ -1,5 +1,5 @@
 // Keeps the focus of the keyboard in its place when LiveView changes the
-// page (ADR 0090).
+// page (ADR 0090, ADR 0110).
 //
 // Two things took the focus away, and gave it to the top of the page, where
 // a person who uses the keyboard or a screen reader starts again:
@@ -16,26 +16,55 @@
 // around it. `restore` runs after each patch: when that element is gone and
 // nothing has the focus, the focus goes to the first control of the nearest
 // part that is still there. A part that was put in again is found by its
-// `id`, so the focus stays in the row of the button and does not go to the
-// first row of the table. `listen` moves the focus to the heading of a new
-// live page, which a screen reader then reads.
+// `id`, or a row of a collection by the record that it shows
+// (`data-item-id`), so the focus stays in the row of the button and does not
+// go to the first row of the table. `listen` moves the focus to the heading
+// of a new live page, which a screen reader then reads.
 //
-// Neither moves the focus when the page still has it.
+// LiveView can keep the element of a row and put another record in it. A
+// button there then acts on the other record, so the focus leaves it even
+// when the page still has the focus: it goes to the row of its record, or,
+// when that record is gone, to the heading of the collection (ADR 0110).
+//
+// Otherwise neither moves the focus when the page still has it.
 
 const CONTROLS =
   'a[href], button:not([disabled]), input:not([type="hidden"], [disabled]), ' +
   'select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
 
+// The parts of a table that are no place for the focus: their first control
+// is the first row, which shows another record.
+const TABLE_PARTS = "table, thead, tbody, tfoot, tr"
+
 // A part of the page around the element that has the focus: the element,
-// and its `id` when it has one.
-type Part = {element: Element; id: string}
+// and what names it, when anything does. `record` says that the name is the
+// record of a row, which another record can take the place of.
+type Part = {element: Element; name: string | null; record: boolean}
 
 // The element that has the focus, and then the parts around it, from the
 // nearest one out. Empty when nothing has the focus.
 let trail: Part[] = []
 
+// The time of the last press of a pointer, to tell a press beside the
+// controls from a change of the page.
+let pressedAt = -Infinity
+
+function part(element: Element): Part {
+  if (element.id) return {element, name: `#${CSS.escape(element.id)}`, record: false}
+
+  const item = element.getAttribute("data-item-id")
+  if (item) return {element, name: `[data-item-id="${CSS.escape(item)}"]`, record: true}
+
+  return {element, name: null, record: false}
+}
+
+// Says if a person can see the element and give it the focus: it is in the
+// page, it has a box, and it is not hidden, nor inside a closed <details>.
+// A browser with no `checkVisibility` counts the box only.
 function inPage(element: Element): boolean {
-  return element.isConnected && element.getClientRects().length > 0
+  if (!element.isConnected || element.getClientRects().length === 0) return false
+
+  return typeof element.checkVisibility !== "function" || element.checkVisibility({visibilityProperty: true})
 }
 
 function lost(): boolean {
@@ -43,20 +72,48 @@ function lost(): boolean {
   return !active || active === document.body
 }
 
-// The part as the page has it now: the same element, or the element that
-// took its place with the same `id`.
-function now(part: Part): Element | null {
-  if (inPage(part.element)) return part.element
+// Says if LiveView kept the element of the part in the page and put
+// another thing in it: the element has another name now.
+function reused(part: Part): boolean {
+  return part.name !== null && part.element.isConnected && !part.element.matches(part.name)
+}
 
-  const again = part.id ? document.getElementById(part.id) : null
+// The part as the page has it now: the same element, or the element that
+// took its place with the same name.
+function now(part: Part): Element | null {
+  if (!reused(part) && inPage(part.element)) return part.element
+
+  const again = part.name ? document.querySelector(part.name) : null
   return again && inPage(again) ? again : null
+}
+
+// The index of the outermost part that LiveView reused for another thing:
+// the parts inside it are no place for the focus. -1 when there is none.
+function outermostReused(): number {
+  for (let index = trail.length - 1; index >= 0; index--) {
+    if (reused(trail[index])) return index
+  }
+
+  return -1
+}
+
+// Says if the row of a collection around the focus shows another record now.
+function rowReused(): boolean {
+  return trail.some((part) => part.record && reused(part))
+}
+
+// Gives the focus to the element, and says if it took it.
+function give(element: HTMLElement): boolean {
+  element.focus()
+  return document.activeElement === element
 }
 
 // Gives the focus to an element that takes none from the Tab key, such as
 // a heading or a cell.
-function focusPlace(element: HTMLElement): void {
+function focusPlace(element: HTMLElement): boolean {
   if (!element.hasAttribute("tabindex")) element.setAttribute("tabindex", "-1")
   element.focus({preventScroll: true})
+  return document.activeElement === element
 }
 
 function focusHeading(): void {
@@ -64,70 +121,81 @@ function focusHeading(): void {
   if (heading) focusPlace(heading)
 }
 
+// The heading of the collection around the element: the heading that names
+// its section (ADR 0087).
+function collectionHeading(element: Element): HTMLElement | null {
+  const section = element.closest("section[aria-labelledby]")
+  const id = section?.getAttribute("aria-labelledby")
+  return id ? document.getElementById(id) : null
+}
+
 /** Notes the element that has the focus, and forgets it when a person takes the focus away. */
 export function watch(target: Document = document): void {
   target.addEventListener("focusin", (event: FocusEvent) => {
     trail = []
 
-    for (let part = event.target as Element | null; part && part !== document.body; part = part.parentElement) {
-      trail.push({element: part, id: part.id})
+    for (let element = event.target as Element | null; element && element !== document.body; element = element.parentElement) {
+      trail.push(part(element))
     }
   })
 
+  target.addEventListener("pointerdown", () => (pressedAt = performance.now()), true)
+
   // A person who presses beside the controls takes the focus away, and the
-  // element is still in the page afterwards. An element that leaves the
-  // page is the case that `restore` puts right. The browser sends the event
-  // for both, so look when the change of the page is over.
+  // element is still in the page afterwards. The browser also drops the
+  // focus when LiveView moves the element, or hides it, or makes it
+  // disabled: that is the case that `restore` puts right. Only a press of a
+  // pointer just before tells the two apart.
   target.addEventListener("focusout", (event: FocusEvent) => {
     const left = event.target
 
     window.setTimeout(() => {
-      if (left instanceof Element && inPage(left) && lost()) trail = []
+      const pressed = performance.now() - pressedAt < 1000
+      if (pressed && left instanceof Element && inPage(left) && lost()) trail = []
     }, 0)
   })
 }
 
-// Gives the focus to the place that the trail names: the element that took
-// the place of the one with the focus, or the first control of the nearest
+// Gives the focus to the place that the trail names: the element that had
+// it, or the one that took its place, or the first control of the nearest
 // part that the page still has, or that part itself when it has no control.
-// Says if it found a place. The whole page is no place: its first control
-// is the top of the page again.
+// A part inside one that LiveView gave to another record is no place. When
+// the record of a row is gone, the focus goes to the heading of the
+// collection. Says if it found a place. The whole page is no place: its
+// first control is the top of the page again.
 function backToPlace(): boolean {
-  const [had, ...parts] = trail
+  const from = Math.max(outermostReused(), 0)
+  const index = trail.findIndex((part, at) => at >= from && now(part) !== null)
+  const place = index >= 0 ? now(trail[index]) : null
+  // A row between the focus and its new place: the record of the focus is
+  // not in the collection now.
+  const rowLeft = trail.slice(0, Math.max(index, 0)).some((part) => part.record)
   trail = []
 
-  if (!had) return false
+  if (!(place instanceof HTMLElement) || place.matches("main, [data-phx-main]")) return false
+  if (index === 0) return give(place)
 
-  const again = had.id ? document.getElementById(had.id) : null
-
-  if (again instanceof HTMLElement && inPage(again)) {
-    again.focus()
-    return true
+  if (rowLeft || place.matches(TABLE_PARTS)) {
+    const heading = collectionHeading(place)
+    if (heading) return focusPlace(heading)
   }
 
-  const part = parts.map(now).find((element) => element !== null)
-  if (!(part instanceof HTMLElement) || part.matches("main, [data-phx-main]")) return false
-
-  const control = Array.from(part.querySelectorAll<HTMLElement>(CONTROLS)).find(inPage)
-
-  if (control) {
-    control.focus()
-  } else {
-    focusPlace(part)
-  }
-
-  return true
+  const control = Array.from(place.querySelectorAll<HTMLElement>(CONTROLS)).find(inPage)
+  return control ? give(control) : focusPlace(place)
 }
 
 /**
- * Puts the focus back after a patch, when the element that had it is gone
- * and nothing has the focus. With no place near, the focus goes to the
- * heading of the page.
+ * Puts the focus back after a patch: when the element that had it is gone
+ * or hidden and nothing has the focus, and when LiveView put another record
+ * in its row. With no place near, the focus goes to the heading of the page.
  */
 export function restore(): void {
   const had = trail[0]
 
-  if (!had || inPage(had.element) || !lost()) return
+  if (!had || !(lost() || rowReused())) return
+  // A button that waits for the answer of the server is disabled for a
+  // while: the patch that enables it again puts the focus back on it.
+  if (lost() && had.element.isConnected && had.element.matches(":disabled")) return
   if (!backToPlace()) focusHeading()
 }
 

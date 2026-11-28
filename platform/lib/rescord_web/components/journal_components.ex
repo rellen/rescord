@@ -84,8 +84,7 @@ defmodule RescordWeb.JournalComponents do
         <.input
           :if={@kind == :measurement}
           field={@form[:value]}
-          type="number"
-          step="any"
+          type="decimal"
           label="Value"
           required
         />
@@ -195,8 +194,7 @@ defmodule RescordWeb.JournalComponents do
           :if={@entry.measurement}
           id={"correct-#{@entry.id}-value"}
           name="entry[value]"
-          type="number"
-          step="any"
+          type="decimal"
           label={value_label(@entry.measurement)}
           value={@entry.measurement.value |> Decimal.normalize() |> Decimal.to_string(:normal)}
         />

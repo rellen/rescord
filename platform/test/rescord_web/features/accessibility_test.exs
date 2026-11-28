@@ -18,8 +18,10 @@ defmodule RescordWeb.Features.AccessibilityTest do
       a notice keep the rules;
     * with the text spacing of WCAG 1.4.12, no page is wider than a small
       phone;
-    * the focus stays in the row of a button that a press replaces, and
-      goes to the heading of a new live page.
+    * the focus stays in the row of a button that a press replaces, goes
+      to the heading of the list when the row leaves it, and goes to the
+      heading of a new live page;
+    * the menu of a phone closes when the Tab key leaves it.
 
   axe-core finds only a part of the problems of a page. A new kind of
   control still needs a person who uses it with the keyboard.
@@ -203,6 +205,53 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> assert_has("h1:focus")
     |> evaluate(title_after_navigation(@long_hutch), fn title ->
       assert title == @long_hutch
+    end)
+  end
+
+  # A task of an earlier day that is still open is in the list of today,
+  # and leaves it when it is done. LiveView then puts the next task in its
+  # row, so a second press would act on that task (ADR 0110).
+  @tag browser_context_opts: [viewport: @phone]
+  test "the focus goes to the heading of the list when the row of its button leaves it",
+       %{conn: session, home: home, organisation: organisation, root: root} = context do
+    yesterday = organisation |> Rescord.Accounts.today() |> Date.add(-1) |> Date.to_iso8601()
+    {:ok, due_at} = Rescord.Accounts.local_instant(organisation, "#{yesterday}T09:00")
+
+    Rescord.Tasks.plan_task!(%{title: "Clean the water bottles", due_at: due_at},
+      actor: root,
+      tenant: organisation
+    )
+
+    session
+    |> sign_in_as_administrator(context, "focus.gone")
+    |> visit("#{home}/tasks")
+    |> assert_connected()
+    |> evaluate("""
+    document.querySelector("button[aria-label='Mark the task Clean the water bottles as done']").focus()
+    """)
+    |> press("tbody button:focus", "Enter")
+    |> assert_has("#day-heading:focus")
+    |> refute_has("tbody button:focus")
+  end
+
+  @tag browser_context_opts: [viewport: @phone]
+  test "the menu of a phone closes when the Tab key leaves it",
+       %{conn: session, home: home} = context do
+    session
+    |> sign_in_as_administrator(context, "focus.menu")
+    |> visit(home)
+    |> assert_connected()
+    |> evaluate(~s|document.querySelector("[popovertarget=site-menu]").focus()|)
+    |> press("[popovertarget=site-menu]", "Enter")
+    |> evaluate(~s|document.getElementById("site-menu").matches(":popover-open")|, fn open ->
+      assert open
+    end)
+    |> evaluate("""
+    Array.from(document.querySelectorAll("#site-menu :is(a[href], button)")).at(-1).focus()
+    """)
+    |> press("#site-menu :focus", "Tab")
+    |> evaluate(~s|document.getElementById("site-menu").matches(":popover-open")|, fn open ->
+      refute open
     end)
   end
 

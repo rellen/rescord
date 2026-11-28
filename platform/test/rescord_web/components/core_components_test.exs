@@ -144,6 +144,23 @@ defmodule RescordWeb.CoreComponentsTest do
     assert attribute(doc, "input#words", "inputmode") == []
   end
 
+  test "a decimal is a text control with the keyboard of a decimal (ADR 0110)" do
+    assigns = %{}
+
+    doc =
+      rendered_to_string(~H"""
+      <.input id="weight" name="weight" type="decimal" label="Weight" value="1.25" min="0" step="any" />
+      """)
+      |> parse()
+
+    assert attribute(doc, "input#weight", "type") == ["text"]
+    assert attribute(doc, "input#weight", "inputmode") == ["decimal"]
+    assert attribute(doc, "input#weight", "autocomplete") == ["off"]
+    assert attribute(doc, "input#weight", "value") == ["1.25"]
+    assert attribute(doc, "input#weight", "step") == []
+    assert attribute(doc, "input#weight", "min") == []
+  end
+
   test "each cell of a table but the first says its column, for a phone (ADR 0061)" do
     assigns = %{rows: [%{id: 1, name: "One", kind: "A"}]}
 

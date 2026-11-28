@@ -256,7 +256,7 @@ defmodule RescordWeb.MeasurementComponents do
           options={@kinds}
           required
         />
-        <.input field={@form[:value]} type="number" step="any" label="Value" required />
+        <.input field={@form[:value]} type="decimal" label="Value" required />
         <.input
           field={@form[:unit_id]}
           type="select"

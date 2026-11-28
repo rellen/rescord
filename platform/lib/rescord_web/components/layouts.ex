@@ -202,7 +202,7 @@ defmodule RescordWeb.Layouts do
       </nav>
     </header>
 
-    <main id="main" {@rest}>
+    <main id="main" tabindex="-1" {@rest}>
       {render_slot(@inner_block)}
     </main>
 
@@ -237,7 +237,7 @@ defmodule RescordWeb.Layouts do
       </nav>
     </header>
 
-    <main id="main">
+    <main id="main" tabindex="-1">
       {render_slot(@inner_block)}
     </main>
 

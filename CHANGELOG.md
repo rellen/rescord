@@ -918,6 +918,18 @@ release (ADR 0047).
 - The warning of an expiry on the lists page said "1 days" for a value of
   one day, and a location with room for one resident said "1 of 1
   residents".
+- Done on a task that leaves the list of the day no longer moves the focus
+  to the button of another task, where a second Enter acted on that task.
+  The focus goes to the heading of the list. After a measurement, a
+  journal entry, a movement of stock, the button Clear of a filter and
+  the links to another day, the focus now stays near, and no longer goes
+  to the top of the page (ADR 0110).
+- A weight, a measurement or a quantity of stock typed with a comma, such
+  as "1,2", is now refused. Before, the browser dropped the comma and the
+  value was 12. An arrow key no longer changes such a number (ADR 0110).
+- The skip link now gives the focus to the content, and the menu of a
+  phone closes when the Tab key leaves it. Before, the open menu hid the
+  link that had the focus (ADR 0110).
 - The table "Owed to members" of the expense report put every person who
   had left in one row "A person who left". Each payer has their own row
   now (ADR 0105).
