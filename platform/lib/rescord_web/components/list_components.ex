@@ -35,6 +35,7 @@ defmodule RescordWeb.ListComponents do
       >
         Restore
       </.button>
+      <.value_meaning :if={@list.key == :unit} label={@value.label} />
       <.value_units
         :if={@list.key == :measure_kind and not @shared?}
         value={@value}
@@ -47,6 +48,28 @@ defmodule RescordWeb.ListComponents do
         can_change?={@can_change?}
       />
     </li>
+    """
+  end
+
+  @doc """
+  What Rescord knows about a unit, from its name (ADR 0071): the unit of
+  the catalogue, or that it is a name of the organisation, which Rescord
+  does not convert.
+  """
+  attr :label, :string, required: true
+
+  def value_meaning(assigns) do
+    meaning =
+      case Rescord.Units.parse(assigns.label) do
+        {:ok, unit} -> RescordWeb.UnitWords.meaning(unit)
+        :error -> nil
+      end
+
+    assigns = assign(assigns, meaning: meaning)
+
+    ~H"""
+    <small :if={@meaning}>Rescord converts it: {@meaning}</small>
+    <small :if={!@meaning}>Rescord does not know this unit, and does not convert it</small>
     """
   end
 

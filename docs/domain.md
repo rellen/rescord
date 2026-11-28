@@ -130,6 +130,7 @@ These subjects are out of scope for now:
 | Where will Rescord run? | The maintainer has not decided, and the work does not wait for it. |
 | In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
 | Which units can a measurement have? | Each kind of measurement lists the units that it accepts, and the form offers only those (18 November 2026). |
+| Does Rescord know what a unit means? | Yes, for a unit of its catalogue, by the name of the unit: `kg` is a mass, and Rescord converts it. A unit that only the organisation knows, such as `bag`, stays a name (ADR 0071). |
 | Can a use of stock take more than the record has? | Yes. The level can go below zero, and the item shows a warning until a member records a count. |
 | When does a lot expire soon? | In a number of days before its expiry date. Each category of item has its own number. A category with no number uses 30 days. |
 | What does "every number of days" count from? | Each routine says it: from its first day, as a calendar, or from the last time that a member completed its task. |

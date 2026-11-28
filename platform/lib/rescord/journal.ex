@@ -144,6 +144,23 @@ defmodule Rescord.Journal do
   end
 
   @doc """
+  A measurement as a quantity, `1095 g`, or `:error` when it has no unit or
+  a unit that Rescord does not know (ADR 0071). The measurement has its
+  unit with the label, as `entries/2` and `latest_measurements/2` give it.
+  """
+  @spec quantity(term) :: {:ok, Rescord.Units.Quantity.t()} | :error
+  def quantity(%{value: %Decimal{} = value, unit: unit}) do
+    with {:ok, unit} <- Rescord.Lists.known_unit(unit),
+         {:ok, quantity} <- Rescord.Units.Quantity.new(value, unit) do
+      {:ok, quantity}
+    else
+      _unknown -> :error
+    end
+  end
+
+  def quantity(_measurement), do: :error
+
+  @doc """
   The prescriptions of a resident that a dose can name: each as the entry
   with its prescription, the newest first.
   """

@@ -232,6 +232,22 @@ defmodule Rescord.Lists do
   end
 
   @doc """
+  The unit of measure that a value of the dimension `unit` means, or
+  `:error` (ADR 0071). The name of the value is its meaning: the catalogue
+  of `Rescord.Units` knows `kg` and `Kilogram`, and it does not know `bag`.
+  Rescord does not convert a quantity in a unit that it does not know.
+
+  The value is a row of `Rescord.Lists.Unit` or of its base list, with its
+  `label` for a row of an organisation.
+  """
+  @spec known_unit(term) :: {:ok, Rescord.Units.Unit.t()} | :error
+  def known_unit(%{label: %Ash.CiString{} = label}), do: Rescord.Units.parse(to_string(label))
+  def known_unit(%{label: label}) when is_binary(label), do: Rescord.Units.parse(label)
+  def known_unit(%{name: %Ash.CiString{} = name}), do: Rescord.Units.parse(to_string(name))
+  def known_unit(%{name: name}) when is_binary(name), do: Rescord.Units.parse(name)
+  def known_unit(_value), do: :error
+
+  @doc """
   Gives an item category of the organisation the number of days before its
   expiry date in which a lot expires soon, or `nil` for the default.
   """

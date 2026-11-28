@@ -427,6 +427,48 @@ defmodule Rescord.JournalTest do
     end
   end
 
+  describe "the quantity of a measurement" do
+    test "has the unit of the list when Rescord knows it", context do
+      lists = context.lists
+
+      for {kind, value, unit} <- [
+            {lists.measure_kind.weight, "1095", lists.unit.g},
+            {lists.measure_kind.temperature, "38.5", nil}
+          ] do
+        write!(context, %{kind: :measurement, measure_kind_id: kind, value: value, unit_id: unit})
+      end
+
+      {:ok, latest} = Journal.latest_measurements(context.biscuit.id, context.options)
+
+      by_kind =
+        Map.new(latest, &{to_string(&1.measurement.measure_kind.label), &1.measurement})
+
+      assert {:ok, weight} = Journal.quantity(by_kind["Weight"])
+      assert to_string(weight) == "1095 g"
+
+      {:ok, kilograms} = Rescord.Units.Quantity.convert(weight, "kg")
+      assert to_string(kilograms) == "1.095 kg"
+
+      # A measurement with no unit is a number, and no quantity.
+      assert Journal.quantity(by_kind["Temperature"]) == :error
+    end
+
+    test "is not there for a unit that only the organisation knows", context do
+      write!(context, %{
+        kind: :measurement,
+        measure_kind_id: context.lists.measure_kind.temperature,
+        value: "2",
+        unit_id: context.lists.unit.bag
+      })
+
+      {:ok, [entry]} = Journal.latest_measurements(context.biscuit.id, context.options)
+
+      assert to_string(entry.measurement.unit.label) == "bag"
+      assert Journal.quantity(entry.measurement) == :error
+      assert Journal.quantity(nil) == :error
+    end
+  end
+
   describe "the grants of the journal" do
     test "name only resources and actions that exist, and give each scope a filter" do
       for {resource, action, scope} <-

@@ -513,6 +513,23 @@ for Rescord.
   the page with `has_element?(view, "main p[role=alert]")`: the layout
   always holds a hidden element with `role="alert"`, so a search of the
   text for that role finds one on each page.
+- **Quantities and units** (ADR 0071). A number with a unit is a
+  `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
+  `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
+  `1000` in other code, never use a float for a quantity, and never round
+  inside a calculation: round for the page, with `Quantity.round/2`.
+  - A new attribute or argument that holds a quantity uses
+    `Rescord.Units.Types.Quantity` with the constraint `dimension`, and not
+    a decimal beside a text. A unit alone uses `Rescord.Units.Types.Unit`.
+  - A value of the list of units of an organisation is a name.
+    `Rescord.Lists.known_unit/1` says what it means, and gives `:error` for
+    a name that the catalogue does not know. Then ask the person, and do
+    not guess.
+  - A page writes a quantity with `RescordWeb.UnitWords.quantity/1`, which
+    keeps each digit.
+  - A new unit takes a line in the catalogue of `Rescord.Units`, words for
+    a new dimension in `RescordWeb.UnitWords`, and a line with its factor
+    in `Rescord.UnitsTest`.
 - **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
   time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
   for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
@@ -584,6 +601,7 @@ for Rescord.
 | `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |
 | `platform/lib/rescord/inventory/` | the items, the lots, the suppliers, the stock movements and the reorder levels |
 | `platform/lib/rescord/tasks/` | the tasks, their states and their subjects; the routines, their patterns and the job that makes their tasks |
+| `platform/lib/rescord/units.ex`, `units/` | the units of measure, the quantities and their arithmetic, and the two Ash types (ADR 0071) |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |

@@ -17,6 +17,19 @@ its GitHub release (ADR 0047).
   which adds a column to the subjects of the tasks. Make a backup first,
   as `docs/self-hosting.md` says. No new setting is needed.
 
+### Added
+
+- Rescord now knows what a unit of measure means, from its name. The
+  lists page says for each unit of an organisation, and for each shared
+  unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and
+  `bag` is a name of the organisation that Rescord does not convert. The
+  units that it knows are those of a mass (mcg, mg, g, kg, oz, lb), a
+  volume (mL, L), a length, a temperature, a time and an energy, the
+  tablet, the capsule, the drop and the international unit, with names
+  such as `Kilograms` and `millilitre` too. Nothing in the records
+  changes, and a unit that Rescord does not know works as before. This is
+  the base of the dosage calculator, which comes next.
+
 ### Changed
 
 - The first page of an organisation now says what needs attention: the

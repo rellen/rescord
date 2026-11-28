@@ -323,6 +323,39 @@ defmodule Rescord.ListsTest do
     end
   end
 
+  describe "the meaning of a unit" do
+    test "is in its name, for a shared value and for a local value", context do
+      %{root: root, organisation: organisation, administrator: administrator} = context
+      options = [actor: administrator, tenant: organisation]
+
+      {:ok, shared} = Lists.add_shared_value(:unit, "kg", actor: root)
+      {:ok, _used} = Lists.use_shared_value(:unit, shared.id, options)
+      {:ok, _local} = Lists.add_local_value(:unit, "Millilitres", options)
+      {:ok, _local} = Lists.add_local_value(:unit, "bag", options)
+
+      {:ok, values} = Lists.values(:unit, options)
+
+      known =
+        for value <- values, into: %{} do
+          case Lists.known_unit(value) do
+            {:ok, unit} -> {to_string(value.label), {unit.symbol, unit.dimension}}
+            :error -> {to_string(value.label), nil}
+          end
+        end
+
+      assert known == %{"kg" => {"kg", :mass}, "Millilitres" => {"mL", :volume}, "bag" => nil}
+
+      # A value of the base list has only its name.
+      assert {:ok, %{symbol: "kg"}} = Lists.known_unit(shared)
+    end
+
+    test "is not there for what is no value" do
+      assert Lists.known_unit(nil) == :error
+      assert Lists.known_unit(%{}) == :error
+      assert Lists.known_unit(%{label: nil, name: nil}) == :error
+    end
+  end
+
   describe "the grants of the lists" do
     test "are in the grants of each role" do
       assert Rescord.Lists.Grants in Rescord.Accounts.Grants.sources()

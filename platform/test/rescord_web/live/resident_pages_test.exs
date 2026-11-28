@@ -185,6 +185,24 @@ defmodule RescordWeb.ResidentPagesTest do
       refute html =~ ~s(phx-submit="set_soon_days")
     end
 
+    test "say which units Rescord converts, on each lists page", context do
+      lists!(context.organisation, context.root)
+      {:ok, _litre} = Lists.add_shared_value(:unit, "Litres", actor: context.root)
+
+      {_view, html} = open(context.conn, context.base <> "/lists")
+
+      assert html =~ "Rescord converts it: gram, a mass"
+      assert html =~ "Rescord converts it: kilogram, a mass"
+      # `bag` is a name of the organisation.
+      assert length(String.split(html, "Rescord does not know this unit")) == 2
+
+      # No other list says it.
+      refute html =~ "Rescord converts it: metre"
+
+      {_view, html} = build_conn() |> sign_in(context.root) |> open(~p"/root/lists")
+      assert html =~ "Rescord converts it: litre, a volume"
+    end
+
     test "take no value of another list, and read a forged field as no value", context do
       lists = lists!(context.organisation, context.root)
       admin = [actor: context.administrator, tenant: context.organisation]

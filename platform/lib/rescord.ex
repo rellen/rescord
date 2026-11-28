@@ -28,7 +28,12 @@ defmodule Rescord do
       # checks such a name too (ADR 0066).
       Resource.VersionPolicies,
       Storage,
-      Storage.Move
+      Storage.Move,
+      Units,
+      Units.Quantity,
+      Units.Types.Quantity,
+      Units.Types.Unit,
+      Units.Unit
     ],
     check: [aliases: true, apps: [:phoenix, :phoenix_live_view, :phoenix_html, :shoddy_phoenix]]
 

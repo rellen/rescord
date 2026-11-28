@@ -370,6 +370,32 @@ table (ADR 0025).
   `Rescord.TenantMigrations.repair!/0` repairs them, and a test fails while
   a migration has one.
 
+### Units of measure
+
+`Rescord.Units` is a catalogue of units in the code, with the arithmetic on
+quantities (ADR 0071). It is a plain module of the core: no table, no
+dependency.
+
+- **A unit** is `%Rescord.Units.Unit{}`: a unit of the catalogue, such as
+  `kg`, or a ratio of two, such as `mg/kg`. `Rescord.Units.parse/1` reads a
+  symbol, a name or a ratio. A ratio never cancels: `mg/kg` has the
+  dimension `{:mass, :mass}`.
+- **A quantity** is `%Rescord.Units.Quantity{value, unit}`, with a `Decimal`
+  for its number. `convert/3`, `multiply/2`, `divide/2`, `add/2` and
+  `subtract/2` check the units and return an error for units that do not
+  fit. No function takes a float, and none rounds: a page rounds, with
+  `Quantity.round/2`.
+- **The list of units of an organisation says which units its forms
+  offer**, and the name of a value is its meaning.
+  `Rescord.Lists.known_unit/1` gives the unit of the catalogue for a value,
+  or `:error` for a name such as `bag`, which Rescord does not convert.
+  `Rescord.Journal.quantity/1` gives a measurement as a quantity.
+- **Two Ash types**, `Rescord.Units.Types.Unit` and
+  `Rescord.Units.Types.Quantity`, for an attribute and an argument. A
+  quantity is a map in the database, with its number as text and the unit
+  that the person wrote.
+- **A page writes a quantity** with `RescordWeb.UnitWords.quantity/1`.
+
 ### History
 
 **History comes from temporal resources, AshPaperTrail and AshArchival**
