@@ -271,4 +271,29 @@ defmodule RescordWeb.RubyWordsTest do
       assert RubyWords.steps_summary([%{}, %{}, %{}]) == "What Ruby read: 3 steps"
     end
   end
+
+  describe "the use of a month" do
+    test "rounds to the cent, with two places, and says about" do
+      assert RubyWords.cents_of(4_999) == 0
+      assert RubyWords.cents_of(5_000) == 1
+      assert RubyWords.used(12_400_000, 2_000) == "About 12.40 of 20 US dollars used"
+      assert RubyWords.used(0, 1_250) == "About 0.00 of 12.50 US dollars used"
+      assert RubyWords.about_dollars(3_000_000) == "about 3.00"
+      assert RubyWords.share(12_400_000, 2_000) == "62%"
+      assert RubyWords.share(19_999_999, 2_000) == "99%"
+    end
+
+    test "has words from 80% of the allowance on, and others when it is used" do
+      month = ~D[2026-11-01]
+
+      assert RubyWords.use_warning(15_999_999, 2_000, month) == nil
+      assert RubyWords.use_warning(16_000_000, 2_000, month) =~ "80% or more"
+      assert RubyWords.use_warning(19_990_000, 2_000, month) =~ "80% or more"
+      assert RubyWords.use_warning(20_000_000, 2_000, month) =~ "is used: Ruby answers nobody"
+
+      # An allowance of nothing answers nobody, and none is no setting.
+      assert RubyWords.use_warning(1_000, 0, month) =~ "Ruby answers nobody"
+      assert RubyWords.use_warning(1_000, nil, month) == nil
+    end
+  end
 end

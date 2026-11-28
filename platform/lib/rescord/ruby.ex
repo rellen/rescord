@@ -277,6 +277,64 @@ defmodule Rescord.Ruby do
   end
 
   @doc """
+  The use of the month of `today` (a day of UTC, as the provider bills),
+  for the settings page: the first day of the month, what it cost in
+  millionths of a US dollar, and the replies and the cost of each member,
+  the largest cost first. Counts only: no word of a conversation. A row
+  stays when its member goes, so a member here may be one who left.
+
+  It reads as the person of `opts`: the policy of `Rescord.Ruby.Usage`
+  asks for the power `settings`.
+  """
+  @spec use_of_month(keyword, Date.t()) ::
+          {:ok,
+           %{
+             month: Date.t(),
+             cost_microdollars: non_neg_integer,
+             members: [
+               %{
+                 user_id: Ecto.UUID.t(),
+                 replies: non_neg_integer,
+                 cost_microdollars: non_neg_integer
+               }
+             ]
+           }}
+          | {:error, term}
+  def use_of_month(opts, today \\ Date.utc_today()) do
+    first = Date.beginning_of_month(today)
+    last = Date.end_of_month(today)
+
+    Usage
+    |> Ash.Query.filter(day >= ^first and day <= ^last)
+    |> Ash.Query.select([:user_id, :replies, :cost_microdollars])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, rows} ->
+        members =
+          rows
+          |> Enum.group_by(& &1.user_id)
+          |> Enum.map(fn {user_id, rows} ->
+            %{
+              user_id: user_id,
+              replies: Enum.sum_by(rows, & &1.replies),
+              cost_microdollars: Enum.sum_by(rows, & &1.cost_microdollars)
+            }
+          end)
+          |> Enum.sort_by(&{-&1.cost_microdollars, -&1.replies, &1.user_id})
+
+        {:ok,
+         %{
+           month: first,
+           cost_microdollars: Enum.sum_by(members, & &1.cost_microdollars),
+           members: members
+         }}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
   The record that a conversation is about, from its reference, such as
   `resident:<id>`, read as the person of `opts`: its reference, its kind
   and its name. A resident, a group, a location and an item can be what a

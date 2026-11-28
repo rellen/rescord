@@ -702,6 +702,13 @@ release (ADR 0047).
   conversations past the days of the settings and those of a person who
   is no member any more, and ends a reply that lost its job, so that its
   conversation takes the next message.
+- The settings of Ruby show the use of the month to a person who can
+  change them: how much of the allowance went, with words from 80% on,
+  and the replies and the cost of each member, in US dollars and "about",
+  since the bill of the service can differ a little. The counts hold no
+  word of any conversation, and a member who left stays in them. The
+  events of ReqLLM now hold no request and no answer by configuration
+  (`config :req_llm, telemetry: [payloads: :none]`), as before by default.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

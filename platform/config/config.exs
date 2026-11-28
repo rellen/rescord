@@ -20,7 +20,10 @@ config :req_llm,
   load_dotenv: false,
   # A request that fails holds the conversation in its struct. This keeps
   # it out of what `inspect/1` shows.
-  redact_context: true
+  redact_context: true,
+  # The events of ReqLLM hold no request and no answer, only their counts.
+  # A test fails when this changes.
+  telemetry: [payloads: :none]
 
 # The change that `emit` adds to an action does not say that it is temporal
 # safe (Ash 3.38.1), so Ash refuses a signal of a temporal resource. The

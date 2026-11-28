@@ -40,6 +40,7 @@ defmodule RescordWeb.RubySettingsLive do
             at_share: Ruby.members_at_share(socket.assigns.organisation)
           )
           |> read_offers()
+          |> read_use()
 
         {:ok, assign(socket, form: fields(settings, socket.assigns))}
 
@@ -61,6 +62,18 @@ defmodule RescordWeb.RubySettingsLive do
       offers: Ruby.offers(options(socket)),
       status: Ruby.status(socket.assigns.organisation)
     )
+  end
+
+  # The use of this month, read as the person, and the labels of the
+  # members in it. A month with no use has no table.
+  defp read_use(socket) do
+    case Ruby.use_of_month(options(socket)) do
+      {:ok, %{members: [_ | _]} = use} ->
+        assign(socket, use: use, people: Accounts.people(options(socket)))
+
+      _none ->
+        assign(socket, use: nil, people: %{})
+    end
   end
 
   # The fields of the form, as text. The provider is the one of the
@@ -241,6 +254,7 @@ defmodule RescordWeb.RubySettingsLive do
           at_share={@at_share}
           share?={@settings.member_allowance != nil}
         />
+        <.use_of_month :if={@use} use={@use} allowance={@settings.allowance} people={@people} />
       <% end %>
     </Layouts.app>
     """
