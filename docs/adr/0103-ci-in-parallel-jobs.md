@@ -39,7 +39,7 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   runs even when one before it failed, so one run shows each fault.
 - **The tests run in parts.** `mix test --exclude playwright --partitions N`
   on J runners, each with its own PostgreSQL. Each runner runs N / J parts
-  at once (`scripts/test-in-parts.sh`; J is 6 and N is 24), and each part
+  at once (`scripts/test-in-parts.sh`; J is 8 and N is 32), and each part
   has its database `rescord_test<k>` and its port 4002 + k. Mix deals all
   the sorted test files out in turn, before `--only` or `--exclude` picks
   the tests, so a part gets files, not a share of the time.
@@ -80,9 +80,12 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
 
 - A run takes as long as its slowest path: the compile, then the slowest
   part of the tests; or the flake check.
-- A run uses 10 runners at its peak, and the Free plan runs 20 jobs at
-  once: a push run and a kept run (ADR 0078) fit side by side, and a third
-  run waits for runners.
+- A run uses up to 12 runners at once (the checks, 8 jobs of tests, 2 of
+  browser tests and the flake check), and the Free plan runs 20 jobs at
+  once: when a push run and a kept run (ADR 0078) overlap, some jobs of the
+  second wait a few minutes for runners. J was 6 (24 parts) at first; the
+  maintainer chose 8 on 28 November 2026, rather than a file of test
+  times to balance the parts.
 - The caches of mix and of Nix share the 10 GB of the repository, and GitHub
   evicts the least recently used entries first.
 - N was 6 at first, one part on each runner. The tests with no browser
