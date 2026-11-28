@@ -1,7 +1,8 @@
 defmodule RescordWeb.Router do
   use RescordWeb, :router
 
-  import RescordWeb.UserAuth, only: [fetch_current_user: 2]
+  import Oban.Web.Router, only: [oban_dashboard: 2]
+  import RescordWeb.UserAuth, only: [fetch_current_user: 2, require_root: 2]
 
   # In the tests only: a LiveView of a browser test uses the database
   # transaction of that test (ADR 0023). This hook is the first one of each
@@ -20,6 +21,12 @@ defmodule RescordWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
+  end
+
+  # A route of a root user that is not a page of the live session `:root`
+  # (ADR 0110). Anyone else goes to `/`, before any part of the route runs.
+  pipeline :root do
+    plug :require_root
   end
 
   pipeline :api do
@@ -157,6 +164,21 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/residents/:id/photos", PhotosLive
       live "/o/:organisation/residents/:id/timeline", TimelineLive
     end
+  end
+
+  # The jobs of Oban, for a root user (ADR 0110). Oban Web makes a live
+  # session of its own, with its own layout, so it cannot be a page of the
+  # live session `:root`. The plug `:require_root` guards each of its
+  # routes, its files too; the hook guards the page each time it connects;
+  # and the resolver says which actions a root user may take.
+  scope "/root" do
+    pipe_through [:browser, :root]
+
+    oban_dashboard("/oban",
+      on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}],
+      resolver: RescordWeb.ObanResolver,
+      logo_path: "/root"
+    )
   end
 
   # Other scopes may use custom stacks.

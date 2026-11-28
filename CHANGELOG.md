@@ -197,6 +197,10 @@ release (ADR 0047).
   - `20261128125913_add_the_display_files`, in each organisation: adds
     an empty column `display_key` to the journal attachments and to the
     photos (issue 34). It changes no row: a job fills it after the start.
+  - `20261128131500_add_the_count_estimate_of_oban_met`, in the database:
+    adds the function `oban_count_estimate`, with which the new page of
+    the jobs for a root user estimates how many jobs wait in a queue. It
+    changes no row.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -344,6 +348,13 @@ release (ADR 0047).
   megabytes of its data. The card of a photo has a link "Full size" to the
   photo itself, and the cage card prints the profile picture from the
   display file, which is sharper on paper than the thumbnail (issue 34).
+- A root user watches the background jobs of the server at `/root/oban`,
+  with Oban Web: the jobs that wait, run, failed or were cancelled, with
+  their errors, and the queues. The root page links to it. A root user
+  can cancel or retry a job and pause or resume a queue, and nothing
+  else: no delete, no new job, and no change to a queue, a cron entry or
+  a pruner rule. No member and no administrator of an organisation can
+  open it (ADR 0110).
 - The members page lists the former members, with the day each one left
   and a button "Invite again", and asks before it removes a member. The
   records of a member who was removed stay theirs: each page names them

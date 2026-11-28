@@ -30,6 +30,19 @@ defmodule RescordWeb.UserAuth do
   end
 
   @doc """
+  A plug for the routes of a root user that are not pages of the live
+  session `:root`, such as Oban Web and its files (ADR 0110). It comes after
+  `fetch_current_user/2`. Anyone else goes to `/`, as the hook
+  `:require_root` sends them.
+  """
+  def require_root(conn, _opts) do
+    case conn.assigns[:current_user] do
+      %{root?: true} -> conn
+      _other -> conn |> Phoenix.Controller.redirect(to: "/") |> halt()
+    end
+  end
+
+  @doc """
   The hooks of the live sessions. Each one assigns `:current_user`, or sends
   the person away.
 

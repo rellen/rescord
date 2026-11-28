@@ -4,6 +4,7 @@
     :ash_state_machine,
     :ash_oban,
     :oban,
+    :oban_web,
     :ash_paper_trail,
     :ash_archival,
     :ash_authentication,

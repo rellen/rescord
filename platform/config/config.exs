@@ -33,6 +33,10 @@ config :ex_money, auto_start_exchange_rate_service: false
 
 config :ash, :temporal_safe_modules, [Ash.Resource.Change.EmitSignal]
 
+# Oban Met gathers the counts of Oban Web (ADR 0110). Its function of the
+# database comes from a migration, so the reporter does not make it.
+config :oban_met, reporter: [auto_migrate: false]
+
 config :rescord, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

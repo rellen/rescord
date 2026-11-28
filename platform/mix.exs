@@ -72,6 +72,8 @@ defmodule Rescord.MixProject do
       {:ash_state_machine, "~> 0.2"},
       {:ash_oban, "~> 0.2"},
       {:oban, "~> 2.0"},
+      # The jobs of Oban, for a root user, at `/root/oban` (ADR 0110).
+      {:oban_web, "~> 2.13"},
       {:ash_workflow, "~> 0.12"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:ash_phoenix, "~> 2.0"},
