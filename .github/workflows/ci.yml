@@ -209,12 +209,11 @@ jobs:
 
   # The tests with no browser, in parts that run side by side (ADR 0103).
   # `mix test --partitions` gives each part a share of the test files. Each
-  # job has 12 small parts and runs them in 4 slots, each slot with a
-  # database and a port of its own; a slot takes the next part when its
-  # part ends (scripts/test-in-parts.sh). Most tests run one at a time, so
-  # one `mix test` keeps about one core of the four busy. The number of
-  # jobs is in two places here: the matrix and the second number of the
-  # script.
+  # job runs 4 parts at once on its runner, each part with a database and a
+  # port of its own (scripts/test-in-parts.sh): most tests run one at a
+  # time, so one `mix test` keeps about one core of the four busy. The
+  # number of jobs is in two places here: the matrix and the second number
+  # of the script.
   unit:
     name: Tests (job ${{ matrix.job }} of 8)
     needs: compile
@@ -245,7 +244,7 @@ jobs:
       - name: Test
         run: >-
           devenv shell -- bash -c 'scripts/test-in-parts.sh
-          ${{ matrix.job }} 8 12 4 --exclude playwright'
+          ${{ matrix.job }} 8 4 --exclude playwright'
 
   # The browser tests (tagged :playwright, ADR 0023), apart from the others,
   # in parts of their own. They drive Chromium, and the test helper stops
