@@ -96,7 +96,7 @@ defmodule RescordWeb.RubyChatComponents do
         <summary>Change the name</summary>
         <.form for={@name_form} id="ruby-name" phx-submit="rename">
           <.input field={@name_form[:title]} type="text" label="Name of the conversation" />
-          <button type="submit">Save the name</button>
+          <footer><button type="submit">Save the name</button></footer>
         </.form>
       </details>
       <.confirm id="ruby-remove" summary="Remove this conversation">

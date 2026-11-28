@@ -889,7 +889,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   page.
 - **One way for each pattern of a page** (issue 35). A person who learnt one
   page knows the next one (WCAG 3.2.3 and 3.2.4), so each of these has one
-  shape:
+  shape. `RescordWeb.ConsistencyTest` reads each page of
+  `RescordWeb.PagesFixtures` and fails on a `data-confirm`, a danger button
+  outside a confirm step, a breadcrumb of its own, a page below the menu
+  with no breadcrumb, and a submit button outside the footer of its form:
   - **The way back** is the breadcrumb of the header, never a button or a
     paragraph: `<:crumb navigate={...}>Residents</:crumb>` in `<.header>`,
     one for each page above this one, the section first. A page of the

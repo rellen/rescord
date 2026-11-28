@@ -268,12 +268,14 @@ defmodule RescordWeb.ListComponents do
           options={@list.unused}
           value=""
         />
-        <.button
-          type="submit"
-          aria-label={"Add the shared value to #{String.downcase(@list.name)}"}
-        >
-          Add the shared value
-        </.button>
+        <footer>
+          <.button
+            type="submit"
+            aria-label={"Add the shared value to #{String.downcase(@list.name)}"}
+          >
+            Add the shared value
+          </.button>
+        </footer>
       </form>
 
       <form id={"add-#{@list.key}"} phx-submit="add">
@@ -291,9 +293,11 @@ defmodule RescordWeb.ListComponents do
           maxlength="60"
           required
         />
-        <.button type="submit" aria-label={"Add the value to #{String.downcase(@list.name)}"}>
-          Add the value
-        </.button>
+        <footer>
+          <.button type="submit" aria-label={"Add the value to #{String.downcase(@list.name)}"}>
+            Add the value
+          </.button>
+        </footer>
       </form>
     </details>
     """
