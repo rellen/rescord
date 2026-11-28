@@ -91,7 +91,11 @@ defmodule Rescord.Export do
         "server, and no record of the rescue.",
     Rescord.Ruby.Usage =>
       "The use of the assistant is counts of tokens for the bill of this server, and no " <>
-        "record of the rescue."
+        "record of the rescue.",
+    Rescord.Usage.Count =>
+      "The usage counts are of the whole server, with no organisation in them (ADR 0098).",
+    Rescord.Usage.Settings =>
+      "What the server does with its usage counts is a setting of the server (ADR 0098)."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."
