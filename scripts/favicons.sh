@@ -31,6 +31,8 @@ render() {
 le() {
   local i
   for ((i = 0; i < $2; i++)); do
+    # The format is the escape of one byte, which is what printf writes.
+    # shellcheck disable=SC2059
     printf "\\x$(printf '%02x' $((($1 >> (8 * i)) & 255)))"
   done
 }

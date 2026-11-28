@@ -80,3 +80,5 @@ its result up to an hour late.
   the first, where it cancelled them before.
 - A failure of a kept run names no push. The runs that were cancelled
   since the last success show which commits to look at.
+- (Added later, ADR 0103.) The run of CI holds the flake check too, so a
+  kept run gives `main` a result of the Nix package and of its NixOS test.

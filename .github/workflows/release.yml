@@ -72,16 +72,13 @@ jobs:
             echo "tag=$tag"
           } >> "$GITHUB_OUTPUT"
 
-  nix:
-    name: Nix
-    needs: version
-    uses: ./.github/workflows/nix.yml
-
-  # The format, the compile and the tests of each push (ADR 0060).
+  # The checks of each push (ADR 0060), the flake check among them (ADR 0103).
   ci:
     name: CI
     needs: version
     uses: ./.github/workflows/ci.yml
+    # The scan for secrets reads PRIVATE_TERMS (ADR 0064).
+    secrets: inherit
 
   # The new version takes over the data of the last release, or nothing is
   # published (ADR 0051).
@@ -233,7 +230,7 @@ jobs:
 
   release:
     name: GitHub release
-    needs: [version, nix, ci, manifest, tarball]
+    needs: [version, ci, manifest, tarball]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

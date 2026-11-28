@@ -48,4 +48,6 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
 - The builds under QEMU were slow, and a release took most of an hour.
   With a runner for each architecture, they run side by side.
 - The CI of a push costs the minutes of one runner of Linux. The flake
-  check runs only for the files of its paths.
+  check runs only for the files of its paths. (Changed later, ADR 0103: CI
+  runs in jobs side by side, the tests in parts, and the flake check in each
+  run.)

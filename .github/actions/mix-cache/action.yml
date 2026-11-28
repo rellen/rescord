@@ -1,0 +1,43 @@
+# The dependencies and the test build of platform/, as the job "Compile"
+# of ci.yml saved them for this commit (ADR 0103). Each job restores the
+# same key, so the jobs of one run share one build.
+#
+# A key names the toolchain (devenv.lock), the locked dependencies
+# (platform/mix.lock) and the commit. When the job "Compile" of this
+# commit saved nothing, a job takes the newest build of the same lock, and
+# then of the same toolchain: mix compiles only what changed since.
+name: The cache of mix
+description: Restores platform/deps and platform/_build/test.
+outputs:
+  key:
+    description: The key of this commit, for actions/cache/save.
+    value: ${{ steps.key.outputs.key }}
+  hit:
+    description: Whether the build of this very commit was restored.
+    value: ${{ steps.restore.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      env:
+        TOOLCHAIN: ${{ hashFiles('devenv.lock') }}
+        LOCK: ${{ hashFiles('platform/mix.lock') }}
+      run: |
+        prefix="mix-$RUNNER_OS-$TOOLCHAIN"
+        {
+          echo "toolchain=$prefix-"
+          echo "lock=$prefix-$LOCK-"
+          echo "key=$prefix-$LOCK-$GITHUB_SHA"
+        } >> "$GITHUB_OUTPUT"
+
+    - id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          platform/deps
+          platform/_build/test
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: |
+          ${{ steps.key.outputs.lock }}
+          ${{ steps.key.outputs.toolchain }}

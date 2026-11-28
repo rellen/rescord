@@ -1,0 +1,21 @@
+# The toolchain of devenv.lock (ADR 0047): Nix, the binary cache of devenv,
+# devenv itself, and its shell, built once so that each later step starts
+# at once. Each job of CI that runs mix uses it, after actions/checkout.
+name: The devenv shell
+description: Installs Nix and devenv, and builds the shell of devenv.lock.
+runs:
+  using: composite
+  steps:
+    - uses: cachix/install-nix-action@v32
+
+    - uses: cachix/cachix-action@v17
+      with:
+        name: devenv
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile install nixpkgs#devenv
+
+    - name: Build the devenv shell
+      shell: bash
+      run: devenv shell -- elixir --version

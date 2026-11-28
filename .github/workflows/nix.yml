@@ -1,32 +1,17 @@
 # `nix flake check` (ADR 0044, ADR 0047): the Nix package, and a NixOS test of
-# the module that starts Rescord with PostgreSQL. It runs when a file that
-# the package reads for its dependencies changes, on main and in a pull
-# request, and for each release. A pull request of Dependabot that changes
+# the module that starts Rescord with PostgreSQL, migrates, and runs each
+# command of the server. CI calls it in each run (ADR 0103), and so does each
+# release through CI. A pull request of Dependabot that changes
 # platform/mix.lock fails here until the hash in nix/package.nix follows.
+#
+# The toolchain of the package is newer than the binary cache of nixpkgs has
+# (ADR 0053): with no cache of its own, each run built Erlang, Elixir and
+# rebar3, 13 of its 18 minutes. The Magic Nix Cache keeps each path that a
+# run builds in the cache of GitHub Actions, and the next run takes it from
+# there.
 name: Nix
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - flake.nix
-      - flake.lock
-      - nix/**
-      - platform/mix.exs
-      - platform/mix.lock
-      - platform/rel/**
-      - platform/config/**
-      - .github/workflows/nix.yml
-  pull_request:
-    paths:
-      - flake.nix
-      - flake.lock
-      - nix/**
-      - platform/mix.exs
-      - platform/mix.lock
-      - platform/rel/**
-      - platform/config/**
-      - .github/workflows/nix.yml
   workflow_call:
   workflow_dispatch:
 
@@ -53,6 +38,13 @@ jobs:
         with:
           extra_nix_config: |
             system-features = nixos-test benchmark big-parallel kvm
+
+      - uses: DeterminateSystems/magic-nix-cache-action@v15
+        with:
+          # Nothing is sent to a service of Determinate Systems.
+          diagnostic-endpoint: ""
+          use-flakehub: false
+          use-gha-cache: true
 
       - name: Check the flake
         run: nix flake check -L
