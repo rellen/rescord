@@ -91,6 +91,7 @@ defmodule RescordWeb.SuppliersLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:inventory}
     >
       <.header icon={Icons.section(:suppliers)}>

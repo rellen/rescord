@@ -157,6 +157,38 @@ defmodule Rescord.Accounts do
   def user_for_job(_other), do: nil
 
   @doc """
+  Whether a user is a member of the organisation `tenant` now, for a job
+  that has no person: a notification goes only to a member (issue 29).
+  """
+  @spec member_for_job(Ecto.UUID.t(), Ash.Resource.record() | String.t()) :: boolean
+  def member_for_job(user_id, tenant) when is_binary(user_id) do
+    Member
+    |> Ash.Query.filter(user_id == ^user_id)
+    |> Ash.exists?(tenant: tenant, authorize?: false)
+  end
+
+  def member_for_job(_user_id, _tenant), do: false
+
+  @doc """
+  The email addresses of these users, as `%{user_id => email}`, read with no
+  person. It is for the words of a record that names a person who is no
+  member now, such as the writer of a comment (issue 29): the caller gives
+  only ids that a record of the organisation names, and that the person of
+  the page read. A user who is gone is not in the map.
+  """
+  @spec emails_of_users([Ecto.UUID.t()]) :: %{Ecto.UUID.t() => String.t()}
+  def emails_of_users([]), do: %{}
+
+  def emails_of_users(user_ids) when is_list(user_ids) do
+    # A user with no email (one erased, issue 31) is left out, as one that
+    # is gone: a page then names "a former member".
+    for user <- User |> Ash.Query.filter(id in ^user_ids) |> Ash.read!(authorize?: false),
+        user.email != nil,
+        into: %{},
+        do: {user.id, to_string(user.email)}
+  end
+
+  @doc """
   The organisation of a tenant: the organisation itself, or the name of its
   schema, as an action has it. Code that asks for the local time many times
   reads the organisation one time with this.

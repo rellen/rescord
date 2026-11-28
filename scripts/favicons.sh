@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Draws the icons that cannot follow the colour scheme, from the favicon
 # (ADR 0058): `favicon.ico` for a client that takes no SVG icon, and
-# `apple-touch-icon.png` for a home screen. Run it in the devenv shell, which
+# `apple-touch-icon.png` for a home screen, and the two icons of the
+# manifest. Run it in the devenv shell, which
 # has libvips, after a change to `platform/priv/static/images/favicon.svg`:
 #
 #   scripts/favicons.sh
@@ -70,4 +71,16 @@ vips flatten "$work/mark.png" "$work/flat.png" --background "$touch_ground"
 vips embed "$work/flat.png" "$static/images/apple-touch-icon.png[compression=9,keep=none]" \
   36 36 180 180 --extend background --background "$touch_ground"
 
-echo "Wrote $static/favicon.ico and $static/images/apple-touch-icon.png"
+# The icons of the manifest of the installed web app (issue 29): the same
+# square on white, in two sizes. The mark fills 60 percent of it, inside the
+# safe zone of a maskable icon, so a launcher can cut any shape.
+for size in 192 512; do
+  mark=$((size * 3 / 5))
+  edge=$(((size - mark) / 2))
+  render "$touch_stroke" "$mark" "$work/mark-$size.png"
+  vips flatten "$work/mark-$size.png" "$work/flat-$size.png" --background "$touch_ground"
+  vips embed "$work/flat-$size.png" "$static/images/icon-$size.png[compression=9,keep=none]" \
+    "$edge" "$edge" "$size" "$size" --extend background --background "$touch_ground"
+done
+
+echo "Wrote $static/favicon.ico, $static/images/apple-touch-icon.png and the icons of the manifest"

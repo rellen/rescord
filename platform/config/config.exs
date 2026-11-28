@@ -54,7 +54,9 @@ config :rescord, Oban,
       # days leave for the address of the operator (ADR 0098).
       {"23 * * * *", Rescord.Usage.Workers.Send},
       # A transfer whose job is gone after the lifeline is `failed` (ADR 0100).
-      {"41 * * * *", Rescord.Transfers.Workers.FailStoppedCopies}
+      {"41 * * * *", Rescord.Transfers.Workers.FailStoppedCopies},
+      # The old notifications go, each night (issue 29, ADR 0106).
+      {"41 3 * * *", Rescord.Notifications.Workers.Prune}
     ]
   ]
 
@@ -174,7 +176,9 @@ config :rescord,
     Rescord.Calendars,
     Rescord.Expenses,
     Rescord.Reports,
-    Rescord.Usage
+    Rescord.Usage,
+    Rescord.Comments,
+    Rescord.Notifications
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,
@@ -191,7 +195,9 @@ config :rescord,
     Rescord.Calendars.Grants,
     Rescord.Expenses.Grants,
     Rescord.Reports.Grants,
-    Rescord.Ruby.Grants
+    Rescord.Ruby.Grants,
+    Rescord.Comments.Grants,
+    Rescord.Notifications.Grants
   ]
 
 # Configure the endpoint
@@ -244,6 +250,12 @@ config :esbuild,
       ~w(js/app.js css/app.css --bundle --target=es2022 --outbase=. --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+  ],
+  # The service worker (issue 29) is a file at the root of the site, with no
+  # digest, so that its scope is the whole site.
+  rescord_worker: [
+    args: ~w(js/sw.ts --bundle --target=es2022 --outfile=../priv/static/sw.js),
+    cd: Path.expand("../assets", __DIR__)
   ]
 
 # Cinder renders with our theme, which has almost no class (ADR 0014).
@@ -261,13 +273,18 @@ config :rescord, :sign_in_link_url, {RescordWeb.SignInLink, :for_token}
 # email of an invitation names it.
 config :rescord, :sign_in_page_url, {RescordWeb.SignInLink, :page}
 
+# The same, for the address of the page of notifications of an
+# organisation, which a notification on a device opens (issue 29).
+config :rescord, :notifications_page_url, {RescordWeb.NotificationLink, :page}
+
 # The sender of each email. A release sets its own in config/runtime.exs.
 config :rescord, :mail_from, {"Rescord", "rescord@localhost"}
 
 # A token is a credential: Phoenix keeps it out of the log of a request.
 # The key of a provider is one too (ADR 0068): its field has the name
 # `api_key`.
-config :phoenix, :filter_parameters, ["password", "token", "api_key"]
+# A device of Web Push sends its secret as `auth` (ADR 0106).
+config :phoenix, :filter_parameters, ["password", "token", "api_key", "auth", "endpoint"]
 
 # Configure Elixir's Logger. The fields say whose a line is (ADR 0077):
 # `Rescord.Log.fields/0` names the same list, and a test holds the two

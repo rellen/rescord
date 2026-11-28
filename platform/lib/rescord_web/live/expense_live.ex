@@ -19,6 +19,7 @@ defmodule RescordWeb.ExpenseLive do
   import RescordWeb.ExpenseComponents
 
   alias Rescord.{Accounts, Expenses}
+  alias RescordWeb.Widgets.Comments
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -61,7 +62,8 @@ defmodule RescordWeb.ExpenseLive do
            set_tax?: can?.(:set_tax)
          }
        )
-       |> allow_receipts()}
+       |> allow_receipts()
+       |> Comments.assign_widget(:comments, {:expense, expense.id})}
     else
       _no_expense ->
         {:ok,
@@ -248,6 +250,7 @@ defmodule RescordWeb.ExpenseLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:expenses}
     >
       <nav aria-label="Breadcrumb">
@@ -302,6 +305,8 @@ defmodule RescordWeb.ExpenseLive do
       />
 
       <.history events={@events} organisation={@organisation} people={@people} />
+
+      <Comments.render state={@comments} record="this expense" />
     </Layouts.app>
     """
   end

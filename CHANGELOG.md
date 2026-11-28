@@ -133,6 +133,25 @@ release (ADR 0047).
   - `20261128091913_add_correlation_ids`, in each organisation: the same
     three columns and the same index in the 61 tables of the records
     with a history and of the histories. It changes no row.
+  - `20261128101612_add_comments_and_notifications`, in the database:
+    adds the tables of what leaves the server with a notification: the
+    settings of Web Push and ntfy, with their history, the devices of each
+    person, and the topic of ntfy of each person (issue 29, ADR 0106).
+    All are empty: no notification leaves the server until a root user
+    turns a channel on at `/root/push`. It changes no row.
+  - `20261128101606_add_comments_and_notifications`, in each
+    organisation: adds the tables of the comments, with their history,
+    of who follows a record, of the notifications, and of the channels
+    that each person chose. All are empty. It changes no row.
+  - `20261128101700_give_roles_the_comments`, in each organisation:
+    gives the new power "Write a comment on a record, tell a member, and
+    change or delete their own" to the role with the key
+    `administrator` and to the role with the key `member`, and the new
+    power "Delete any comment, and each comment of one person" to the
+    role with the key `administrator`.
+    These are the roles Administrator and Member that each organisation
+    starts with. No other row changes: a role that an administrator
+    defined does not get a power by itself.
   - The index is a plain `CREATE INDEX`, because the rehearsal refuses
     `CONCURRENTLY`. It locks each table against reads and writes until
     the migration of its organisation commits. The migrations run at the
@@ -247,6 +266,24 @@ release (ADR 0047).
   "email (former member)", and the work of a root user who is not a
   member says "Rescord operator". `members.csv` of the export has the
   former members too, with the new column `former?` (ADR 0105).
+- Comments and notifications (issue 29, ADR 0106). A member writes a
+  comment on a resident, a task, an expense or a transfer, with bold,
+  italics, lists and links, and ticks the members to tell. The writer
+  and each person told follow the record, and each follower gets a
+  notification: on the new page Notifications, behind the bell of the
+  site bar, and, when the server has it on, on their devices with Web
+  Push and on a topic of ntfy. A notification that leaves the server
+  names only the organisation and the kind of news: no resident, no
+  person and no word of a comment. A comment on an expense is read only
+  by the people who read the expense. A task has a page of its own now,
+  with its comments.
+- Rescord can be installed as a web app: it has a manifest and a service
+  worker. An iPhone or an iPad with iOS 16.4 or later shows the
+  notifications of Rescord once it is on the Home Screen.
+- The page `/root/push` sets what leaves the server with a notification:
+  the keys of Web Push, which Rescord makes and keeps encrypted, the
+  contact for the push services, the server of ntfy and its access
+  token. Each channel is off until a root user turns it on.
 - A transfer of a resident with photos or PDFs to a partner on this
   server shows "Sending" and how many files are there, such as "120 of
   300 files", while its files go to the partner. When a file does not

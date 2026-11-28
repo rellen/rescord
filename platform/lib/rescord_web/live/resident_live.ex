@@ -17,6 +17,7 @@ defmodule RescordWeb.ResidentLive do
 
   alias Rescord.{Journal, Lists, Locations, Photos, Residents}
   alias RescordWeb.ResidentWords
+  alias RescordWeb.Widgets.Comments
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -28,7 +29,8 @@ defmodule RescordWeb.ResidentLive do
          socket
          |> assign(problems: [], today: Rescord.Accounts.today(socket.assigns.organisation))
          |> assign(identifier_kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}))
-         |> assign_forms()}
+         |> assign_forms()
+         |> Comments.assign_widget(:comments, {:resident, socket.assigns.resident.id})}
 
       :error ->
         {:ok,
@@ -309,6 +311,7 @@ defmodule RescordWeb.ResidentLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">
@@ -407,6 +410,7 @@ defmodule RescordWeb.ResidentLive do
         organisation={@organisation}
         resident={@resident}
       />
+      <Comments.render state={@comments} record={@resident.name || "this resident"} />
       <.removal :if={can?(@role, :resident, :remove)} />
     </Layouts.app>
     """

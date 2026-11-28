@@ -681,7 +681,22 @@ defmodule Rescord.Accounts.OrganisationTest do
       assert actions.(:member) -- actions.(:administrator) == []
       assert length(Grants.grants(:administrator)) > length(Grants.grants(:member))
 
-      for {resource, action, scope} <- Grants.grants(:member), scope != :all do
+      # What is of one person stays theirs, for an administrator too
+      # (ADR 0106): the follows, the notifications and the preferences of a
+      # person, and the change of a comment, which only its writer makes.
+      of_one_person = [
+        {Rescord.Comments.Follow, :read},
+        {Rescord.Comments.Follow, :unfollow},
+        {Rescord.Comments.Comment, :revise},
+        {Rescord.Notifications.Notification, :read},
+        {Rescord.Notifications.Notification, :mine},
+        {Rescord.Notifications.Notification, :mark_read},
+        {Rescord.Notifications.Preference, :read}
+      ]
+
+      for {resource, action, scope} <- Grants.grants(:member),
+          scope != :all,
+          {resource, action} not in of_one_person do
         assert {:ok, :all} = Grants.scope(:administrator, resource, action)
       end
 

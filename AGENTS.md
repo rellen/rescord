@@ -1024,8 +1024,32 @@ hand (ADR 0073). Read it before you write a migration. In short:
     that the day of the page shows. Never act on a task by the id alone.
   - The parameter `day` is of the page. Each other parameter is of Cinder:
     the links to another day give them back, without `page`.
-  - A link from another page to one task is `tasks?day=<date>#task-<id>`.
-    The id is on the title of the task, because Cinder writes the row.
+  - A link from another page to one task in its day is
+    `tasks?day=<date>#task-<id>`. The id is on the title of the task,
+    because Cinder writes the row. The title links to the page of the task,
+    `tasks/<id>` (ADR 0106), which has its comments.
+- **Comments and notifications** (ADR 0106).
+  - A page shows the comments of its record with the live widget
+    `RescordWeb.Widgets.Comments` (`assign_widget/3` in `mount/3`, the
+    component in the render). It takes the subject `{kind, id}` of a record
+    that the page read as the person. A new kind of record is a column of
+    `Rescord.Comments.Subject`, a migration with the check of one column,
+    and a read in `readable?/2`.
+  - The words of a comment go to the page only through
+    `RescordWeb.Markdown.markdown/1`. Never `raw/1` them, and never give
+    the Markdown a node that it does not render itself.
+  - What leaves the server is `Rescord.Notifications.Message`: the
+    organisation, the sentence of the kind, the address of the page of
+    notifications. Never put a record, a person or a word of a comment in
+    a push or a topic of ntfy, and never log a subscription or a topic.
+  - A new channel is a module of `Rescord.Notifications.Channel`, with its
+    settings in `Rescord.Notifications.Settings` (AshCloak for a secret,
+    the page `/root/push`), never in the environment.
+  - A new kind of notification is an atom of `Notification.kind`, its
+    sentence in `Message.sentence/1` and `RescordWeb.CommentWords`, and a
+    row of the preferences.
+  - The service worker is `assets/js/sw.ts`, built to `priv/static/sw.js`
+    (not in git). It has no handler of `fetch`; add one only with an ADR.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through
@@ -1143,6 +1167,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt, the job that writes a reply, and the evaluation set under `ruby/eval/` (ADR 0069) |
 | `platform/lib/mix/tasks/rescord.ruby.eval.ex` | the task that runs the evaluation set of Ruby against a real model. Only a person starts it |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
+| `platform/lib/rescord/comments.ex`, `comments/` | the comments of a record, the follows, the two powers, and the signal of a new comment (ADR 0106) |
+| `platform/lib/rescord/notifications.ex`, `notifications/` | the notifications, the preferences, the channels (Web Push with its encryption, and ntfy), the subscriptions, the topics and the settings of the server (ADR 0106) |
+| `platform/lib/rescord_web/markdown.ex` | the Markdown subset of a comment, rendered to safe HTML (ADR 0106) |
+| `platform/assets/js/sw.ts`, `platform/assets/js/push.ts`, `platform/priv/static/manifest.webmanifest` | the service worker, the hook that turns notifications on for a device, and the manifest of the installable app (ADR 0106) |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |

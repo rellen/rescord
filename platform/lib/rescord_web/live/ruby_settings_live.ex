@@ -170,6 +170,7 @@ defmodule RescordWeb.RubySettingsLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:settings}
     >
       <nav aria-label="Breadcrumb">

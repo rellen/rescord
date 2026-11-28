@@ -254,6 +254,7 @@ defmodule RescordWeb.TasksLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:tasks}
     >
       <.header icon={Icons.section(:tasks)}>

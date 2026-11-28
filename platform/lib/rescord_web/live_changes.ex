@@ -92,7 +92,12 @@ defmodule RescordWeb.LiveChanges do
           socket -> Subscriptions.subscribe(socket, Changes.pubsub(), topic, __MODULE__)
         end
 
-      LiveView.put_hook(socket, __MODULE__, :handle_info, &handle_info(&1, &2, reload, wait))
+      LiveView.put_hook(
+        socket,
+        __MODULE__,
+        :handle_info,
+        &handle_info(&1, &2, domains, reload, wait)
+      )
     end)
   end
 
@@ -100,9 +105,21 @@ defmodule RescordWeb.LiveChanges do
   # instance.
   defp wait, do: Keyword.get(Application.get_env(:rescord, __MODULE__, []), :wait, @wait)
 
-  defp handle_info(%Change{}, socket, reload, 0), do: {:halt, reload.(socket)}
+  # A change of a domain that the page does not listen to is for another
+  # part of the page, such as the count of the notifications or a widget.
+  defp handle_info(%Change{domain: domain} = change, socket, domains, reload, wait) do
+    if domain in domains, do: heard(change, socket, reload, wait), else: {:cont, socket}
+  end
 
-  defp handle_info(%Change{}, socket, _reload, wait) do
+  defp handle_info(@read_again, socket, _domains, reload, _wait) do
+    {:halt, socket |> Phoenix.LiveView.put_private(@waiting, false) |> reload.()}
+  end
+
+  defp handle_info(_message, socket, _domains, _reload, _wait), do: {:cont, socket}
+
+  defp heard(%Change{}, socket, reload, 0), do: {:halt, reload.(socket)}
+
+  defp heard(%Change{}, socket, _reload, wait) do
     if socket.private[@waiting] do
       {:halt, socket}
     else
@@ -110,10 +127,4 @@ defmodule RescordWeb.LiveChanges do
       {:halt, Phoenix.LiveView.put_private(socket, @waiting, true)}
     end
   end
-
-  defp handle_info(@read_again, socket, reload, _wait) do
-    {:halt, socket |> Phoenix.LiveView.put_private(@waiting, false) |> reload.()}
-  end
-
-  defp handle_info(_message, socket, _reload, _wait), do: {:cont, socket}
 end

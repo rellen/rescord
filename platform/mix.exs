@@ -178,9 +178,10 @@ defmodule Rescord.MixProject do
       # A run of muex skips both: see `muex_command/0`.
       test: test_setup() ++ ["test"],
       "assets.setup": ["esbuild.install --if-missing"],
-      "assets.build": ["compile", "esbuild rescord"],
+      "assets.build": ["compile", "esbuild rescord", "esbuild rescord_worker"],
       "assets.deploy": [
         "esbuild rescord --minify",
+        "esbuild rescord_worker --minify",
         "phx.digest"
       ],
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"],

@@ -34,7 +34,8 @@ defmodule Rescord.Export do
       Rescord.Photos,
       Rescord.Tasks,
       Rescord.Inventory,
-      Rescord.Expenses
+      Rescord.Expenses,
+      Rescord.Comments
     ],
     # A page that sends one table as a file writes it with the same CSV.
     exports: [CSV]
@@ -54,7 +55,8 @@ defmodule Rescord.Export do
     Rescord.Photos,
     Rescord.Tasks,
     Rescord.Inventory,
-    Rescord.Expenses
+    Rescord.Expenses,
+    Rescord.Comments
   ]
 
   # Columns that are calculations, after the attributes.
@@ -95,7 +97,20 @@ defmodule Rescord.Export do
     Rescord.Usage.Count =>
       "The usage counts are of the whole server, with no organisation in them (ADR 0098).",
     Rescord.Usage.Settings =>
-      "What the server does with its usage counts is a setting of the server (ADR 0098)."
+      "What the server does with its usage counts is a setting of the server (ADR 0098).",
+    Rescord.Comments.Follow =>
+      "Who follows a record is a setting of each member for their notifications (ADR 0106).",
+    Rescord.Notifications.Notification =>
+      "A notification is a pointer to a comment for one member, and goes after 90 days. " <>
+        "comments.csv has each comment.",
+    Rescord.Notifications.Preference =>
+      "Where the notifications of a member go is a setting of that member.",
+    Rescord.Notifications.PushSubscription =>
+      "A device of a person is a secret of the push service, and of no organisation.",
+    Rescord.Notifications.NtfyTopic =>
+      "The topic of ntfy of a person is a secret, and of no organisation.",
+    Rescord.Notifications.Settings =>
+      "The channels of the notifications are a setting of the server, with its keys (ADR 0106)."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."
@@ -139,6 +154,8 @@ defmodule Rescord.Export do
       for domain <- @domains,
           resource <- Ash.Domain.Info.resources(domain),
           not version?(resource),
+          # A domain of the export can hold a setting of one member.
+          not Map.has_key?(@excluded, resource),
           do: resource
   end
 

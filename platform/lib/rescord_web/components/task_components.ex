@@ -120,7 +120,9 @@ defmodule RescordWeb.TaskComponents do
         <:col :let={task} field="title" label="Task" search>
           <%!-- The place of a link from the first page or a calendar:
                `tasks#task-<id>`. Cinder writes the row, with no id. --%>
-          <span id={"task-#{task.id}"}>{task.title}</span>
+          <.link id={"task-#{task.id}"} navigate={~p"/o/#{@organisation.short_name}/tasks/#{task.id}"}>
+            {task.title}
+          </.link>
           <small :if={task.kind}>{task.kind.label}</small>
           <small :if={task.routine_id}>From a routine</small>
           <small :if={task.note}>{task.note}</small>

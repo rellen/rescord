@@ -95,11 +95,15 @@ defmodule RescordWeb.Router do
       live "/root/ruby/:id", RootRubyLive, :provider
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
+      # The channels of the notifications: Web Push and ntfy (ADR 0106).
+      live "/root/push", RootPushLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
     live_session :organisation,
-      on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_organisation}] do
+      on_mount:
+        @sandbox_hooks ++
+          [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
       live "/o/:organisation/roles", RolesLive
@@ -114,6 +118,8 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/reports", ReportsLive
       live "/o/:organisation/lists", ListsLive, :organisation
       live "/o/:organisation/tasks", TasksLive
+      live "/o/:organisation/tasks/:id", TaskLive
+      live "/o/:organisation/notifications", NotificationsLive
       live "/o/:organisation/calendar", CalendarLive
       live "/o/:organisation/routines", RoutinesLive, :index
       live "/o/:organisation/routines/:id/edit", RoutinesLive, :edit

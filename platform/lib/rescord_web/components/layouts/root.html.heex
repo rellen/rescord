@@ -12,6 +12,11 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href={~p"/images/favicon.svg"} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={~p"/images/apple-touch-icon.png"} />
+    <%!-- Rescord can be installed as a web app (issue 29): a phone shows the
+    notifications of an installed app, and an iPhone only those. The
+    manifest and the service worker are files at the root, with no digest:
+    the browser asks for them by that name. --%>
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>

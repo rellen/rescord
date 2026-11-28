@@ -198,6 +198,12 @@ defmodule Rescord.ChangesTest do
           # The usage counts of the server, which only a root user reads.
           Rescord.Usage.Count,
           Rescord.Usage.Settings,
+          # The devices and the topics of a person, and the settings of the
+          # server: a person has them in no organisation, and no page of
+          # another person shows them (ADR 0106).
+          Rescord.Notifications.PushSubscription,
+          Rescord.Notifications.NtfyTopic,
+          Rescord.Notifications.Settings,
           # The private keys of a refuge. No page waits for one.
           Rescord.Transfers.RefugeKey
         ]

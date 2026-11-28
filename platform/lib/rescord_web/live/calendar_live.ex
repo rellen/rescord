@@ -146,6 +146,7 @@ defmodule RescordWeb.CalendarLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:tasks}
     >
       <.header icon={Icons.section(:calendar)}>

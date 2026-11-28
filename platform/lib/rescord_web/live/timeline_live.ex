@@ -67,6 +67,7 @@ defmodule RescordWeb.TimelineLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:residents}
     >
       <.header icon={Icons.section(:timeline)}>

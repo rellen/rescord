@@ -442,6 +442,7 @@ defmodule RescordWeb.JournalLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">

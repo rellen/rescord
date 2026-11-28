@@ -276,7 +276,10 @@ defmodule Rescord.CorrelationTest do
     "lib/rescord/transfers/changes/send_transfer.ex" => :read,
     # It runs in a job, and the resources of a conversation keep no paper
     # trail (ADR 0069).
-    "lib/rescord/ruby/changes/respond.ex" => :no_trail
+    "lib/rescord/ruby/changes/respond.ex" => :no_trail,
+    # It starts the job of a notification again, and a notification keeps
+    # no paper trail (ADR 0106).
+    "lib/rescord/notifications/changes/deliver.ex" => :no_trail
   }
 
   # A new change that builds the options of a nested action and forgets the

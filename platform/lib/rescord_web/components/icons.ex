@@ -40,6 +40,8 @@ defmodule RescordWeb.Icons do
     "banknotes" =>
       ~S|<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>|,
     "bars" => ~S|<path d="M4 7h16M4 12h16M4 17h16"/>|,
+    "bell" =>
+      ~S|<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>|,
     "book-open" =>
       ~S|<path d="M12 6.5C10.5 5 8 4.5 3.5 4.5v14c4.5 0 7 .5 8.5 2 1.5-1.5 4-2 8.5-2v-14c-4.5 0-7 .5-8.5 2zM12 6.5v14"/>|,
     "building" =>
@@ -232,6 +234,7 @@ defmodule RescordWeb.Icons do
   def section(:usage), do: "chart-bar"
   def section(:export), do: "arrow-down-tray"
   def section(:root), do: "shield"
+  def section(:notifications), do: "bell"
   def section(:journal), do: "book-open"
   def section(:measurements), do: "chart-line"
   def section(:photos), do: "photo"

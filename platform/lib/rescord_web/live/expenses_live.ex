@@ -122,6 +122,7 @@ defmodule RescordWeb.ExpensesLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:expenses}
     >
       <.header icon={Icons.section(:expenses)}>

@@ -20,7 +20,8 @@ defmodule RescordWeb.RoleWords do
     {"Expenses", [:expenses, :manage_expenses]},
     {"Transfers", [:transfers]},
     {"Export", [:export]},
-    {"Assistant", [:ruby]}
+    {"Assistant", [:ruby]},
+    {"Comments", [:comments, :moderate_comments]}
   ]
 
   @words %{
@@ -44,7 +45,9 @@ defmodule RescordWeb.RoleWords do
       "Read each expense, approve or decline one, and record that a member was paid back",
     transfers: "Agree partner refuges, send a resident to one, and answer a transfer",
     export: "Export the data of the organisation as files of CSV",
-    ruby: "Ask Ruby, the assistant, when the organisation has it on"
+    ruby: "Ask Ruby, the assistant, when the organisation has it on",
+    comments: "Write a comment on a record, tell a member, and change or delete their own",
+    moderate_comments: "Delete any comment, and each comment of one person"
   }
 
   @doc "The areas of work, each with its powers, in the order of the page."
