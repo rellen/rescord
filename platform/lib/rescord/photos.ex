@@ -163,6 +163,9 @@ defmodule Rescord.Photos do
   @spec keep(item, %{caption: String.t() | nil, taken_on: term, album_ids: [String.t()]}, keyword) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def keep(item, %{caption: caption, taken_on: taken_on, album_ids: album_ids}, opts \\ []) do
+    # One correlation id for each write of the photo (ADR 0100).
+    opts = Rescord.Correlation.start(opts)
+
     Ash.transact(
       [Photo, AlbumPhoto],
       fn ->
@@ -302,6 +305,8 @@ defmodule Rescord.Photos do
   others of its resident, in one transaction.
   """
   def place_in_albums(%Photo{} = photo, album_ids, opts \\ []) when is_list(album_ids) do
+    opts = Rescord.Correlation.start(opts)
+
     Ash.transact([AlbumPhoto], fn -> place(photo, album_ids, opts) end, tenant: opts[:tenant])
     |> case do
       {:ok, :ok} -> :ok

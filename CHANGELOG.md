@@ -122,9 +122,32 @@ release (ADR 0047).
     send: their sources, how many there are, how many are copied, and why
     a transfer was not sent. It changes no row: each transfer keeps its
     state, and counts 0 files.
+  - `20261128092015_add_correlation_ids`, in the database: adds three
+    empty columns, `correlation_id`, `operation_id` and `causation_id`,
+    to the 23 tables of the shared records with a history and of the
+    histories, for the ids of the work that wrote each version
+    (ADR 0100). It has no default. It adds an index on `correlation_id`
+    to each of those tables, only for the rows that have one, so each
+    index is empty after the upgrade. It changes no row: each version
+    that is there keeps no id.
+  - `20261128091913_add_correlation_ids`, in each organisation: the same
+    three columns and the same index in the 61 tables of the records
+    with a history and of the histories. It changes no row.
+  - The index is a plain `CREATE INDEX`, because the rehearsal refuses
+    `CONCURRENTLY`. It locks each table against reads and writes until
+    the migration of its organisation commits. The migrations run at the
+    start, before the server answers, so no person waits on a lock, and
+    the index reads each row once: on a table of 500,200 rows it took
+    about 50 ms. A large organisation starts a little slower one time.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
+- After the upgrade, do not run an older version of Rescord on the
+  database, not even for a moment. An older version does not know the
+  three new columns: when it changes a record that the new version
+  changed, its new version of the record takes the ids of the version
+  before, and that one loses them, with no error. The way back stays the
+  backup that you made before the upgrade.
 - After the upgrade, Rescord counts how often each feature is used on the
   server, and keeps the counts in its database for its root users, at
   `/root/usage`. It sends them nowhere. A root user can turn the counting
@@ -496,6 +519,15 @@ release (ADR 0047).
   has them, and have no row for them when it has none. The search of the
   residents page finds a resident by its name or by its markings.
   `residents.csv` of the export has the new column `markings`.
+- Each version that Rescord writes in a history now holds three ids
+  (ADR 0100). `correlation_id` is the same for each version of one piece
+  of work: the removal of a resident, with the tasks and routines that it
+  changes, has one. `operation_id` is the id of the one action that wrote
+  the version, and `causation_id` is the `operation_id` of the action
+  that ran it, so the versions of one piece of work make a tree. A
+  version from before the upgrade has none. No page shows them yet; a
+  person who runs a server can find each version of one piece of work
+  with a query on `correlation_id`.
 
 ### Changed
 

@@ -18,7 +18,11 @@ defmodule Rescord.Tasks.Changes.NextOfRoutine do
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, task ->
-      internal = [tenant: changeset.tenant, authorize?: false]
+      internal = [
+        tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
+        authorize?: false
+      ]
 
       with routine_id when is_binary(routine_id) <- task.routine_id,
            {:ok, %Routine{pattern: :interval, count_from: :last_done} = routine} <-

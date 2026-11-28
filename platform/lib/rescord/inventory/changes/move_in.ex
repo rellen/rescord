@@ -40,6 +40,7 @@ defmodule Rescord.Inventory.Changes.MoveIn do
           },
           actor: context.actor,
           tenant: changeset.tenant,
+          context: Rescord.Correlation.context(changeset),
           authorize?: false
         )
         |> Ash.create()

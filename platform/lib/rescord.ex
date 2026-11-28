@@ -18,6 +18,7 @@ defmodule Rescord do
     exports: [
       Changes,
       Changes.Change,
+      Correlation,
       Dosage,
       Dosage.Result,
       History,
@@ -30,9 +31,13 @@ defmodule Rescord do
       Repo,
       Resource,
       Resource.Checks,
+      # `Rescord.Resource` adds them to each resource with a trail (ADR 0100).
+      Resource.Operations,
+      Resource.Operations.Stamp,
       # `Rescord.Resource` names it in each resource of a domain, and a domain
       # checks such a name too (ADR 0066).
       Resource.VersionPolicies,
+      Resource.VersionTable,
       Storage,
       Storage.Compare,
       # A change of a resource puts its field on it (ADR 0077, E3).

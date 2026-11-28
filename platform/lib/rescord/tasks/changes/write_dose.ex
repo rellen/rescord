@@ -19,13 +19,19 @@ defmodule Rescord.Tasks.Changes.WriteDose do
     Ash.Changeset.after_action(changeset, fn changeset, task ->
       case task.prescription_id do
         nil -> {:ok, task}
-        prescription_id -> write(prescription_id, task, changeset.tenant, context.actor)
+        prescription_id -> write(prescription_id, task, changeset, context.actor)
       end
     end)
   end
 
-  defp write(prescription_id, task, tenant, actor) do
-    options = [actor: actor, tenant: tenant]
+  defp write(prescription_id, task, changeset, actor) do
+    # The entry and its details share the correlation id of the completion
+    # (ADR 0100).
+    options = [
+      actor: actor,
+      tenant: changeset.tenant,
+      context: Rescord.Correlation.context(changeset)
+    ]
 
     with {:ok, %{} = entry} <- Journal.entry_of_prescription(prescription_id, options),
          {:ok, _dose} <-

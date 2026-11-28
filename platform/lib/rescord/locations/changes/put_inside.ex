@@ -25,7 +25,12 @@ defmodule Rescord.Locations.Changes.PutInside do
           {:ok, location}
 
         parent_id ->
-          base = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+          base = [
+            actor: context.actor,
+            tenant: changeset.tenant,
+            context: Rescord.Correlation.context(changeset),
+            authorize?: false
+          ]
 
           options =
             case changeset.as_of do

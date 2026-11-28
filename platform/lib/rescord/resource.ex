@@ -31,6 +31,10 @@ defmodule Rescord.Resource do
       with a table of its own. The policy of a version resource refuses each
       actor (`Rescord.Resource.VersionPolicies`, ADR 0063): a domain reads
       the versions after the record has decided.
+    * Each version holds the correlation id of the action call that wrote
+      it (`correlation_id`, ADR 0100). A change that runs a nested action
+      gives it `context: Rescord.Correlation.context(changeset)`, so that
+      both write one id.
     * A destroy archives the row (AshArchival).
 
   A section that the resource writes again adds to these defaults, and an
@@ -98,7 +102,10 @@ defmodule Rescord.Resource do
 
     ours =
       [Rescord.Resource.Checks] ++
-        if(flags.paper_trail?, do: [AshPaperTrail.Resource], else: []) ++
+        if(flags.paper_trail?,
+          do: [AshPaperTrail.Resource, Rescord.Resource.Operations],
+          else: []
+        ) ++
         if(flags.archive?, do: [AshArchival.Resource], else: [])
 
     # Spark reads the extensions while it expands `use`, so the list stays a
@@ -205,9 +212,20 @@ defmodule Rescord.Resource do
         mode :temporal_inline
         change_tracking_mode :previous_values
         store_action_name? true
+        operation_id_field :correlation_id
+        metadata :operation_id, :uuid, allow_nil?: true
+        metadata :causation_id, :uuid, allow_nil?: true
         version_resource? true
         version_extensions authorizers: [Ash.Policy.Authorizer]
         mixin Rescord.Resource.VersionPolicies
+      end
+
+      # A version row is in the table of the resource. Most rows from before
+      # ADR 0100 have no id, so the index holds only the rows that have one.
+      postgres do
+        custom_indexes do
+          index [:correlation_id], where: "correlation_id IS NOT NULL"
+        end
       end
     end
   end
@@ -217,8 +235,12 @@ defmodule Rescord.Resource do
       paper_trail do
         change_tracking_mode :changes_only
         store_action_name? true
+        operation_id_field :correlation_id
+        metadata :operation_id, :uuid, allow_nil?: true
+        metadata :causation_id, :uuid, allow_nil?: true
         version_extensions authorizers: [Ash.Policy.Authorizer]
-        mixin Rescord.Resource.VersionPolicies
+        # The policies, and the index of the version table (ADR 0100).
+        mixin Rescord.Resource.VersionTable
       end
     end
   end

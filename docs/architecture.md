@@ -572,6 +572,15 @@ script of ours.
   gives a version resource no authorizer, so `Rescord.Resource` gives each
   one a policy that refuses each actor. A domain reads the versions of its
   own resources, after the record that they belong to has decided.
+- **Each version says which piece of work wrote it** (ADR 0100):
+  `correlation_id` is the same for each version of one piece of work, with
+  its nested actions and the signal listeners that run inline;
+  `operation_id` is the one action call; `causation_id` is the
+  `operation_id` of the action that ran it. A nested action gets the
+  shared context of its caller (`Rescord.Correlation.context/1`), and a
+  function of a domain that runs several actions gives them one id
+  (`Rescord.Correlation.start/1`). Only `correlation_id` has an index. A
+  listener in a job and an end with no version have no id of their cause.
 - A fact that needs a history is a temporal resource in 6NF: the key, the
   period and one value (`docs/domain.md`, section 6).
 - Temporal resources are experimental in Ash, and need PostgreSQL 18 and

@@ -320,6 +320,8 @@ defmodule Rescord.Ruby do
   @spec save_provider(Provider.t(), map, String.t() | nil, keyword) ::
           {:ok, Provider.t()} | {:error, term}
   def save_provider(%Provider{} = provider, attributes, key, opts \\ []) do
+    opts = Rescord.Correlation.start(opts)
+
     Ash.transact([Provider], fn ->
       with {:ok, provider} <- change_provider(provider, attributes, opts) do
         if is_binary(key), do: set_provider_key(provider, key, opts), else: {:ok, provider}
