@@ -100,7 +100,7 @@ jobs:
   test:
     name: Format, compile and test
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: "true"
     steps:
@@ -149,6 +149,10 @@ jobs:
       - name: Compile with the test support, with no warning
         run: devenv shell -- bash -c 'cd platform && MIX_ENV=test mix compile --warnings-as-errors'
 
+      # Nearly each test makes an organisation, so the tests run one by one:
+      # 16 minutes at 06:36 UTC on 28 November 2026, and 24 minutes half an
+      # hour and nine commits later. The limit leaves room until the tests run in
+      # parts (`mix test --partitions`).
       - name: Test
-        timeout-minutes: 30
+        timeout-minutes: 60
         run: devenv shell -- bash -c 'cd platform && mix test'
