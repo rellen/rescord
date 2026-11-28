@@ -12,7 +12,7 @@ defmodule Rescord.Residents do
 
   use Ash.Domain,
     otp_app: :rescord,
-    extensions: [AshBoundary, AshPaperTrail.Domain]
+    extensions: [AshBoundary, AshPaperTrail.Domain, AshAi]
 
   require Ash.Query
 
@@ -42,6 +42,27 @@ defmodule Rescord.Residents do
 
   paper_trail do
     include_versions? true
+  end
+
+  # The tools of the assistant (ADR 0069). A tool here does not exist for
+  # Ruby until `Rescord.Ruby.Catalogue` names it, and it runs as the
+  # member, with the policy of the action.
+  tools do
+    tool :find_residents, Rescord.Residents.Resident, :read do
+      description """
+      Finds residents (the animals of the rescue) by name, status, species or sex.
+      Use it to turn a name that the person said into a resident. A missing
+      field means that nothing is recorded.
+      """
+
+      load [:name, :status, :species_label, :arrived_on]
+      select [:id, :sex]
+      filterable_fields([:name, :status, :species_label, :sex])
+      sortable_fields([:name, :arrived_on])
+      aggregatable_fields([])
+      action_parameters([:filter, :sort, :limit, :result_type])
+      annotations(read_only_hint: true)
+    end
   end
 
   resources do

@@ -10,7 +10,7 @@ defmodule Rescord.Tasks do
 
   use Ash.Domain,
     otp_app: :rescord,
-    extensions: [AshBoundary, AshPaperTrail.Domain]
+    extensions: [AshBoundary, AshPaperTrail.Domain, AshAi]
 
   require Ash.Query
   require Logger
@@ -34,6 +34,21 @@ defmodule Rescord.Tasks do
 
   paper_trail do
     include_versions? true
+  end
+
+  # The tools of the assistant (ADR 0069). A tool here does not exist for
+  # Ruby until `Rescord.Ruby.Catalogue` names it, and it runs as the
+  # member, with the policy of the action.
+  tools do
+    tool :get_task, Rescord.Tasks.Task, :read do
+      description "Reads one task by its id, with its kind and what it is about."
+      get_by :id
+      load kind: [:label], subjects: [resident: [:name], location: []]
+      # No id of a member goes to the provider: not who has the task, and
+      # not who finished it.
+      select [:id, :title, :note, :due_at, :state, :prescription_id, :skip_reason, :finished_at]
+      annotations(read_only_hint: true)
+    end
   end
 
   resources do

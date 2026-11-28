@@ -8,8 +8,18 @@ defmodule Rescord.Ruby do
   (`Rescord.Ruby.LLM`), and the conversations of the members with their
   messages (`Rescord.Ruby.Conversation`, `Rescord.Ruby.Message`) and how
   an organisation uses Ruby (`Rescord.Ruby.Settings`), in the schema of
-  each organisation. The tools and the job that writes a reply come with
-  the later steps of the work.
+  each organisation. The job that writes a reply comes with a later step
+  of the work.
+
+  ## The tools
+
+  A tool is a line of `Rescord.Ruby.Catalogue`: an action tool that a
+  domain declares, or a digest of `Rescord.Ruby.Digests`, which calls a
+  function of a domain as the member. `Rescord.Ruby.Toolbox` makes the
+  options of the loop of `AshAi` for one member: the actor of
+  `Rescord.Ruby.Actor.for/1`, the names of the catalogue, and the options
+  of the provider. This domain declares no tool: nothing of Ruby itself,
+  and no setting, is a thing that Ruby reads.
 
   ## Whether Ruby is on
 
@@ -50,7 +60,7 @@ defmodule Rescord.Ruby do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Vault]
+    deps [Rescord, Rescord.Accounts, Rescord.Residents, Rescord.Tasks, Rescord.Vault]
   end
 
   paper_trail do
