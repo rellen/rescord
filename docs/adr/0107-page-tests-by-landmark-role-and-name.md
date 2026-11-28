@@ -31,7 +31,7 @@ part of the words and prefers them to `aria-label`, so it finds each
   `click/2` of the module, which take a locator or a CSS selector.
   Locators: `main`, `banner`, `contentinfo`, `navigation`, `region`,
   `complementary`, `article`, `heading`, `button`, `link`, `field`,
-  `table`, `row`, `form`, `list` (by its label), `item`, `figure`,
+  `table`, `row`, `form`, `group` (a fieldset, by its legend), `list` (by its label), `item`, `figure`,
   `image`, `details` (by the label or the words of its summary),
   `definition` (the `dd` of a term), `alert`, `status`, narrowed with a
   pipe. Queries: `has?`, `all`, `one`, `text`, `names`, `href`, `src`,

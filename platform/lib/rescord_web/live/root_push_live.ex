@@ -141,10 +141,12 @@ defmodule RescordWeb.RootPushLive do
           Apple, Google, Mozilla and Microsoft deliver the notifications of this server to phones and browsers only when they carry its key. The private key is encrypted in the database, and no page shows it.
         </p>
         <dl :if={@settings.vapid_public_key}>
-          <dt>Public key</dt>
-          <dd>
-            <code>{@settings.vapid_public_key}</code>, made on {made(@settings.keys_made_at)}
-          </dd>
+          <div>
+            <dt>Public key</dt>
+            <dd>
+              <code>{@settings.vapid_public_key}</code>, made on {made(@settings.keys_made_at)}
+            </dd>
+          </div>
         </dl>
         <p :if={is_nil(@settings.vapid_public_key)}>
           <button type="button" phx-click="make-keys">Make the keys</button>

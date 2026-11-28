@@ -22,6 +22,7 @@ defmodule RescordWeb.RolesTest do
         <label for="lot_quantity">Quantity</label>
         <input id="lot_quantity" name="lot[quantity]" />
         <label><input type="checkbox" name="lot[open]" value="true" /> Open now</label>
+        <fieldset><legend>Days</legend><label><input type="checkbox" name="lot[days][]" value="1" /> Monday</label></fieldset>
         <footer><button>Save the lot</button></footer>
       </form>
     </section>
@@ -105,6 +106,12 @@ defmodule RescordWeb.RolesTest do
     refute has?(@page, form("The lots"))
     assert attribute(@page, region("Lots") |> form(nil), "action") == nil
     assert attribute(@page, list("The lots"), "aria-label") == "The lots"
+  end
+
+  test "a group of fields is found by its legend" do
+    assert has?(@page, region("Lots") |> group("Days") |> field("Monday"))
+    refute has?(@page, group("Days") |> field("Open now"))
+    assert playwright(group("Days")) == ~s(internal:role=group[name="Days"s])
   end
 
   test "a list is found by its label, and its items in it" do

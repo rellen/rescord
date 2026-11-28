@@ -233,7 +233,10 @@ defmodule RescordWeb.NotificationsLive do
       <section :if={@channels != []} aria-labelledby="where-heading">
         <h2 id="where-heading">What goes where</h2>
         <form id="preferences-form" phx-submit="save-preferences">
-          <fieldset :for={kind <- Rescord.Notifications.Notification.kinds()}>
+          <fieldset
+            :for={kind <- Rescord.Notifications.Notification.kinds()}
+            id={"preferences-#{kind}"}
+          >
             <legend>{CommentWords.kind(kind)}</legend>
             <input type="hidden" name={"preferences[#{kind}][]"} value="" />
             <label :for={channel <- @channels}>
