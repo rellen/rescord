@@ -26,7 +26,7 @@ defmodule Rescord.Journal do
     check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
     # A page reads a series of measurements, which is no resource.
-    exports [Rescord.Journal.Series, Rescord.Journal.Series.Point]
+    exports [Rescord.Journal.Series, Rescord.Journal.Series.Point, Rescord.Journal.Standard]
   end
 
   paper_trail do
@@ -71,7 +71,7 @@ defmodule Rescord.Journal do
     :follows,
     episode: [condition: [:label]],
     diagnosis: [condition: [:label]],
-    measurement: [measure_kind: [:label], unit: [:label]],
+    measurement: [measure_kind: [:label, standard_unit: [:label]], unit: [:label]],
     procedure: [procedure_kind: [:label]],
     dose: [:prescription]
   ]
@@ -493,7 +493,9 @@ defmodule Rescord.Journal do
   def series_of(resident_ids, opts \\ []) do
     JournalEntry
     |> Ash.Query.filter(resident_id in ^resident_ids and kind == :measurement)
-    |> Ash.Query.load(measurement: [measure_kind: [:label], unit: [:label]])
+    |> Ash.Query.load(
+      measurement: [measure_kind: [:label, standard_unit: [:label]], unit: [:label]]
+    )
     |> Ash.read(opts)
     |> case do
       {:ok, entries} ->
@@ -508,6 +510,15 @@ defmodule Rescord.Journal do
         {:error, error}
     end
   end
+
+  @doc """
+  A measurement as a page shows it: in the standard unit of its kind,
+  beside what the person recorded (ADR 0094). The measurement has its unit
+  and its kind with the standard unit, as `entries/2` and
+  `latest_measurements/2` give it.
+  """
+  @spec standard(map) :: Rescord.Journal.Standard.t()
+  def standard(measurement), do: Rescord.Journal.Standard.of(measurement)
 
   @doc """
   A measurement as a quantity, `1095 g`, or `:error` when it has no unit or

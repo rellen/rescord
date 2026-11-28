@@ -59,7 +59,7 @@ defmodule RescordWeb.JournalLive do
          problems: [],
          authors: Map.new(members, &{&1.user_id, to_string(&1.email)}),
          lists: lists(options),
-         units_of: units_of(options),
+         measurement_units: RescordWeb.MeasurementUnits.read(options),
          can_write?: Journal.role_can_write?(socket.assigns.role),
          can_plan?: Tasks.role_can?(socket.assigns.role, :plan),
          can_start_routine?: Tasks.role_can_routine?(socket.assigns.role, :start),
@@ -144,24 +144,6 @@ defmodule RescordWeb.JournalLive do
     end
   end
 
-  # The units of each measure kind that names some: a map from the id of
-  # the kind to the ids of its units.
-  defp units_of(options) do
-    {:ok, kinds} = Lists.values(:measure_kind, options)
-    for kind <- kinds, kind.unit_ids != [], into: %{}, do: {kind.id, kind.unit_ids}
-  end
-
-  # The units that the form of a measurement offers: those of the chosen
-  # kind, or each unit when the kind names none.
-  defp unit_options(socket, kind_id) do
-    all = socket.assigns.lists.unit
-
-    case Map.get(socket.assigns.units_of, kind_id) do
-      nil -> all
-      ids -> Enum.filter(all, fn {_label, id} -> id in ids end)
-    end
-  end
-
   # The conditions of the resident, and the same as the options of a form.
   defp assign_episodes(socket) do
     {:ok, episodes} = Journal.episodes_of(socket.assigns.resident.id, options(socket))
@@ -191,11 +173,23 @@ defmodule RescordWeb.JournalLive do
   defp assign_form(socket, fields) do
     fields = typed_fields(fields)
     kind = JournalWords.kind_of(fields["kind"]) || :general
+    measure_kind = fields["measure_kind_id"]
+    units = socket.assigns.measurement_units
+    standard = RescordWeb.MeasurementUnits.standard(units, measure_kind)
+
+    # When the person chooses what was measured, the form chooses the
+    # standard unit of that kind (ADR 0094).
+    fields =
+      if measure_kind != socket.assigns[:measure_kind] and standard,
+        do: Map.put(fields, "unit_id", standard),
+        else: fields
 
     assign(socket,
       form: typed_form(fields, as: :entry),
       kind: kind,
-      units: unit_options(socket, fields["measure_kind_id"]),
+      measure_kind: measure_kind,
+      units: RescordWeb.MeasurementUnits.options(units, measure_kind),
+      unit_needed?: RescordWeb.MeasurementUnits.needed?(units, measure_kind),
       joins: joins(socket, kind, fields["condition_id"])
     )
   end
@@ -493,6 +487,7 @@ defmodule RescordWeb.JournalLive do
         kind={@kind}
         lists={@lists}
         units={@units}
+        unit_needed?={@unit_needed?}
         prescriptions={@prescriptions}
         uploads={@uploads}
         conditions={@conditions}

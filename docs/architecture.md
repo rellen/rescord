@@ -457,9 +457,25 @@ dependency.
 that the server writes** (ADR 0080). There is no chart library and no
 script of ours.
 
+- **A measure kind can name its standard unit** (ADR 0094), which an
+  administrator sets on the page Lists. A person may record another unit
+  that `Rescord.Units` converts to it, and the measurement keeps the
+  number and the unit that the person recorded: nothing is stored in a
+  converted form. A new measurement of such a kind needs the standard
+  unit or a unit that converts to it: `Rescord.Lists.units_for/2` and
+  `accepted_units/2` hold the rule for the journal and for the forms. A
+  measurement from before stays as it is.
+- **A read gives a measurement in the standard unit**:
+  `Rescord.Journal.standard/1` gives `%Rescord.Journal.Standard{}`, with
+  the value in the standard unit of the kind and what was recorded, and
+  rounds nothing. `RescordWeb.MeasurementWords.measurement/1` writes it
+  for a page: "610 g (recorded as 0.61 kg)". The export has the
+  calculations `standard_value` and `standard_unit` of a measurement
+  beside `value` and `unit_id`.
 - **A series** is `%Rescord.Journal.Series{}`: the measurements of one
   kind for one resident, in the order of time, in one unit, which is the
-  unit of the newest measurement. A measurement in another unit is a point
+  standard unit of the kind, or the unit of the newest measurement for a
+  kind with none. A measurement in another unit is a point
   when `Rescord.Units` converts it, and is in `others` when it does not.
   Each point has its change from the point before.
   `Rescord.Journal.series/2` gives the series of a resident and

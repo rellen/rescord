@@ -783,6 +783,20 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A new unit takes a line in the catalogue of `Rescord.Units`, words for
     a new dimension in `RescordWeb.UnitWords`, and a line with its factor
     in `Rescord.UnitsTest`.
+- **Measurements and their standard unit** (ADR 0094). A measure kind can
+  name its standard unit. A measurement keeps the number and the unit that
+  the person recorded: never store a converted value, and never change
+  what was recorded to fit the standard unit.
+  - Code that shows a measurement uses `Rescord.Journal.standard/1`, and a
+    page writes it with `RescordWeb.MeasurementWords.measurement/1`. Do
+    not write `value` beside the label of `unit` by hand.
+  - The units that a form offers come from `RescordWeb.MeasurementUnits`,
+    and the rule of the journal from `Rescord.Lists.units_for/2`. Both
+    read `Rescord.Lists.accepted_units/2`: change the rule there.
+  - A read that shows a measurement loads
+    `measure_kind: [standard_unit: [:label]]` and `unit: [:label]`, as
+    `Rescord.Journal.entries/2` does. Without the standard unit loaded,
+    the measurement is shown as it was recorded.
 - **Charts** (ADR 0080). A chart is SVG that the server writes, with
   `line_chart/1` or `sparkline/1` of `RescordWeb.ChartComponents`, and
   the geometry of `RescordWeb.Chart`. Do not add a chart library, and do
@@ -999,6 +1013,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind; the conditions of a resident (ADR 0083) |
 | `platform/lib/rescord/journal/series.ex` | the measurements of one kind over time, in one unit, for a chart (ADR 0080) |
+| `platform/lib/rescord/journal/standard.ex` | a measurement in the standard unit of its kind, beside what was recorded (ADR 0094) |
 | `platform/lib/rescord/photos/` | the photos of the residents, their albums and the profile pictures (ADR 0055) |
 | `platform/lib/rescord/images.ex` | a photo made safe to keep, and its thumbnail, with libvips (ADR 0055) |
 | `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |

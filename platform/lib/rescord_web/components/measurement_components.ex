@@ -239,6 +239,10 @@ defmodule RescordWeb.MeasurementComponents do
   attr :kinds, :list, required: true
   attr :units, :list, required: true
 
+  attr :unit_needed?, :boolean,
+    default: false,
+    doc: "the chosen kind has a standard unit, so a measurement needs a unit"
+
   def record_form(assigns) do
     ~H"""
     <details id="record">
@@ -253,7 +257,14 @@ defmodule RescordWeb.MeasurementComponents do
           required
         />
         <.input field={@form[:value]} type="number" step="any" label="Value" required />
-        <.input field={@form[:unit_id]} type="select" label="Unit" prompt="No unit" options={@units} />
+        <.input
+          field={@form[:unit_id]}
+          type="select"
+          label="Unit"
+          prompt={if @unit_needed?, do: nil, else: "No unit"}
+          options={@units}
+          required={@unit_needed?}
+        />
         <.input field={@form[:at]} type="datetime-local" label="When it was measured, if not now" />
         <.input field={@form[:note]} type="textarea" label="Note" maxlength="2000" />
         <footer><.button type="submit">Record the measurement</.button></footer>

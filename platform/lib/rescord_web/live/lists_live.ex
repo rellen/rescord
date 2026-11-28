@@ -74,6 +74,7 @@ defmodule RescordWeb.ListsLive do
                 origin: if(&1.base_id, do: "shared", else: "local"),
                 retired?: &1.retired,
                 unit_ids: Map.get(&1, :unit_ids, []),
+                standard_unit_id: Map.get(&1, :standard_unit_id),
                 soon_days: Map.get(&1, :soon_days)
               }
             ),
@@ -81,15 +82,14 @@ defmodule RescordWeb.ListsLive do
         }
       end
 
-    # The measure kinds name their units from the list of units.
-    units =
-      lists
-      |> Enum.find(&(&1.key == :unit))
-      |> Map.fetch!(:values)
-      |> Enum.reject(& &1.retired?)
-      |> Enum.map(&{&1.label, &1.id})
+    # The measure kinds name their units from the list of units. A kind
+    # can name a retired unit, so the page has each unit too.
+    all_units = lists |> Enum.find(&(&1.key == :unit)) |> Map.fetch!(:values)
+    units = all_units |> Enum.reject(& &1.retired?) |> Enum.map(&{&1.label, &1.id})
 
-    assign(socket, lists: Enum.map(lists, &Map.put(&1, :units, units)))
+    assign(socket,
+      lists: Enum.map(lists, &Map.merge(&1, %{units: units, all_units: all_units}))
+    )
   end
 
   @impl true
@@ -133,6 +133,17 @@ defmodule RescordWeb.ListsLive do
       end
 
     value_write(socket, :measure_kind, id, &Lists.set_units(&1, ids, options(socket)))
+  end
+
+  def handle_event("set_standard_unit", %{"value_id" => id} = params, socket)
+      when is_binary(id) do
+    unit_id =
+      case params do
+        %{"standard" => %{"unit_id" => unit_id}} -> non_blank(unit_id)
+        _no_unit -> nil
+      end
+
+    value_write(socket, :measure_kind, id, &Lists.set_standard_unit(&1, unit_id, options(socket)))
   end
 
   def handle_event("set_soon_days", %{"value_id" => id} = params, socket) when is_binary(id) do

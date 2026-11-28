@@ -170,6 +170,65 @@ defmodule Rescord.Journal.SeriesTest do
     end
   end
 
+  describe "the series of a kind with a standard unit (ADR 0094)" do
+    # An entry whose kind names its standard unit, as `Rescord.Journal` loads it.
+    defp standard_entry(id, at, value, unit, standard) do
+      entry = entry(id, at, value, unit)
+
+      kind =
+        Map.put(entry.measurement.measure_kind, :standard_unit, %{
+          id: "unit-" <> standard,
+          label: standard
+        })
+
+      put_in(entry.measurement.measure_kind, kind)
+    end
+
+    test "is in the standard unit, whatever the unit of the newest measurement" do
+      [series] =
+        Series.from_entries([
+          standard_entry("a", ~U[2026-11-05 08:00:00Z], "690", "g", "g"),
+          standard_entry("b", ~U[2026-11-09 08:00:00Z], "0.76", "kg", "g")
+        ])
+
+      assert {series.unit_id, series.unit_label, series.unit.code} == {"unit-g", "g", "g"}
+      assert series.standard?
+      assert values(series.points) == ["690", "760"]
+      assert changes(series.points) == [nil, "70"]
+
+      assert [%{converted?: false}, %{converted?: true, recorded_unit: "kg"} = newest] =
+               series.points
+
+      assert Decimal.equal?(newest.recorded, Decimal.new("0.76"))
+    end
+
+    test "is in the standard unit when no measurement has it" do
+      [series] =
+        Series.from_entries([standard_entry("a", ~U[2026-11-05 08:00:00Z], "1.5", "lb", "g")])
+
+      assert series.unit_label == "g"
+      assert values(series.points) == ["680.388555"]
+    end
+
+    test "leaves out a measurement that does not convert to the standard unit" do
+      [series] =
+        Series.from_entries([
+          standard_entry("a", ~U[2026-11-05 08:00:00Z], "690", nil, "g"),
+          standard_entry("b", ~U[2026-11-09 08:00:00Z], "2", "bag", "g"),
+          standard_entry("c", ~U[2026-11-14 08:00:00Z], "760", "g", "g")
+        ])
+
+      assert values(series.points) == ["760"]
+      assert Enum.map(series.others, & &1.entry_id) == ["a", "b"]
+    end
+
+    test "has no standard unit when the kind has none" do
+      [series] = Series.from_entries([entry("a", ~U[2026-11-05 08:00:00Z], "690", "g")])
+
+      refute series.standard?
+    end
+  end
+
   test "two measurements at one instant have an order that does not change" do
     at = ~U[2026-11-05 08:00:00Z]
     entries = [entry("b", at, "2", "g"), entry("a", at, "1", "g")]

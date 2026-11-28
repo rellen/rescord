@@ -104,6 +104,15 @@ release (ADR 0047).
     database: adds a column to the organisations, for the paper of the
     reports. Each organisation that is there gets A4, which is the paper
     that its reports had, and no other value of a row changes.
+  - `20261128080500_add_the_standard_unit_of_a_measure_kind`, in each
+    organisation: adds a column to the kinds of measurement, for the
+    standard unit of a kind, and fills it for a kind where the answer is
+    no guess. A kind that names exactly one unit gets that unit.
+    Otherwise, a kind whose measurements all have one and the same unit,
+    and none without a unit, gets that unit, when the kind names no unit
+    or names that one. Each other kind gets no standard unit. It changes
+    no measurement: each keeps the number and the unit that the person
+    recorded.
 - Each organisation has the paper A4 for its reports after the upgrade. An
   administrator of a rescue that prints on US Letter changes it on the
   settings page, in "Paper of the reports".
@@ -121,6 +130,15 @@ release (ADR 0047).
   for the private keys of the transfers already, so the rule is the same:
   keep a copy of the secret with the backups. A backup of the database
   without this secret cannot open those values.
+- After the upgrade, a kind of measurement can have a standard unit, and
+  the migration above gave one to each kind where the answer was no
+  guess. Rescord now shows each measurement of such a kind in that unit,
+  and a new measurement of the kind needs that unit or a unit that
+  Rescord converts to it: a measurement with no unit, or in a unit such
+  as "bag", is refused. A measurement that is there stays as it is. An
+  administrator reads the standard unit of each kind on the page Lists,
+  under "Measure kind", and changes it or removes it there. With no
+  standard unit, a kind works as in the earlier versions.
 - No new setting is needed. One new variable is optional:
   `RESCORD_KEY_SECRET_PREVIOUS` is for the time when you change
   `RESCORD_KEY_SECRET`, and a server that does not change its secret
@@ -174,6 +192,19 @@ release (ADR 0047).
 
 ### Added
 
+- A kind of measurement, such as the weight, can have a standard unit,
+  which an administrator chooses on the page Lists. Rescord then shows
+  each measurement of that kind in that unit: in the charts and their
+  tables, in the journal, in the timeline, on the cage card and in the
+  record of a resident. A person can still record another unit that
+  Rescord converts, such as kg for the standard unit g, and the journal
+  keeps what the person recorded and says it: "610 g (recorded as
+  0.61 kg)". The forms choose the standard unit when a person chooses
+  what was measured (ADR 0094).
+- The file `measurements.csv` of the export has two new columns at its
+  end, `standard_value` and `standard_unit`: the measurement in the
+  standard unit of its kind, with no rounding. The columns `value` and
+  `unit_id` stay as the person recorded them (ADR 0094).
 - Rescord now has a colophon, at `/colophon`: what Rescord is, its
   licence, what it is built with, how its pages are made, and an
   accessibility statement that says what is tested and what is not right
@@ -426,6 +457,13 @@ release (ADR 0047).
 
 ### Changed
 
+- The chart of a kind of measurement with a standard unit is in that
+  unit. It was in the unit of the newest measurement, so one weight in
+  kg changed a chart in g. A kind with no standard unit keeps the unit of
+  its newest measurement (ADR 0094).
+- A new measurement of a kind with a standard unit needs a unit: that
+  unit, or one that Rescord converts to it. The form has no choice "No
+  unit" for such a kind (ADR 0094).
 - The title of each page, which the tab of the browser shows, now has
   the name of the page first and the name of the site after it:
   "Residents · Rescord". The sign-in pages, which all had the title

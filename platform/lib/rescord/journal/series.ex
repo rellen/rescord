@@ -3,11 +3,12 @@ defmodule Rescord.Journal.Series do
   The measurements of one kind for one resident, in the order of time: what
   a chart of the weight draws.
 
-  A series has one unit: the unit of its newest measurement. A measurement
-  in another unit is a point of the series when Rescord can convert it
-  (ADR 0071): 870 g is 0.87 kg. A measurement that does not convert, such
-  as one with no unit in a series of grams, is in `others`, and a page says
-  that it is not in the chart.
+  A series has one unit: the standard unit of its kind (ADR 0094). A kind
+  with no standard unit has the unit of its newest measurement. A
+  measurement in another unit is a point of the series when Rescord can
+  convert it (ADR 0071): 870 g is 0.87 kg. A measurement that does not
+  convert, such as one with no unit in a series of grams, is in `others`,
+  and a page says that it is not in the chart.
 
   Each number is a `Decimal`. A point keeps what the member recorded, in
   `recorded` and `recorded_unit`, beside its value in the unit of the
@@ -17,6 +18,7 @@ defmodule Rescord.Journal.Series do
   entries.
   """
 
+  alias Rescord.Journal.Standard
   alias Rescord.Units
 
   defmodule Point do
@@ -49,7 +51,16 @@ defmodule Rescord.Journal.Series do
   end
 
   @enforce_keys [:kind_id, :label]
-  defstruct [:kind_id, :label, :unit_id, :unit_label, :unit, points: [], others: []]
+  defstruct [
+    :kind_id,
+    :label,
+    :unit_id,
+    :unit_label,
+    :unit,
+    standard?: false,
+    points: [],
+    others: []
+  ]
 
   @type t :: %__MODULE__{
           kind_id: String.t(),
@@ -57,6 +68,7 @@ defmodule Rescord.Journal.Series do
           unit_id: String.t() | nil,
           unit_label: String.t() | nil,
           unit: Units.Unit.t() | nil,
+          standard?: boolean,
           points: [Point.t()],
           others: [Point.t()]
         }
@@ -79,19 +91,26 @@ defmodule Rescord.Journal.Series do
   defp build(entries) do
     entries = Enum.sort_by(entries, &{DateTime.to_unix(&1.happened_at, :microsecond), &1.id})
     newest = List.last(entries).measurement
-    unit = known(newest.unit)
+    standard = Standard.standard_unit(newest)
+
+    # The unit of the series: a value of the list of units, or `nil` for
+    # a series with no unit.
+    of_series = standard || loaded(newest.unit)
+    unit_id = if standard, do: standard.id, else: newest.unit_id
+    unit = Standard.known(of_series)
 
     {points, others} =
       entries
-      |> Enum.map(&point(&1, newest, unit))
+      |> Enum.map(&point(&1, unit_id, unit))
       |> Enum.split_with(&match?({:point, _}, &1))
 
     %__MODULE__{
       kind_id: newest.measure_kind_id,
       label: to_string(newest.measure_kind.label),
-      unit_id: newest.unit_id,
-      unit_label: label(newest.unit),
+      unit_id: unit_id,
+      unit_label: Standard.label(of_series),
       unit: unit,
+      standard?: standard != nil,
       points: points |> Enum.map(&elem(&1, 1)) |> with_changes(),
       others: Enum.map(others, &elem(&1, 1))
     }
@@ -99,24 +118,25 @@ defmodule Rescord.Journal.Series do
 
   # A measurement is a point when it has the unit of the series, or a unit
   # that converts to it.
-  defp point(entry, newest, unit) do
+  defp point(entry, unit_id, unit) do
     measurement = entry.measurement
+    own = loaded(measurement.unit)
 
     point = %Point{
       entry_id: entry.id,
       at: entry.happened_at,
       value: measurement.value,
       recorded: measurement.value,
-      recorded_unit: label(measurement.unit),
+      recorded_unit: Standard.label(own),
       note: entry.note
     }
 
     cond do
-      measurement.unit_id == newest.unit_id ->
+      measurement.unit_id == unit_id ->
         {:point, point}
 
       unit != nil ->
-        with from when from != nil <- known(measurement.unit),
+        with from when from != nil <- Standard.known(own),
              {:ok, value} <- Units.convert(measurement.value, from, unit) do
           {:point, %{point | value: value, converted?: true}}
         else
@@ -141,17 +161,8 @@ defmodule Rescord.Journal.Series do
     points
   end
 
-  defp known(nil), do: nil
-
-  defp known(unit) do
-    case Rescord.Lists.known_unit(unit) do
-      {:ok, known} -> known
-      :error -> nil
-    end
-  end
-
-  defp label(nil), do: nil
-  defp label(unit), do: to_string(unit.label)
+  defp loaded(%Ash.NotLoaded{}), do: nil
+  defp loaded(value), do: value
 
   @doc """
   A series in the unit of another series of the same kind, so that two

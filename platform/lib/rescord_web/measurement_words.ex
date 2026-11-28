@@ -3,6 +3,8 @@ defmodule RescordWeb.MeasurementWords do
   The words that a page uses for the measurements of a resident over time
   (ADR 0080): a value in the unit of its series, the change from the
   measurement before, and what a chart says to a person who cannot see it.
+  `measurement/1` writes one measurement in the standard unit of its kind
+  (ADR 0094), for an entry of the journal and for a report.
 
   A number is the work of `RescordWeb.JournalWords.number/1`, a quantity of
   `RescordWeb.UnitWords.quantity/1` and a date of
@@ -36,6 +38,41 @@ defmodule RescordWeb.MeasurementWords do
     do: "#{JournalWords.number(value)} #{label}"
 
   def value(%Series{}, %Decimal{} = value), do: JournalWords.number(value)
+
+  @doc """
+  One measurement in the standard unit of its kind (ADR 0094): `610 g`,
+  and `610 g (recorded as 0.61 kg)` when Rescord converted it. A
+  measurement of a kind with no standard unit, and one that does not
+  convert, is written as it was recorded. The measurement has its unit
+  and its kind with the standard unit, as `Rescord.Journal.entries/2`
+  gives it.
+  """
+  @spec measurement(map) :: String.t()
+  def measurement(measurement) do
+    standard = Rescord.Journal.standard(measurement)
+
+    if standard.converted? do
+      recorded = %Point{
+        entry_id: nil,
+        at: nil,
+        value: standard.recorded,
+        recorded: standard.recorded,
+        recorded_unit: standard.recorded_unit
+      }
+
+      "#{amount(four_digits(standard.value), standard)} (recorded as #{recorded(recorded)})"
+    else
+      amount(standard.value, standard)
+    end
+  end
+
+  defp amount(value, %{unit: %{} = unit}),
+    do: UnitWords.quantity(%Quantity{value: value, unit: unit})
+
+  defp amount(value, %{unit_label: label}) when is_binary(label),
+    do: "#{JournalWords.number(value)} #{label}"
+
+  defp amount(value, _no_unit), do: JournalWords.number(value)
 
   @doc "The value of a point for a person, rounded when Rescord converted it."
   @spec shown(Series.t(), Point.t()) :: String.t()

@@ -15,6 +15,11 @@ defmodule RescordWeb.JournalComponents do
   attr :kind, :any, required: true
   attr :lists, :any, required: true
   attr :units, :list, required: true, doc: "the units of the chosen measure kind"
+
+  attr :unit_needed?, :boolean,
+    default: false,
+    doc: "the chosen measure kind has a standard unit, so a measurement needs a unit"
+
   attr :prescriptions, :any, required: true
   attr :uploads, :any, required: true
   attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
@@ -89,8 +94,9 @@ defmodule RescordWeb.JournalComponents do
           field={@form[:unit_id]}
           type="select"
           label="Unit"
-          prompt="No unit"
+          prompt={if @unit_needed?, do: nil, else: "No unit"}
           options={@units}
+          required={@unit_needed?}
         />
         <.input
           :if={@kind == :procedure}
@@ -169,6 +175,11 @@ defmodule RescordWeb.JournalComponents do
     """
   end
 
+  # A correction changes the value as it was recorded, in the unit that
+  # the person chose then, and not in the standard unit of the kind.
+  defp value_label(%{unit: %{label: label}}), do: "Value, in #{label}"
+  defp value_label(_measurement), do: "Value"
+
   @doc "The form that corrects an entry, for its author and an administrator."
   attr :entry, :any, required: true
   attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
@@ -186,7 +197,7 @@ defmodule RescordWeb.JournalComponents do
           name="entry[value]"
           type="number"
           step="any"
-          label="Value"
+          label={value_label(@entry.measurement)}
           value={@entry.measurement.value |> Decimal.normalize() |> Decimal.to_string(:normal)}
         />
         <.input

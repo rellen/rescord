@@ -238,6 +238,90 @@ defmodule Rescord.Lists do
   end
 
   @doc """
+  Gives a measure kind of the organisation its standard unit: the unit in
+  which Rescord shows each measurement of the kind (ADR 0094). `nil` takes
+  it away, and each measurement is then shown as it was recorded.
+  """
+  def set_standard_unit(measure_kind_id, unit_id, opts \\ []) do
+    with {:ok, kind} <- Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, opts) do
+      kind
+      |> Ash.Changeset.for_update(:set_standard_unit, %{standard_unit_id: unit_id}, opts)
+      |> Ash.update()
+    end
+  end
+
+  @doc """
+  The units that a measurement of a kind can have, from the units of the
+  organisation, each with its `label` (ADR 0094).
+
+  A kind with a standard unit accepts that unit, which is the first of the
+  answer, and each unit of the kind that Rescord converts to it: `kg` and
+  `lb` for the standard unit `g`, and not `bag`. A kind with no standard
+  unit accepts the units that it names, or each unit when it names none.
+
+  Give each unit of the organisation, the retired ones too: the meaning of
+  a retired standard unit still decides. A form leaves the retired units
+  out of the answer.
+  """
+  @spec accepted_units(map, [unit]) :: [unit] when unit: map
+  def accepted_units(%{unit_ids: unit_ids} = kind, units) do
+    of_kind = if unit_ids == [], do: units, else: Enum.filter(units, &(&1.id in unit_ids))
+
+    case Enum.find(units, &(&1.id == Map.get(kind, :standard_unit_id))) do
+      nil ->
+        of_kind
+
+      standard ->
+        [standard | Enum.filter(of_kind, &(&1.id != standard.id and converts?(&1, standard)))]
+    end
+  end
+
+  defp converts?(unit, standard) do
+    with {:ok, from} <- known_unit(unit),
+         {:ok, to} <- known_unit(standard) do
+      Rescord.Units.convertible?(from, to)
+    else
+      :error -> false
+    end
+  end
+
+  @doc """
+  What the unit of a measurement of a kind must be, for the rule of the
+  journal (ADR 0094):
+
+    * `:any`: each unit, and no unit. The kind names no unit and has no
+      standard unit, or the kind is not there.
+    * `{:of_kind, ids}`: no unit, or one of the units that the kind names.
+    * `{:standard, label, ids}`: the kind has a standard unit with this
+      name, and the measurement needs one of these units.
+  """
+  @spec units_for(String.t(), keyword) ::
+          :any | {:of_kind, [String.t()]} | {:standard, String.t(), [String.t()]}
+  def units_for(measure_kind_id, opts \\ []) do
+    case Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, [not_found_error?: false] ++ opts) do
+      {:ok, %{} = kind} -> units_of(kind, opts)
+      _none -> :any
+    end
+  end
+
+  defp units_of(%{standard_unit_id: nil} = kind, _opts), do: named_units(kind)
+
+  defp units_of(kind, opts) do
+    with {:ok, units} <- values(:unit, opts),
+         [%{id: id} = standard | _rest] = accepted when id == kind.standard_unit_id <-
+           accepted_units(kind, units) do
+      {:standard, to_string(standard.label), Enum.map(accepted, & &1.id)}
+    else
+      # The standard unit is not in the list of units: the kind is as one
+      # with no standard unit.
+      _not_there -> named_units(kind)
+    end
+  end
+
+  defp named_units(%{unit_ids: []}), do: :any
+  defp named_units(%{unit_ids: unit_ids}), do: {:of_kind, unit_ids}
+
+  @doc """
   The unit of measure that a value of the dimension `unit` means, or
   `:error` (ADR 0071). The name of the value is its meaning: the catalogue
   of `Rescord.Units` knows `kg` and `Kilogram`, and it does not know `bag`.
