@@ -141,8 +141,8 @@ defmodule Rescord.Ruby.Message do
     end
 
     update :grow do
-      description "Saves the words and the parts of a reply so far. Only Ruby runs it"
-      accept [:text, :parts]
+      description "Saves the words, the parts and the steps of a reply so far. Only Ruby runs it"
+      accept [:text, :parts, :steps]
     end
 
     update :close do
@@ -151,6 +151,7 @@ defmodule Rescord.Ruby.Message do
       accept [
         :text,
         :parts,
+        :steps,
         :state,
         :reason,
         :model,
@@ -230,6 +231,15 @@ defmodule Rescord.Ruby.Message do
       sensitive? true
 
       description "For a reply: its text, its tool calls and their results, as the model gets them again"
+    end
+
+    attribute :steps, {:array, :map} do
+      allow_nil? false
+      default []
+      public? true
+      sensitive? true
+
+      description "For a reply: one step for each call of a tool, as `Rescord.Ruby.Steps` made it from the call. It holds no tool result"
     end
 
     attribute :prompt_fingerprint, :string do

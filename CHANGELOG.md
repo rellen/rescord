@@ -164,6 +164,11 @@ release (ADR 0047).
     start, before the server answers, so no person waits on a lock, and
     the index reads each row once: on a table of 500,200 rows it took
     about 50 ms. A large organisation starts a little slower one time.
+  - `20261128114550_add_ruby_message_steps`, in each organisation: adds a
+    column to the messages of the conversations with Ruby, for what Ruby
+    read to answer: the tool, and the records that it named. Each
+    message that is there gets an empty list, and the page shows it with
+    no step. It changes no other row.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
@@ -431,6 +436,12 @@ release (ADR 0047).
   reads only what the member can read, and records nothing. The page has
   no link in the menu yet: that comes in a later version. For anybody
   else, or while Ruby is off, the address is a page that is not there.
+- While Ruby reads to answer, the page of Ruby shows each step, such as
+  "Looks at the stock", and what it found. An answer keeps its steps in
+  a section that opens, "What Ruby read", and shows a card for each
+  record that the answer names, which goes to the page of the record.
+  A link in the words of Ruby goes only to a record that Ruby read in
+  that conversation: each other link is plain words.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

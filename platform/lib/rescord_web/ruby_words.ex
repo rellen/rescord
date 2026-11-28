@@ -244,6 +244,98 @@ defmodule RescordWeb.RubyWords do
   def said(:failed), do: "Ruby could not answer."
   def said(_other), do: nil
 
+  # What each tool does, while it runs and when it ran, and what it counts.
+  # A tool with no line here shows as "Reads the records", and never as its
+  # name: `RubyWordsTest` holds this list to the catalogue.
+  @steps %{
+    "find_residents" =>
+      {"Looks for residents", "Looked for residents", {"resident", "residents"}},
+    "get_task" => {"Reads a task", "Read a task", {"task", "tasks"}},
+    "tasks_for_day" =>
+      {"Looks at the tasks of a day", "Looked at the tasks of a day", {"task", "tasks"}},
+    "overdue_tasks" =>
+      {"Looks at the tasks that are late", "Looked at the tasks that are late", {"task", "tasks"}},
+    "resident_profile" =>
+      {"Reads the profile of a resident", "Read the profile of a resident",
+       {"resident", "residents"}},
+    "resident_timeline" =>
+      {"Reads the journal of a resident", "Read the journal of a resident", {"entry", "entries"}},
+    "housing" => {"Looks at who lives where", "Looked at who lives where", {"place", "places"}},
+    "find_locations" => {"Looks for places", "Looked for places", {"place", "places"}},
+    "stock_levels" => {"Looks at the stock", "Looked at the stock", {"item", "items"}},
+    "find_items" =>
+      {"Looks for items of the inventory", "Looked for items of the inventory", {"item", "items"}},
+    "care_overview" =>
+      {"Looks at the care of the residents", "Looked at the care of the residents",
+       {"resident", "residents"}}
+  }
+
+  @doc "The names of the tools that have words for their steps."
+  def step_tools, do: Map.keys(@steps)
+
+  @doc """
+  The line of a step of Ruby: what the tool does while it runs, and what
+  it did when it ended. From the name of the tool and its arguments, as
+  `Rescord.Ruby.Steps` keeps them, and never from the words of the model.
+  """
+  def step(%{"tool" => "care_overview", "arguments" => %{"question" => "on_medication"}} = step),
+    do: tense(step, "Looks at who is on medication", "Looked at who is on medication")
+
+  def step(
+        %{"tool" => "care_overview", "arguments" => %{"question" => "no_weight_since"}} = step
+      ),
+      do: tense(step, "Looks at who has not been weighed", "Looked at who has not been weighed")
+
+  def step(%{"tool" => "tasks_for_day", "arguments" => %{"date" => date}} = step)
+      when is_binary(date) do
+    case Date.from_iso8601(date) do
+      {:ok, day} ->
+        day = RescordWeb.TaskWords.day(day)
+        tense(step, "Looks at the tasks of #{day}", "Looked at the tasks of #{day}")
+
+      {:error, _not_a_date} ->
+        step(Map.delete(step, "arguments"))
+    end
+  end
+
+  def step(%{"tool" => tool} = step) do
+    case Map.fetch(@steps, tool) do
+      {:ok, {running, ran, _noun}} -> tense(step, running, ran)
+      :error -> tense(step, "Reads the records", "Read the records")
+    end
+  end
+
+  defp tense(%{"state" => state}, _running, ran) when state in ["done", "failed"], do: ran
+  defp tense(_step, running, _ran), do: running
+
+  @doc "What a step found, such as \"19 tasks\", or why it found nothing. `nil` while it runs."
+  def outcome(%{"state" => "failed"}), do: "Ruby could not read this"
+  def outcome(%{"state" => "stopped"}), do: "You stopped the answer here"
+
+  def outcome(%{"state" => "done", "tool" => tool, "count" => count}) when is_integer(count) do
+    {one, many} =
+      case Map.fetch(@steps, tool) do
+        {:ok, {_running, _ran, noun}} -> noun
+        :error -> {"record", "records"}
+      end
+
+    if count == 1, do: "1 #{one}", else: "#{count} #{many}"
+  end
+
+  def outcome(_step), do: nil
+
+  @doc "The one line of the status of the page while a step runs: \"Ruby looks at the stock.\""
+  def said_step(%{"state" => "running"} = step) do
+    {first, rest} = step |> step() |> String.split_at(1)
+    "Ruby #{String.downcase(first)}#{rest}."
+  end
+
+  def said_step(_step), do: nil
+
+  @doc "The summary of the steps of a reply: \"What Ruby read: 3 steps\"."
+  def steps_summary([_one]), do: "What Ruby read: 1 step"
+  def steps_summary(steps), do: "What Ruby read: #{length(steps)} steps"
+
   @doc """
   What went wrong with a reply, in place of the answer: the one sentence
   that is true for each reason. Nothing was recorded, since Ruby writes no

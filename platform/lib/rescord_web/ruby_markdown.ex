@@ -26,19 +26,36 @@ defmodule RescordWeb.RubyMarkdown do
   still open at the end, such as `**bold` with no end, is closed.
   """
 
+  # The kinds of record that a link of Ruby can go to, and their pages.
+  @pages %{
+    "resident" => "residents",
+    "group" => "groups",
+    "item" => "inventory",
+    "location" => "housing"
+  }
+
   @options [
     extension: [table: true, strikethrough: true],
     auto_close: [links: :text, images: :text],
     render: [github_pre_lang: true]
   ]
 
-  @doc "The blocks of a text, each as safe HTML. A text that is no Markdown gives its words."
-  @spec blocks(String.t() | nil) :: [String.t()]
-  def blocks(text) when is_binary(text) and text != "" do
-    case MDEx.parse_document(text, @options) do
+  @doc """
+  The blocks of a text, each as safe HTML. A text that is no Markdown gives
+  its words.
+
+  A link whose address is a reference of `known` becomes a link to the
+  page of that record in `organisation`: the references that a tool
+  returned in this conversation, as `Rescord.Ruby.Steps.refs/1` gives
+  them. Each other link is its words.
+  """
+  @spec blocks(String.t() | nil, keyword) :: [String.t()]
+  def blocks(text, opts \\ [])
+
+  def blocks(text, opts) when is_binary(text) and text != "" do
+    case document(text, opts) do
       {:ok, document} ->
         document
-        |> MDEx.Document.update_nodes(&rewrite?/1, &rewrite/1)
         |> Map.fetch!(:nodes)
         |> Enum.map(&block_html/1)
         |> Enum.reject(&(&1 == ""))
@@ -48,11 +65,57 @@ defmodule RescordWeb.RubyMarkdown do
     end
   end
 
-  def blocks(_none), do: []
+  def blocks(_none, _opts), do: []
 
-  @doc "The whole text as one string of safe HTML."
-  @spec html(String.t() | nil) :: String.t()
-  def html(text), do: text |> blocks() |> Enum.join("\n")
+  @doc """
+  The paths of the records that the links of a text go to, with the
+  options of `blocks/2`: what the page shows of the text, and no more.
+  """
+  @spec paths(String.t() | nil, keyword) :: MapSet.t(String.t())
+  def paths(text, opts) when is_binary(text) and text != "" do
+    case document(text, opts) do
+      {:ok, document} -> for %MDEx.Link{url: url} <- document, into: MapSet.new(), do: url
+      {:error, _error} -> MapSet.new()
+    end
+  end
+
+  def paths(_none, _opts), do: MapSet.new()
+
+  defp document(text, opts) do
+    links = links(opts[:organisation], opts[:known])
+
+    with {:ok, document} <- MDEx.parse_document(text, @options),
+         do: {:ok, MDEx.Document.update_nodes(document, &rewrite?/1, &rewrite(&1, links))}
+  end
+
+  @doc "The whole text as one string of safe HTML, with the options of `blocks/2`."
+  @spec html(String.t() | nil, keyword) :: String.t()
+  def html(text, opts \\ []), do: text |> blocks(opts) |> Enum.join("\n")
+
+  @doc """
+  The path of the page of a record, from its reference, or `nil` for a
+  kind of record that has no page of its own to link to.
+  """
+  @spec path(String.t(), map) :: String.t() | nil
+  def path(ref, %{short_name: short_name}) when is_binary(ref) do
+    with [kind, id] <- String.split(ref, ":", parts: 2),
+         {:ok, id} <- Ecto.UUID.cast(id),
+         {:ok, page} <- Map.fetch(@pages, kind) do
+      "/o/" <> URI.encode(short_name, &URI.char_unreserved?/1) <> "/" <> page <> "/" <> id
+    else
+      _no_page -> nil
+    end
+  end
+
+  def path(_ref, _organisation), do: nil
+
+  # A known reference and its path, as a function of the address of a link.
+  defp links(%{short_name: _} = organisation, known) when not is_nil(known) do
+    known = MapSet.new(known)
+    fn url -> if MapSet.member?(known, url), do: path(url, organisation) end
+  end
+
+  defp links(_organisation, _known), do: fn _url -> nil end
 
   # What the text must not hold as it is: a link, an image and HTML become
   # words, and a heading moves below the heading of its message.
@@ -62,6 +125,18 @@ defmodule RescordWeb.RubyMarkdown do
   defp rewrite?(%MDEx.HtmlBlock{}), do: true
   defp rewrite?(%MDEx.Heading{}), do: true
   defp rewrite?(_node), do: false
+
+  defp rewrite(%MDEx.Link{url: url, nodes: nodes} = link, links) do
+    case links.(url) do
+      path when is_binary(path) ->
+        %{link | url: path, title: "", nodes: [%MDEx.Text{literal: words(nodes)}]}
+
+      nil ->
+        %MDEx.Text{literal: words(nodes)}
+    end
+  end
+
+  defp rewrite(node, _links), do: rewrite(node)
 
   defp rewrite(%MDEx.HtmlBlock{literal: literal}),
     do: %MDEx.Paragraph{nodes: [%MDEx.Text{literal: String.trim_trailing(literal)}]}

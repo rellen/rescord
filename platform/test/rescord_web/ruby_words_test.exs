@@ -152,4 +152,62 @@ defmodule RescordWeb.RubyWordsTest do
     # Too large for a column of a whole number of cents to be of any use.
     assert RubyWords.cents("100000000000") == :error
   end
+
+  describe "the steps of an answer" do
+    test "each tool of the catalogue has words for its step, and never its name" do
+      names = for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: Atom.to_string(name)
+
+      assert Enum.sort(names) == Enum.sort(RubyWords.step_tools())
+
+      for name <- names, state <- ["running", "done"] do
+        words = RubyWords.step(%{"tool" => name, "state" => state, "arguments" => %{}})
+        refute words =~ name
+        refute words =~ "_"
+      end
+    end
+
+    test "a step says what it does while it runs, and what it did" do
+      step = %{"tool" => "stock_levels", "arguments" => %{}, "state" => "running"}
+      assert RubyWords.step(step) == "Looks at the stock"
+      assert RubyWords.said_step(step) == "Ruby looks at the stock."
+      assert RubyWords.outcome(step) == nil
+
+      done = %{step | "state" => "done"} |> Map.put("count", 1)
+      assert RubyWords.step(done) == "Looked at the stock"
+      assert RubyWords.outcome(done) == "1 item"
+      assert RubyWords.outcome(%{done | "count" => 19}) == "19 items"
+      assert RubyWords.said_step(done) == nil
+
+      assert RubyWords.outcome(%{step | "state" => "failed"}) == "Ruby could not read this"
+    end
+
+    test "a step takes its words from the arguments that code knows" do
+      step = %{"tool" => "care_overview", "state" => "done"}
+
+      assert RubyWords.step(Map.put(step, "arguments", %{"question" => "on_medication"})) ==
+               "Looked at who is on medication"
+
+      assert RubyWords.step(Map.put(step, "arguments", %{"question" => "anything"})) ==
+               "Looked at the care of the residents"
+
+      tasks = %{"tool" => "tasks_for_day", "state" => "running"}
+
+      assert RubyWords.step(Map.put(tasks, "arguments", %{"date" => "2026-11-28"})) =~
+               "Looks at the tasks of "
+
+      assert RubyWords.step(Map.put(tasks, "arguments", %{"date" => "<b>soon</b>"})) ==
+               "Looks at the tasks of a day"
+    end
+
+    test "a tool that has no words reads the records, and a count of records" do
+      step = %{"tool" => "a_new_tool", "arguments" => %{}, "state" => "done", "count" => 2}
+      assert RubyWords.step(step) == "Read the records"
+      assert RubyWords.outcome(step) == "2 records"
+    end
+
+    test "the summary counts the steps" do
+      assert RubyWords.steps_summary([%{}]) == "What Ruby read: 1 step"
+      assert RubyWords.steps_summary([%{}, %{}, %{}]) == "What Ruby read: 3 steps"
+    end
+  end
 end

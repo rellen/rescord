@@ -96,4 +96,49 @@ defmodule RescordWeb.RubyMarkdownTest do
     assert table =~ "<td><strong>Clover</strong></td>"
     assert table =~ ~s(<td data-label="Last &quot;weight&quot;">985 g &lt;b&gt;x&lt;/b&gt;</td>)
   end
+
+  describe "a link to a record that a tool returned" do
+    @id "6f1c2a52-4f5e-4d43-9a8e-1f0b7e0c9a11"
+    @organisation %{short_name: "wattle creek"}
+
+    defp linked(text, known),
+      do: RubyMarkdown.html(text, organisation: @organisation, known: known)
+
+    test "goes to the page of the record, with its words" do
+      known = ["resident:#{@id}", "item:#{@id}", "task:#{@id}"]
+
+      assert linked("[**Biscuit**](resident:#{@id} \"title\")", known) ==
+               ~s(<p><a href="/o/wattle%20creek/residents/#{@id}">Biscuit</a></p>)
+
+      assert linked("[Hay](<item:#{@id}>)", known) =~
+               ~s(<a href="/o/wattle%20creek/inventory/#{@id}">Hay</a>)
+
+      # A kind of record with no page of its own is words.
+      assert linked("[Feed](task:#{@id})", known) == "<p>Feed</p>"
+
+      assert RubyMarkdown.paths("[a](resident:#{@id}) [b](task:#{@id}) ![c](item:#{@id})",
+               organisation: @organisation,
+               known: known
+             ) == MapSet.new(["/o/wattle%20creek/residents/#{@id}"])
+    end
+
+    test "is words for a reference that no tool returned, or that is no reference" do
+      known = ["resident:#{@id}", "resident:#{@id}/../x", "resident:x"]
+      other = "resident:" <> "0b8f4c1e-5f6a-4c2d-8e9b-2a3c4d5e6f70"
+
+      for text <- [
+            "[Clover](#{other})",
+            "[Clover](resident:#{@id}/../x)",
+            "[Clover](resident:x)",
+            "![Clover](resident:#{@id})",
+            "[Clover](javascript:alert\(1\))"
+          ] do
+        assert linked(text, known) == "<p>Clover</p>", text
+      end
+
+      # With no known reference, or no organisation, a link is its words.
+      assert linked("[Biscuit](resident:#{@id})", []) == "<p>Biscuit</p>"
+      assert RubyMarkdown.html("[Biscuit](resident:#{@id})") == "<p>Biscuit</p>"
+    end
+  end
 end

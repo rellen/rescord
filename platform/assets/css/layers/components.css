@@ -2165,6 +2165,24 @@ li[data-step="failed"] > svg {
   color: var(--alert);
 }
 
+/* Once Ruby writes, the steps fold into one line that opens: "What Ruby
+   read: 2 steps". */
+section[data-log] article > details > summary {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+section[data-log] article > details > ul[data-steps] {
+  margin-block-start: 0.5rem;
+}
+
+/* The kind of a record is below its name. */
+section[data-log] ul[data-links] a small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* The foot of an answer: the records that it comes from, each a card that
    goes to the page of the record. */
 section[data-log] article > footer {

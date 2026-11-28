@@ -15,6 +15,7 @@ defmodule RescordWeb.RubyChatPagesTest do
   import ExUnit.CaptureLog
   import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
+  import Rescord.ResidentsFixtures
   import Rescord.RubyFixtures
 
   alias Rescord.{Accounts, Ruby}
@@ -32,6 +33,7 @@ defmodule RescordWeb.RubyChatPagesTest do
     {:ok, _member} = Accounts.set_member_role(ana_member, carer.id, admin)
 
     ruby_on!(root, admin)
+    biscuit = resident!(lists!(organisation, root), admin, %{name: "Biscuit"})
 
     {:ok,
      root: root,
@@ -39,6 +41,7 @@ defmodule RescordWeb.RubyChatPagesTest do
      administrator: administrator,
      admin: admin,
      ana: ana,
+     biscuit: biscuit,
      as_ana: [actor: ana, tenant: organisation],
      path: ~p"/o/#{organisation.short_name}/ruby",
      conn: sign_in(context.conn, ana)}
@@ -220,5 +223,81 @@ defmodule RescordWeb.RubyChatPagesTest do
       assert has_element?(view, "article[data-from=ruby] [role=alert]", "Nothing was recorded.")
       assert has_element?(view, "[role=status]", "Ruby could not answer.")
     end
+  end
+
+  describe "the steps and the records of an answer" do
+    test "a step while Ruby reads, and the step folded in the answer", context do
+      {view, path} = ask(context, "Who is on medication today?")
+      conversation_id = path |> String.split("/") |> List.last()
+      reply = %{id: Ecto.UUID.generate(), conversation_id: conversation_id}
+
+      step = %{
+        "call_id" => "toolu_1",
+        "tool" => "find_residents",
+        "arguments" => %{},
+        "state" => "running",
+        "count" => nil,
+        "refs" => []
+      }
+
+      Events.step(reply, step)
+      assert has_element?(view, "#ruby-answer li[data-step=running]", "Looks for residents")
+      assert has_element?(view, "[role=status]", "Ruby looks for residents.")
+
+      Events.step(reply, %{step | "state" => "done", "count" => 3})
+      assert has_element?(view, "#ruby-answer li[data-step=done]", "Looked for residents")
+      assert has_element?(view, "#ruby-answer li[data-step=done] small", "3 residents")
+      assert count(view, "#ruby-answer li[data-step]") == 1
+
+      # Once Ruby writes, the steps fold.
+      Events.text(reply, "Three residents.")
+      refute has_element?(view, "#ruby-answer > ul[data-steps]")
+      assert has_element?(view, "#ruby-answer details summary", "What Ruby read: 1 step")
+    end
+
+    test "a link and a card only for a record that a tool returned", context do
+      biscuit = "resident:" <> context.biscuit.id
+      stranger = "resident:" <> Ecto.UUID.generate()
+
+      ScriptedModel.script([
+        {:tool, "find_residents", %{}},
+        {:text,
+         "[Biscuit](#{biscuit}) is in care. [Clover](#{stranger}) is not. " <>
+           "[Look](javascript:alert(1)) and [here](https://example.org/)."}
+      ])
+
+      {view, _path} = ask(context, "Who is on medication today?")
+      work!()
+
+      page = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}"
+      ruby = "ol[data-chat] article[data-from=ruby]"
+
+      assert has_element?(view, "#{ruby} [data-prose] a[href=\"#{page}\"]", "Biscuit")
+      assert count(view, "#{ruby} [data-prose] a") == 1
+      assert has_element?(view, "#{ruby} [data-prose]", "Clover is not.")
+      assert has_element?(view, "#{ruby} [data-prose]", "Look and here.")
+      refute main(view) =~ "javascript:"
+      refute main(view) =~ "example.org"
+
+      # The card of the record, below the words.
+      assert has_element?(view, "#{ruby} footer h3", "From the records")
+      assert has_element?(view, "#{ruby} footer a[href=\"#{page}\"] [data-portrait]", "B")
+      assert count(view, "#{ruby} footer li") == 1
+
+      # The step, folded.
+      [_said, reply] = Ruby.messages!(conversation_of(context), context.as_ana)
+      assert has_element?(view, "#steps-#{reply.id} summary", "What Ruby read: 1 step")
+      assert has_element?(view, "#steps-#{reply.id} li[data-step=done]", "1 resident")
+
+      # A page that opens again draws the same.
+      {:ok, again, _html} = live(context.conn, context.path <> "/" <> reply.conversation_id)
+      assert has_element?(again, "#{ruby} [data-prose] a[href=\"#{page}\"]", "Biscuit")
+      assert has_element?(again, "#{ruby} footer a[href=\"#{page}\"]")
+    end
+  end
+
+  defp conversation_of(context) do
+    [conversation] = Ruby.conversations!(context.as_ana)
+    conversation.id
   end
 end

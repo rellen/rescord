@@ -67,7 +67,20 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   alias AshAi.Transcript
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Allowance, Events, Fault, LLM, Message, Prompt, Reason, Replies, Toolbox}
+
+  alias Rescord.Ruby.{
+    Allowance,
+    Events,
+    Fault,
+    LLM,
+    Message,
+    Prompt,
+    Reason,
+    Replies,
+    Steps,
+    Toolbox
+  }
+
   alias Rescord.Ruby.LLM.{Client, Cost}
 
   # The words so far go to the row at most this often. The parts go when
@@ -125,6 +138,8 @@ defmodule Rescord.Ruby.Changes.Respond do
         # The most tokens of one request.
         limit: profile.context_tokens,
         parts: [],
+        # What the page shows of each call of a tool (`Rescord.Ruby.Steps`).
+        steps: [],
         saved_at: now(),
         checked_at: now(),
         told_at: now(),
@@ -222,14 +237,14 @@ defmodule Rescord.Ruby.Changes.Respond do
   defp go_on(acc), do: {:cont, acc}
 
   defp keep(acc) do
-    Process.put(@kept, {acc.text, acc.unfinished, acc.added, acc.parts})
+    Process.put(@kept, {acc.text, acc.unfinished, acc.added, acc.parts, acc.steps})
     acc
   end
 
   defp kept(acc) do
     case Process.delete(@kept) do
-      {text, unfinished, added, parts} ->
-        %{acc | text: text, unfinished: unfinished, added: added, parts: parts}
+      {text, unfinished, added, parts, steps} ->
+        %{acc | text: text, unfinished: unfinished, added: added, parts: parts, steps: steps}
 
       nil ->
         acc
@@ -282,7 +297,20 @@ defmodule Rescord.Ruby.Changes.Respond do
   defp handle({:done, result}, acc), do: %{acc | result: result}
 
   # The call of a tool and its result are in the parts. The result holds
-  # raw records, and goes nowhere else.
+  # raw records, and goes nowhere else: the step holds what code made of
+  # it, and the pages hear the step.
+  defp handle({:tool_call, %{id: id} = call}, acc) when is_binary(id) do
+    steps = Steps.started(acc.steps, call)
+    Events.step(acc.reply, Steps.find(steps, id))
+    %{acc | steps: steps}
+  end
+
+  defp handle({:tool_result, %{id: id} = result}, acc) when is_binary(id) do
+    steps = Steps.ended(acc.steps, result)
+    if step = Steps.find(steps, id), do: Events.step(acc.reply, step)
+    %{acc | steps: steps}
+  end
+
   defp handle(_event, acc), do: acc
 
   defp part_bytes(%{"content" => content}) when is_binary(content), do: byte_size(content)
@@ -307,7 +335,7 @@ defmodule Rescord.Ruby.Changes.Respond do
     now = now()
 
     if now? or now - acc.saved_at >= @save_ms do
-      Replies.save(acc.reply, acc.text, acc.parts, acc.tenant)
+      Replies.save(acc.reply, %{text: acc.text, parts: acc.parts, steps: acc.steps}, acc.tenant)
       %{acc | saved_at: now}
     else
       acc
@@ -348,6 +376,7 @@ defmodule Rescord.Ruby.Changes.Respond do
       %{
         text: acc.text,
         parts: acc.parts,
+        steps: Steps.closed(acc.steps, state),
         state: state,
         reason: reason,
         model: profile.model,

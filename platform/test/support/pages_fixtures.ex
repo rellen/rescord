@@ -164,16 +164,18 @@ defmodule RescordWeb.PagesFixtures do
     Expenses.approve_expense!(owed, options)
 
     # Ruby is on, and the administrator has a conversation with an answer of
-    # a list and a table, from the scripted model (ADR 0069).
+    # a list and a table, a step and the card of a record that it links to,
+    # from the scripted model (ADR 0069).
     as_user = [actor: user, tenant: organisation]
     Rescord.RubyFixtures.ruby_on!(root, as_user)
     conversation = Rescord.Ruby.start_conversation!(%{}, as_user)
     Rescord.Ruby.say!(conversation.id, "Who is on medication today?", as_user)
 
     Rescord.Ruby.ScriptedModel.script([
+      {:tool, "find_residents", %{}},
       {:text,
        "Two residents are on **medication** today:\n\n" <>
-         "- Sir Reginald Fluffington the Third, a sample antibiotic, 0.3 mL by mouth\n" <>
+         "- [Sir Reginald Fluffington the Third](resident:#{resident.id}), a sample antibiotic, 0.3 mL by mouth\n" <>
          "- Clover, a cream\n\n" <>
          "| Resident | Last weight |\n| --- | --- |\n| Clover | 985 g |\n"}
     ])
