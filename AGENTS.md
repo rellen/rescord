@@ -491,7 +491,11 @@ hand (ADR 0073). Read it before you write a migration. In short:
     Never pass `tools: true`. No destroy action is a tool. An action whose
     public inputs are wider than what Ruby may send gets a draft, or
     nothing. The actions of ADR 0069 that never have a tool stay without
-    one, and the test of the catalogue fails for one.
+    one, and the test of the catalogue fails for one. Only a domain that
+    `Rescord.Ruby.CatalogueTest` names has the extension `AshAi`, and no
+    resource declares a tool of its own. A read of a function of a domain
+    is a digest in `Rescord.Ruby.Digests`: it calls that function as the
+    member, says in `available?/2` who gets it, and refuses in `run/2` too.
   - **A tool result names each record** with a `ref`, a `label` and a line
     of `detail`, and puts the text of a person under a key that ends in
     `_text`. It holds no name and no email address of a member.
