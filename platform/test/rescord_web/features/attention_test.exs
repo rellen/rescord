@@ -197,17 +197,10 @@ defmodule RescordWeb.Features.AttentionTest do
         const root = document.documentElement;
         const row = document.querySelector("#attention-task-#{task.id}");
         row.querySelector("a").focus({ focusVisible: true });
-        const order = Array.from(document.querySelectorAll("main h2, main h3"))
-          .map((heading) =>
-            Array.from(heading.childNodes)
-              .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
-              .textContent.trim()
-          );
         return {
           focused: document.activeElement === row.querySelector("a"),
           outline: getComputedStyle(row).outlineStyle,
-          wider: root.scrollWidth - root.clientWidth,
-          order: order
+          wider: root.scrollWidth - root.clientWidth
         };
       })()
       """,
@@ -215,19 +208,31 @@ defmodule RescordWeb.Features.AttentionTest do
         assert page["focused"]
         assert page["outline"] == "solid", "the row of the focus has no outline"
         assert page["wider"] == 0
-
-        assert page["order"] == [
-                 "Needs attention",
-                 "Tasks",
-                 "Stock",
-                 "Residents",
-                 "Housing",
-                 "Transfers and partners",
-                 "The parts of Wattle Creek Small Animal Refuge"
-               ]
       end
     )
+    |> assert_headings("main :is(h2, h3)", [
+      "Needs attention",
+      "Tasks",
+      "Stock",
+      "Residents",
+      "Housing",
+      "Transfers and partners",
+      "The parts of Wattle Creek Small Animal Refuge"
+    ])
     |> press("#attention-task-#{task.id} a", "Enter")
     |> assert_has("h1", text: "Tasks", exact: true)
+  end
+
+  # The headings of `selector`, in the order of the page, by their words. A
+  # heading holds the words: an icon before them, or the count of a part
+  # after them, does not break the test.
+  defp assert_headings(session, selector, names) do
+    session = assert_has(session, selector, count: length(names))
+
+    names
+    |> Enum.with_index(1)
+    |> Enum.reduce(session, fn {name, at}, session ->
+      assert_has(session, selector, text: name, at: at)
+    end)
   end
 end

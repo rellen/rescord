@@ -1,13 +1,15 @@
 defmodule RescordWeb.PageControllerTest do
   use RescordWeb.ConnCase
+  use RescordWeb.Roles
 
   test "GET / renders the home page inside the layout's landmarks", %{conn: conn} do
-    doc = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
-
-    assert doc |> LazyHTML.query("main#main h1") |> LazyHTML.text() =~ "Rescord"
-    assert doc |> LazyHTML.query(~s(a[href="#main"])) |> Enum.count() == 1
-    assert doc |> LazyHTML.query(~s(header nav[aria-label])) |> Enum.count() == 1
-    assert doc |> LazyHTML.query("[class]") |> Enum.count() == 0
+    conn
+    |> visit(~p"/")
+    |> assert_has(main() |> heading(level: 1), text: "Rescord")
+    |> assert_has(link("Skip to content"), count: 1)
+    |> assert_has(banner() |> navigation("Site"), count: 1)
+    |> assert_has(contentinfo() |> navigation("About Rescord") |> link("Colophon"))
+    |> refute_has("[class]")
   end
 
   test "the site menu of a person who is signed in is a popover that a button opens", %{

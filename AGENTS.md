@@ -794,6 +794,25 @@ hand (ADR 0073). Read it before you write a migration. In short:
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
+  - **A page test finds what a person finds** (ADR 0107). It uses
+    PhoenixTest with `use RescordWeb.Roles` (`browser: true` in a browser
+    test), and finds by landmark, role and name:
+    `click(region("Lots") |> button("Take off B-1"))`,
+    `fill_in("Quantity", ...)`, `assert_has(main() |> heading(level: 1),
+    text: "Meadow hay")`. It does not send the event of a button that it
+    could press, match `=~` on the whole page for words that are in a
+    region, find a thing that has a name with `:first-child`,
+    `:nth-child` or `>`, or read words with a script in `evaluate`.
+  - An id, a `data-` attribute or a raw event stays only where it is what
+    the test holds: an id of an address or of `focus.ts`, records that only
+    an id tells apart, the controls that Cinder writes, `data-state` and
+    `data-label`, the state of the connection, and an event that the page
+    does not offer (sent with `unwrap/2`, to test a refusal).
+  - A component test reads its HTML with the queries of
+    `RescordWeb.Roles` (`has?/2`, `text/2`, `names/2`). A response that is
+    no page (ICS, CSV, PDF, JSON) stays on `Phoenix.ConnTest`.
+  - The tests of an area move to this one area at a time (issue 33). A
+    test that you change moves with it.
   - A test that keeps a file tags itself `:tmp_dir` and calls
     `Rescord.StorageFixtures.disk_store!/1`, so each test has a directory of
     its own. No test reaches a real store.
@@ -857,9 +876,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   what an action refused. Draw it in the form that the person sent when
   that form is far down the page, and below the header in each other case.
   In a page test, look for the alert of
-  the page with `has_element?(view, "main p[role=alert]")`: the layout
-  always holds a hidden element with `role="alert"`, so a search of the
-  text for that role finds one on each page.
+  the page with `assert_has(session, main() |> alert())` of
+  `RescordWeb.Roles`: the layout always holds a hidden element with
+  `role="alert"`, so a search of the text for that role finds one on each
+  page.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
