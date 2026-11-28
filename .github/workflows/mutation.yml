@@ -151,6 +151,9 @@ jobs:
           SCOPE_VALUE: ${{ steps.scope.outputs.value }}
         run: |
           rm -rf "$RUNNER_TEMP/muex"
+          # The inner bash expands the variables of the step, so the quotes
+          # are single on purpose.
+          # shellcheck disable=SC2016
           devenv shell -- bash -c 'cd platform && mix test.mutation "$SCOPE_FLAG" "$SCOPE_VALUE" --preset "$PRESET" --deadline-minutes "$MINUTES" --format json --output "$RUNNER_TEMP/muex/report.json"'
 
       - name: Write the summary
