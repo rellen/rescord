@@ -10,9 +10,9 @@ defmodule Rescord.Log.Shape do
 
   @type t :: %__MODULE__{text: String.t()}
 
-  @doc "The shape of `value`, as `Rescord.Log.shape/1` gives it."
+  @doc "The shape of `value`, as `Shoddy.Terms.shape/2` gives it."
   @spec of(term) :: t
-  def of(value), do: %__MODULE__{text: Rescord.Log.shape(value)}
+  def of(value), do: %__MODULE__{text: Shoddy.Terms.shape(value)}
 
   defimpl Inspect do
     def inspect(%{text: text}, _opts), do: text

@@ -30,9 +30,20 @@ neither has a release or a tag.
 
 ## The pins now
 
-On 28 November 2026 `platform/mix.exs` pins `shoddy` at `d49e059` and
-`shoddy_phoenix` at `5ff4a14`, the head of `main` of each. The commits
-above are the first pins. ADR 0037 made a widget the exception, and no
-page has one yet. So `shoddy_phoenix` runs only in the test of the
-widgets, and `choose/1` and `switch/1` are imported but not yet called.
-Both stay, for the first page that needs them.
+On 28 November 2026 `platform/mix.exs` pins `shoddy` at `5c88e0c` and
+`shoddy_phoenix` at `e46759e`, the head of `main` of each. The commits
+above are the first pins. These pins bring three helpers that Rescord
+gave to the libraries on that day, and Rescord dropped its own copies:
+
+- `Shoddy.Terms.shape/2` writes the shape of a value for the log. It was
+  `Rescord.Log.shape/1`. `Rescord.Log.reason/1` stays (ADR 0077).
+- `Shoddy.Maps.text_fields/1` keeps the text of a form that a page draws
+  again. It was `RescordWeb.Input.typed_fields/1`. `typed_form/2` stays,
+  because it builds a form of Phoenix.
+- `keepDetailsOpen` of `shoddy_phoenix` keeps a `<details>` open. It was
+  `assets/js/details.ts` (ADR 0031).
+
+ADR 0037 made a widget the exception, and no page has one yet. So the
+modules of `shoddy_phoenix` in Elixir run only in the test of the widgets,
+and `choose/1` and `switch/1` are imported but not yet called. Both stay,
+for the first page that needs them.

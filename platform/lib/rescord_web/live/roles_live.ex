@@ -73,7 +73,7 @@ defmodule RescordWeb.RolesLive do
   def handle_event("define", %{"role" => fields}, socket) when is_map(fields) do
     case Accounts.define_role(facts(fields), options(socket)) do
       {:ok, _role} -> {:noreply, push_navigate(socket, to: path(socket))}
-      {:error, error} -> {:noreply, refuse(socket, {:define, typed_fields(fields)}, error)}
+      {:error, error} -> {:noreply, refuse(socket, {:define, text_fields(fields)}, error)}
     end
   end
 
@@ -94,7 +94,7 @@ defmodule RescordWeb.RolesLive do
             {:noreply, push_navigate(socket, to: path(socket))}
 
           {:error, error} ->
-            {:noreply, refuse(socket, {:revise, id, typed_fields(fields)}, error)}
+            {:noreply, refuse(socket, {:revise, id, text_fields(fields)}, error)}
         end
     end
   end

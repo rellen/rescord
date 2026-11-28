@@ -118,9 +118,9 @@ defmodule Rescord.MixProject do
       {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).
-      {:shoddy, github: "rellen/shoddy", ref: "d49e059538ce4ef2db6518353cf7d5852eb2d386"},
+      {:shoddy, github: "rellen/shoddy", ref: "5c88e0c7b73206d278d02952f5c18ea2aa617685"},
       {:shoddy_phoenix,
-       github: "rellen/shoddy_phoenix", ref: "5ff4a14c61739faf9f2de557582e2a9efefe4110"},
+       github: "rellen/shoddy_phoenix", ref: "e46759ef2a18a947c41c6f9da863d53db200d47a"},
       {:swoosh, "~> 1.16"},
       # SMTP for the adapter of Swoosh: each operator names a mail server (ADR 0044).
       {:gen_smtp, "~> 1.2"},

@@ -8,7 +8,7 @@ defmodule Rescord.Log do
   A line holds no name and no address of a person, no text that a person
   typed, no token, no file, and never the message of an error: the message
   of an Ash error holds the value that Ash refused. `reason/1` gives the
-  safe text of a failure, and `shape/1` gives the safe text of any value.
+  safe text of a failure and of any other value, with `Shoddy.Terms.shape/2`.
 
       Logger.warning("The email of an invitation failed: \#{Rescord.Log.reason(error)}")
 
@@ -25,11 +25,11 @@ defmodule Rescord.Log do
 
   @context [:user, :organisation, :job, :worker, :queue, :attempt]
 
-  # The fields of an exception that say what failed. The text keeps one only
-  # when its value is an atom, which code wrote, or a failure inside it.
-  @facts [:field, :fields, :resource, :action, :code, :type, :postgres, :reason, :error]
+  # The fields of an exception that say what failed. `Shoddy.Terms.shape/2`
+  # keeps one only when its value is an atom, which code wrote, or a failure
+  # inside it.
+  @facts [:errors, :field, :resource, :action, :code, :type, :postgres, :reason, :error]
 
-  @depth 4
   @most 5
   @frames 12
 
@@ -74,79 +74,37 @@ defmodule Rescord.Log do
 
   For any other exception it gives the module, and the reason when that is
   an atom: `"DBConnection.ConnectionError(reason: :queue_timeout)"`. For each
-  other value it gives the shape, as `shape/1` does.
-  """
-  @spec reason(term) :: String.t()
-  def reason(failure), do: shape(failure)
+  other value it gives the shape of `Shoddy.Terms.shape/2`: an atom as it
+  is, the module of a struct, and the kind of each other value.
 
-  @doc """
-  The shape of a value, with nothing that a person wrote: an atom as it is,
-  the module of a struct, and the kind of each other value.
-
-      iex> Rescord.Log.shape({:record, %{name: "Fern"}, "a note"})
+      iex> Rescord.Log.reason({:record, %{name: "Fern"}, "a note"})
       "{:record, map(1), binary}"
   """
-  @spec shape(term) :: String.t()
-  def shape(value), do: shape(value, 0)
-
-  defp shape(value, _depth) when is_atom(value), do: inspect(value)
-  defp shape(value, _depth) when is_binary(value), do: "binary"
-  defp shape(value, _depth) when is_bitstring(value), do: "bitstring"
-  defp shape(value, _depth) when is_integer(value), do: "integer"
-  defp shape(value, _depth) when is_float(value), do: "float"
-  defp shape(value, _depth) when is_pid(value), do: "pid"
-  defp shape(value, _depth) when is_reference(value), do: "reference"
-  defp shape(value, _depth) when is_port(value), do: "port"
-  defp shape(value, _depth) when is_function(value), do: "function"
-  defp shape([], _depth), do: "[]"
-  defp shape(value, _depth) when is_list(value), do: "list"
-  defp shape(%{__exception__: true} = error, depth), do: exception(error, depth)
-  defp shape(%module{}, _depth), do: "%#{inspect(module)}{}"
-  defp shape(value, _depth) when is_map(value), do: "map(#{map_size(value)})"
-
-  defp shape(value, depth) when is_tuple(value) and depth < @depth and tuple_size(value) <= 6 do
-    "{" <> (value |> Tuple.to_list() |> Enum.map_join(", ", &shape(&1, depth + 1))) <> "}"
-  end
-
-  defp shape(value, _depth) when is_tuple(value), do: "tuple(#{tuple_size(value)})"
-
+  @spec reason(term) :: String.t()
   # A class of Splode holds the errors of an action.
-  defp exception(%module{errors: [_ | _] = errors} = error, depth) when depth < @depth do
-    shown = errors |> Enum.take(@most) |> Enum.map_join(", ", &shape(&1, depth + 1))
+  def reason(%{__exception__: true, errors: [_ | _] = errors} = error) do
+    shown = errors |> Enum.take(@most) |> Enum.map_join(", ", &shape/1)
     rest = length(errors) - @most
     more = if rest > 0, do: ", and #{rest} more", else: ""
 
-    case Map.get(error, :class) do
-      class when is_atom(class) and not is_nil(class) -> "#{class}: #{shown}#{more}"
-      _no_class -> "#{inspect(module)}: #{shown}#{more}"
-    end
+    "#{class(error)}: #{shown}#{more}"
   end
 
-  defp exception(%module{} = error, depth) do
-    fields = Map.from_struct(error)
+  def reason(failure), do: shape(failure)
 
-    case for key <- @facts, text = fact(key, Map.get(fields, key), depth), do: "#{key}: #{text}" do
-      [] -> inspect(module)
-      facts -> "#{inspect(module)}(#{Enum.join(facts, ", ")})"
-    end
-  end
+  defp class(%{class: class}) when is_atom(class) and not is_nil(class), do: class
+  defp class(%module{}), do: inspect(module)
 
-  defp fact(_key, value, _depth) when is_nil(value) or is_boolean(value), do: nil
-  defp fact(_key, value, _depth) when is_atom(value), do: inspect(value)
+  defp shape(failure), do: failure |> postgres_code() |> Shoddy.Terms.shape(fields: @facts)
 
-  defp fact(:fields, [_ | _] = names, _depth) do
-    if Enum.all?(names, &is_atom/1), do: inspect(Enum.take(names, @most))
-  end
+  # The error of PostgreSQL names its kind, such as `:unique_violation`, in a
+  # map with the detail, and the detail holds the value. `Shoddy.Terms.shape/2`
+  # shows no map, so the kind takes the place of the map.
+  defp postgres_code(%{__exception__: true, postgres: %{code: code}} = error)
+       when is_atom(code) and not is_nil(code),
+       do: %{error | postgres: code}
 
-  # The error of PostgreSQL names its kind, such as `:unique_violation`.
-  defp fact(:postgres, %{code: code}, _depth) when is_atom(code) and not is_nil(code),
-    do: inspect(code)
-
-  # An exception that wraps another failure, as that of a job does.
-  defp fact(key, value, depth) when key in [:reason, :error] and depth < @depth,
-    do: shape(value, depth + 1)
-
-  defp fact(_key, _value, _depth), do: nil
+  defp postgres_code(failure), do: failure
 
   @doc """
   A stack trace as text, with no argument of a call: a frame can hold the

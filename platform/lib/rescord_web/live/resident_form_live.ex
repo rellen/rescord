@@ -81,7 +81,7 @@ defmodule RescordWeb.ResidentFormLive do
   end
 
   defp assign_form(socket, fields) do
-    fields = typed_fields(fields)
+    fields = text_fields(fields)
 
     assign(socket, form: typed_form(fields, as: :resident), fields: fields)
   end

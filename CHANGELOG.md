@@ -531,6 +531,12 @@ release (ADR 0047).
 
 ### Changed
 
+- A line of the log now writes the shape of a value with
+  `Shoddy.Terms.shape/2` of `shoddy`, and Rescord no longer has its own
+  copy. A tuple of more than 6 values now shows each value, an Ash error
+  inside another failure names its errors, and the field `:fields` of an
+  error no longer shows. The line still holds no data of a person (ADR
+  0077).
 - The send of a transfer to a partner on this server no longer copies
   the photos and the PDFs of the copy: it returns at once, and a
   background job copies them, one at a time, in the new queue of Oban

@@ -78,7 +78,7 @@ defmodule Rescord.Log.Jobs do
   def handle([:oban, :job, :stop], _measurements, _meta, _config), do: :ok
 
   def handle([:oban, :plugin, :exception], _measurements, meta, _config) do
-    plugin = Log.shape(meta[:plugin])
+    plugin = Shoddy.Terms.shape(meta[:plugin])
     reason = Log.reason(meta[:reason] || meta[:error])
     Logger.error("The plugin #{plugin} of Oban failed: #{reason}#{trace(meta[:stacktrace])}")
   end

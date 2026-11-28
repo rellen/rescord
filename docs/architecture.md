@@ -189,7 +189,7 @@ We do not write those by hand.
   `assets/js/cinder_tables.ts` (ADR 0017). `assets/js/app.js` is still the
   generator's file, and it imports the module.
 - **A `<details>` keeps its state** when LiveView draws the page again
-  (ADR 0031): `assets/js/details.ts` carries it over, and each `<details>`
+  (ADR 0031): `keepDetailsOpen` of `shoddy_phoenix` carries it over, and each `<details>`
   of a page has an id.
 - **A button copies the address of a calendar feed** (ADR 0074):
   `assets/js/copy.ts` listens for a press on a button with `data-copy`,

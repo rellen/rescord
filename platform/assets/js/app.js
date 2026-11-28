@@ -34,7 +34,8 @@ import {
   listen as listenToCinderTables,
   watch as watchCinderLists,
 } from "./cinder_tables"
-import {keepOpen as keepDetailsOpen} from "./details"
+// A <details> stays open when LiveView draws the page again (ADR 0031).
+import {keepDetailsOpen} from "shoddy_phoenix/priv/static/shoddy_phoenix.js"
 // The focus of the keyboard stays in its place when the page changes (ADR 0090).
 import {listen as listenForNewPages, restore as restoreFocus, watch as watchFocus} from "./focus"
 // The button that copies the address of a calendar feed (ADR 0074).
