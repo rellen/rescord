@@ -352,9 +352,23 @@ What this means for a migration:
   two organisations or more, and that the commit before your change
   made. Run `mix ash_postgres.migrate` for a migration of the database,
   and `mix ash_postgres.migrate --tenants` for a tenant migration. Then
-  run the `down` and the `up` again: `mix ash_postgres.rollback -n 1` or
-  `mix ash_postgres.rollback --tenants -n 1`, and the same `migrate`.
-  Read the rows that the migration changed.
+  run the `down` and the `up` again, and read the rows that the migration
+  changed. For a migration of the database, the `down` is
+  `mix ash_postgres.rollback -n 1`. For a tenant migration,
+  `mix ash_postgres.rollback --tenants` of ash_postgres 2.16 stops with
+  "could not lookup Ecto repo": it asks for the organisations before it
+  starts the repository. Use this:
+
+  ```sh
+  mix run --no-start -e '
+    Ecto.Migrator.with_repo(Rescord.Repo, fn repo ->
+      path = Ecto.Migrator.migrations_path(repo, "tenant_migrations")
+
+      for tenant <- repo.all_tenants() do
+        Ecto.Migrator.run(repo, path, :down, step: 1, prefix: tenant)
+      end
+    end)'
+  ```
 - **Rehearse it.** Before the `migrate` above,
   `mix run --no-start -e "Rescord.Release.rehearse()"` runs your migration
   in each organisation of that database and takes it back. It must pass.
