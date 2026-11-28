@@ -111,7 +111,10 @@ We do not write those by hand.
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
   work around the first one (ADR 0017): `assets/js/cinder_tables.ts` makes
   the sort of a table column a button for the keyboard, and gives the header
-  cell `aria-sort`. The other gaps stay for now.
+  cell `aria-sort`. The same module closes the others (ADR 0087): the
+  state and the name of a choice filter and its arrow keys, the pages as
+  a landmark, the names of the buttons and of a table, and a status
+  region that says the new count of a result.
 
 ### Markup and CSS
 
@@ -830,8 +833,8 @@ from GitHub, pinned to a commit (ADR 0005).
   first workflow.
 - How a cloud session (which runs as root, where devenv's PostgreSQL cannot
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
-- The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice
-  filter and the pages.
+- Nobody has listened to a collection with a screen reader. ADR 0087
+  closed the gaps of the markup of Cinder that a browser can show.
 - Whether a hook that a component writes next to its markup
   (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
   is a file under `assets/js/`. Nobody has checked.

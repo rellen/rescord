@@ -1,6 +1,7 @@
 # ADR 0017: We work around the sort of a Cinder table for the keyboard
 
-Status: accepted (chosen by the maintainer, 15 November 2026)
+Status: accepted (chosen by the maintainer, 15 November 2026). ADR 0087
+closes the other gaps with the same module.
 
 ## Context
 

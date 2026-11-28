@@ -427,6 +427,14 @@ release (ADR 0047).
   skipped, with the reason "The resident was removed", and a member can
   open it again. A task with another resident, a group or a location
   stays due, and a routine goes on for its other residents.
+- The filters and the pages of a list now work with a keyboard and a
+  screen reader. The button of a filter with choices says its choice
+  and if its list is open. The arrow keys move through the choices, and
+  Enter or Escape closes the list. Before, the list closed at each
+  press and the focus went to the top of the page. The buttons that
+  clear a filter and that change the page have words for their names,
+  the pages are a landmark, a table has a name, and a screen reader
+  says the new count after a filter or a search (ADR 0087).
 
 ### Security
 

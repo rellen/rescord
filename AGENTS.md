@@ -326,6 +326,13 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `RescordWeb.CinderTest` holds the two together. Do not take the two
     `dom` callbacks out of `assets/js/app.js`: without them a sort control
     loses the focus.
+  - The same module names the controls of a collection for a screen reader
+    and keeps the list of a choice filter open under the arrow keys
+    (ADR 0087). Do not take `watchCinderLists()` or `holdCinderListsOpen()`
+    out of `app.js`. It names a table by the heading of its
+    `section[aria-labelledby]`, or by the `h1` of the page: put a
+    collection that is a part of a page in such a section.
+    `RescordWeb.Features.CollectionsTest` holds this in a browser.
 - **An email is MJML, with a text part** (ADR 0070). `Rescord.Mail` builds
   each email, and the caller delivers it with `Rescord.Mailer`.
   - A new email is a template `lib/rescord/mail/<name>.mjml.eex` with the

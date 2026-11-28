@@ -595,3 +595,17 @@
 [data-key="th_class"][aria-sort] {
   color: var(--text);
 }
+
+/*
+ * The status region of the collections (ADR 0087): `cinder_tables.ts` adds
+ * it to the page, and writes the new count there after a filter. A screen
+ * reader says it, and nobody sees it.
+ */
+[data-cinder-status] {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
