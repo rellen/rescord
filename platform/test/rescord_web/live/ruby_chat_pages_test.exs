@@ -296,6 +296,182 @@ defmodule RescordWeb.RubyChatPagesTest do
     end
   end
 
+  describe "what goes wrong" do
+    # Asks, and runs the job with the script: the answer fails for a reason.
+    defp answered(context, script) do
+      ScriptedModel.script(script)
+      {view, path} = ask(context, "Who is on medication today?")
+      capture_log(fn -> work!() end)
+      {view, path}
+    end
+
+    defp alert(view),
+      do: view |> element("ol[data-chat] article[data-from=ruby] [role=alert]") |> render()
+
+    test "each failure of a reply says what happened, and its way on", context do
+      overloaded = %{status: 529}
+
+      for {script, words, way} <- [
+            {[{:error, :timeout}], "the service that Ruby thinks with did not respond",
+             "Try again"},
+            {[{:error, overloaded}], "Ruby is busy. Nothing was recorded.", "Try again"},
+            {[{:error, %{status: 400}}], "refused the request", "New conversation"},
+            {[{:error, %{status: 401}}], "Ruby is not set up on this server", nil},
+            {[{:error, %{status: 400, reason: "usage limits"}}],
+             "the limit of this server for the month", nil},
+            {List.duplicate({:tool, "find_residents", %{}}, 8), "took too many steps", nil}
+          ] do
+        {view, _path} = answered(context, script)
+
+        assert alert(view) =~ words
+        assert alert(view) =~ "Nothing was recorded" or words =~ "too many steps"
+
+        ways = view |> element("ol[data-chat]") |> render()
+
+        if way,
+          do: assert(has_element?(view, "ol[data-chat] [data-way-on]", way)),
+          else: refute(ways =~ "data-way-on")
+
+        # The field stays, but after "New conversation".
+        assert has_element?(view, "#ruby-message")
+      end
+    end
+
+    test "Try again sends the message of the member again", context do
+      {view, _path} = answered(context, [{:error, :timeout}])
+
+      view |> element("[data-way-on] button", "Try again") |> render_click()
+
+      assert count(view, "ol[data-chat] article[data-from=member]") == 2
+      assert has_element?(view, "#ruby-answer", "is working")
+      # The way on of the reply before is gone while Ruby answers.
+      refute has_element?(view, "[data-way-on]")
+
+      ScriptedModel.script([{:text, "Two residents."}])
+      work!()
+      assert has_element?(view, "ol[data-chat] article[data-from=ruby]", "Two residents.")
+    end
+
+    test "Try again only for the last reply, and only where a second try can go better",
+         context do
+      {view, _path} = answered(context, [{:error, :timeout}])
+      [asked, _reply] = Ruby.messages!(conversation_of(context), context.as_ana)
+
+      # A reply that was cut cannot be tried again by a crafted event.
+      view |> form("#ruby-say", message: %{text: "And tomorrow?"}) |> render_submit()
+      ScriptedModel.script([{:cut, "Tomorrow"}])
+      work!()
+      render_hook(view, "again", %{"id" => asked.id})
+
+      assert count(view, "ol[data-chat] article[data-from=member]") == 2
+      refute has_element?(view, "#ruby-answer")
+    end
+
+    test "a message that comes too fast stays in the field, and Try again sends it", context do
+      # Six messages in a minute are the most that a member sends.
+      ScriptedModel.script(List.duplicate({:text, "Two."}, 6))
+      {view, _path} = ask(context, "Who is on medication today?")
+      work!()
+
+      for n <- 2..6 do
+        view |> form("#ruby-say", message: %{text: "And #{n}?"}) |> render_submit()
+        work!()
+      end
+
+      view |> form("#ruby-say", message: %{text: "And seven?"}) |> render_submit()
+
+      assert has_element?(
+               view,
+               "main [data-problem] [role=alert]",
+               "Wait a moment before you ask again."
+             )
+
+      assert has_element?(view, "#ruby-message", "And seven?")
+      assert has_element?(view, "[data-problem] button[form=ruby-say]", "Try again")
+      # One Try again: the reply before has none while the refusal shows.
+      assert count(view, "[data-way-on]") == 1
+      assert count(view, "ol[data-chat] article[data-from=member]") == 6
+    end
+
+    test "a refusal hides its words and closes the conversation", context do
+      {view, _path} = answered(context, [{:refusal, "I will not say this."}])
+
+      assert alert(view) =~ "Ruby cannot help with that. Nothing was recorded."
+      refute main(view) =~ "I will not say this."
+      refute has_element?(view, "#ruby-say")
+      assert has_element?(view, "#ruby-closed", "This conversation is closed.")
+      assert has_element?(view, "#ruby-closed a", "New conversation")
+    end
+
+    test "an answer that was cut keeps its words, and asks for the rest", context do
+      {view, _path} = answered(context, [{:cut, "Biscuit and Clover are"}])
+
+      ruby = "ol[data-chat] article[data-from=ruby]"
+      assert has_element?(view, ruby, "Biscuit and Clover are")
+      assert has_element?(view, ruby, "The answer was cut short. Ask for the rest.")
+      refute has_element?(view, "#{ruby} [role=alert]")
+
+      view |> element("[data-way-on] button", "Ask for the rest") |> render_click()
+
+      assert has_element?(
+               view,
+               "ol[data-chat] article[data-from=member]",
+               "Please go on with the rest of the answer."
+             )
+    end
+
+    test "a message past the allowance is refused, with the way to the settings for who sets them",
+         context do
+      [offer] = Ruby.offers(context.admin)
+
+      {:ok, _settings} =
+        Ruby.save_settings(
+          %{enabled: true, provider_id: offer.id, agreed_to: offer.place_key, allowance: 0},
+          context.admin
+        )
+
+      {:ok, view, _html} = live(context.conn, context.path)
+      view |> element("button", "Who is on medication today?") |> render_click()
+
+      assert has_element?(
+               view,
+               "main [role=alert]",
+               "Ruby has no allowance for #{context.organisation.name}"
+             )
+
+      refute has_element?(view, "[data-way-on]")
+      assert Ruby.conversations!(context.as_ana) == []
+
+      # An administrator gets the link to the settings.
+      conn = sign_in(build_conn(), context.administrator)
+      {:ok, view, _html} = live(conn, context.path)
+      view |> element("button", "Who is on medication today?") |> render_click()
+
+      assert has_element?(
+               view,
+               "[data-way-on] a[href=\"/o/#{context.organisation.short_name}/settings/ruby\"]"
+             )
+    end
+
+    test "a page that opens in the middle of an answer shows the words so far", context do
+      conversation = Ruby.start_conversation!(%{}, context.as_ana)
+      message = Ruby.say!(conversation.id, "Who is on medication today?", context.as_ana)
+      {:ok, reply} = Rescord.Ruby.Replies.open(message, context.organisation)
+
+      :ok =
+        Rescord.Ruby.Replies.save(
+          reply,
+          %{text: "Biscuit gets **a sample**"},
+          context.organisation
+        )
+
+      {:ok, view, _html} = live(context.conn, context.path <> "/" <> conversation.id)
+      assert has_element?(view, "#ruby-answer [data-prose] strong", "a sample")
+      assert has_element?(view, "#ruby-answer", "is writing")
+      assert has_element?(view, "#ruby-stop")
+    end
+  end
+
   defp conversation_of(context) do
     [conversation] = Ruby.conversations!(context.as_ana)
     conversation.id

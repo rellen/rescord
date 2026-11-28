@@ -1785,7 +1785,10 @@ pre[data-wrap] {
  *   [data-rate]              was the answer right: two buttons
  *   ul[data-thumbs]          the photos of a message
  *   ul[data-suggestions]     things to ask, each a button
- *   form[data-composer]      the form of the message, at the foot of the screen
+ *   form[data-composer]      the form of the message, at the foot of the screen,
+ *                            or a section in its place when the conversation
+ *                            is closed
+ *   p[data-way-on]           the way on after a problem: Try again, and others
  *   article[data-day]        the day ahead, in two sentences of Ruby, later
  *   aside[data-ruby-panel]   Ruby beside a page, on a wide screen (an option)
  */
@@ -1865,8 +1868,9 @@ main[data-ruby] {
     "head"
     "about"
     "log"
+    "problem"
     "say";
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto auto;
   grid-template-columns: minmax(0, 1fr);
   padding-block-end: 0;
 }
@@ -1891,10 +1895,20 @@ main[data-ruby] > [data-about] {
   grid-area: about;
 }
 
-main[data-ruby] > section {
+main[data-ruby] > section:not([data-composer]) {
   grid-area: log;
   min-inline-size: 0;
 }
+
+/* What Ruby refused, or what the form refused, is below the conversation
+   and above the form. */
+main[data-ruby] > [data-problem] {
+  display: grid;
+  grid-area: problem;
+  gap: 0.5rem;
+  margin-block-end: 1rem;
+}
+
 
 main[data-ruby] > aside {
   display: none;
@@ -2270,6 +2284,10 @@ section[data-log] [data-rate] {
 }
 
 section[data-log] [data-rate] > span {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
 /* -------------------------------------------------------------- comments */
 
 /* The comments of a record (issue 29): a list of cards, oldest first. */
@@ -2385,7 +2403,7 @@ ul[data-suggestions] button {
  * side or a page at 400%, gives none of its height away: there the form is
  * at the end of the conversation.
  */
-form[data-composer] {
+:is(form, section)[data-composer] {
   grid-area: say;
   z-index: 10;
   gap: 0.5rem;
@@ -2399,10 +2417,32 @@ form[data-composer] {
 }
 
 @media (height >= 30rem) {
-  form[data-composer] {
+  :is(form, section)[data-composer] {
     position: sticky;
     inset-block-end: 0;
   }
+}
+
+/* A conversation that takes no more messages: the words, and the way to
+   a new one, in place of the form. */
+section[data-composer] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+section[data-composer] > p {
+  margin: 0;
+}
+
+/* The way on after a problem: a button or a link, beside each other. */
+:is(section[data-log], main[data-ruby] > [data-problem]) p[data-way-on] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
 }
 
 /* The field is one line high, and as high as its words up to a part of the
@@ -2575,6 +2615,7 @@ meter {
       "head"
       "about"
       "log"
+      "problem"
       "say";
     grid-template-columns: minmax(0, 44rem);
     justify-content: center;
@@ -2585,6 +2626,7 @@ meter {
       "aside head"
       "aside about"
       "aside log"
+      "aside problem"
       "aside say";
     grid-template-columns: minmax(0, 17rem) minmax(0, 44rem);
     column-gap: 3rem;
@@ -2732,6 +2774,8 @@ aside[data-ruby-panel] {
    message in the list when it is whole. */
 section[data-log] > article[data-from] {
   margin-block-end: 1.5rem;
+}
+
 ol[data-comments] > li > article > footer {
   display: flex;
   flex-wrap: wrap;

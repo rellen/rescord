@@ -337,12 +337,100 @@ defmodule RescordWeb.RubyWords do
   def steps_summary(steps), do: "What Ruby read: #{length(steps)} steps"
 
   @doc """
-  What went wrong with a reply, in place of the answer: the one sentence
-  that is true for each reason. Nothing was recorded, since Ruby writes no
-  record.
+  What went wrong with a reply, or with a message that Ruby refused, for
+  the member, in the place of the answer: one sentence for each reason of
+  `Rescord.Ruby.Reason`, and no other. "Nothing was recorded" is in each
+  one where it is true, since it is the first thing that a member asks.
+
+  The allowance is of a month of UTC (`Rescord.Ruby.Allowance`), so the
+  option `today` is a day of UTC. The option `allowance` is the allowance
+  of the organisation, in cents, when the page knows it: an allowance of
+  nothing never comes back with a new month.
   """
-  def problem(_reason),
-    do: "Ruby could not answer. Nothing was recorded. The pages of Rescord work as before."
+  def problem(reason, organisation, opts \\ [])
+
+  def problem(reason, _organisation, _opts) when reason in [:provider_down, :unknown],
+    do:
+      "Ruby could not answer: the service that Ruby thinks with did not respond. " <>
+        "Nothing was recorded. The pages of Rescord work as before."
+
+  def problem(:request_refused, _organisation, _opts),
+    do:
+      "Ruby could not answer: the service that Ruby thinks with refused the request. " <>
+        "Nothing was recorded. The pages of Rescord work as before."
+
+  def problem(:provider_busy, _organisation, _opts),
+    do: "Ruby is busy. Nothing was recorded. Try again in a minute."
+
+  def problem(:rate, _organisation, _opts), do: "Wait a moment before you ask again."
+
+  def problem(:allowance, %{name: name}, opts) do
+    today = Keyword.get(opts, :today, Date.utc_today())
+
+    case Keyword.fetch(opts, :allowance) do
+      {:ok, cents} when cents in [nil, 0] ->
+        "Ruby has no allowance for #{name}. It answers when an administrator " <>
+          "sets one in the settings."
+
+      _some ->
+        month_used(name, today)
+    end
+  end
+
+  def problem(:provider_limit, _organisation, _opts),
+    do:
+      "Ruby has reached the limit of this server for the month. Nothing was recorded. " <>
+        "The pages of Rescord work as before."
+
+  def problem(:key_refused, _organisation, _opts),
+    do: "Ruby is not set up on this server. Tell the person who runs it. Nothing was recorded."
+
+  def problem(:refused, _organisation, _opts),
+    do: "Ruby cannot help with that. Nothing was recorded."
+
+  def problem(:cut, _organisation, _opts), do: "The answer was cut short. Ask for the rest."
+
+  def problem(:too_many_steps, _organisation, _opts),
+    do: "Ruby stopped: the question took too many steps. Ask for a smaller part."
+
+  def problem(:too_long, _organisation, _opts),
+    do: "This conversation is long. Start a new one, and Ruby reads the records again."
+
+  defp month_used(name, today) do
+    month = today |> Date.beginning_of_month() |> RescordWeb.Locale.month()
+    next = today |> Date.end_of_month() |> Date.add(1) |> RescordWeb.Locale.date()
+
+    "Ruby has used the allowance of #{name} for #{month}. It answers again on #{next}, " <>
+      "or when an administrator changes the allowance in the settings."
+  end
+
+  @doc """
+  The way on after a problem, for its reason:
+
+    * `:again` - "Try again" sends the message of the member again: a
+      second try can go better;
+    * `:rest` - "Ask for the rest";
+    * `:new` - "New conversation": this one fails again. A refusal has
+      none here: the conversation is closed, and the form says so;
+    * `:settings` - for a person who can change the settings of Ruby, a
+      link to them;
+    * `nil` - the field, or nothing that the member can do.
+  """
+  def way_on(reason) when reason in [:provider_down, :unknown, :provider_busy, :rate], do: :again
+  def way_on(:cut), do: :rest
+  def way_on(reason) when reason in [:request_refused, :too_long], do: :new
+  def way_on(:allowance), do: :settings
+  def way_on(_reason), do: nil
+
+  @doc "Whether a second try of the same message can go better (\"Try again\")."
+  def again?(reason), do: way_on(reason) == :again
+
+  @doc "The words that \"Ask for the rest\" sends."
+  def rest, do: "Please go on with the rest of the answer."
+
+  @doc "Whether the words of a reply that ended for this reason stay on the page."
+  def keeps_words?(:refused), do: false
+  def keeps_words?(_reason), do: true
 
   # An amount with more digits than the unit holds is refused, and not
   # rounded: the person sees what Rescord keeps.

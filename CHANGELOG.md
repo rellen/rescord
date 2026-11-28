@@ -442,6 +442,12 @@ release (ADR 0047).
   record that the answer names, which goes to the page of the record.
   A link in the words of Ruby goes only to a record that Ruby read in
   that conversation: each other link is plain words.
+- When Ruby cannot answer, the page of Ruby says why in plain words, in
+  the place of the answer, says whether anything was recorded, and offers
+  the way on: "Try again" where a second try can go better, "Ask for the
+  rest" for an answer that was cut short, a new conversation, or, for a
+  person who sets Ruby up, the settings. A conversation in which the
+  service refused to answer takes no more messages.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

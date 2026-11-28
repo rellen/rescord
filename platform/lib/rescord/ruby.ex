@@ -308,6 +308,10 @@ defmodule Rescord.Ruby do
     end
   end
 
+  @doc "Whether the person of `opts` can change the settings of Ruby of the organisation."
+  @spec sets?(keyword) :: boolean
+  def sets?(opts), do: can_set?(opts)
+
   defp can_set?(opts),
     do: Ash.can?({Settings, :set}, opts[:actor], tenant: Keyword.fetch!(opts, :tenant))
 
