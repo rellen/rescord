@@ -1,9 +1,10 @@
 defmodule Rescord.Comments.Comment do
   @moduledoc """
   A comment of a member on one record of the organisation: a resident, a
-  task, a transfer or an expense (issue 29, ADR 0106).
+  task, a transfer, an expense or a journal entry (issue 29, ADR 0106).
 
-  The text is plain: no Markdown, and no link is made of it. The writer
+  The words are a small part of Markdown, which `RescordWeb.Markdown`
+  renders with no raw HTML. The writer
   can tell members (`told_ids`), who get a notification and follow the
   record from then on, as the writer does.
 
@@ -40,8 +41,10 @@ defmodule Rescord.Comments.Comment do
 
     check_constraints do
       check_constraint :resident_id, "one_record",
-        check: "num_nonnulls(resident_id, task_id, expense_id, transfer_id) = 1",
-        message: "must name a resident, a task, an expense or a transfer, and one only"
+        check:
+          "num_nonnulls(resident_id, task_id, expense_id, transfer_id, journal_entry_id) = 1",
+        message:
+          "must name a resident, a task, an expense, a transfer or a journal entry, and one only"
     end
 
     custom_indexes do
@@ -49,6 +52,7 @@ defmodule Rescord.Comments.Comment do
       index [:task_id], where: "task_id IS NOT NULL"
       index [:expense_id], where: "expense_id IS NOT NULL"
       index [:transfer_id], where: "transfer_id IS NOT NULL"
+      index [:journal_entry_id], where: "journal_entry_id IS NOT NULL"
       index [:author_id]
     end
 
@@ -73,7 +77,17 @@ defmodule Rescord.Comments.Comment do
 
     create :write do
       description "Writes a comment on one record, and tells the members of `told_ids`"
-      accept [:body, :told_ids, :resident_id, :task_id, :expense_id, :transfer_id]
+
+      accept [
+        :body,
+        :told_ids,
+        :resident_id,
+        :task_id,
+        :expense_id,
+        :transfer_id,
+        :journal_entry_id
+      ]
+
       change Rescord.Accounts.Changes.SetAuthor
       validate Validations.OneRecord
       # These read as the actor, so the policy answers first.
@@ -133,6 +147,7 @@ defmodule Rescord.Comments.Comment do
     attribute :task_id, :uuid, public?: true
     attribute :expense_id, :uuid, public?: true
     attribute :transfer_id, :uuid, public?: true
+    attribute :journal_entry_id, :uuid, public?: true
 
     attribute :author_id, :uuid do
       allow_nil? false
@@ -177,6 +192,14 @@ defmodule Rescord.Comments.Comment do
       public? true
       define_attribute? false
       source_attribute :expense_id
+    end
+
+    # A journal entry is temporal too: a plain id, as for a resident.
+    belongs_to :journal_entry, Rescord.Journal.JournalEntry do
+      public? true
+      define_attribute? false
+      source_attribute :journal_entry_id
+      temporal_keys {nil, :valid_at}
     end
   end
 end

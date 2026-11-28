@@ -77,6 +77,9 @@ defmodule RescordWeb.NotificationsLive do
 
         :transfer ->
           {transfer_name(socket, id), ~p"/o/#{short}/transfers/#{id}"}
+
+        :journal_entry ->
+          entry_row(comment.journal_entry, short, id)
       end
 
     %{
@@ -87,6 +90,14 @@ defmodule RescordWeb.NotificationsLive do
       href: path <> "#comment-#{comment.id}"
     }
   end
+
+  # An entry names its resident; the page of the journal shows the one entry.
+  defp entry_row(%{resident_id: resident_id} = entry, short, id) do
+    name = entry.resident && "An entry about #{entry.resident.name}"
+    {name, ~p"/o/#{short}/residents/#{resident_id}/journal?entry=#{id}"}
+  end
+
+  defp entry_row(_none, short, _id), do: {nil, ~p"/o/#{short}/notifications"}
 
   defp transfer_name(socket, id) do
     case Transfers.transfer_of(socket.assigns.organisation, id,

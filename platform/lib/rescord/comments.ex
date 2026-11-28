@@ -35,6 +35,7 @@ defmodule Rescord.Comments do
       Rescord.Residents,
       Rescord.Tasks,
       Rescord.Expenses,
+      Rescord.Journal,
       Rescord.Transfers
     ]
 

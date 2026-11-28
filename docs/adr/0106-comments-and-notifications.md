@@ -22,9 +22,11 @@ resident, or a vet bill. So nothing of the record leaves the server.
 
 ### Comments
 
-- **A comment is on exactly one record**: a resident, a task, an expense
-  or a transfer (`Rescord.Comments.Subject`). The table has a column for
-  each, and a check holds that exactly one has a value. A comment on a
+- **A comment is on exactly one record**: a resident, a task, an expense,
+  a transfer or a journal entry (`Rescord.Comments.Subject`). The table
+  has a column for each, and a check holds that exactly one has a value.
+  The comments of an entry are on the journal page of the entry alone
+  (`?entry=<id>`), which each entry links to. A comment on a
   transfer is in the schema of the organisation that wrote it.
 - **A person writes and reads a comment only on a record that they can
   read** through its own domain: a member who reads only their own
@@ -115,6 +117,8 @@ resident, or a vet bill. So nothing of the record leaves the server.
 
 ## What the maintainer chose
 
+- Comments go on journal entries too, as a fifth kind of record (call 1,
+  changed).
 - Comments are a Markdown subset, rendered safely on the server, not plain
   text (call 6, changed).
 - "Tell someone" now, and display names and `@mentions` later (call 2:

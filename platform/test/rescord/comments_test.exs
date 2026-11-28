@@ -116,6 +116,41 @@ defmodule Rescord.CommentsTest do
     end
   end
 
+  describe "a comment on a journal entry" do
+    test "is read by each person who reads the journal, and opens its notification", context do
+      entry =
+        Rescord.Journal.write_entry!(
+          %{resident_id: context.hazel.id, kind: :general, note: "Limping a little"},
+          as(context, context.kim)
+        )
+
+      subject = {:journal_entry, entry.id}
+
+      assert {:ok, comment} =
+               write(
+                 context,
+                 context.sam,
+                 %{body: "Better *today*.", told_ids: [context.kim.id]},
+                 subject
+               )
+
+      assert comment.journal_entry_id == entry.id
+      assert Comments.following?(subject, as(context, context.kim))
+
+      for user <- [context.kim, context.administrator, context.visitor] do
+        assert {:ok, [_]} = Comments.comments_on(subject, as(context, user))
+      end
+
+      assert {:error, _} =
+               write(
+                 context,
+                 context.sam,
+                 %{body: "Nobody"},
+                 {:journal_entry, Ecto.UUID.generate()}
+               )
+    end
+  end
+
   describe "a comment on an expense" do
     test "is read only by the people who read the expense", context do
       expense = expense!(context, context.sam)

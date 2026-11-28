@@ -23,8 +23,10 @@ defmodule Rescord.Comments.Follow do
 
     check_constraints do
       check_constraint :resident_id, "one_record",
-        check: "num_nonnulls(resident_id, task_id, expense_id, transfer_id) = 1",
-        message: "must name a resident, a task, an expense or a transfer, and one only"
+        check:
+          "num_nonnulls(resident_id, task_id, expense_id, transfer_id, journal_entry_id) = 1",
+        message:
+          "must name a resident, a task, an expense, a transfer or a journal entry, and one only"
     end
 
     custom_indexes do
@@ -32,6 +34,7 @@ defmodule Rescord.Comments.Follow do
       index [:task_id], where: "task_id IS NOT NULL"
       index [:expense_id], where: "expense_id IS NOT NULL"
       index [:transfer_id], where: "transfer_id IS NOT NULL"
+      index [:journal_entry_id], where: "journal_entry_id IS NOT NULL"
     end
   end
 
@@ -40,7 +43,7 @@ defmodule Rescord.Comments.Follow do
 
     create :follow do
       description "The actor follows a record"
-      accept [:resident_id, :task_id, :expense_id, :transfer_id]
+      accept [:resident_id, :task_id, :expense_id, :transfer_id, :journal_entry_id]
       upsert? true
       upsert_identity :one_follow
       upsert_fields [:user_id]
@@ -51,7 +54,7 @@ defmodule Rescord.Comments.Follow do
 
     create :add do
       description "A person follows a record after they wrote or were told. Only `write` runs it"
-      accept [:user_id, :resident_id, :task_id, :expense_id, :transfer_id]
+      accept [:user_id, :resident_id, :task_id, :expense_id, :transfer_id, :journal_entry_id]
       upsert? true
       upsert_identity :one_follow
       upsert_fields [:user_id]
@@ -81,12 +84,14 @@ defmodule Rescord.Comments.Follow do
     attribute :task_id, :uuid, public?: true
     attribute :expense_id, :uuid, public?: true
     attribute :transfer_id, :uuid, public?: true
+    attribute :journal_entry_id, :uuid, public?: true
 
     create_timestamp :inserted_at, public?: true
   end
 
   identities do
-    identity :one_follow, [:user_id, :resident_id, :task_id, :expense_id, :transfer_id],
-      nils_distinct?: false
+    identity :one_follow,
+             [:user_id, :resident_id, :task_id, :expense_id, :transfer_id, :journal_entry_id],
+             nils_distinct?: false
   end
 end

@@ -152,6 +152,12 @@ release (ADR 0047).
     These are the roles Administrator and Member that each organisation
     starts with. No other row changes: a role that an administrator
     defined does not get a power by itself.
+  - `20261128120839_add_comments_on_journal_entries`, in each
+    organisation: a comment and a follow can name a journal entry, as a
+    fifth kind of record (issue 29, ADR 0106). It adds an empty column to
+    each of the two tables, and the check that a row names one record
+    counts it. Each row that is there names one record of the four, so it
+    keeps to the new check. It changes no row.
   - The index is a plain `CREATE INDEX`, because the rehearsal refuses
     `CONCURRENTLY`. It locks each table against reads and writes until
     the migration of its organisation commits. The migrations run at the
@@ -267,12 +273,12 @@ release (ADR 0047).
   member says "Rescord operator". `members.csv` of the export has the
   former members too, with the new column `former?` (ADR 0105).
 - Comments and notifications (issue 29, ADR 0106). A member writes a
-  comment on a resident, a task, an expense or a transfer, with bold,
-  italics, lists and links, and ticks the members to tell. The writer
-  and each person told follow the record, and each follower gets a
-  notification: on the new page Notifications, behind the bell of the
-  site bar, and, when the server has it on, on their devices with Web
-  Push and on a topic of ntfy. A notification that leaves the server
+  comment on a resident, a task, an expense, a transfer or a journal
+  entry, with bold, italics, lists and links, and ticks the members to
+  tell. The writer and each person told follow the record, and each
+  follower gets a notification: on the new page Notifications, behind
+  the bell of the site bar, and, when the server has it on, on their
+  devices with Web Push and on a topic of ntfy. A notification that leaves the server
   names only the organisation and the kind of news: no resident, no
   person and no word of a comment. A comment on an expense is read only
   by the people who read the expense. A task has a page of its own now,

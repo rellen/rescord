@@ -19,6 +19,7 @@ defmodule RescordWeb.CommentWords do
   def record(:task), do: "a task"
   def record(:expense), do: "an expense"
   def record(:transfer), do: "a transfer"
+  def record(:journal_entry), do: "a journal entry"
 
   @doc """
   A person whom a comment names, from `Rescord.Comments.people/2`: the

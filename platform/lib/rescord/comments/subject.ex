@@ -1,7 +1,7 @@
 defmodule Rescord.Comments.Subject do
   @moduledoc """
   The record that a comment or a follow is on: `{kind, id}`, where the kind
-  is one of `kinds/0`. A comment holds it in one of four columns, and the
+  is one of `kinds/0`. A comment holds it in one of five columns, and the
   database holds that exactly one of them has a value.
 
   `readable?/2` reads the record as the actor of the options, through its
@@ -11,12 +11,18 @@ defmodule Rescord.Comments.Subject do
   request.
   """
 
-  alias Rescord.{Expenses, Residents, Tasks, Transfers}
+  alias Rescord.{Expenses, Journal, Residents, Tasks, Transfers}
 
-  @type kind :: :resident | :task | :expense | :transfer
+  @type kind :: :resident | :task | :expense | :transfer | :journal_entry
   @type t :: {kind, Ecto.UUID.t()}
 
-  @columns [resident: :resident_id, task: :task_id, expense: :expense_id, transfer: :transfer_id]
+  @columns [
+    resident: :resident_id,
+    task: :task_id,
+    expense: :expense_id,
+    transfer: :transfer_id,
+    journal_entry: :journal_entry_id
+  ]
 
   @doc "The kinds of record that take comments."
   @spec kinds() :: [kind]
@@ -28,8 +34,9 @@ defmodule Rescord.Comments.Subject do
 
   @doc "The column of a kind."
   @spec column(kind) :: atom
-  def column(kind) when is_map_key(%{resident: 1, task: 1, expense: 1, transfer: 1}, kind),
-    do: Keyword.fetch!(@columns, kind)
+  def column(kind)
+      when is_map_key(%{resident: 1, task: 1, expense: 1, transfer: 1, journal_entry: 1}, kind),
+      do: Keyword.fetch!(@columns, kind)
 
   @doc "The record of a comment or a follow, as `{kind, id}`, or `nil` when it names none."
   @spec of(map) :: t | nil
@@ -59,6 +66,7 @@ defmodule Rescord.Comments.Subject do
   defp read(:resident, id, opts), do: Residents.resident(id, opts)
   defp read(:task, id, opts), do: Tasks.task(id, opts)
   defp read(:expense, id, opts), do: Expenses.expense(id, opts)
+  defp read(:journal_entry, id, opts), do: Journal.entry(id, opts)
 
   defp read(:transfer, id, opts) do
     case Keyword.get(opts, :tenant) do

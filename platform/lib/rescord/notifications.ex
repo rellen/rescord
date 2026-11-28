@@ -101,7 +101,14 @@ defmodule Rescord.Notifications do
   """
   @spec notifications_with_records(keyword) :: {:ok, [Notification.t()]} | {:error, term}
   def notifications_with_records(opts) do
-    load = [comment: [resident: [:name], task: [:title], expense: [:description]]]
+    load = [
+      comment: [
+        resident: [:name],
+        task: [:title],
+        expense: [:description],
+        journal_entry: [:resident_id, resident: [:name]]
+      ]
+    ]
 
     with {:ok, notifications} <- notifications([load: load] ++ opts) do
       {:ok, Enum.filter(notifications, &match?(%{comment: %{}}, &1))}

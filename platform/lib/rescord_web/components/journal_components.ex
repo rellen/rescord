@@ -377,6 +377,10 @@ defmodule RescordWeb.JournalComponents do
   attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
   attr :can_track?, :boolean, default: false
 
+  attr :comments_link?, :boolean,
+    default: true,
+    doc: "a link to the entry alone, with its comments (ADR 0106)"
+
   def entry_card(assigns) do
     ~H"""
     <article id={"entry-#{@entry.id}"}>
@@ -403,6 +407,13 @@ defmodule RescordWeb.JournalComponents do
       </p>
       <p :if={JournalWords.facts(@entry)}>{JournalWords.facts(@entry)}</p>
       <p :if={@entry.note}>{@entry.note}</p>
+      <p :if={@comments_link?}>
+        <.link patch={
+          RescordWeb.ConditionComponents.journal_path(@organisation, @entry.resident_id,
+            entry: @entry.id
+          )
+        }>Comments</.link>
+      </p>
 
       <.entry_files
         attachments={@attachments}

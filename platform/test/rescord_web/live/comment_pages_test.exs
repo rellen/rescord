@@ -157,6 +157,45 @@ defmodule RescordWeb.CommentPagesTest do
     end
   end
 
+  describe "the comments of a journal entry" do
+    test "show on the page of the entry, and its notification links there", context do
+      entry =
+        Rescord.Journal.write_entry!(
+          %{resident_id: context.hazel.id, kind: :general, note: "Limping a little"},
+          context.admin
+        )
+
+      journal = ~p"/o/#{context.short}/residents/#{context.hazel.id}/journal"
+      {:ok, view, _html} = live(context.conn, journal)
+      refute has_element?(view, "#comments-comments")
+
+      assert has_element?(
+               view,
+               ~s(#entry-#{entry.id} a[href="#{journal}?entry=#{entry.id}"]),
+               "Comments"
+             )
+
+      {:ok, view, _html} = live(context.conn, "#{journal}?entry=#{entry.id}")
+
+      view
+      |> form("#comments-comments form[data-comment]", %{
+        "comment" => %{"body" => "Better today.", "told" => [context.kim.id]}
+      })
+      |> render_submit()
+
+      assert has_element?(view, "#comments-comments li[data-own]", "Better today.")
+      work!()
+
+      {:ok, view, _html} = live(context.kim_conn, ~p"/o/#{context.short}/notifications")
+
+      assert has_element?(
+               view,
+               ~s(ul[data-notifications] a[href^="#{journal}?entry=#{entry.id}"]),
+               "An entry about Hazel"
+             )
+    end
+  end
+
   describe "the page of a task" do
     test "shows the task and its comments, and the list links to it", context do
       task =
