@@ -90,7 +90,8 @@ defmodule RescordWeb do
       import Shoddy.Strings, only: [non_blank: 1]
 
       # A form drawn again from what the browser sent keeps only text.
-      import RescordWeb.Input, only: [typed_form: 2, typed_fields: 1]
+      import Shoddy.Maps, only: [text_fields: 1]
+      import RescordWeb.Input, only: [typed_form: 2]
 
       # A page that shows what another person changed (ADR 0096).
       alias RescordWeb.LiveChanges

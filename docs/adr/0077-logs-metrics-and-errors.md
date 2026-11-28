@@ -317,7 +317,10 @@ resource (ADR 0068).
 - A new `Logger` call that uses `inspect` fails a test. The value goes
   through `Rescord.Log`.
 - `Rescord.Log.shape/1` and `Rescord.Log.reason/1` are not about Rescord.
-  They are candidates for `shoddy`.
+  They are candidates for `shoddy`. Since 28 November 2026 the shape is
+  `Shoddy.Terms.shape/2` in `shoddy`, and `Rescord.Log.shape/1` is gone.
+  `Rescord.Log.reason/1` stays: it names the class of a Splode error and
+  the kind of a PostgreSQL error, which are about the libraries of Rescord.
 
 ## Options that this record sets aside
 

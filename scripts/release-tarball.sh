@@ -35,6 +35,9 @@ fi
 mkdir -p "$root/dist"
 for arch in "${archs[@]}"; do
   echo "Building the tarball for linux/${arch} on Debian ${debian}"
+  # DOCKER_BUILD_FLAGS holds flags that are words of their own, so it is
+  # split on purpose.
+  # shellcheck disable=SC2086
   docker buildx build \
     --platform "linux/${arch}" \
     --build-arg "DEBIAN_VERSION=${debian}" \

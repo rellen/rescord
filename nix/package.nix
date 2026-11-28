@@ -100,7 +100,7 @@ let
   mixFodDeps = beamPackages.fetchMixDeps {
     pname = "rescord-deps";
     inherit version src;
-    hash = "sha256-VF2Ws0Cl0k67wr7i3n7FRAcheuR1t8XE9kkVqw52CSU=";
+    hash = "sha256-bvpjL0q9WgtUk5joCJCwDolEHH4pp4jed38DflNu4QA=";
   };
 in
 beamPackages.mixRelease {

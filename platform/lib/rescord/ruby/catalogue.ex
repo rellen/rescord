@@ -38,7 +38,8 @@ defmodule Rescord.Ruby.Catalogue do
     %{name: :find_locations, kind: :read, source: :action},
     %{name: :overdue_tasks, kind: :read, source: {:extra, Digests.OverdueTasks}},
     %{name: :stock_levels, kind: :read, source: {:extra, Digests.StockLevels}},
-    %{name: :find_items, kind: :read, source: :action}
+    %{name: :find_items, kind: :read, source: :action},
+    %{name: :care_overview, kind: :read, source: {:extra, Digests.CareOverview}}
   ]
 
   @doc "Each tool of Ruby."

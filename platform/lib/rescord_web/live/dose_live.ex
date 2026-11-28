@@ -272,7 +272,7 @@ defmodule RescordWeb.DoseLive do
   # with a dose rate in mL has no strength, so the browser sends none, and
   # the page keeps what the person typed there before.
   defp merged(socket, sent) do
-    sent = sent |> typed_fields() |> Map.take(@names)
+    sent = sent |> text_fields() |> Map.take(@names)
 
     socket.assigns.fields
     |> Map.merge(sent)

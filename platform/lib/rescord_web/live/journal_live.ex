@@ -171,7 +171,7 @@ defmodule RescordWeb.JournalLive do
   defp search(query, _columns, text), do: Journal.with_text(query, text)
 
   defp assign_form(socket, fields) do
-    fields = typed_fields(fields)
+    fields = text_fields(fields)
     kind = JournalWords.kind_of(fields["kind"]) || :general
     measure_kind = fields["measure_kind_id"]
     units = socket.assigns.measurement_units

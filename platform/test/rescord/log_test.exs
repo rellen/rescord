@@ -88,6 +88,13 @@ defmodule Rescord.LogTest do
       assert Log.reason(error) == "Oban.PerformError(reason: {:error, binary})"
     end
 
+    test "names the errors of an Ash error inside another failure" do
+      invalid = Ash.Error.to_error_class(Ash.Error.Changes.Required.exception(field: :name))
+
+      assert Log.reason({:error, invalid}) ==
+               "{:error, Ash.Error.Invalid(errors: [Ash.Error.Changes.Required(field: :name)])}"
+    end
+
     test "gives an atom as it is, and the shape of each other value" do
       assert Log.reason(:timeout) == ":timeout"
       assert Log.reason({:error, :econnrefused}) == "{:error, :econnrefused}"
@@ -98,26 +105,24 @@ defmodule Rescord.LogTest do
     end
   end
 
-  describe "shape/1" do
+  describe "reason/1 for a value that is not a failure" do
     test "holds nothing of a value but its kind" do
-      assert Log.shape(%{name: "Fern", sex: :female}) == "map(2)"
-      assert Log.shape([1, 2, 3]) == "list"
-      assert Log.shape([]) == "[]"
-      assert Log.shape(42) == "integer"
-      assert Log.shape(4.2) == "float"
-      assert Log.shape(self()) == "pid"
-      assert Log.shape(make_ref()) == "reference"
-      assert Log.shape(fn -> :ok end) == "function"
-      assert Log.shape(<<1::3>>) == "bitstring"
-      assert Log.shape(%URI{path: "/fern"}) == "%URI{}"
-      assert Log.shape({:a, "b", {:c, %{}}}) == "{:a, binary, {:c, map(0)}}"
+      assert Log.reason(%{name: "Fern", sex: :female}) == "map(2)"
+      assert Log.reason([1, 2, 3]) == "list"
+      assert Log.reason([]) == "[]"
+      assert Log.reason(42) == "integer"
+      assert Log.reason(4.2) == "float"
+      assert Log.reason(self()) == "pid"
+      assert Log.reason(make_ref()) == "reference"
+      assert Log.reason(fn -> :ok end) == "function"
+      assert Log.reason(<<1::3>>) == "bitstring"
+      assert Log.reason(%URI{path: "/fern"}) == "%URI{}"
+      assert Log.reason({:a, "b", {:c, %{}}}) == "{:a, binary, {:c, map(0)}}"
     end
 
-    test "stops at a tuple that is deep or wide" do
-      assert Log.shape({1, {2, {3, {4, {5, {6}}}}}}) ==
+    test "stops at a tuple that is deep" do
+      assert Log.reason({1, {2, {3, {4, {5, {6}}}}}}) ==
                "{integer, {integer, {integer, {integer, tuple(2)}}}}"
-
-      assert Log.shape({1, 2, 3, 4, 5, 6, 7}) == "tuple(7)"
     end
   end
 

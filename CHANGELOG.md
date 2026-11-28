@@ -531,6 +531,12 @@ release (ADR 0047).
 
 ### Changed
 
+- A line of the log now writes the shape of a value with
+  `Shoddy.Terms.shape/2` of `shoddy`, and Rescord no longer has its own
+  copy. A tuple of more than 6 values now shows each value, an Ash error
+  inside another failure names its errors, and the field `:fields` of an
+  error no longer shows. The line still holds no data of a person (ADR
+  0077).
 - The send of a transfer to a partner on this server no longer copies
   the photos and the PDFs of the copy: it returns at once, and a
   background job copies them, one at a time, in the new queue of Oban
@@ -547,9 +553,8 @@ release (ADR 0047).
   change, remove, end, undo, download, upload), the figures of the
   expenses, the history of the stock and the headings of the settings
   have icons too, and the arrows of the tables are line chevrons in
-  place of solid triangles. The site bar of a wide screen is a little
-  wider. Words still say what each icon means, and a screen reader does
-  not read the icons (ADR 0102).
+  place of solid triangles. Words still say what each icon means, and a
+  screen reader does not read the icons (ADR 0102).
 - A failure of Rescord itself, such as a time after now in a form, a
   file that is not a photo or an email of an invitation that the mail
   server refused, is now an error with a name and a reason, and no

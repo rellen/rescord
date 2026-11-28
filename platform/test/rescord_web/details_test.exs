@@ -2,7 +2,7 @@ defmodule RescordWeb.DetailsTest do
   @moduledoc """
   Holds a rule for each `<details>` of a page: it has an id.
 
-  A person opens a `<details>`, and `assets/js/details.ts` keeps it open
+  A person opens a `<details>`, and `keepDetailsOpen` of `shoddy_phoenix` keeps it open
   when LiveView draws the page again. LiveView finds the same element in the
   new page by its id. Without one, a paragraph that comes above it, such as
   the words of a refusal, makes a new element of it, and it closes with what

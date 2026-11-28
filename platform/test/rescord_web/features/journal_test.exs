@@ -6,7 +6,8 @@ defmodule RescordWeb.Features.JournalTest do
   what only a browser shows: the form of an entry is in a part of the page
   that is closed at first, and it stays open while the page draws the
   fields of the kind that the member chooses, and when the page says what
-  is wrong. Without `assets/js/details.ts` each new render closes it.
+  is wrong. Without `keepDetailsOpen` of `shoddy_phoenix` each new render
+  closes it.
 
   The test creates an organisation, so it does not run beside others (see
   `Rescord.Accounts.OrganisationTest`).

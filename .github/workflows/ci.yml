@@ -7,6 +7,11 @@
 # publishes anything. A push to main cancels the run of the push before it,
 # so `ci-catch-up.yml` starts a run that no push cancels when main has
 # waited an hour for a result (ADR 0078).
+#
+# The jobs run side by side (ADR 0103): the quick checks at once; one
+# compile that saves its build; then the checks of the code, the tests in
+# parts and the browser tests in parts, each from that build; and the flake
+# check. The job "CI" at the end gives one result for the run.
 name: CI
 
 on:
@@ -97,36 +102,133 @@ jobs:
           fi
           nix shell --inputs-from . nixpkgs#gitleaks -c scripts/check-secrets.sh
 
-  test:
-    name: Format, compile and test
+
+  # The workflows, the actions and the scripts of the repository: actionlint
+  # (which runs shellcheck on each `run:`), shellcheck on scripts/, the
+  # format of the Nix files, and the self-test of the rule of
+  # ci-catch-up.yml. The tools are those of the nixpkgs of flake.lock.
+  scripts:
+    name: The workflows and the scripts
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      CI: "true"
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
       - uses: cachix/install-nix-action@v32
 
-      - uses: cachix/cachix-action@v17
-        with:
-          name: devenv
+      - name: Check the workflows and the actions
+        run: nix shell --inputs-from . nixpkgs#actionlint nixpkgs#shellcheck -c actionlint
 
-      - name: Install devenv
-        run: nix profile install nixpkgs#devenv
+      - name: Check the scripts
+        run: nix shell --inputs-from . nixpkgs#shellcheck -c shellcheck scripts/*.sh
 
-      - name: Restore the dependencies and the build
-        uses: actions/cache@v6
+      - name: Check the format of the Nix files
+        run: |
+          # shellcheck disable=SC2046
+          nix shell --inputs-from . nixpkgs#nixfmt -c nixfmt --check $(git ls-files '*.nix')
+
+      - name: Show that the rule of ci-catch-up.yml decides each case
+        run: scripts/ci-catch-up.sh --self-test
+
+  # The one compile of the run (ADR 0103). It saves the dependencies and the
+  # test build right after the compile, so that a later failure or a cancel
+  # still leaves the build for the next run. Each later job of mix restores
+  # this build and compiles nothing.
+  compile:
+    name: Compile, with no warning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/devenv
+
+      - id: cache
+        uses: ./.github/actions/mix-cache
+
+      - name: Fetch the dependencies
+        run: devenv shell -- bash -c 'cd platform && mix deps.get'
+
+      - name: Compile with the test support, with no warning
+        run: devenv shell -- bash -c 'cd platform && MIX_ENV=test mix compile --warnings-as-errors'
+
+      - name: Save the dependencies and the build
+        if: steps.cache.outputs.hit != 'true'
+        uses: actions/cache/save@v6
         with:
           path: |
             platform/deps
-            platform/_build
-          key: mix-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-${{ github.sha }}
-          restore-keys: |
-            mix-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-
+            platform/_build/test
+          key: ${{ steps.cache.outputs.key }}
 
-      - name: Build the devenv shell
-        run: devenv shell -- elixir --version
+  # What needs the build but no database: the format (with its plugins),
+  # Credo, the advisories of Hex, the lock, and the migrations that the
+  # resources need. Everything runs in the test environment, the one that
+  # the job "Compile" built.
+  checks:
+    name: Format, Credo and the dependencies
+    needs: compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/devenv
+
+      - uses: ./.github/actions/mix-cache
+
+      - name: Fetch the dependencies
+        run: devenv shell -- bash -c 'cd platform && mix deps.get'
+
+      - name: Check the format
+        if: ${{ !cancelled() }}
+        run: devenv shell -- bash -c 'cd platform && mix format --check-formatted'
+
+      # Plain `mix credo`, not --strict (issue 30). It starts when
+      # platform/.credo.exs is there.
+      - name: Check the code with Credo
+        if: ${{ !cancelled() && hashFiles('platform/.credo.exs') != '' }}
+        run: devenv shell -- bash -c 'cd platform && mix credo'
+
+      - name: Check the dependencies for advisories and retirements
+        if: ${{ !cancelled() }}
+        run: devenv shell -- bash -c 'cd platform && mix hex.audit'
+
+      - name: Check that each locked dependency is used
+        if: ${{ !cancelled() }}
+        run: devenv shell -- bash -c 'cd platform && mix deps.unlock --check-unused'
+
+      - name: Check that the migrations hold what the resources need
+        if: ${{ !cancelled() }}
+        run: devenv shell -- bash -c 'cd platform && mix ash.codegen --check'
+
+  # The tests with no browser, in parts that run side by side (ADR 0103).
+  # `mix test --partitions` gives each part a share of the test files, and
+  # each part has a runner and a database of its own. The number of parts is
+  # in two places here: the matrix and --partitions.
+  unit:
+    name: Tests (part ${{ matrix.partition }} of 6)
+    needs: compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3, 4, 5, 6]
+    env:
+      CI: "true"
+      MIX_TEST_PARTITION: ${{ matrix.partition }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/devenv
+
+      - uses: ./.github/actions/mix-cache
 
       - name: Start PostgreSQL
         timeout-minutes: 5
@@ -137,22 +239,75 @@ jobs:
       - name: Fetch the dependencies
         run: devenv shell -- bash -c 'cd platform && mix deps.get'
 
-      - name: Check the format
-        run: devenv shell -- bash -c 'cd platform && mix format --check-formatted'
-
-      - name: Check the dependencies for advisories and retirements
-        run: devenv shell -- bash -c 'cd platform && mix hex.audit'
-
-      - name: Check that each locked dependency is used
-        run: devenv shell -- bash -c 'cd platform && mix deps.unlock --check-unused'
-
-      - name: Compile with the test support, with no warning
-        run: devenv shell -- bash -c 'cd platform && MIX_ENV=test mix compile --warnings-as-errors'
-
-      # Nearly each test makes an organisation, so the tests run one by one:
-      # 16 minutes at 06:36 UTC on 28 November 2026, and 24 minutes half an
-      # hour and nine commits later. The limit leaves room until the tests run in
-      # parts (`mix test --partitions`).
       - name: Test
-        timeout-minutes: 60
-        run: devenv shell -- bash -c 'cd platform && mix test'
+        run: >-
+          devenv shell -- bash -c 'cd platform &&
+          mix test --exclude playwright --partitions 6'
+
+  # The browser tests (tagged :playwright, ADR 0023), apart from the others,
+  # in parts of their own. They drive Chromium, and the test helper stops
+  # when CI has no driver of Playwright. `--only` finds a browser test in any
+  # file. A part with no browser test fails ("no test was executed"), so
+  # there are never more parts than files of browser tests. The file of
+  # AccessibilityTest takes half of their time, so a third part would end no
+  # sooner than two.
+  browser:
+    name: Browser tests (part ${{ matrix.partition }} of 2)
+    needs: compile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2]
+    env:
+      CI: "true"
+      MIX_TEST_PARTITION: ${{ matrix.partition }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/devenv
+
+      - uses: ./.github/actions/mix-cache
+
+      - name: Start PostgreSQL
+        timeout-minutes: 5
+        run: |
+          devenv processes up -d
+          devenv shell -- bash -c 'until pg_isready -h 127.0.0.1 -p 5432; do sleep 1; done'
+
+      - name: Fetch the dependencies
+        run: devenv shell -- bash -c 'cd platform && mix deps.get'
+
+      - name: Test
+        run: >-
+          devenv shell -- bash -c 'cd platform &&
+          mix test --only playwright --partitions 2'
+
+  # The Nix package, and the NixOS test that starts a release with
+  # PostgreSQL, migrates, and runs each command of the server (ADR 0044).
+  nix:
+    name: Nix
+    uses: ./.github/workflows/nix.yml
+
+  # One result for the whole run, for a rule of the branch: it fails when a
+  # job failed or was cancelled, as by its timeout. The messages of the
+  # commits are skipped in a run with no push, which is no failure. It does
+  # not run in a run that a newer push cancelled, so that run ends as
+  # cancelled, which `ci-catch-up.yml` counts as no result (ADR 0078).
+  result:
+    name: CI
+    if: ${{ !cancelled() }}
+    needs: [messages, notes, scan, scripts, compile, checks, unit, browser, nix]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Each job passed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "The jobs ended as: $RESULTS"
+          if jq -e 'any(.[]; . == "failure" or . == "cancelled")' <<<"$RESULTS" >/dev/null; then
+            echo "::error::A job of CI failed or was cancelled."
+            exit 1
+          fi

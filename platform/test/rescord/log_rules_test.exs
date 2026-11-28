@@ -4,7 +4,7 @@ defmodule Rescord.LogRulesTest do
   use `inspect` or a function of `Exception` (ADR 0077). `inspect` of an
   error and the message of an Ash error hold the values of a record. A
   value goes into a line through `Rescord.Log.reason/1` or
-  `Rescord.Log.shape/1`.
+  `Shoddy.Terms.shape/2`.
   """
 
   use ExUnit.Case, async: true
@@ -67,6 +67,6 @@ defmodule Rescord.LogRulesTest do
 
     assert found == [],
            "A line of the log holds no message of an error and no inspected value. " <>
-             "Use Rescord.Log.reason/1 or Rescord.Log.shape/1 in:\n" <> Enum.join(found, "\n")
+             "Use Rescord.Log.reason/1 or Shoddy.Terms.shape/2 in:\n" <> Enum.join(found, "\n")
   end
 end

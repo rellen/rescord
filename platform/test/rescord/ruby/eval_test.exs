@@ -118,14 +118,14 @@ defmodule Rescord.Ruby.EvalTest do
   end
 
   describe "the cases" do
-    test "are 30, in the four groups, for the tools that Ruby has", %{seed: seed} do
+    test "are 32, in the four groups, for the tools that Ruby has", %{seed: seed} do
       cases = Eval.cases(seed)
 
-      assert length(cases) == 30
-      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 30
+      assert length(cases) == 32
+      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 32
 
       assert Enum.frequencies_by(cases, & &1.group) ==
-               %{lookup: 15, none: 4, care: 5, injection: 6}
+               %{lookup: 17, none: 4, care: 5, injection: 6}
 
       assert Enum.sort(Eval.groups()) == [:care, :injection, :lookup, :none]
 

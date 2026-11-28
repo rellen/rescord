@@ -9,7 +9,7 @@ defmodule Rescord.Log.Translator do
   This translator stands in front of `Logger.Translator`. It replaces the
   last message of a GenServer or of an event handler, the queue of a state
   machine, and the arguments of a task with their shape
-  (`Rescord.Log.shape/1`), and gives the report to the translator of Elixir.
+  (`Shoddy.Terms.shape/2`), and gives the report to the translator of Elixir.
   The exception and the stack trace stay as they are.
 
   At the level `debug` a report is complete, as Elixir writes it: that level

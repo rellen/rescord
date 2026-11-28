@@ -268,7 +268,7 @@ defmodule Rescord.Ruby.Digests.ResidentProfile do
       {:ok, entries} ->
         list(
           for %{prescription: %{} = prescription} = entry <- entries,
-              running?(prescription, entry, today, options[:tenant]) do
+              Journal.running?(prescription, entry, today, options[:tenant]) do
             Shoddy.Maps.compact(%{
               ref: Shape.ref("entry", entry.id),
               medication_text: Shape.cut(prescription.medication, 120),
@@ -284,12 +284,5 @@ defmodule Rescord.Ruby.Digests.ResidentProfile do
       _none ->
         nil
     end
-  end
-
-  defp running?(prescription, entry, today, tenant) do
-    first = prescription.starts_on || Rescord.Accounts.local_date(tenant, entry.happened_at)
-
-    Date.compare(first, today) != :gt and
-      (is_nil(prescription.ends_on) or Date.compare(prescription.ends_on, today) != :lt)
   end
 end

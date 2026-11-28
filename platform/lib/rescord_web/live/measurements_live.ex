@@ -101,7 +101,7 @@ defmodule RescordWeb.MeasurementsLive do
   # when the form offers it: a person who weighs in grams does not choose
   # grams each day.
   defp assign_form(socket, fields) do
-    fields = typed_fields(fields)
+    fields = text_fields(fields)
     kind_id = fields["measure_kind_id"]
     units = MeasurementUnits.options(socket.assigns.measurement_units, kind_id)
     standard = MeasurementUnits.standard(socket.assigns.measurement_units, kind_id)
@@ -134,7 +134,7 @@ defmodule RescordWeb.MeasurementsLive do
   end
 
   def handle_event("record", %{"measurement" => fields}, socket) when is_map(fields) do
-    fields = typed_fields(fields)
+    fields = text_fields(fields)
 
     with {:ok, instant} <- Accounts.instant(socket.assigns.organisation, fields["at"]),
          {:ok, _entry} <-

@@ -198,7 +198,11 @@ defmodule RescordWeb.Features.AttentionTest do
         const row = document.querySelector("#attention-task-#{task.id}");
         row.querySelector("a").focus({ focusVisible: true });
         const order = Array.from(document.querySelectorAll("main h2, main h3"))
-          .map((heading) => heading.firstChild.textContent.trim());
+          .map((heading) =>
+            Array.from(heading.childNodes)
+              .find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+              .textContent.trim()
+          );
         return {
           focused: document.activeElement === row.querySelector("a"),
           outline: getComputedStyle(row).outlineStyle,

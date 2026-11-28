@@ -48,7 +48,7 @@ defmodule RescordWeb.CalendarLive do
 
   defp assign_form(socket, fields) do
     start = %{"name" => socket.assigns.organisation.name, "tasks" => "mine"}
-    assign(socket, form: typed_form(Map.merge(start, typed_fields(fields)), as: :feed))
+    assign(socket, form: typed_form(Map.merge(start, text_fields(fields)), as: :feed))
   end
 
   defp assign_feeds(socket) do
@@ -68,7 +68,7 @@ defmodule RescordWeb.CalendarLive do
 
   @impl true
   def handle_event("subscribe", %{"feed" => fields}, socket) when is_map(fields) do
-    fields = typed_fields(fields)
+    fields = text_fields(fields)
 
     with {:ok, tasks} <- tasks(fields),
          {:ok, feed} <-

@@ -229,7 +229,8 @@ defmodule RescordWeb.ExpensesLive do
           }
           data-variant="secondary"
         >
-          <.icon name="document-chart" /> Report of {ResidentWords.date(elem(@period, 0))} to {ResidentWords.date(elem(@period, 1))} as PDF
+          <.icon name="document-chart" />
+          Report of {ResidentWords.date(elem(@period, 0))} to {ResidentWords.date(elem(@period, 1))} as PDF
         </a>
       </p>
     </Layouts.app>
