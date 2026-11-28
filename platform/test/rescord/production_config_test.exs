@@ -28,7 +28,8 @@ defmodule Rescord.ProductionConfigTest do
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
                RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES
-               RESCORD_PHOTO_SLOTS RESCORD_BOTH_STORES RESCORD_KEY_SECRET_PREVIOUS)
+               RESCORD_PHOTO_SLOTS RESCORD_BOTH_STORES RESCORD_KEY_SECRET_PREVIOUS
+               RESCORD_METRICS_PORT RESCORD_METRICS_ADDRESS)
 
   @s3 Map.merge(@required, %{
         "RESCORD_STORAGE" => "s3",
@@ -203,6 +204,26 @@ defmodule Rescord.ProductionConfigTest do
 
     assert_raise ArgumentError, ~r/RESCORD_LISTEN_ADDRESS/, fn ->
       read(Map.put(@required, "RESCORD_LISTEN_ADDRESS", "localhost"))
+    end
+  end
+
+  test "the metrics listen on the loopback address, unless the setting names another (issue 41)" do
+    assert read(@required)[:rescord][RescordWeb.Telemetry] == nil
+
+    metrics = Map.put(@required, "RESCORD_METRICS_PORT", "9568")
+
+    # The address of the pages is not the address of the metrics.
+    config = read(Map.put(metrics, "RESCORD_LISTEN_ADDRESS", "::"))
+    assert config[:rescord][RescordWeb.Telemetry] == [port: 9568, ip: {127, 0, 0, 1}]
+
+    config = read(Map.put(metrics, "RESCORD_METRICS_ADDRESS", "::"))
+    assert config[:rescord][RescordWeb.Telemetry][:ip] == {0, 0, 0, 0, 0, 0, 0, 0}
+
+    config = read(Map.put(metrics, "RESCORD_METRICS_ADDRESS", "10.0.0.7"))
+    assert config[:rescord][RescordWeb.Telemetry][:ip] == {10, 0, 0, 7}
+
+    assert_raise ArgumentError, ~r/RESCORD_METRICS_ADDRESS/, fn ->
+      read(Map.put(metrics, "RESCORD_METRICS_ADDRESS", "localhost"))
     end
   end
 

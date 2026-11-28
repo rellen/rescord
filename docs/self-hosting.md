@@ -337,6 +337,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_PHOTO_SLOTS` | no | `2` | The number of photos that Rescord works on at the same time (ADR 0056). A photo of a phone takes about 150 MB while Rescord turns it and removes its metadata, and the largest photo about 300 MB. More photos wait for their turn. Give a server with more memory a larger number. |
 | `RESCORD_LOG_LEVEL` | no | `info` | How much the log holds: `debug`, `info`, `warning` or `error` (see "The log"). `debug` also writes what people type, so use it for a short time. |
 | `RESCORD_METRICS_PORT` | no | | A port for the metrics of the server, in the format of Prometheus (see "The metrics"). With no port, Rescord measures nothing. The metrics have no sign-in: do not publish this port. |
+| `RESCORD_METRICS_ADDRESS` | no | `127.0.0.1` | The address that the metrics listen on (see "The metrics"): this machine alone by default, `0.0.0.0` for a collector in the network of a Compose file, `::` or a private address for a collector on another machine. It is not the address of the pages. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |
 | `RESCORD_BACKUP_KEEP_DAYS` | no | `14` | The number of days that a backup keeps a dump of the database (see "Back up"). |
 | `ECTO_IPV6` | no | `false` | `true` to reach the database over IPv6. |
@@ -394,8 +395,23 @@ how long the requests, the pages, the queries and the actions take, the
 jobs that fail, the emails, the replies of the assistant, and the memory.
 It is off until you set
 `RESCORD_METRICS_PORT`, for example to `9568`. Rescord then answers
-`GET /metrics` on that port, on the address of `RESCORD_LISTEN_ADDRESS`,
-in the text format of Prometheus. Each other path there answers 404.
+`GET /metrics` on that port, in the text format of Prometheus. Each other
+path there answers 404.
+
+The metrics listen on `127.0.0.1`, this machine alone, unless
+`RESCORD_METRICS_ADDRESS` names another address. It is not
+`RESCORD_LISTEN_ADDRESS`, the address of the pages: the metrics have no
+sign-in, so a collector on another machine needs you to say so.
+
+| Where the collector runs | `RESCORD_METRICS_ADDRESS` |
+| --- | --- |
+| On the same machine as Rescord, with no container | `127.0.0.1`, the default |
+| In a container of the same Compose file | `0.0.0.0`, and do not publish the port |
+| On the machine, with Rescord in a container | `0.0.0.0`, and publish the port to the machine alone (`127.0.0.1:9568:9568`) |
+| On a platform that reads the machine over its private network | `::`, or the private address of the machine |
+
+`bin/check` says where the metrics listen, and gives a note for an
+address that is not this machine alone.
 
 ```yaml
 scrape_configs:
@@ -405,8 +421,9 @@ scrape_configs:
 ```
 
 - The port has no sign-in and no TLS. Do not put it behind the reverse
-  proxy of the pages, and do not open it in a firewall. With Docker
-  Compose, publish it to the machine alone
+  proxy of the pages, and do not open it in a firewall. In a container,
+  `127.0.0.1` is the container itself, so the table above gives `0.0.0.0`
+  there: then publish the port to the machine alone
   (`127.0.0.1:9568:9568`), or let the collector join the network of the
   Compose file.
 - The name of each metric starts with `rescord_`, and each time is in

@@ -219,8 +219,10 @@ if config_env() == :prod do
               "which is not an IP address or a network"
   end
 
-  # The metrics for a collector (ADR 0077), on a port of their own and on the
-  # address of the pages. With no port, Rescord measures nothing.
+  # The metrics for a collector (ADR 0077), on a port of their own. They have
+  # no sign-in, so they listen on the loopback address unless
+  # RESCORD_METRICS_ADDRESS names another (issue 41). With no port, Rescord
+  # measures nothing.
   case Shoddy.Env.integer("RESCORD_METRICS_PORT", default: nil, min: 1, max: 65_535) do
     nil ->
       :ok
@@ -232,7 +234,19 @@ if config_env() == :prod do
                 "the metrics need a port of their own"
       end
 
-      config :rescord, RescordWeb.Telemetry, port: port, ip: listen_address
+      metrics_text = Shoddy.Env.string("RESCORD_METRICS_ADDRESS", default: "127.0.0.1")
+
+      metrics_address =
+        case :inet.parse_address(String.to_charlist(metrics_text)) do
+          {:ok, address} ->
+            address
+
+          {:error, _reason} ->
+            raise ArgumentError,
+                  "the environment variable \"RESCORD_METRICS_ADDRESS\" is not an IP address: #{inspect(metrics_text)}"
+        end
+
+      config :rescord, RescordWeb.Telemetry, port: port, ip: metrics_address
   end
 
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

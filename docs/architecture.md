@@ -934,7 +934,8 @@ port** (ADR 0077). `RescordWeb.Telemetry.metrics/0` is the list, as
 queries, the actions of Ash, the jobs, the emails, the photos and the VM
 in `Rescord.Metrics`. With `RESCORD_METRICS_PORT`, a reporter (Peep) keeps
 the numbers, and a web server of its own answers `GET /metrics` in the
-format of Prometheus. No tag holds a value that a client sends or the id
+format of Prometheus, on `127.0.0.1` unless `RESCORD_METRICS_ADDRESS` names
+another address (ADR 0117). No tag holds a value that a client sends or the id
 of a person. A number about the work of a rescue is on a page (see "What
 needs attention"), and not a metric. Rescord does not use AshMetrics, and
 has no traces.

@@ -715,6 +715,9 @@ release (ADR 0047).
   `RESCORD_METRICS_PORT` names a port. Rescord
   then answers `GET /metrics` on that port, which is not the port of the
   pages and has no sign-in, so keep it inside the network of the server.
+  The metrics listen on `127.0.0.1` unless `RESCORD_METRICS_ADDRESS`
+  names another address, such as `0.0.0.0` in a container or `::` for a
+  collector on another machine (ADR 0117), and `bin/check` says where.
   No label holds the id of a person or the name of an organisation.
   `docs/self-hosting.md`, "The metrics", has the steps.
 - `RESCORD_LOG_LEVEL` sets how much the log holds: `debug`, `info` (the

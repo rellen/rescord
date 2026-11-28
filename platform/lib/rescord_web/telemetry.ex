@@ -10,7 +10,8 @@ defmodule RescordWeb.Telemetry do
   small web server on that port that answers `GET /metrics` in the format
   of Prometheus, and 404 for each other path. The port is not the port of
   the pages, so a reverse proxy does not publish it. The metrics have no
-  sign-in: keep the port inside the network of the server.
+  sign-in, so the server listens on `127.0.0.1` unless
+  `RESCORD_METRICS_ADDRESS` names another address (ADR 0117).
 
   See `Rescord.Metrics` for the rule about the tags.
   """

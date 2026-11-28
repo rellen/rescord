@@ -15,6 +15,8 @@ defmodule Rescord.Release.CheckTest do
 
   alias Rescord.Release.Check
 
+  doctest Rescord.Release.Check, only: [metrics: 1]
+
   defp smtp_server! do
     name = :"check_smtp_#{System.unique_integer([:positive])}"
 

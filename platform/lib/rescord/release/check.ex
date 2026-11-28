@@ -7,6 +7,7 @@ defmodule Rescord.Release.Check do
     * the store takes a file, gives it back, and deletes it;
     * the version of libvips that reads the photos (issue 37), to compare
       with an advisory;
+    * where the metrics listen, if they are on (issue 41);
     * the SMTP server takes the connection and the user, with the TLS of
       the settings, and sends nothing;
     * the values that the secret of the server encrypts open with it
@@ -58,7 +59,7 @@ defmodule Rescord.Release.Check do
         do: [vault(), scan() | assistant()] ++ [usage(), health()],
         else: []
 
-    [database(), migrations, store(), libvips(), smtp()] ++
+    [database(), migrations, store(), libvips(), metrics(), smtp()] ++
       of_the_database ++
       if address, do: [test_email(address)], else: []
   end
@@ -153,6 +154,42 @@ defmodule Rescord.Release.Check do
   rescue
     error -> {:fail, "libvips", "does not load: #{Exception.message(error)}"}
   end
+
+  @doc """
+  Where the metrics listen (issue 41): off with no port, ok on a loopback
+  address, and a note on another address, which a collector on another
+  machine reads and which has no sign-in.
+
+      iex> Rescord.Release.Check.metrics(nil)
+      {:note, "metrics", "off: RESCORD_METRICS_PORT names no port"}
+
+      iex> Rescord.Release.Check.metrics(port: 9568, ip: {127, 0, 0, 1})
+      {:ok, "metrics", "GET /metrics on 127.0.0.1 port 9568, this machine only"}
+
+      iex> Rescord.Release.Check.metrics(port: 9568, ip: {0, 0, 0, 0, 0, 0, 0, 0})
+      {:note, "metrics", "GET /metrics on :: port 9568, with no sign-in: keep the port inside the network of the server"}
+  """
+  @spec metrics(keyword | nil) :: result
+  def metrics(settings \\ Application.get_env(:rescord, RescordWeb.Telemetry)) do
+    case settings[:port] do
+      nil ->
+        {:note, "metrics", "off: RESCORD_METRICS_PORT names no port"}
+
+      port ->
+        ip = Keyword.get(settings, :ip, {127, 0, 0, 1})
+        where = "GET /metrics on #{:inet.ntoa(ip)} port #{port}"
+
+        if loopback?(ip),
+          do: {:ok, "metrics", where <> ", this machine only"},
+          else:
+            {:note, "metrics",
+             where <> ", with no sign-in: keep the port inside the network of the server"}
+    end
+  end
+
+  defp loopback?({127, _, _, _}), do: true
+  defp loopback?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
+  defp loopback?(_ip), do: false
 
   @doc """
   The virus scan of the PDFs (issue 37): a note when it is off, and with it
