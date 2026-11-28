@@ -3,8 +3,9 @@ defmodule RescordWeb.PagesFixtures do
   A refuge with a record of each kind, and the address of each kind of page
   of an organisation. The browser tests that visit each page read it:
   `RescordWeb.Features.PhoneTest` (ADR 0061) and
-  `RescordWeb.Features.AccessibilityTest` (ADR 0090). Add a new page to
-  `pages` here, with the records that it shows, and both tests hold it.
+  `RescordWeb.Features.AccessibilityTest` (ADR 0090), and the page test
+  `RescordWeb.ConsistencyTest` (issue 35) reads them too. Add a new page
+  to `pages` here, with the records that it shows, and each test holds it.
 
   The administrator has a long address and the organisation a long name,
   because those are what broke the menu.
@@ -35,7 +36,8 @@ defmodule RescordWeb.PagesFixtures do
   @doc """
   Makes the refuge in the directory `tmp_dir`, with an administrator who
   has the address `address`. Returns `home`, the path of the organisation,
-  `root`, `organisation`, and `pages`, the paths of the pages.
+  `root`, `organisation`, `administrator`, and `pages`, the paths of the
+  pages.
   """
   def refuge!(tmp_dir, address) do
     disk_store!(tmp_dir)
@@ -266,6 +268,7 @@ defmodule RescordWeb.PagesFixtures do
       home: home,
       root: root,
       organisation: organisation,
+      administrator: user,
       pages:
         [
           "/",
