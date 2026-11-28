@@ -372,6 +372,12 @@ _A code generation and project patching framework_
 
 [igniter usage rules](deps/igniter/usage-rules.md)
 <!-- igniter-end -->
+<!-- localize-start -->
+## localize usage
+_Localization (parsing, formatting) of numbers, dates/time/calendar, units of measure, messages and lists. Includes localized collation._
+
+[localize usage rules](deps/localize/usage-rules.md)
+<!-- localize-end -->
 <!-- mdex-start -->
 ## mdex usage
 _Fast and extensible Markdown for Elixir_

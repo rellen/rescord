@@ -113,6 +113,28 @@ config :spark,
 # The time zone rules, for the time zone of an organisation (ADR 0026).
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
+# The forms of a date, a time and a number in the locale of an organisation
+# (ADR 0071). The files of these locales are in `priv/localize/locales`, and
+# `mix localize.download_locales` fetches them again after an update of
+# `localize`. `Rescord.Accounts.locales/0` is the list that a person chooses
+# from: `en-US` there is `en` here. Rescord gives the locale with each call,
+# so the default here is only for a call that forgets it: without it, the
+# variable `LANG` of the server would decide.
+config :localize,
+  otp_app: :rescord,
+  default_locale: :"en-AU",
+  supported_locales: [
+    :en,
+    :"en-001",
+    :"en-AU",
+    :"en-CA",
+    :"en-GB",
+    :"en-IE",
+    :"en-IN",
+    :"en-NZ",
+    :"en-ZA"
+  ]
+
 config :rescord,
   # `use Rescord.Resource` stands for `use Ash.Resource` (ADR 0013).
   base_resources: [Rescord.Resource],

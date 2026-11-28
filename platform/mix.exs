@@ -128,6 +128,9 @@ defmodule Rescord.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},
+      # The forms of a date, a time and a number in the locale of an
+      # organisation, from the data of CLDR (ADR 0071).
+      {:localize, "~> 1.11"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.3.1"},
       {:bandit, "~> 1.5"}
