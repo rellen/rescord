@@ -491,6 +491,11 @@ release (ADR 0047).
   that error and its reason, such as
   `Rescord.Accounts.Errors.InvitationNotSent`, where it said only that
   the reason was text. The words on the pages are the same (ADR 0077).
+- The site menu, the list of the parts on the first page of an
+  organisation, and the other links from one live page to another now
+  move over the open connection, with no load of a document. A move is
+  quicker, and the server reads the new page once and not twice
+  (ADR 0099).
 - The chart of a kind of measurement with a standard unit is in that
   unit. It was in the unit of the newest measurement, so one weight in
   kg changed a chart in g. A kind with no standard unit keeps the unit of

@@ -75,102 +75,107 @@ defmodule RescordWeb.Layouts do
         <div :if={@current_user} id="site-menu" popover>
           <ul :if={@organisation}>
             <li>
-              <a href={~p"/o/#{@organisation.short_name}"} aria-current={current(@section, :home)}>
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}"}
+                aria-current={current(@section, :home)}
+              >
                 {@organisation.name}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/tasks"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/tasks"}
                 aria-current={current(@section, :tasks)}
               >
                 {gettext("Tasks")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/residents"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/residents"}
                 aria-current={current(@section, :residents)}
               >
                 {gettext("Residents")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/groups"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/groups"}
                 aria-current={current(@section, :groups)}
               >
                 {gettext("Groups")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/housing"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/housing"}
                 aria-current={current(@section, :housing)}
               >
                 {gettext("Housing")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/inventory"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/inventory"}
                 aria-current={current(@section, :inventory)}
               >
                 {gettext("Inventory")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/expenses"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/expenses"}
                 aria-current={current(@section, :expenses)}
               >
                 {gettext("Expenses")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/tools"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/tools"}
                 aria-current={current(@section, :tools)}
               >
                 {gettext("Tools")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/reports"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/reports"}
                 aria-current={current(@section, :reports)}
               >
                 {gettext("Reports")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/lists"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/lists"}
                 aria-current={current(@section, :lists)}
               >
                 {gettext("Lists")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/members"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/members"}
                 aria-current={current(@section, :members)}
               >
                 {gettext("Members")}
-              </a>
+              </.link>
             </li>
             <li>
-              <a
-                href={~p"/o/#{@organisation.short_name}/settings"}
+              <.link
+                navigate={~p"/o/#{@organisation.short_name}/settings"}
                 aria-current={current(@section, :settings)}
               >
                 {gettext("Settings")}
-              </a>
+              </.link>
             </li>
           </ul>
           <ul>
             <li :if={@current_user.root?}>
-              <a href={~p"/root"} aria-current={current(@section, :root)}>{gettext("Root")}</a>
+              <.link navigate={~p"/root"} aria-current={current(@section, :root)}>
+                {gettext("Root")}
+              </.link>
             </li>
             <li><span title={@current_user.email}>{@current_user.email}</span></li>
             <li>

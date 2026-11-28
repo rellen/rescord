@@ -121,7 +121,7 @@ defmodule RescordWeb.RootLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <p><a href={~p"/root/lists"}>See the shared lists of values</a>.</p>
+      <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <.root_line providers={@providers} />
       <p id="usage-line">
         Usage counts: {RescordWeb.UsageWords.mode(@usage_mode)}. <a href={~p"/root/usage"}>See the counts, and where they go</a>.

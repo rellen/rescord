@@ -95,27 +95,43 @@ defmodule RescordWeb.OrganisationLive do
       <nav aria-labelledby="parts-heading">
         <h2 id="parts-heading">The parts of {@organisation.name}</h2>
         <ul data-links>
-          <li><a href={~p"/o/#{@organisation.short_name}/tasks"}>See the tasks of today</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/routines"}>See the routines</a></li>
           <li>
-            <a href={~p"/o/#{@organisation.short_name}/calendar"}>See the calendar feeds</a>
-          </li>
-          <li><a href={~p"/o/#{@organisation.short_name}/residents"}>See the residents</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/groups"}>See the groups</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/housing"}>See the housing</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/inventory"}>See the inventory</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/tools"}>Use the tools</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/roles"}>See the roles</a></li>
-          <li>
-            <a href={~p"/o/#{@organisation.short_name}/transfers"}>See the transfers</a>
+            <.link navigate={~p"/o/#{@organisation.short_name}/tasks"}>See the tasks of today</.link>
           </li>
           <li>
-            <a href={~p"/o/#{@organisation.short_name}/partners"}>See the partner refuges</a>
+            <.link navigate={~p"/o/#{@organisation.short_name}/routines"}>See the routines</.link>
           </li>
-          <li><a href={~p"/o/#{@organisation.short_name}/settings"}>See the settings</a></li>
-          <li><a href={~p"/o/#{@organisation.short_name}/export"}>Export the data</a></li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/calendar"}>See the calendar feeds</.link>
+          </li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>See the residents</.link>
+          </li>
+          <li><.link navigate={~p"/o/#{@organisation.short_name}/groups"}>See the groups</.link></li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/housing"}>See the housing</.link>
+          </li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/inventory"}>See the inventory</.link>
+          </li>
+          <li><.link navigate={~p"/o/#{@organisation.short_name}/tools"}>Use the tools</.link></li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</.link>
+          </li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/members"}>See the members</.link>
+          </li>
+          <li><.link navigate={~p"/o/#{@organisation.short_name}/roles"}>See the roles</.link></li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>See the transfers</.link>
+          </li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/partners"}>See the partner refuges</.link>
+          </li>
+          <li>
+            <.link navigate={~p"/o/#{@organisation.short_name}/settings"}>See the settings</.link>
+          </li>
+          <li><.link navigate={~p"/o/#{@organisation.short_name}/export"}>Export the data</.link></li>
         </ul>
       </nav>
     </Layouts.app>
