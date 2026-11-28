@@ -396,8 +396,10 @@ release (ADR 0047).
 - An administrator who removes a resident that was recorded by mistake
   now ends its placement too, and takes the resident out of each task and
   each routine that named it. Before, those records still named a resident
-  that was not there. The tasks stay due, and a routine goes on for its
-  other residents.
+  that was not there. A task that is due and named only that resident is
+  skipped, with the reason "The resident was removed", and a member can
+  open it again. A task with another resident, a group or a location
+  stays due, and a routine goes on for its other residents.
 
 ### Security
 

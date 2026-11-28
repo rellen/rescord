@@ -8,7 +8,9 @@ defmodule Rescord.Tasks.TaskSubject do
   grant to write one in another way.
 
   A subject goes when its resident is removed (ADR 0067): the row is
-  archived, and the task stays, for its other subjects or for none.
+  archived. The task stays for its other subjects. A task that is due and
+  has no subject left is skipped, with a reason
+  (`Rescord.Tasks.Changes.SkipTaskLeftAlone`).
   """
 
   use Rescord.Resource,
@@ -37,12 +39,24 @@ defmodule Rescord.Tasks.TaskSubject do
   actions do
     defaults [:read]
 
+    read :of_resident do
+      description "The subjects that name a resident"
+      argument :resident_id, :uuid, allow_nil?: false
+      filter expr(resident_id == ^arg(:resident_id))
+      # The listener reads the subjects in pages: its change is not atomic.
+      pagination keyset?: true, required?: false
+    end
+
     create :add do
       accept [:task_id, :resident_id, :group_id, :location_id]
     end
 
     destroy :drop do
       description "Takes a subject that is not there any more out of its task. A listener runs this, and no role has a grant for it"
+
+      # A task that is due, and has no subject left, is skipped.
+      require_atomic? false
+      change Rescord.Tasks.Changes.SkipTaskLeftAlone
     end
   end
 
@@ -97,7 +111,8 @@ defmodule Rescord.Tasks.TaskSubject do
     from Rescord.Residents.Signals do
       on :resident_removed, :drop_of_removed_resident,
         action: :drop,
-        get_by: [resident_id: :resident_id]
+        read_action: :of_resident,
+        args: [:resident_id]
     end
   end
 end
