@@ -268,8 +268,13 @@ defmodule RescordWeb.Roles do
   def click(session, %__MODULE__{role: role} = locator) when role in [:button, :link] do
     root = document(session)
     node = one(root, locator)
-    {css, _text} = selector(node, locator, root)
     words = visible_text(node)
+
+    css =
+      case selector(node, locator, root) do
+        {css, nil} -> css
+        {_css, _words} -> narrow(node, words, root)
+      end
 
     case role do
       :button -> PhoenixTest.click_button(session, css, words)
@@ -669,6 +674,31 @@ defmodule RescordWeb.Roles do
         words = node |> visible_text() |> String.split() |> Enum.map_join("\\s+", &Regex.escape/1)
         {scope_css(locator, root) <> tag, Regex.compile!("^\\s*#{words}\\s*$")}
     end
+  end
+
+  # PhoenixTest finds a button or a link by a part of its words, so "Save"
+  # finds "Save the token" too. For an element with no selector of its own,
+  # this is the tag inside the nearest element with an id that holds no
+  # other of those words, below the part of the page that `within/3` gives.
+  defp narrow(node, words, root) do
+    tag = node |> LazyHTML.tag() |> List.first()
+    tops = root |> Enum.map(&LazyHTML.to_html/1) |> MapSet.new()
+
+    node
+    |> LazyHTML.parent_node()
+    |> Stream.unfold(fn ancestor ->
+      if Enum.empty?(ancestor) or MapSet.member?(tops, LazyHTML.to_html(ancestor)),
+        do: nil,
+        else: {ancestor, LazyHTML.parent_node(ancestor)}
+    end)
+    |> Enum.find_value(tag, fn ancestor ->
+      id = attribute(ancestor, "id")
+
+      holders =
+        ancestor |> LazyHTML.query(tag) |> Enum.count(&String.contains?(visible_text(&1), words))
+
+      if id && holders == 1, do: "##{css_escape(id)} #{tag}"
+    end)
   end
 
   defp quote_css(value), do: String.replace(value, ~S("), ~S(\"))

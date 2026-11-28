@@ -29,22 +29,35 @@ defmodule RescordWeb.UsageComponents do
         no person, no organisation and no record. You decide whether the counts stay here or go
         to one address that you name.
       </p>
+      <%!-- Each term with its definition in a div, as <.list> draws them. --%>
       <dl id="usage-status">
-        <dt>Mode</dt>
-        <dd>{UsageWords.mode(@settings.mode)}</dd>
-        <dt>Address</dt>
-        <dd>{@settings.endpoint || "None"}</dd>
-        <dt>Format</dt>
-        <dd>{UsageWords.format(@settings.format)}</dd>
-        <dt>Token</dt>
-        <dd>{UsageWords.token(@settings)}</dd>
-        <dt :if={@settings.mode == :send}>Last day sent</dt>
-        <dd :if={@settings.mode == :send}>{UsageWords.day(@settings.last_sent_day)}</dd>
-        <dt :if={@settings.mode == :send}>Last send</dt>
-        <dd :if={@settings.mode == :send}>
-          <.state kind={@kind}>{@words}</.state>
-          <span :if={@settings.last_attempt_at}>{UsageWords.time(@settings.last_attempt_at)}</span>
-        </dd>
+        <div>
+          <dt>Mode</dt>
+          <dd>{UsageWords.mode(@settings.mode)}</dd>
+        </div>
+        <div>
+          <dt>Address</dt>
+          <dd>{@settings.endpoint || "None"}</dd>
+        </div>
+        <div>
+          <dt>Format</dt>
+          <dd>{UsageWords.format(@settings.format)}</dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>{UsageWords.token(@settings)}</dd>
+        </div>
+        <div :if={@settings.mode == :send}>
+          <dt>Last day sent</dt>
+          <dd>{UsageWords.day(@settings.last_sent_day)}</dd>
+        </div>
+        <div :if={@settings.mode == :send}>
+          <dt>Last send</dt>
+          <dd>
+            <.state kind={@kind}>{@words}</.state>
+            <span :if={@settings.last_attempt_at}>{UsageWords.time(@settings.last_attempt_at)}</span>
+          </dd>
+        </div>
       </dl>
     </section>
     """
