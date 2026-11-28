@@ -57,6 +57,9 @@ on:
         default: "60"
   schedule:
     - cron: "0 16 * * 1"
+  # TEMPORARY: a try on the thread branch. Not for main.
+  push:
+    branches: [claude/project-thread-l73z2c]
 
 permissions:
   contents: read
@@ -75,10 +78,10 @@ jobs:
     # at the end of the budget.
     timeout-minutes: 200
     env:
-      FILES: ${{ github.event_name == 'workflow_dispatch' && inputs.files || '' }}
+      FILES: ${{ github.event_name == 'workflow_dispatch' && inputs.files || github.event_name == 'push' && 'lib/rescord/units/quantity.ex' || '' }}
       SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || '' }}
       PRESET: ${{ github.event_name == 'workflow_dispatch' && inputs.preset || 'none' }}
-      MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.minutes || '90' }}
+      MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.minutes || github.event_name == 'push' && '10' || '90' }}
     steps:
       # The whole history and the tags, for `--since`.
       - uses: actions/checkout@v7
