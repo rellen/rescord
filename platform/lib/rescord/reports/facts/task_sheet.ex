@@ -17,14 +17,14 @@ defmodule Rescord.Reports.Facts.TaskSheet do
     with {:ok, on} <- Facts.day(arguments[:on], options, now),
          {:ok, tasks} <- Tasks.day(on, options),
          {:ok, late} <- late(on == today, on, options, now),
-         {:ok, members} <- Accounts.members([load: [:email]] ++ options) do
+         people = Accounts.labels(options) do
       {:ok,
        %{
          on: on,
          now: now,
          late: late,
          tasks: tasks,
-         members: Map.new(members, &{&1.user_id, to_string(&1.email)})
+         members: people
        }}
     end
   end

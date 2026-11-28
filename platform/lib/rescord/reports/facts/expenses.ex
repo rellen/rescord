@@ -22,7 +22,7 @@ defmodule Rescord.Reports.Facts.Expenses do
     else
       with {:ok, expenses} <- Expenses.report(%{from: from, to: to}, options),
            {:ok, owed} <- Expenses.report(%{status: :to_pay_back}, options),
-           {:ok, members} <- Accounts.members([load: [:email]] ++ options) do
+           people = Accounts.labels(options) do
         {:ok,
          %{
            from: from,
@@ -31,7 +31,7 @@ defmodule Rescord.Reports.Facts.Expenses do
            owed: owed,
            all?: all?(options),
            reader: options[:actor],
-           people: Map.new(members, &{&1.user_id, to_string(&1.email)})
+           people: people
          }}
       end
     end

@@ -57,6 +57,7 @@ defmodule RescordWeb.TasksLive do
          ),
        members: members |> Enum.map(&{to_string(&1.email), &1.user_id}) |> Enum.sort(),
        all_kinds: all_kinds(options),
+       people: Accounts.labels(options),
        for_person: &for_person(&1, &2, socket.assigns.current_user.id),
        can_plan?: Tasks.role_can?(socket.assigns.role, :plan)
      )}
@@ -300,6 +301,7 @@ defmodule RescordWeb.TasksLive do
         organisation={@organisation}
         members={@members}
         kinds={@all_kinds}
+        people={@people}
         for_person={@for_person}
         user={@current_user}
         role={@role}

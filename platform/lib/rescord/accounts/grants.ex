@@ -81,7 +81,7 @@ defmodule Rescord.Accounts.Grants do
   # the power to record an expense (ADR 0082).
   @member_powers [:residents, :placements, :journal, :tasks, :stock, :calendar, :expenses]
 
-  @reads [{Member, :read, :all}, {Role, :read, :all}]
+  @reads [{Member, :read, :all}, {Member, :with_former, :all}, {Role, :read, :all}]
 
   @powers %{
     members: [

@@ -29,7 +29,6 @@ defmodule RescordWeb.ExpenseLive do
          {:ok, %{} = expense} <- Expenses.expense(id, [load: Expenses.summary()] ++ options),
          {:ok, receipts} <- Expenses.receipts_of(expense.id, options),
          {:ok, events} <- Expenses.history(expense.id, options) do
-      {:ok, members} = Accounts.members([load: [:email]] ++ options)
       role = socket.assigns.role
       user = socket.assigns.current_user
       can? = &Expenses.can?(role, user, expense, &1)
@@ -41,7 +40,7 @@ defmodule RescordWeb.ExpenseLive do
          expense: expense,
          receipts: receipts,
          events: events,
-         people: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+         people: Accounts.labels(options),
          problems: [],
          problems_at: :page,
          max_date: Date.to_iso8601(Accounts.today(socket.assigns.organisation)),

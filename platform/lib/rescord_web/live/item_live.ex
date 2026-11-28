@@ -48,7 +48,6 @@ defmodule RescordWeb.ItemLive do
       {:ok, tree} = Locations.tree(options)
       {:ok, suppliers} = Inventory.suppliers(options)
       {:ok, wanted} = Inventory.reorder_levels(options)
-      {:ok, members} = Accounts.members([load: [:email]] ++ options)
       can_revise? = Inventory.role_can?(role, :item, :revise)
 
       places =
@@ -67,7 +66,7 @@ defmodule RescordWeb.ItemLive do
          place_names: Map.new(places, fn {name, id} -> {id, String.trim_leading(name, "– ")} end),
          suppliers: suppliers |> Enum.map(&{&1.name, &1.id}) |> Enum.sort(),
          wanted: Enum.filter(wanted, &(&1.item_id == id)),
-         members: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+         members: Accounts.labels(options),
          can_record?: Inventory.role_can?(role, :movement, :use),
          can_revise?: can_revise?,
          can_remove?: Inventory.role_can?(role, :item, :remove),

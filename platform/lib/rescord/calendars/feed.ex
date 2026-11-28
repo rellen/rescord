@@ -84,6 +84,13 @@ defmodule Rescord.Calendars.Feed do
       description "Ends the feed: its address reads nothing from then on. The row and its history stay"
       change set_attribute(:token_hash, nil)
     end
+
+    read :of_user do
+      description "The feeds of a user in the organisation"
+      argument :user_id, :uuid, allow_nil?: false
+      filter expr(owner_id == ^arg(:user_id))
+      pagination keyset?: true, required?: false
+    end
   end
 
   policies do
@@ -92,6 +99,8 @@ defmodule Rescord.Calendars.Feed do
     end
 
     policy always() do
+      # The removal of a member is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -166,6 +175,17 @@ defmodule Rescord.Calendars.Feed do
       public? true
       define_attribute? false
       source_attribute :member_id
+    end
+  end
+
+  # The feeds of a member who was taken out of the organisation are revoked,
+  # so that nothing waits for a read of the member to fail (ADR 0105).
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_removed, :revoke_of_removed_member,
+        action: :revoke,
+        read_action: :of_user,
+        args: [:user_id]
     end
   end
 end

@@ -16,15 +16,38 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
 
   use Ash.Resource.Actions.Implementation
 
+  require Ash.Query
   require Logger
 
   alias Rescord.Accounts.Errors.InvitationNotSent
-  alias Rescord.Accounts.Organisation
+  alias Rescord.Accounts.{Member, Organisation}
 
   @impl true
   def run(input, _opts, _context) do
     signal = Ash.ActionInput.get_argument(input, :signal)
 
+    if still_invited?(input.tenant, signal), do: send_email(input, signal), else: :ok
+  end
+
+  # A member who was removed before the job ran gets no email (ADR 0105).
+  defp still_invited?(tenant, signal) do
+    user =
+      Rescord.Accounts.User
+      |> Ash.Query.filter(email == ^signal.email)
+      |> Ash.read_one!(authorize?: false)
+
+    case user do
+      nil ->
+        false
+
+      %{id: id} ->
+        Member
+        |> Ash.Query.filter(user_id == ^id and is_nil(archived_at))
+        |> Ash.exists?(tenant: tenant, authorize?: false)
+    end
+  end
+
+  defp send_email(input, signal) do
     case input.tenant |> organisation() |> email(signal) |> Rescord.Mailer.deliver() do
       {:ok, _receipt} -> :ok
       {:error, reason} -> fault(reason)

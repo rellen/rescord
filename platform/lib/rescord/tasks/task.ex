@@ -169,6 +169,23 @@ defmodule Rescord.Tasks.Task do
       change set_attribute(:skip_reason, nil)
     end
 
+    read :open_for_member do
+      description "The tasks that are due and are for a member"
+      argument :user_id, :uuid, allow_nil?: false
+      filter expr(state == :due and ^arg(:user_id) in assignee_ids)
+      # The listener reads the tasks in pages: its change is not atomic.
+      pagination keyset?: true, required?: false
+    end
+
+    update :forget_member do
+      description "Takes a member who was removed out of a task that is due. A listener runs this, and no role has a grant for it"
+
+      accept []
+      require_atomic? false
+      argument :user_id, :uuid, allow_nil?: false
+      change Tasks.Changes.ForgetMember
+    end
+
     destroy :cancel do
       description "Cancels a task that is not necessary. The row and its history stay"
     end
@@ -180,6 +197,8 @@ defmodule Rescord.Tasks.Task do
     end
 
     policy always() do
+      # The removal of a member is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -248,6 +267,17 @@ defmodule Rescord.Tasks.Task do
       define_attribute? false
       source_attribute :kind_id
       temporal_keys {nil, :valid_at}
+    end
+  end
+
+  # A task that is due lets go of a member who was taken out of the
+  # organisation (ADR 0105).
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_removed, :forget_member,
+        read_action: :open_for_member,
+        args: [:user_id],
+        inputs: [:user_id]
     end
   end
 end

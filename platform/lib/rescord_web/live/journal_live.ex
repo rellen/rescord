@@ -49,15 +49,13 @@ defmodule RescordWeb.JournalLive do
 
     with true <- is_binary(id),
          {:ok, %{} = resident} <- Residents.resident(id, [load: [:name]] ++ options) do
-      {:ok, members} = Accounts.members([load: [:email]] ++ options)
-
       {:ok,
        socket
        |> assign(
          resident: resident,
          page_title: "Journal of #{name(resident)}",
          problems: [],
-         authors: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+         authors: Accounts.labels(options),
          lists: lists(options),
          measurement_units: RescordWeb.MeasurementUnits.read(options),
          can_write?: Journal.role_can_write?(socket.assigns.role),

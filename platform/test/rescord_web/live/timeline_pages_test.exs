@@ -115,7 +115,7 @@ defmodule RescordWeb.TimelinePagesTest do
            ]
 
     # The member reads who made each change. An end has no person, and a
-    # root user is no member.
+    # root user who is not a member is the operator (ADR 0105).
     assert has_element?(
              view,
              "#timeline li[data-subject=placement] small",
@@ -127,7 +127,7 @@ defmodule RescordWeb.TimelinePagesTest do
     assert has_element?(
              view,
              "#timeline li:nth-child(3) small",
-             "a person who is not a member now"
+             "Rescord operator"
            )
 
     # The words of an event show no atom.

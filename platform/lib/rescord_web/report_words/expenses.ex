@@ -65,7 +65,12 @@ defmodule RescordWeb.ReportWords.Expenses do
         |> Enum.map(fn {category, expenses} -> tally(category, expenses, currency) end),
       owed:
         facts.owed
-        |> Enum.group_by(&ExpenseWords.person(facts.people, &1.payer_id))
+        # By the payer, not by the words: two people who left are two rows
+        # (ADR 0105).
+        |> Enum.group_by(& &1.payer_id)
+        |> Enum.map(fn {payer_id, expenses} ->
+          {ExpenseWords.person(facts.people, payer_id), expenses}
+        end)
         |> Enum.sort_by(fn {member, _expenses} -> member end)
         |> Enum.map(fn {member, expenses} -> tally(member, expenses, currency) end),
       expenses: Enum.map(facts.expenses, &expense(&1, facts))

@@ -94,6 +94,7 @@ These subjects are out of scope for now:
 | What does the journal hold about a change to a placement or a group? | Only what a member writes about it. The change itself stays in the resource that records it. |
 | How does a person sign in? | With a link that Rescord sends by email. Rescord stores no password. |
 | How does a person join an organisation? | By invitation only. A root user invites an administrator, and an administrator invites a member. |
+| What happens to the records of a member who is removed? | They stay theirs, and each page names the person "email (former member)". The removal takes them out of each task that is due and each routine, and revokes their calendar feeds. The last member who can change the members stays (ADR 0105). |
 | Who creates an organisation? | A root user. |
 | Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
 | Where does the first root user come from? | From a script that a person runs in IEx when Rescord is first deployed. |

@@ -392,9 +392,9 @@ defmodule RescordWeb.InventoryPagesTest do
       {view, _html} = open(sign_in(build_conn(), context.root), context.item_path)
       assert has_element?(view, "#history td", to_string(context.root.email))
 
-      # A member reads that the person is no member.
+      # A member reads that the person is the operator (ADR 0105).
       {view, _html} = open(context.conn, context.item_path)
-      assert has_element?(view, "#history td", "A person who is not a member now")
+      assert has_element?(view, "#history td", "Rescord operator")
     end
 
     test "says so when the item has no stock, and has no form to take stock", context do

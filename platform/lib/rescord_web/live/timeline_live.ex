@@ -22,7 +22,6 @@ defmodule RescordWeb.TimelineLive do
     with {:ok, _uuid} <- Ecto.UUID.cast(id),
          {:ok, %{} = resident} <- Residents.resident(id, [load: [:name]] ++ options) do
       {:ok, events} = Journal.timeline(id, options)
-      {:ok, members} = Accounts.members([load: [:email]] ++ options)
       {:ok, tree} = Locations.tree(options)
       {:ok, groups} = Residents.groups_with_facts(options)
 
@@ -31,7 +30,7 @@ defmodule RescordWeb.TimelineLive do
          resident: resident,
          page_title: "Timeline of #{name(resident)}",
          events: events,
-         people: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+         people: Accounts.labels(options),
          names: %{
            locations:
              for({node, _depth} <- Locations.flat(tree), into: %{}) do

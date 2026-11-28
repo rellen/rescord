@@ -241,6 +241,12 @@ release (ADR 0047).
 
 ### Added
 
+- The members page lists the former members, with the day each one left
+  and a button "Invite again", and asks before it removes a member. The
+  records of a member who was removed stay theirs: each page names them
+  "email (former member)", and the work of a root user who is not a
+  member says "Rescord operator". `members.csv` of the export has the
+  former members too, with the new column `former?` (ADR 0105).
 - A transfer of a resident with photos or PDFs to a partner on this
   server shows "Sending" and how many files are there, such as "120 of
   300 files", while its files go to the partner. When a file does not
@@ -542,6 +548,11 @@ release (ADR 0047).
 
 ### Changed
 
+- The removal of a member takes them out of each task that is due and
+  each routine. A task that was for them alone is for anybody. Their
+  calendar feeds are revoked, and an invitation of theirs that waits is
+  not sent. The last member who can change the members cannot be removed
+  (ADR 0105).
 - A line of the log now writes the shape of a value with
   `Shoddy.Terms.shape/2` of `shoddy`, and Rescord no longer has its own
   copy. A tuple of more than 6 values now shows each value, an Ash error
@@ -694,6 +705,9 @@ release (ADR 0047).
 
 ### Fixed
 
+- The table "Owed to members" of the expense report put every person who
+  had left in one row "A person who left". Each payer has their own row
+  now (ADR 0105).
 - The name of a location now keeps its capitals where it starts a line of
   the inventory: in the levels of a lot, the history of an item, the
   reorder levels and the stock to order. Before, only its first letter

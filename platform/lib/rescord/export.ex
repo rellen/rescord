@@ -59,7 +59,7 @@ defmodule Rescord.Export do
 
   # Columns that are calculations, after the attributes.
   @calculations %{
-    Member => [:email],
+    Member => [:email, :former?],
     # A measurement in the standard unit of its kind (ADR 0094), beside the
     # value and the unit that the person recorded.
     Rescord.Journal.Measurement => [:standard_value, :standard_unit]
@@ -242,10 +242,16 @@ defmodule Rescord.Export do
     keys = Ash.Resource.Info.primary_key(resource)
 
     resource
+    |> read_action()
     |> Ash.Query.sort(Enum.map(keys, &{&1, :asc}))
     |> Ash.Query.load(Map.get(@calculations, resource, []))
     |> Ash.read([actor: actor] ++ tenant ++ as_of)
   end
+
+  # members.csv holds the former members too, so that each id of a record
+  # names a row (ADR 0105).
+  defp read_action(Member), do: Ash.Query.for_read(Member, :with_former)
+  defp read_action(resource), do: Ash.Query.new(resource)
 
   defp readme(organisation, date, instant, now, tables) do
     local = Accounts.local_time(organisation, instant)
