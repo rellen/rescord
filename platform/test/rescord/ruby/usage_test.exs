@@ -258,6 +258,70 @@ defmodule Rescord.Ruby.UsageTest do
     end
   end
 
+  describe "the share of one member" do
+    # The share of one member, in whole US cents, beside an allowance of
+    # one dollar for the organisation.
+    defp share!(context, cents) do
+      [offer] = Ruby.offers(context.admin)
+
+      {:ok, _settings} =
+        Ruby.save_settings(
+          %{
+            enabled: true,
+            provider_id: offer.id,
+            agreed_to: offer.place_key,
+            allowance: 100,
+            member_allowance: cents
+          },
+          context.admin
+        )
+    end
+
+    test "past it, say refuses that member with the reason, and not another member (ADR 0117)",
+         context do
+      # One cent: a reply of 5,000 millionths leaves room, and two do not.
+      share!(context, 1)
+      ScriptedModel.script([{:text, "Yes."}, {:text, "Yes."}, {:text, "Yes."}])
+
+      {conversation, _message} = ask!(context)
+      work!()
+      assert Allowance.member_room?(context.organisation, context.ana.id)
+      assert Ruby.members_at_share(context.organisation) == 0
+
+      Ruby.say!(conversation.id, "And now?", context.as_ana)
+      work!()
+      refute Allowance.member_room?(context.organisation, context.ana.id)
+      assert Allowance.room?(context.organisation)
+      assert Ruby.members_at_share(context.organisation) == 1
+
+      assert {:error, error} = Ruby.say(conversation.id, "Once more?", context.as_ana)
+      assert Ruby.refusal(error) == :member_allowance
+      assert [{:text, "your share of the month is used"}] = Ruby.problems(error)
+      assert length(ScriptedModel.requests()) == 2
+
+      # Another member still asks.
+      other = Ruby.start_conversation!(%{}, context.as_ben)
+      assert {:ok, _message} = Ruby.say(other.id, "And for me?", context.as_ben)
+
+      # The next month has room, and so has no share.
+      assert Allowance.member_room?(
+               context.organisation,
+               context.ana.id,
+               Date.shift(Date.utc_today(), month: 1)
+             )
+
+      share!(context, nil)
+      assert {:ok, _message} = Ruby.say(conversation.id, "Once more?", context.as_ana)
+      assert Ruby.members_at_share(context.organisation) == 0
+    end
+
+    test "is empty by default, and a member then has the whole allowance", context do
+      allow!(context, 100)
+      assert Ruby.settings(context.organisation).member_allowance == nil
+      assert Allowance.member_room?(context.organisation, context.ana.id)
+    end
+  end
+
   describe "the size of a conversation" do
     test "is kept with each reply, as the provider reported it", context do
       ScriptedModel.script([{:tool, "find_residents", %{}}, {:text, "Biscuit."}])

@@ -167,9 +167,18 @@ defmodule RescordWeb.RubyWordsTest do
     end
 
     test "says that nothing was recorded where a reply failed" do
-      for reason <- Reason.all() -- [:rate, :allowance, :cut, :too_many_steps, :too_long] do
+      for reason <-
+            Reason.all() --
+              [:rate, :allowance, :member_allowance, :cut, :too_many_steps, :too_long] do
         assert RubyWords.problem(reason, @refuge) =~ "Nothing was recorded.", "#{reason}"
       end
+    end
+
+    test "the share of a member says when it starts again (ADR 0117)" do
+      assert RubyWords.problem(:member_allowance, @refuge, today: ~D[2026-11-28]) ==
+               "You have used your share of Ruby for this month. It starts again on 1 December 2026."
+
+      assert RubyWords.way_on(:member_allowance) == :settings
     end
 
     test "the allowance names the rescue, the month, and the day that Ruby answers again" do

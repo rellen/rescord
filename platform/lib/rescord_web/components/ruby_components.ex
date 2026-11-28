@@ -489,13 +489,22 @@ defmodule RescordWeb.RubyComponents do
 
   @doc """
   The form of the settings of Ruby in an organisation: the switch, the
-  allowance of a month and the days that a conversation is kept.
+  allowance of a month, the share of one member (ADR 0117) and the days
+  that a conversation is kept.
   """
   attr :organisation, :any, required: true
   attr :status, :any, required: true
   attr :offers, :list, required: true
   attr :form, Phoenix.HTML.Form, required: true
   attr :problems, :list, required: true
+
+  attr :at_share, :integer,
+    default: 0,
+    doc: "the count of the members who used their share this month"
+
+  attr :share?, :boolean,
+    default: false,
+    doc: "whether the organisation gives each member a share"
 
   def settings_form(assigns) do
     ~H"""
@@ -535,6 +544,18 @@ defmodule RescordWeb.RubyComponents do
           autocomplete="off"
           hint={allowance_hint(@offers)}
         />
+        <.field
+          form={@form}
+          name={:member_allowance}
+          problems={@problems}
+          label="Share of one member for a month, in US dollars"
+          inputmode="decimal"
+          autocomplete="off"
+          hint="Leave it empty to let one member use the whole allowance."
+        />
+        <p :if={@share?} id="ruby-at-share">
+          {RescordWeb.Locale.count(@at_share, "member has", "members have")} used their share this month.
+        </p>
         <.field
           form={@form}
           name={:retention_days}

@@ -20,6 +20,7 @@ defmodule Rescord.Ruby.Reason do
     :cut,
     :too_many_steps,
     :allowance,
+    :member_allowance,
     :rate,
     :too_long,
     :unknown
@@ -35,6 +36,7 @@ defmodule Rescord.Ruby.Reason do
           | :cut
           | :too_many_steps
           | :allowance
+          | :member_allowance
           | :rate
           | :too_long
           | :unknown

@@ -13,7 +13,8 @@ defmodule Rescord.Ruby.Changes.Say do
   same history would be refused again.
 
   A message is refused, with a reason of `Rescord.Ruby.Reason`, when the
-  allowance of the month is used (`Rescord.Ruby.Allowance`), and when the
+  allowance of the month is used (`Rescord.Ruby.Allowance`), when the
+  member has used their share of the month (ADR 0117), and when the
   conversation with the new message would be longer than one request of
   the provider takes. The size is the one that the provider reported for
   the last request, and the words since.
@@ -126,6 +127,9 @@ defmodule Rescord.Ruby.Changes.Say do
         cond do
           not Allowance.room?(changeset.tenant) ->
             refuse(changeset, :allowance, "the allowance of the month is used")
+
+          not Allowance.member_room?(changeset.tenant, user.id) ->
+            refuse(changeset, :member_allowance, "your share of the month is used")
 
           full?(held + Replies.tokens(byte_size(text)), request_tokens(changeset.tenant)) ->
             refuse(changeset, :too_long, "this conversation is full: start a new one")

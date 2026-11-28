@@ -103,3 +103,49 @@ range of a kind.
 - The message of the range is in the words of the validation, as the
   message of the unit is, because the error of a fact of an entry loses
   the values beside its message on the way out.
+
+## A monthly share of Ruby for each member
+
+### Context
+
+The allowance of Ruby is for the whole organisation (`allowance` of
+`Rescord.Ruby.Settings`, whole US cents for a month of UTC). Each member
+is limited to 6 messages a minute and 120 a day, and a reply can take up
+to 8 tool rounds. So one member, or a script with their session, could
+use the allowance of the month in a few days, and then nobody else in the
+organisation could ask Ruby until the next month.
+
+### Decision
+
+- **`member_allowance` of `Rescord.Ruby.Settings`**, whole US cents for a
+  month, `min: 0`, `max: 10_000_000`, empty by default. Empty means no
+  share: each member can use up to the allowance of the organisation, as
+  before (judgement call 4). The share is the same for each member, not
+  set member by member (judgement call 1), and members with the power
+  `settings` have it too (judgement call 2).
+- **`Rescord.Ruby.Allowance.member_room?/3`** sums the rows of
+  `Rescord.Ruby.Usage` of one member in the month, which has `user_id`
+  already, so no new table is needed. `room?/2` keeps its arity and checks
+  the organisation; `say` asks the organisation first and the member
+  second, so a month that is used for everybody says so.
+- **A new reason of refusal**, `:member_allowance`, in
+  `Rescord.Ruby.Reason`, which `Rescord.Ruby.refusal/1` gives, with its
+  sentence in `RescordWeb.RubyWords`: "You have used your share of Ruby
+  for this month. It starts again on 1 December 2026." The way on is the
+  link to the settings, for a person who can change them.
+- **The settings page** has the field "Share of one member for a month,
+  in US dollars", and, with a share, a count of the members who have used
+  it this month (`Rescord.Ruby.members_at_share/1`): a count, with no name
+  and no cost of a person (judgement call 3). A table by member is a
+  decision about what an administrator sees of a colleague.
+- The run after a member confirms a proposal is never refused for the
+  share, as it is never refused for the allowance: it calls neither.
+
+### Consequences
+
+- The tenant migration `20261128143308_add_ruby_member_allowance` adds
+  one empty column, and changes no row. Nothing changes for an
+  organisation until an administrator sets a share.
+- As with the allowance, the check is before a reply and the price is
+  known after it, so a member can end the month above their share by the
+  replies that ran at that moment.

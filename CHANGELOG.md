@@ -223,6 +223,10 @@ release (ADR 0047).
     two empty columns to the measure kinds, for the lowest and the
     highest value of a measurement of the kind (ADR 0117). It changes no
     row.
+  - `20261128143308_add_ruby_member_allowance`, in each organisation:
+    adds an empty column to the settings of Ruby, for the share of one
+    member for a month (ADR 0117). Empty means no share, as before the
+    upgrade. It changes no row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -386,6 +390,15 @@ release (ADR 0047).
 
 ### Added
 
+- An organisation can give each member a share of Ruby for a month, on
+  the settings page of Ruby: "Share of one member for a month, in US
+  dollars" (ADR 0117, issue 41). A member who has used their share is
+  refused with "You have used your share of Ruby for this month", and the
+  others still ask, so one member, or a script with their session, cannot
+  use the allowance of everybody. The share is the same for each member,
+  empty by default, and the page counts the members who have used it,
+  with no name and no cost of a person. The run after a member confirms a
+  proposal is never refused for it.
 - An administrator can give a kind of measurement with a standard unit a
   range, on the page Lists, under "Measure kind": the lowest and the
   highest value, in the standard unit (ADR 0117, issue 41). A measurement

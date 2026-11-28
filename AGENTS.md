@@ -699,10 +699,11 @@ hand (ADR 0073). Read it before you write a migration. In short:
     member, a day of UTC and a model, with counts and no word. Never sum
     the replies for a cost: a conversation is deleted for real, and its
     use stays. `Rescord.Ruby.Allowance` sums a month against the
-    allowance of the settings. `say` asks it, and `available?/2` does
-    not: a member past the allowance still reads their conversations.
-    The run after a member confirms a proposal is never refused for the
-    allowance. A refusal of `say` for the allowance, for a full
+    allowance of the settings, and the rows of one member against the
+    share of one member (`member_allowance`, ADR 0117). `say` asks both,
+    and `available?/2` does not: a member past the allowance or the share
+    still reads their conversations. The run after a member confirms a
+    proposal is never refused for the allowance or the share. A refusal of `say` for the allowance, for a full
     conversation or for the rate has a reason, which
     `Rescord.Ruby.refusal/1` gives. The event of telemetry of a reply has
     its state and its reason as tags, and no organisation, member or

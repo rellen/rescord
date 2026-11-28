@@ -530,19 +530,28 @@ defmodule Rescord.Ruby do
   end
 
   @doc """
+  The count of the members of an organisation who have used their share of
+  Ruby this month (ADR 0117): a count, with no name and no cost of a
+  person. `0` when the organisation gives no share.
+  """
+  @spec members_at_share(term) :: non_neg_integer
+  def members_at_share(tenant), do: Rescord.Ruby.Allowance.members_at_share(tenant)
+
+  @doc """
   Why `say/3` refused a message, as a reason of `Rescord.Ruby.Reason`,
   from its error: `:allowance` (the allowance of the month is used),
+  `:member_allowance` (the member has used their share of the month),
   `:too_long` (the conversation is full) or `:rate` (too many messages of
   this person in a short time). `nil` for each other error. A page has a
   sentence for each reason.
   """
-  @spec refusal(term) :: :allowance | :too_long | :rate | nil
+  @spec refusal(term) :: :allowance | :member_allowance | :too_long | :rate | nil
   def refusal(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &refusal/1)
   def refusal(%AshRateLimiter.LimitExceeded{}), do: :rate
 
   def refusal(%Ash.Error.Changes.InvalidAttribute{field: :text, vars: vars}) do
     case Keyword.get(List.wrap(vars), :reason) do
-      reason when reason in [:allowance, :too_long] -> reason
+      reason when reason in [:allowance, :member_allowance, :too_long] -> reason
       _other -> nil
     end
   end

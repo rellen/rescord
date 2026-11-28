@@ -805,8 +805,9 @@ of the organisation, and then "The settings of Ruby". The page shows the
 sentence of the provider that you offer, or a choice when you offer more
 than one. Who turns Ruby on agrees to that place, and Rescord keeps the
 sentence and the time. The page also has the allowance of a month, which
-starts at the amount that you gave the provider, and the days that a
-conversation is kept.
+starts at the amount that you gave the provider, the share of one member
+for a month, empty at first so that one member can use the whole
+allowance (ADR 0117), and the days that a conversation is kept.
 
 **A change of the place turns Ruby off.** When you change the address or
 the region of a provider, the sentence changes. Ruby is then off for each

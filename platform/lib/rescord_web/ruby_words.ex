@@ -125,6 +125,7 @@ defmodule RescordWeb.RubyWords do
   def failure(:cut), do: "the answer of the test was cut short."
   def failure(:too_many_steps), do: "the test took too many steps."
   def failure(:allowance), do: "the allowance of the month is used."
+  def failure(:member_allowance), do: "the share of one member for the month is used."
   def failure(:rate), do: "there were too many requests. Wait a moment."
   def failure(:too_long), do: "the request was too long for the model."
 
@@ -439,6 +440,13 @@ defmodule RescordWeb.RubyWords do
     end
   end
 
+  def problem(:member_allowance, _organisation, opts) do
+    today = Keyword.get(opts, :today, Date.utc_today())
+    next = today |> Date.end_of_month() |> Date.add(1) |> RescordWeb.Locale.date()
+
+    "You have used your share of Ruby for this month. It starts again on #{next}."
+  end
+
   def problem(:provider_limit, _organisation, _opts),
     do:
       "Ruby has reached the limit of this server for the month. Nothing was recorded. " <>
@@ -481,7 +489,7 @@ defmodule RescordWeb.RubyWords do
   def way_on(reason) when reason in [:provider_down, :unknown, :provider_busy, :rate], do: :again
   def way_on(:cut), do: :rest
   def way_on(reason) when reason in [:request_refused, :too_long], do: :new
-  def way_on(:allowance), do: :settings
+  def way_on(reason) when reason in [:allowance, :member_allowance], do: :settings
   def way_on(_reason), do: nil
 
   @doc "Whether a second try of the same message can go better (\"Try again\")."
