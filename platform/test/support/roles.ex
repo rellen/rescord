@@ -180,9 +180,205 @@ defmodule RescordWeb.Roles do
     Phoenix.LiveViewTest.element(view, selector, text)
   end
 
-  @doc "Presses the one element that the locator finds, as `render_click/1`."
-  def click(view, %__MODULE__{} = locator),
+  @doc """
+  Presses the one button or link that the locator finds.
+
+  With a `PhoenixTest` session it clicks as `click_button/3` or
+  `click_link/3` do, and returns the session. With a
+  `Phoenix.LiveViewTest` view it is `render_click/1`.
+  """
+  def click(%Phoenix.LiveViewTest.View{} = view, %__MODULE__{} = locator),
     do: view |> locate(locator) |> Phoenix.LiveViewTest.render_click()
+
+  def click(%PhoenixTest.Playwright{} = session, %__MODULE__{} = locator),
+    do: PhoenixTest.Playwright.click(session, playwright(locator))
+
+  # `click/2` of `PhoenixTest.Playwright`, which `use RescordWeb.Roles,
+  # browser: true` leaves out.
+  def click(%PhoenixTest.Playwright{} = session, selector) when is_binary(selector),
+    do: PhoenixTest.Playwright.click(session, selector)
+
+  def click(session, %__MODULE__{role: role} = locator) when role in [:button, :link] do
+    root = document(session)
+    node = one(root, locator)
+    {css, _text} = selector(node, locator, root)
+    words = visible_text(node)
+
+    case role do
+      :button -> PhoenixTest.click_button(session, css, words)
+      :link -> PhoenixTest.click_link(session, css, words)
+    end
+  end
+
+  ## PhoenixTest
+
+  @doc """
+  Brings in `PhoenixTest` with `within/3`, `assert_has/2,3` and
+  `refute_has/2,3` of this module, which take a locator or a CSS selector.
+  """
+  defmacro __using__(opts) do
+    browser =
+      if Keyword.get(opts, :browser, false) do
+        quote do
+          # What `PhoenixTest.Playwright.Case` imports (0.19.0), but `click/2`,
+          # which takes a locator here.
+          import PhoenixTest.Playwright,
+            only: [
+              add_cookies: 2,
+              add_session_cookie: 3,
+              assert_screenshot: 2,
+              assert_screenshot: 3,
+              clear_cookies: 1,
+              clear_cookies: 2,
+              click: 3,
+              click: 4,
+              click_button: 4,
+              click_link: 4,
+              drag: 3,
+              evaluate: 2,
+              evaluate: 3,
+              evaluate: 4,
+              press: 3,
+              press: 4,
+              screenshot: 2,
+              screenshot: 3,
+              step: 3,
+              type: 3,
+              type: 4,
+              visit: 3,
+              with_dialog: 3
+            ]
+        end
+      end
+
+    quote do
+      import PhoenixTest,
+        except: [within: 3, assert_has: 2, assert_has: 3, refute_has: 2, refute_has: 3]
+
+      unquote(browser)
+      import RescordWeb.Roles
+    end
+  end
+
+  @doc "Runs `fun` inside the one element that the locator finds."
+  def within(session, %__MODULE__{} = locator, fun) when is_function(fun, 1),
+    do: PhoenixTest.within(session, scope_selector(session, locator), fun)
+
+  def within(session, selector, fun), do: PhoenixTest.within(session, selector, fun)
+
+  @doc """
+  Asserts that the locator finds an element. Options: `text:` (words that
+  the element holds) and `count:`.
+  """
+  def assert_has(session, locator, opts \\ [])
+
+  def assert_has(%PhoenixTest.Playwright{} = session, %__MODULE__{} = locator, opts) do
+    in_browser(session, locator, opts, &PhoenixTest.assert_has/3)
+  end
+
+  def assert_has(session, %__MODULE__{} = locator, opts) do
+    found = matches(session, locator, opts)
+
+    unless found?(found, opts) do
+      raise ExUnit.AssertionError,
+        message: "#{describe(locator)} #{inspect(opts)} found #{length(found)} elements"
+    end
+
+    session
+  end
+
+  def assert_has(session, selector, opts), do: PhoenixTest.assert_has(session, selector, opts)
+
+  @doc "Asserts that the locator finds no element (with `text:`, none that holds it)."
+  def refute_has(session, locator, opts \\ [])
+
+  def refute_has(%PhoenixTest.Playwright{} = session, %__MODULE__{} = locator, opts) do
+    in_browser(session, locator, opts, &PhoenixTest.refute_has/3)
+  end
+
+  def refute_has(session, %__MODULE__{} = locator, opts) do
+    case matches(session, locator, opts) do
+      [] ->
+        session
+
+      found ->
+        raise ExUnit.AssertionError,
+          message: "#{describe(locator)} #{inspect(opts)} found #{length(found)} elements"
+    end
+  end
+
+  def refute_has(session, selector, opts), do: PhoenixTest.refute_has(session, selector, opts)
+
+  # `assert_has/3` of PhoenixTest.Playwright puts its selector in `css=`, so
+  # a selector by role goes in `within/3`, and the assertion is on `:scope`.
+  defp in_browser(session, locator, opts, assertion) do
+    PhoenixTest.within(session, playwright(locator), &assertion.(&1, ":scope", opts))
+  rescue
+    error in ExUnit.AssertionError ->
+      reraise ExUnit.AssertionError,
+              [message: "#{describe(locator)} #{inspect(opts)}: #{error.message}"],
+              __STACKTRACE__
+  end
+
+  defp matches(session, locator, opts) do
+    found = all(document(session), locator)
+
+    case Keyword.fetch(opts, :text) do
+      {:ok, %Regex{} = text} -> Enum.filter(found, &(visible_text(&1) =~ text))
+      {:ok, text} -> Enum.filter(found, &String.contains?(visible_text(&1), text))
+      :error -> found
+    end
+  end
+
+  defp found?(found, opts) do
+    case Keyword.fetch(opts, :count) do
+      {:ok, count} -> length(found) == count
+      :error -> found != []
+    end
+  end
+
+  defp scope_selector(%PhoenixTest.Playwright{}, locator), do: playwright(locator)
+
+  defp scope_selector(session, locator) do
+    root = document(session)
+
+    case selector(
+           one(root, locator),
+           %{locator | scope: []} |> Map.put(:scope, locator.scope),
+           root
+         ) do
+      {css, nil} ->
+        css
+
+      {css, _text} ->
+        raise ArgumentError, "#{describe(locator)} has no selector of its own (#{css})"
+    end
+  end
+
+  ## Playwright
+
+  @doc false
+  # The locator as a selector of Playwright, which finds by role and name
+  # itself: `internal:role=region[name="Lots"s] >> internal:role=button[...]`.
+  def playwright(%__MODULE__{} = locator) do
+    Enum.map_join(locator.scope ++ [locator], " >> ", &playwright_one/1)
+  end
+
+  defp playwright_one(%{role: :field, name: name}), do: "internal:label=#{pw_name(name)}"
+
+  defp playwright_one(%{role: role, name: name, level: level}) do
+    attributes =
+      [name && "[name=#{pw_name(name)}]", level && "[level=#{level}]"]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join()
+
+    "internal:role=#{pw_role(role)}#{attributes}"
+  end
+
+  defp pw_role(role), do: Atom.to_string(role)
+
+  defp pw_name(%Regex{source: source}), do: "/#{source}/"
+  defp pw_name(name), do: JSON.encode!(name) <> "s"
 
   @doc """
   The one form inside `scope`, filled in by the labels of its fields:
@@ -228,6 +424,12 @@ defmodule RescordWeb.Roles do
     do: view |> Phoenix.LiveViewTest.render() |> LazyHTML.from_fragment()
 
   defp document(%LazyHTML{} = html), do: html
+
+  # PhoenixTest's session of a LiveView or a controller. `render_html/1` is
+  # in its driver protocol, which has no docs: pinned with `~> 0.14.0`.
+  defp document(%{__struct__: struct} = session)
+       when struct in [PhoenixTest.Live, PhoenixTest.Static],
+       do: PhoenixTest.Driver.render_html(session)
 
   defp document(html) when is_binary(html) do
     if html =~ ~r/^\s*<!doctype/i,
