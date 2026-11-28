@@ -15,6 +15,9 @@ defmodule Rescord.Ruby.ScriptedModel do
   `{:cut, text}` (the limit of tokens cut the answer), `{:error, reason}`
   or `{:raise, message}` (a fault in the middle of the loop, in the process
   that asked). A request with no step left raises there too.
+  `{:usage, usage, step}` is a step whose request reports these tokens,
+  such as `%{input_tokens: 59_000, output_tokens: 50}`, in place of the
+  usual 1,000 and 50.
   `requests/0` gives what the loop sent, so that a test reads the prompt.
 
   The script is in the process that runs the test, so tests run `async`.
@@ -48,7 +51,15 @@ defmodule Rescord.Ruby.ScriptedModel do
         end
       end)
 
-    respond(step, model, messages)
+    case step do
+      {:usage, usage, step} ->
+        Process.put({__MODULE__, :usage}, usage)
+        respond(step, model, messages)
+
+      step ->
+        Process.delete({__MODULE__, :usage})
+        respond(step, model, messages)
+    end
   end
 
   defp respond(:none, _model, _messages),
@@ -80,7 +91,8 @@ defmodule Rescord.Ruby.ScriptedModel do
   end
 
   defp response(chunks, finish_reason, stop_reason, model, messages) do
-    usage = StreamChunk.meta(%{usage: @usage})
+    tokens = Process.get({__MODULE__, :usage}, @usage)
+    usage = StreamChunk.meta(%{usage: tokens})
 
     meta =
       StreamChunk.meta(%{
@@ -90,7 +102,7 @@ defmodule Rescord.Ruby.ScriptedModel do
       })
 
     {:ok, handle} =
-      MetadataHandle.start_link(fn -> %{usage: @usage, finish_reason: finish_reason} end)
+      MetadataHandle.start_link(fn -> %{usage: tokens, finish_reason: finish_reason} end)
 
     {:ok,
      %StreamResponse{

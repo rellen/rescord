@@ -23,7 +23,7 @@ defmodule Rescord.Ruby.Grants do
 
   import Ash.Expr, only: [expr: 1, actor: 1]
 
-  alias Rescord.Ruby.{Conversation, Message, Settings}
+  alias Rescord.Ruby.{Conversation, Message, Settings, Usage}
 
   @impl true
   def reads, do: []
@@ -39,7 +39,9 @@ defmodule Rescord.Ruby.Grants do
         {Conversation, :read, :all},
         {Conversation, :of_member, :all},
         {Message, :read, :all},
-        {Message, :of_conversation, :all}
+        {Message, :of_conversation, :all},
+        # The use of the month, by member.
+        {Usage, :read, :all}
       ],
       ruby: [
         {Conversation, :read, :own},

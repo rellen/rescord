@@ -755,6 +755,16 @@ code does not have yet is what its phase lands.
   `Rescord.Ruby.Reason`. A job runs one time, because the provider bills
   each try. No page waits for it: the reply is written also when the
   member has closed the page.
+- Each reply adds its tokens and their price to `Rescord.Ruby.Usage`:
+  one row for a member, a day and a model, with no word of a
+  conversation, which stays when the conversation is deleted.
+  `Rescord.Ruby.Allowance` sums a month of the calendar, in UTC, against
+  the allowance of the settings, and `say` refuses a message past it.
+  `say` also refuses a conversation that is full, from the size of the
+  prompt that the provider reported, and more than 6 messages of one
+  person in a minute or 120 in a day (ADR 0020). The check is before a
+  reply and the price is known after, so the spend limit at the provider
+  is the backstop.
 - The system prompt is one text for the whole server
   (`Rescord.Ruby.Prompt`). What differs is in the header of the first
   message of a member: the rescue, the role, the day and the time zone.

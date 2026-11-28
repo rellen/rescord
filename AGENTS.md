@@ -608,6 +608,18 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `Rescord.Ruby.Fault`, which has the shape of an error and none of its
     words, because Oban keeps the error of a job in its row. Keep
     `log_errors? false` on the trigger.
+  - **The use of Ruby is counted in `Rescord.Ruby.Usage`**, one row for a
+    member, a day of UTC and a model, with counts and no word. Never sum
+    the replies for a cost: a conversation is deleted for real, and its
+    use stays. `Rescord.Ruby.Allowance` sums a month against the
+    allowance of the settings. `say` asks it, and `available?/2` does
+    not: a member past the allowance still reads their conversations.
+    The run after a member confirms a proposal is never refused for the
+    allowance. A refusal of `say` for the allowance, for a full
+    conversation or for the rate has a reason, which
+    `Rescord.Ruby.refusal/1` gives. The event of telemetry of a reply has
+    its state and its reason as tags, and no organisation, member or
+    model.
   - **The header of a message is stored, and sent again as it was.**
     `Rescord.Ruby.Changes.Say` makes it with `Rescord.Ruby.Prompt`, from
     the rescue, the role, the day and the time zone. It is never an input,

@@ -672,6 +672,12 @@ defmodule Rescord.Ruby.RepliesTest do
       assert output == div(byte_size(text) + 2, 3)
       assert reply.cost_microdollars > 0
       assert [_one_request] = FakeAnthropic.requests(fake)
+
+      # A reply that the member stopped is billed, and counted.
+      assert [%{replies: 1, stopped: 1, output_tokens: ^output} = row] =
+               Ash.read!(Rescord.Ruby.Usage, tenant: context.organisation, authorize?: false)
+
+      assert row.cost_microdollars == reply.cost_microdollars
     end
   end
 end

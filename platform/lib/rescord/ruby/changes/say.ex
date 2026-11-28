@@ -12,6 +12,12 @@ defmodule Rescord.Ruby.Changes.Say do
   conversation where the provider refused to answer takes no more: the
   same history would be refused again.
 
+  A message is refused, with a reason of `Rescord.Ruby.Reason`, when the
+  allowance of the month is used (`Rescord.Ruby.Allowance`), and when the
+  conversation with the new message would be longer than one request of
+  the provider takes. The size is the one that the provider reported for
+  the last request, and the words since.
+
   The header is what the model gets before the text, and no page shows
   (`Rescord.Ruby.Prompt`). The first message of a conversation has the
   rescue, the role of the member, the day and the time zone, and the
@@ -28,7 +34,8 @@ defmodule Rescord.Ruby.Changes.Say do
   alias Rescord.Accounts
   alias Rescord.Accounts.Checks.Granted
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Conversation, Prompt, Replies, Title}
+  alias Rescord.Ruby.{Allowance, Conversation, Prompt, Provider, Replies, Title}
+  alias Rescord.Ruby.LLM.Profile
 
   # The most characters of what a member types in one message.
   @most 4_000
@@ -113,12 +120,46 @@ defmodule Rescord.Ruby.Changes.Say do
           message: "this conversation takes no more messages: start a new one"
         )
 
-      {:open, last} ->
-        Ash.Changeset.force_change_attribute(
-          changeset,
-          :header,
-          header(conversation, last, user, changeset.tenant)
-        )
+      {:open, last, held} ->
+        text = Ash.Changeset.get_attribute(changeset, :text)
+
+        cond do
+          not Allowance.room?(changeset.tenant) ->
+            refuse(changeset, :allowance, "the allowance of the month is used")
+
+          full?(held + Replies.tokens(byte_size(text)), request_tokens(changeset.tenant)) ->
+            refuse(changeset, :too_long, "this conversation is full: start a new one")
+
+          true ->
+            Ash.Changeset.force_change_attribute(
+              changeset,
+              :header,
+              header(conversation, last, user, changeset.tenant)
+            )
+        end
+    end
+  end
+
+  # A refusal with a reason of `Rescord.Ruby.Reason`, which a page turns
+  # into its own sentence (`Rescord.Ruby.refusal/1`).
+  defp refuse(changeset, reason, words) do
+    # A key that the error does not know goes to its `vars`.
+    Ash.Changeset.add_error(changeset, field: :text, message: words, reason: reason)
+  end
+
+  defp full?(tokens, limit), do: is_integer(limit) and tokens > limit
+
+  # The most tokens of one request with the provider of the organisation.
+  # The row of the provider says it, and no key is decrypted. With no
+  # provider there is no limit to hold: the job then ends the reply as
+  # failed, and sends nothing.
+  defp request_tokens(tenant) do
+    with id when is_binary(id) <- Rescord.Ruby.settings(tenant).provider_id,
+         {:ok, %Provider{} = provider} <-
+           Ash.get(Provider, id, authorize?: false, not_found_error?: false) do
+      Profile.context_tokens(provider)
+    else
+      _no_provider -> nil
     end
   end
 

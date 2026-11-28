@@ -130,15 +130,34 @@ defmodule Rescord.Ruby.Replies do
       is not at its end;
     * `:closed` - the provider refused to answer in it, and would refuse
       the same history again;
-    * `{:open, last}` - it takes a message. `last` is the time of the
-      newest message of the member, or `nil` in a new conversation.
+    * `{:open, last, held}` - it takes a message. `last` is the time of
+      the newest message of the member, or `nil` in a new conversation.
+      `held` is the tokens that the conversation holds: what the next
+      request starts from.
+
+  The provider reports the size of each prompt, and a reply keeps the
+  size after its last request (`prompt_tokens`). So `held` is that number
+  of the newest reply that has one, and the words of the member that came
+  after it, at three bytes for a token, which counts too many for English:
+  the safe side. A new conversation holds 0: the prompt and the tools are
+  far below the limit of a request.
   """
-  @spec standing(String.t(), term) :: :running | :closed | {:open, DateTime.t() | nil}
+  @spec standing(String.t(), term) ::
+          :running | :closed | {:open, DateTime.t() | nil, non_neg_integer}
   def standing(conversation_id, tenant) do
     rows =
       Message
       |> Ash.Query.filter(conversation_id == ^conversation_id)
-      |> Ash.Query.select([:source, :state, :reason, :response_to_id, :inserted_at])
+      |> Ash.Query.select([
+        :source,
+        :state,
+        :reason,
+        :response_to_id,
+        :inserted_at,
+        :prompt_tokens,
+        :header,
+        :text
+      ])
       |> Ash.Query.sort(id: :asc)
       |> Ash.read!(options(tenant))
 
@@ -149,9 +168,33 @@ defmodule Rescord.Ruby.Replies do
       Enum.any?(replies, &(&1.reason == :refused)) -> :closed
       Enum.any?(replies, &(&1.state == :streaming)) -> :running
       Enum.any?(said, &(not MapSet.member?(answered, &1.id))) -> :running
-      true -> {:open, said |> List.last() |> then(&(&1 && &1.inserted_at))}
+      true -> {:open, said |> List.last() |> then(&(&1 && &1.inserted_at)), held(rows)}
     end
   end
+
+  # From the newest row back to the newest reply that knows its size.
+  defp held(rows) do
+    rows
+    |> Enum.reverse()
+    |> Enum.reduce_while(0, fn
+      %{source: :ruby, prompt_tokens: tokens}, bytes when is_integer(tokens) ->
+        {:halt, {:tokens, tokens + tokens(bytes)}}
+
+      %{source: :user} = said, bytes ->
+        {:cont, bytes + byte_size(said.header || "") + byte_size(said.text)}
+
+      _reply, bytes ->
+        {:cont, bytes}
+    end)
+    |> case do
+      {:tokens, tokens} -> tokens
+      bytes -> tokens(bytes)
+    end
+  end
+
+  @doc "The tokens of this many bytes of text, at three bytes for a token, rounded up."
+  @spec tokens(non_neg_integer) :: non_neg_integer
+  def tokens(bytes) when is_integer(bytes) and bytes >= 0, do: div(bytes + 2, 3)
 
   defp options(tenant), do: [tenant: tenant, authorize?: false]
 end

@@ -153,6 +153,13 @@ defmodule Rescord.Ruby.LLM.Profile do
     end
   end
 
+  @doc """
+  The most tokens of one request with this provider: its own value, or the
+  one of its kind. It needs no key.
+  """
+  @spec context_tokens(map) :: pos_integer
+  def context_tokens(provider), do: read(provider).context_tokens
+
   @read [:model, :base_url, :region, :effort, :max_output_tokens, :context_tokens] ++
           [:price_input, :price_output]
 

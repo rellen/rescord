@@ -95,6 +95,11 @@ release (ADR 0047).
     adds a column to the expenses, for the tax in the amount. It is
     empty for each expense that is there: Rescord does not work a tax
     out from an amount. It changes no row.
+  - `20261128074014_add_ruby_usage`, in each organisation: adds the table
+    of the use of the assistant, which holds counts of tokens and their
+    price and no word of a conversation, and a column to the messages of
+    the conversations. Both are empty after the upgrade, because no
+    member can ask the assistant yet. It changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -323,8 +328,9 @@ release (ADR 0047).
   people wrote are in a feed only when the member asks for them.
 - Rescord can give metrics about itself to a collector such as
   Prometheus: how long the requests, the pages, the queries and the
-  actions take, the background jobs that fail, the emails, and the
-  memory. It is off until `RESCORD_METRICS_PORT` names a port. Rescord
+  actions take, the background jobs that fail, the emails, the replies
+  of the assistant with their tokens, and the memory. It is off until
+  `RESCORD_METRICS_PORT` names a port. Rescord
   then answers `GET /metrics` on that port, which is not the port of the
   pages and has no sign-in, so keep it inside the network of the server.
   No label holds the id of a person or the name of an organisation.

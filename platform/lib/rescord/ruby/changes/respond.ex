@@ -43,8 +43,22 @@ defmodule Rescord.Ruby.Changes.Respond do
   with the reason `:unknown`, and the job raises `Rescord.Ruby.Fault`,
   which has the shape of the error and none of its words.
 
-  The allowance of a month and the limit of one request come with
-  `Rescord.Ruby.Usage`.
+  ## What it counts
+
+  After a reply that sent a request, the tokens and their price are added
+  to the use of the month (`Rescord.Ruby.Allowance`), whatever the end of
+  the reply. The allowance itself is asked by `say`, before the reply.
+
+  The reply keeps the tokens that the conversation holds after it
+  (`prompt_tokens`): the prompt and the answer of its last request, as the
+  provider reported them, and what came after. `say` reads it to refuse a
+  message in a conversation that is full. Inside a reply, a result of a
+  tool that would take the next request above the limit of the provider
+  ends the reply with the reason `:too_long`, and that request is not
+  sent.
+
+  Each reply sends one event of telemetry, `[:rescord, :ruby, :reply,
+  :stop]`, with its counts, its state and its reason, and nothing else.
   """
 
   use Ash.Resource.Change
@@ -53,7 +67,7 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   alias AshAi.Transcript
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Fault, LLM, Message, Prompt, Reason, Replies, Toolbox}
+  alias Rescord.Ruby.{Allowance, Fault, LLM, Message, Prompt, Reason, Replies, Toolbox}
   alias Rescord.Ruby.LLM.{Client, Cost}
 
   # The words so far go to the row at most this often. The parts go when
@@ -97,6 +111,10 @@ defmodule Rescord.Ruby.Changes.Respond do
         # The words of the request that runs now, for the count of an answer
         # that ended early.
         unfinished: "",
+        # The bytes of the tool results that the next request adds.
+        added: 0,
+        # The most tokens of one request.
+        limit: profile.context_tokens,
         parts: [],
         saved_at: now(),
         checked_at: now(),
@@ -124,6 +142,7 @@ defmodule Rescord.Ruby.Changes.Respond do
       {:error, reason} ->
         log(:failed, reason)
         Replies.close(reply, %{state: :failed, reason: reason}, tenant)
+        tell(:failed, reason, 0, Cost.sum([]), 0)
     end
   end
 
@@ -175,7 +194,7 @@ defmodule Rescord.Ruby.Changes.Respond do
         # To halt closes the request to the provider: the loop cleans up
         # its stream.
         {true, acc} -> {:halt, %{acc | stopped?: true}}
-        {false, acc} -> {:cont, event |> handle(acc) |> keep()}
+        {false, acc} -> event |> handle(acc) |> keep() |> go_on()
       end
     end)
   rescue
@@ -186,15 +205,23 @@ defmodule Rescord.Ruby.Changes.Respond do
       kept(%{acc | error: error.cause || error})
   end
 
+  # The next request would be longer than the provider takes: it is not
+  # sent.
+  defp go_on(%{error: :too_long} = acc), do: {:halt, acc}
+  defp go_on(acc), do: {:cont, acc}
+
   defp keep(acc) do
-    Process.put(@kept, {acc.text, acc.unfinished, acc.parts})
+    Process.put(@kept, {acc.text, acc.unfinished, acc.added, acc.parts})
     acc
   end
 
   defp kept(acc) do
     case Process.delete(@kept) do
-      {text, unfinished, parts} -> %{acc | text: text, unfinished: unfinished, parts: parts}
-      nil -> acc
+      {text, unfinished, added, parts} ->
+        %{acc | text: text, unfinished: unfinished, added: added, parts: parts}
+
+      nil ->
+        acc
     end
   end
 
@@ -214,9 +241,25 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   # Each turn of the model and each result of a tool, whole, as the model
   # gets it again in the next request.
-  defp handle({:message, turn}, acc) do
+  #
+  # A turn of the model is the end of a request: the provider counted its
+  # prompt, with each tool result so far.
+  defp handle({:message, %{role: :assistant} = turn}, acc) do
     parts = acc.parts ++ Transcript.to_parts([turn], reasoning: true)
-    save(%{acc | parts: parts, unfinished: ""}, true)
+    save(%{acc | parts: parts, unfinished: "", added: 0}, true)
+  end
+
+  # A result of a tool is what the next request adds to the last one. When
+  # the two are above the limit of a request, the reply ends here.
+  defp handle({:message, turn}, acc) do
+    new = Transcript.to_parts([turn], reasoning: true)
+    added = acc.added + (new |> Enum.map(&part_bytes/1) |> Enum.sum())
+    acc = save(%{acc | parts: acc.parts ++ new, added: added}, true)
+
+    case held(Client.requests(), acc) do
+      tokens when is_integer(tokens) and tokens > acc.limit -> %{acc | error: :too_long}
+      _fits -> acc
+    end
   end
 
   defp handle({:error, reason}, acc), do: %{acc | error: reason}
@@ -225,6 +268,24 @@ defmodule Rescord.Ruby.Changes.Respond do
   # The call of a tool and its result are in the parts. The result holds
   # raw records, and goes nowhere else.
   defp handle(_event, acc), do: acc
+
+  defp part_bytes(%{"content" => content}) when is_binary(content), do: byte_size(content)
+  defp part_bytes(part), do: part |> Jason.encode!() |> byte_size()
+
+  # The tokens that the conversation holds now: the prompt and the answer
+  # of the newest request that reported its prompt, and what came after
+  # it, at three bytes for a token. `nil` when no request reported one.
+  defp held(requests, acc) do
+    case requests |> Enum.reverse() |> Enum.find(&(Cost.prompt_tokens(&1.usage) > 0)) do
+      nil ->
+        nil
+
+      request ->
+        Cost.prompt_tokens(request.usage) +
+          max(request.usage.output, Replies.tokens(byte_size(acc.unfinished))) +
+          Replies.tokens(acc.added)
+    end
+  end
 
   defp save(acc, now?) do
     now = now()
@@ -251,6 +312,8 @@ defmodule Rescord.Ruby.Changes.Respond do
     {state, reason} = ending(acc, last)
     usage = requests |> Enum.map(& &1.usage) |> Cost.sum() |> count_unfinished(last, acc)
 
+    cost = Cost.microdollars(usage, profile.prices)
+
     log(state, reason)
 
     Replies.close(
@@ -262,16 +325,65 @@ defmodule Rescord.Ruby.Changes.Respond do
         reason: reason,
         model: profile.model,
         usage: usage,
-        cost_microdollars: Cost.microdollars(usage, profile.prices),
+        cost_microdollars: cost,
+        prompt_tokens: held(requests, acc),
         prompt_fingerprint: fingerprint
       },
       acc.tenant
+    )
+
+    # The use of the month, whatever the end: a reply that failed or that
+    # the member stopped is billed too. It has no word in it, and it stays
+    # when the conversation is deleted. A reply that sent nothing used
+    # nothing.
+    if requests != [] do
+      Allowance.add!(
+        acc.message.owner_id,
+        profile.model,
+        %{
+          replies: 1,
+          requests: length(requests),
+          input_tokens: usage.input,
+          cache_read_tokens: usage.cache_read,
+          cache_write_tokens: usage.cache_write,
+          output_tokens: usage.output,
+          cost_microdollars: cost,
+          failed: one(state == :failed and reason != :refused),
+          refused: one(reason == :refused),
+          stopped: one(state == :stopped)
+        },
+        acc.tenant
+      )
+    end
+
+    tell(state, reason, length(requests), usage, cost)
+  end
+
+  defp one(true), do: 1
+  defp one(false), do: 0
+
+  # For the metrics of the server. The event names no organisation, no
+  # member and no model: the use by member is on a page of the
+  # organisation, behind its policy.
+  defp tell(state, reason, requests, usage, cost) do
+    :telemetry.execute(
+      [:rescord, :ruby, :reply, :stop],
+      %{
+        requests: requests,
+        input_tokens: usage.input,
+        cache_read_tokens: usage.cache_read,
+        cache_write_tokens: usage.cache_write,
+        output_tokens: usage.output,
+        cost_microdollars: cost
+      },
+      %{state: state, reason: reason}
     )
   end
 
   defp ending(acc, last) do
     cond do
       acc.stopped? -> {:stopped, nil}
+      acc.error == :too_long -> {:failed, :too_long}
       acc.error != nil -> {:failed, Reason.of(acc.error)}
       # The stream ended with no last event. The loop does not do that.
       acc.result == nil -> {:failed, :unknown}

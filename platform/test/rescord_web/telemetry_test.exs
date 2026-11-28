@@ -55,7 +55,8 @@ defmodule RescordWeb.TelemetryTest do
       assert metric.__struct__ in [
                Elixir.Telemetry.Metrics.Counter,
                Elixir.Telemetry.Metrics.Distribution,
-               Elixir.Telemetry.Metrics.LastValue
+               Elixir.Telemetry.Metrics.LastValue,
+               Elixir.Telemetry.Metrics.Sum
              ]
     end
   end
@@ -135,6 +136,38 @@ defmodule RescordWeb.TelemetryTest do
       assert body =~ ~s(rescord_mail_count{result="ok"} 1)
       assert body =~ ~s(rescord_mail_count{result="error"} 1)
       refute body =~ "fern"
+    end
+
+    test "counts a reply of the assistant by how it ended, and sums its tokens", context do
+      measures = %{
+        requests: 2,
+        input_tokens: 300,
+        cache_read_tokens: 40,
+        cache_write_tokens: 50,
+        output_tokens: 70,
+        cost_microdollars: 1_900
+      }
+
+      :telemetry.execute([:rescord, :ruby, :reply, :stop], measures, %{
+        state: :complete,
+        reason: nil
+      })
+
+      :telemetry.execute([:rescord, :ruby, :reply, :stop], measures, %{
+        state: :failed,
+        reason: :provider_limit
+      })
+
+      body = scrape(context)
+
+      assert body =~ ~r/rescord_ruby_reply_count\{[^}]*state="complete"[^}]*\} 1/
+      assert body =~ ~r/rescord_ruby_reply_count\{[^}]*reason="provider_limit"[^}]*\} 1/
+      assert body =~ ~r/rescord_ruby_reply_requests_total(\{\})? 4/
+      assert body =~ ~r/rescord_ruby_reply_input_tokens(\{\})? 600/
+      assert body =~ ~r/rescord_ruby_reply_cache_read_tokens(\{\})? 80/
+      assert body =~ ~r/rescord_ruby_reply_cache_write_tokens(\{\})? 100/
+      assert body =~ ~r/rescord_ruby_reply_output_tokens(\{\})? 140/
+      assert body =~ ~r/rescord_ruby_reply_cost_microdollars(\{\})? 3800/
     end
   end
 end
