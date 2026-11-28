@@ -69,7 +69,7 @@ defmodule RescordWeb.GroupComponents do
             {name}
           </label>
         </fieldset>
-        <footer><.button type="submit">Make the group</.button></footer>
+        <footer><.button type="submit">Add the group</.button></footer>
       </.form>
     </details>
     """

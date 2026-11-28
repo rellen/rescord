@@ -200,9 +200,9 @@ defmodule RescordWeb.ExpenseComponents do
             type="button"
             phx-click="cancel_receipt"
             phx-value-ref={entry.ref}
-            aria-label={"Take out #{entry.client_name}"}
+            aria-label={"Take off #{entry.client_name}"}
           >
-            <.icon name="x-mark" /> Take out
+            <.icon name="x-mark" /> Take off
           </.button>
         </li>
       </ul>

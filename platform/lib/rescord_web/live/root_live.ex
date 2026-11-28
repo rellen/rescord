@@ -58,7 +58,7 @@ defmodule RescordWeb.RootLive do
          socket
          |> assign(problems: [])
          |> assign_organisation_form(new_organisation())
-         |> put_flash(:info, "#{organisation.name} is created.")
+         |> put_flash(:info, "#{organisation.name} is added.")
          |> Cinder.Refresh.refresh_table("organisations")}
 
       {:error, error} ->

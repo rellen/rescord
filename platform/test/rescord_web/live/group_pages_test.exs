@@ -77,7 +77,7 @@ defmodule RescordWeb.GroupPagesTest do
       |> check("Basil")
       |> check("Fern")
       |> check("Sage")
-      |> click_button("Make the group")
+      |> click_button("Add the group")
       # The page of the new group.
       |> assert_has(title("Basil, Fern and Sage"))
       |> assert_has(related(), text: "Sisters and an unrelated male")

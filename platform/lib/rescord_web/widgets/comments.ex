@@ -148,7 +148,9 @@ defmodule RescordWeb.Widgets.Comments do
       case Comments.write(state.subject, %{body: body, told_ids: told}, options(socket)) do
         {:ok, _comment} ->
           {:noreply,
-           again(socket, key, &%{&1 | problems: [], draft: "", told: [], form: &1.form + 1})}
+           socket
+           |> put_flash(:info, "The comment is written.")
+           |> again(key, &%{&1 | problems: [], draft: "", told: [], form: &1.form + 1})}
 
         {:error, error} ->
           problems = for {_field, words} <- Comments.problems(error), do: words
@@ -167,11 +169,17 @@ defmodule RescordWeb.Widgets.Comments do
          socket
        )
        when is_binary(id) and is_binary(body) do
-    act(socket, key, id, &Comments.revise_comment(&1, non_blank(body), &2))
+    act(
+      socket,
+      key,
+      id,
+      "The comment is saved.",
+      &Comments.revise_comment(&1, non_blank(body), &2)
+    )
   end
 
   defp handle_event("delete", %{"widget" => key, "comment_id" => id}, socket) when is_binary(id),
-    do: act(socket, key, id, &Comments.delete_comment/2)
+    do: act(socket, key, id, "The comment is deleted.", &Comments.delete_comment/2)
 
   defp handle_event("follow", %{"widget" => key}, socket) do
     with {:ok, state} <- Widget.fetch(socket, __MODULE__, key) do
@@ -195,15 +203,15 @@ defmodule RescordWeb.Widgets.Comments do
 
   # An event names a comment by its id: the widget takes it only from the
   # comments that it read as the person (AGENTS.md, the journal page).
-  defp act(socket, key, id, fun) do
+  defp act(socket, key, id, words, fun) do
     with {:ok, state} <- Widget.fetch(socket, __MODULE__, key),
          %Comments.Comment{} = comment <- Enum.find(state.comments, &(&1.id == id)) do
       case fun.(comment, options(socket)) do
         :ok ->
-          {:noreply, again(socket, key, &%{&1 | problems: []})}
+          {:noreply, socket |> put_flash(:info, words) |> again(key, &%{&1 | problems: []})}
 
         {:ok, _comment} ->
-          {:noreply, again(socket, key, &%{&1 | problems: []})}
+          {:noreply, socket |> put_flash(:info, words) |> again(key, &%{&1 | problems: []})}
 
         {:error, error} ->
           problems = for {_field, words} <- Comments.problems(error), do: words
@@ -296,7 +304,7 @@ defmodule RescordWeb.Widgets.Comments do
                     required
                     hint={"A change tells nobody again. The comment then says \"changed\", and Rescord keeps no copy of the old words."}
                   />
-                  <footer><button type="submit">Save the change</button></footer>
+                  <footer><button type="submit">Save the comment</button></footer>
                 </form>
               </details>
               <.confirm
@@ -357,7 +365,7 @@ defmodule RescordWeb.Widgets.Comments do
           </fieldset>
         </details>
         <footer>
-          <button type="submit">Post</button>
+          <button type="submit">Write the comment</button>
         </footer>
       </form>
 

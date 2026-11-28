@@ -90,10 +90,10 @@ defmodule RescordWeb.PhotoComponents do
       <p :if={@albums == []}>No album yet. An album keeps some of the photos together.</p>
 
       <details :if={@can_make?} id="make-album-details">
-        <summary><.icon name="plus" /> Make an album</summary>
+        <summary><.icon name="plus" /> New album</summary>
         <form id="make-album" phx-submit="make_album">
           <.input id="album-name" name="album[name]" label="Name of the album" value="" required />
-          <footer><.button type="submit">Make the album</.button></footer>
+          <footer><.button type="submit">Add the album</.button></footer>
         </form>
       </details>
     </section>
@@ -118,7 +118,7 @@ defmodule RescordWeb.PhotoComponents do
             value={@album.name}
             required
           />
-          <footer><.button type="submit">Rename</.button></footer>
+          <footer><.button type="submit">Save the name</.button></footer>
         </form>
       </details>
       <.confirm :if={@can_remove?} id="remove-album" summary="Remove the album">
@@ -166,9 +166,9 @@ defmodule RescordWeb.PhotoComponents do
                 type="button"
                 phx-click="cancel_photo"
                 phx-value-ref={entry.ref}
-                aria-label={"Take out #{entry.client_name}"}
+                aria-label={"Take off #{entry.client_name}"}
               >
-                <.icon name="x-mark" /> Take out
+                <.icon name="x-mark" /> Take off
               </.button>
             </li>
           </ul>

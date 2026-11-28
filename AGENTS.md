@@ -914,6 +914,25 @@ hand (ADR 0073). Read it before you write a migration. In short:
     no `phx-disable-with` is needed against a second send. A confirm step
     ends with its danger button, and a form of one field in a row of a
     table needs no footer.
+  - **One verb for one act**, on the summary, the button and the flash:
+    - "New X" opens the form of a record that a person adds, and "Add the
+      X" sends it ("The X is added."). "Record the X" is for an event: an
+      arrival, a measurement, a payment, stock. "Plan" is for a time ahead,
+      and "Write" for words (an entry, a comment).
+    - "Make" is only for what Rescord makes: a feed, a report, a sheet, a
+      key, an id, a link.
+    - "Change the X" opens the form of a record, and "Save the X" sends it.
+      A journal entry and an expense are corrected, not changed: their
+      history says what was before.
+    - "Remove" takes a thing off a list or out of a record. "Delete" is
+      for what leaves no trace of itself: a token, the counts, the words
+      of a comment. "End", "Close",
+      "Withdraw", "Revoke", "Retire" and "Stop" keep one meaning each.
+    - "Take off" is for a file, also one that is not sent yet, and "Take
+      out" for leaving a group or a family.
+    - The icon follows the act: `no-symbol` ends (end, close, retire,
+      revoke, stop), and `arrow-uturn-left` goes back to how it was
+      (restore, open again, withdraw).
   - **A count on a page** is `Locale.count(n, "photo", "photos")` or
     `Locale.number(n)` of `RescordWeb.Locale`, never a bare `length/1`, so
     1,200 reads as the language of the organisation writes it.

@@ -62,7 +62,7 @@ defmodule RescordWeb.CommentPagesTest do
           part
           |> fill_in("Write a comment", with: "**Weighed** her. <b>No</b> tags.")
           |> check("kim@example.org")
-          |> click(button("Post"))
+          |> click(button("Write the comment"))
         end)
         |> assert_has(comment(~r/Weighed/), text: "Weighed her. <b>No</b> tags.")
         |> assert_has(comment(~r/Weighed/), text: "Told kim@example.org")
@@ -97,7 +97,7 @@ defmodule RescordWeb.CommentPagesTest do
       |> within(comment(~r/Fed at 8\./) |> details("Change"), fn change ->
         change
         |> fill_in("The comment", with: "Fed at 9.")
-        |> click(button("Save the change"))
+        |> click(button("Save the comment"))
       end)
       |> assert_has(comment(~r/Fed at 9\./), text: "changed")
       |> click(comment(~r/Fed at 9\./) |> details("Delete") |> button("Delete the comment"))
@@ -193,7 +193,7 @@ defmodule RescordWeb.CommentPagesTest do
         part
         |> fill_in("Write a comment", with: "Better today.")
         |> check("kim@example.org")
-        |> click(button("Post"))
+        |> click(button("Write the comment"))
       end)
       |> assert_has(comment(~r/Better today\./))
 

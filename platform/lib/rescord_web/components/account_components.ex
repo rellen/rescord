@@ -237,7 +237,7 @@ defmodule RescordWeb.AccountComponents do
           required
         />
         <footer>
-          <.button type="submit"><.icon name="plus" /> Create the organisation</.button>
+          <.button type="submit"><.icon name="plus" /> Add the organisation</.button>
         </footer>
       </.form>
     </section>

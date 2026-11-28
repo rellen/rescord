@@ -213,7 +213,7 @@ defmodule RescordWeb.PhotosLive do
       {:ok, album} ->
         {:noreply,
          socket
-         |> put_flash(:info, "The album is made.")
+         |> put_flash(:info, "The album is added.")
          |> push_navigate(to: "#{path(socket)}?album=#{album.id}")}
 
       {:error, error} ->
@@ -232,7 +232,7 @@ defmodule RescordWeb.PhotosLive do
           {:ok, album} ->
             {:noreply,
              socket
-             |> put_flash(:info, "The album is renamed.")
+             |> put_flash(:info, "The name of the album is saved.")
              |> push_navigate(to: "#{path(socket)}?album=#{album.id}")}
 
           {:error, error} ->

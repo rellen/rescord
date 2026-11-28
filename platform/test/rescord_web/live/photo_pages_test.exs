@@ -82,8 +82,8 @@ defmodule RescordWeb.PhotoPagesTest do
       |> current_album("Garden (0)")
       |> upload("Choose photos", file!(context, "one.jpg", photo(gps: true)))
       |> upload("Choose photos", file!(context, "two.png", photo(format: ".png")))
-      |> assert_has(region("Garden") |> button("Take out one.jpg"))
-      |> assert_has(region("Garden") |> button("Take out two.png"))
+      |> assert_has(region("Garden") |> button("Take off one.jpg"))
+      |> assert_has(region("Garden") |> button("Take off two.png"))
       |> fill_in("Caption", with: "In the garden")
       |> fill_in("Date", with: "2026-11-01")
       |> click_button("Add the photos")
@@ -298,11 +298,11 @@ defmodule RescordWeb.PhotoPagesTest do
     |> visit(context.path)
     |> assert_has(region("Albums"), text: "No album yet.")
     |> fill_in("Name of the album", with: "Recovery")
-    |> click_button("Make the album")
-    |> assert_has(status(), text: "The album is made.")
+    |> click_button("Add the album")
+    |> assert_has(status(), text: "The album is added.")
     |> current_album("Recovery (0)")
     |> fill_in("New name of the album", with: "After surgery")
-    |> click_button("Rename")
+    |> click_button("Save the name")
     |> assert_has(main() |> region("After surgery"))
     |> click(button("Remove the album After surgery"))
     |> assert_has(region("Albums"), text: "No album yet.")
@@ -387,7 +387,7 @@ defmodule RescordWeb.PhotoPagesTest do
 
     for control <- [
           "Add the photos",
-          "Make the album",
+          "Add the album",
           "Save",
           "Make it the profile picture",
           "Remove"
@@ -397,7 +397,7 @@ defmodule RescordWeb.PhotoPagesTest do
 
     conn
     |> visit("#{context.path}?album=#{album.id}")
-    |> refute_has(main() |> button("Rename"))
+    |> refute_has(main() |> button("Save the name"))
     |> refute_has(main() |> button("Remove the album Home"))
     # A sent event is refused by the policy too.
     |> unwrap(&render_click(&1, "make_profile", %{"ref" => "photo-#{photo.id}"}))
