@@ -11,6 +11,10 @@ defmodule RescordWeb.ItemLive do
   The page opens again after a write, so each form is empty and each number
   is read again. It reads only the fields that it knows from what the
   browser sends, and makes no atom from it.
+
+  The page shows what another person changed in the inventory or the
+  locations, without a reload, and leaves its forms as they are
+  (ADR 0096).
   """
 
   use RescordWeb, :live_view
@@ -40,38 +44,27 @@ defmodule RescordWeb.ItemLive do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
+    # Listen first, and then read: no change falls between the two.
+    socket = LiveChanges.listen(socket, [Inventory, Locations], &read_again/1)
     options = options(socket)
     role = socket.assigns.role
 
     with {:ok, _uuid} <- Ecto.UUID.cast(id),
          {:ok, %{} = stock} <- Inventory.item_stock(id, options) do
-      {:ok, tree} = Locations.tree(options)
-      {:ok, suppliers} = Inventory.suppliers(options)
-      {:ok, wanted} = Inventory.reorder_levels(options)
       can_revise? = Inventory.role_can?(role, :item, :revise)
-
-      places =
-        for {node, depth} <- Locations.flat(tree),
-            do: {String.duplicate("– ", depth) <> node.location.name, node.location.id}
 
       {:ok,
        socket
        |> assign(
-         page_title: stock.item.name,
          problems: [],
          refused: nil,
-         stock: stock,
-         item: stock.item,
-         places: places,
-         place_names: Map.new(places, fn {name, id} -> {id, String.trim_leading(name, "– ")} end),
-         suppliers: suppliers |> Enum.map(&{&1.name, &1.id}) |> Enum.sort(),
-         wanted: Enum.filter(wanted, &(&1.item_id == id)),
          members: Accounts.labels(options),
          can_record?: Inventory.role_can?(role, :movement, :use),
          can_revise?: can_revise?,
          can_remove?: Inventory.role_can?(role, :item, :remove),
          can_set_level?: Inventory.role_can?(role, :reorder_level, :set)
        )
+       |> assign_stock(stock)
        |> assign_lists(can_revise?, options)
        |> assign_forms()}
     else
@@ -79,9 +72,58 @@ defmodule RescordWeb.ItemLive do
         {:ok,
          socket
          |> put_flash(:error, "That item is not in the inventory.")
-         |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/inventory")}
+         |> push_navigate(to: inventory_path(socket))}
     end
   end
+
+  # What the page shows of the stock of the item, and of the places and the
+  # suppliers that its forms offer. The history reads as of the instant of
+  # `:as_of` (ADR 0096, "With Cinder"): a query of a temporal resource holds
+  # the instant at which it was built, so each read here gives the history
+  # a new instant, and Cinder reads it again.
+  defp assign_stock(socket, stock) do
+    options = options(socket)
+    id = stock.item.id
+    {:ok, tree} = Locations.tree(options)
+    {:ok, suppliers} = Inventory.suppliers(options)
+    {:ok, wanted} = Inventory.reorder_levels(options)
+
+    places =
+      for {node, depth} <- Locations.flat(tree),
+          do: {String.duplicate("– ", depth) <> node.location.name, node.location.id}
+
+    assign(socket,
+      page_title: stock.item.name,
+      as_of: DateTime.utc_now(),
+      stock: stock,
+      item: stock.item,
+      places: places,
+      place_names: Map.new(places, fn {name, id} -> {id, String.trim_leading(name, "– ")} end),
+      suppliers: suppliers |> Enum.map(&{&1.name, &1.id}) |> Enum.sort(),
+      wanted: Enum.filter(wanted, &(&1.item_id == id))
+    )
+  end
+
+  # Another person changed the inventory or the locations (ADR 0096). The
+  # forms stay as they are, with what the person typed. An item that another
+  # person removed is not there to show. A page that found no item at the
+  # mount goes to the inventory, and has nothing to read.
+  defp read_again(%{assigns: %{item: item}} = socket) do
+    case Inventory.item_stock(item.id, options(socket)) do
+      {:ok, %{} = stock} ->
+        assign_stock(socket, stock)
+
+      {:ok, nil} ->
+        socket
+        |> put_flash(:info, "#{item.name} is not in the inventory now.")
+        |> push_navigate(to: inventory_path(socket))
+
+      {:error, _error} ->
+        socket
+    end
+  end
+
+  defp read_again(socket), do: socket
 
   defp assign_lists(socket, true, options) do
     {:ok, categories} = Lists.offered_values(:item_category, options)
@@ -96,6 +138,8 @@ defmodule RescordWeb.ItemLive do
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
+
+  defp inventory_path(socket), do: ~p"/o/#{socket.assigns.organisation.short_name}/inventory"
 
   defp path(socket),
     do: ~p"/o/#{socket.assigns.organisation.short_name}/inventory/#{socket.assigns.item.id}"
@@ -268,7 +312,7 @@ defmodule RescordWeb.ItemLive do
         {:noreply,
          socket
          |> put_flash(:info, "#{socket.assigns.item.name} is not in the inventory now.")
-         |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/inventory")}
+         |> push_navigate(to: inventory_path(socket))}
 
       {:error, error} ->
         {:noreply, assign(socket, problems: Accounts.error_messages(error), refused: nil)}
@@ -368,6 +412,7 @@ defmodule RescordWeb.ItemLive do
       />
 
       <.stock_history
+        as_of={@as_of}
         lots={@lot_choices}
         item={@item}
         organisation={@organisation}

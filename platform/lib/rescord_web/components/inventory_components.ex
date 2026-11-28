@@ -417,6 +417,8 @@ defmodule RescordWeb.InventoryComponents do
   attr :organisation, :map, required: true
   attr :members, :map, required: true
   attr :user, :map, required: true
+
+  attr :as_of, DateTime, required: true, doc: "the instant that it reads as of (ADR 0096)"
   attr :place_names, :map, required: true
 
   def stock_history(assigns) do
@@ -425,7 +427,9 @@ defmodule RescordWeb.InventoryComponents do
       <h2 id="history-heading">What happened</h2>
       <Cinder.collection
         id="history"
-        query={Inventory.query_to_history(@item.id, actor: @user, tenant: @organisation)}
+        query={
+          Inventory.query_to_history(@item.id, actor: @user, tenant: @organisation, as_of: @as_of)
+        }
         actor={@user}
         tenant={@organisation}
         page_size={[default: 25, options: [25, 50, 100]]}
@@ -694,6 +698,8 @@ defmodule RescordWeb.InventoryComponents do
   attr :organisation, :any, required: true
   attr :user, :any, required: true
   attr :url_state, :any, required: true, doc: "the state that the address holds (ADR 0084)"
+
+  attr :as_of, DateTime, required: true, doc: "the instant that it reads as of (ADR 0096)"
   attr :categories, :list, required: true, doc: "each category, as the choices of a filter"
   attr :with_fault, :any, required: true
 
@@ -710,7 +716,8 @@ defmodule RescordWeb.InventoryComponents do
               sort: [name: :asc, id: :asc]
             ],
             actor: @user,
-            tenant: @organisation
+            tenant: @organisation,
+            as_of: @as_of
           )
         }
         actor={@user}

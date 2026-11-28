@@ -769,6 +769,99 @@ defmodule RescordWeb.InventoryPagesTest do
     end
   end
 
+  # The items and the history of an item are collections of temporal
+  # resources: a read again with the instant of the first draw would not
+  # find what changed after it (ADR 0096, "With Cinder").
+  describe "the pages hear what another person changed (ADR 0096)" do
+    test "the inventory shows a new item, a new level and a removal", context do
+      {view, html} = open(context.conn, context.path)
+      refute rows(html) =~ "Aspen bedding"
+      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
+      assert has_element?(view, hay <> " [data-state=none]", "None in stock")
+
+      bedding = Inventory.add_item!(%{name: "Aspen bedding"}, context.admin)
+      assert rows(render_changes(view)) =~ "Aspen bedding"
+
+      # A delivery of another member changes the level of the hay.
+      lot!(context)
+      render_changes(view)
+      assert has_element?(view, hay <> " td", "10 bag")
+      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
+
+      :ok = Inventory.remove_item(bedding, context.admin)
+      refute rows(render_changes(view)) =~ "Aspen bedding"
+    end
+
+    test "the inventory keeps its filter when it reads again", context do
+      {view, html} = open(context.conn, context.path <> "?state=short")
+      assert html =~ "No item matches the search and the filters."
+
+      # The bedding wants two and has none, so it is short. The filter reads
+      # the stock as of the new instant too.
+      Inventory.add_item!(%{name: "Aspen bedding", reorder_level: 2}, context.admin)
+      Inventory.add_item!(%{name: "Wire brush"}, context.admin)
+
+      html = rows(render_changes(view))
+      assert html =~ "Aspen bedding"
+      refute html =~ "Meadow hay"
+      refute html =~ "Wire brush"
+    end
+
+    test "the page of an item shows the stock and the history of another member", context do
+      {view, html} = open(context.conn, context.item_path)
+      assert html =~ "There is no stock of this item."
+      refute has_element?(view, "#use")
+
+      lot = lot!(context)
+
+      html = render_changes(view)
+      assert has_element?(view, "dd", "10 bag")
+      assert has_element?(view, "#lot-#{lot.id} li", "Feed shed: 10 bag")
+      assert has_element?(view, "#history td", "Lot B-1")
+      refute html =~ "Nothing happened to the stock of this item yet."
+      # The forms that take stock out are there now, with the new lot.
+      assert has_element?(view, "#use-form option[value=\"#{lot.id}|#{context.shed.id}\"]")
+
+      Inventory.use_stock!(
+        %{lot_id: lot.id, location_id: context.shed.id, quantity: 3},
+        context.admin
+      )
+
+      render_changes(view)
+      assert has_element?(view, "dd", "7 bag")
+      assert has_element?(view, "#history td", "−3")
+    end
+
+    test "the page of an item leaves its forms alone when it reads again", context do
+      {view, _html} = open(context.conn, context.item_path)
+      tomorrow = Date.to_iso8601(Date.add(context.today, 1)) <> "T08:00"
+
+      view
+      |> form("#receive-form", receive: %{quantity: "4", code: "C-9", at: tomorrow})
+      |> render_submit()
+
+      assert has_element?(view, "#receive [role=alert]", "The time cannot be after now")
+
+      lot!(context)
+      render_changes(view)
+
+      assert has_element?(view, "dd", "10 bag")
+      # The refused form keeps what the person typed, and why it was refused.
+      assert has_element?(view, ~s|#receive-form input[name="receive[code]"][value="C-9"]|)
+      assert has_element?(view, "#receive [role=alert]", "The time cannot be after now")
+    end
+
+    test "the page of an item goes to the inventory when another person removes it",
+         context do
+      {view, _html} = open(context.conn, context.item_path)
+      :ok = Inventory.remove_item(context.hay, context.admin)
+
+      {path, flash} = assert_redirect(view)
+      assert path == context.path
+      assert flash["info"] == "Meadow hay is not in the inventory now."
+    end
+  end
+
   describe "the suppliers" do
     test "are a list that a member reads, with no form", context do
       Inventory.add_supplier!(%{name: "Valley Feeds", contact: "07 5550 0100"}, context.admin)

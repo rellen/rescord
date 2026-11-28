@@ -667,6 +667,11 @@ release (ADR 0047).
   An instance on several machines shows such a change on each machine
   only when the machines form a cluster (`DNS_CLUSTER_QUERY`); with no
   cluster the pages on another machine are as before.
+- The inventory and the page of an item show what another person did,
+  without a reload too: a new or removed item, a delivery, a use, a move
+  or a count, with the levels, the states and the history. A form that a
+  person is filling in stays as it is. When another person removes the
+  item, its page goes back to the inventory and says so (ADR 0096).
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,

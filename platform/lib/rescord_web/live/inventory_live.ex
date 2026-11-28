@@ -10,6 +10,9 @@ defmodule RescordWeb.InventoryLive do
   the category and on the state of the stock, and pages. The address holds
   them (ADR 0084), so `?state=short` is the list of the items to order.
   Cinder reads those parameters, and this page reads none of them.
+
+  The page shows what another person changed in the inventory, without a
+  reload (ADR 0096).
   """
 
   use RescordWeb, :live_view
@@ -35,8 +38,11 @@ defmodule RescordWeb.InventoryLive do
       end
 
     {:ok,
-     assign(socket,
+     socket
+     |> LiveChanges.listen([Inventory], &read_again/1)
+     |> assign(
        page_title: "Inventory",
+       as_of: DateTime.utc_now(),
        problems: [],
        all_categories: all_categories(options),
        with_fault: &with_fault(&1, &2, options),
@@ -46,6 +52,12 @@ defmodule RescordWeb.InventoryLive do
        form: to_form(%{}, as: :item)
      )}
   end
+
+  # The collection reads as of the instant of `:as_of` (ADR 0096, "With
+  # Cinder"): a query of a temporal resource holds the instant at which it
+  # was built, so a refresh of the same query would read the past. A new
+  # instant is a new query, and Cinder reads it again.
+  defp read_again(socket), do: assign(socket, as_of: DateTime.utc_now())
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
@@ -65,11 +77,11 @@ defmodule RescordWeb.InventoryLive do
 
   # The filter on the state of the stock. The value comes from the address
   # or from the form of the filter: a value that names no fault changes
-  # nothing.
+  # nothing. The stock is that of the instant of the query.
   defp with_fault(query, %{value: value}, options) do
     case InventoryWords.fault_of(value) do
       nil -> query
-      fault -> Inventory.with_fault(query, fault, options)
+      fault -> Inventory.with_fault(query, fault, [as_of: query.as_of] ++ options)
     end
   end
 
@@ -143,6 +155,7 @@ defmodule RescordWeb.InventoryLive do
         organisation={@organisation}
         user={@current_user}
         url_state={@url_state}
+        as_of={@as_of}
         categories={@all_categories}
         with_fault={@with_fault}
       />
