@@ -531,6 +531,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - Do not take `Rescord.Log.attach/0` out of the start of the
     application: without it, a page that stops with a fault writes the
     form of the person.
+- **Metrics** (ADR 0077). A new metric is a line of `Rescord.Metrics`, or
+  of `RescordWeb.Telemetry` for a request or a page. Its name starts with
+  `rescord.`, and a time is a `duration/2` in milliseconds. A tag is a
+  module, an atom or a number that the server sets: never an id, a name,
+  the path of a request or the name of an event of a page, which a client
+  sends. A number about the work of a rescue is a row of a page, not a
+  metric. Do not add AshMetrics, PromEx or OpenTelemetry without the
+  maintainer.
 - **Errors** (ADR 0077). A new failure of our own that can reach a person
   is a module with `use Splode.Error, fields: [...], class: :invalid` (or
   `:forbidden`), in the domain that returns it. Do not return a sentence
@@ -781,6 +789,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/report_words.ex`, `report_words/` | the words of each report |
 | `platform/priv/typst/` | the Typst templates of the reports, their shared look, and the fonts with their licence |
 | `platform/lib/rescord/log.ex`, `log/` | what the log holds and keeps out: the fields of a line, the safe text of a failure, the crash reports, the lines of the jobs (ADR 0077) |
+| `platform/lib/rescord/metrics.ex`, `platform/lib/rescord_web/telemetry.ex` | the metrics, and the endpoint that a collector reads (ADR 0077) |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |

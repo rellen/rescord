@@ -1,6 +1,27 @@
 defmodule RescordWeb.Telemetry do
+  @moduledoc """
+  The metrics of Rescord, and the endpoint that a collector reads (ADR 0077).
+
+  `metrics/0` is the whole list: the requests and the pages, and the metrics
+  of the core (`Rescord.Metrics`). LiveDashboard draws it in development.
+
+  A release measures nothing by default. When the operator sets
+  `RESCORD_METRICS_PORT`, this supervisor starts a reporter (Peep), and a
+  small web server on that port that answers `GET /metrics` in the format
+  of Prometheus, and 404 for each other path. The port is not the port of
+  the pages, so a reverse proxy does not publish it. The metrics have no
+  sign-in: keep the port inside the network of the server.
+
+  See `Rescord.Metrics` for the rule about the tags.
+  """
+
   use Supervisor
+
   import Telemetry.Metrics
+
+  alias Rescord.Metrics
+
+  @reporter __MODULE__.Reporter
 
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
@@ -8,86 +29,91 @@ defmodule RescordWeb.Telemetry do
 
   @impl true
   def init(_arg) do
-    children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
-    ]
+    settings = Application.get_env(:rescord, __MODULE__, [])
 
-    Supervisor.init(children, strategy: :one_for_one)
+    # Ash measures an action only while something listens: the reporter, or
+    # LiveDashboard in development.
+    if settings[:port] || Application.get_env(:rescord, :dev_routes), do: Metrics.attach()
+
+    # The measurements of the VM come from the application `telemetry_poller`,
+    # which emits them with no child here.
+    Supervisor.init(reporter(settings), strategy: :one_for_one)
   end
 
+  @doc """
+  The children that report the metrics: the reporter, and the web server of
+  `/metrics` on `:port` and `:ip`. With no port there is none.
+  """
+  @spec reporter(keyword) :: [Supervisor.child_spec() | {module, keyword}]
+  def reporter(settings) do
+    case settings[:port] do
+      nil ->
+        []
+
+      port ->
+        [
+          {Peep, name: @reporter, metrics: metrics()},
+          {Bandit,
+           plug: {Peep.Plug, peep_worker: @reporter, on_unmatched_path: :halt},
+           scheme: :http,
+           ip: Keyword.get(settings, :ip, {127, 0, 0, 1}),
+           port: port}
+        ]
+    end
+  end
+
+  @doc "Each metric of Rescord, as `Telemetry.Metrics` definitions."
+  @spec metrics() :: [struct]
   def metrics do
     [
-      # Phoenix Metrics
-      summary("phoenix.endpoint.start.system_time",
-        unit: {:native, :millisecond}
+      Metrics.duration("rescord.http.request.duration.milliseconds",
+        event_name: [:phoenix, :endpoint, :stop],
+        measurement: :duration,
+        tags: [:status],
+        tag_values: &%{status: &1.conn.status},
+        description: "The time of a request, by the status of its answer"
       ),
-      summary("phoenix.endpoint.stop.duration",
-        unit: {:native, :millisecond}
-      ),
-      summary("phoenix.router_dispatch.start.system_time",
+      Metrics.duration("rescord.http.route.duration.milliseconds",
+        event_name: [:phoenix, :router_dispatch, :stop],
+        measurement: :duration,
         tags: [:route],
-        unit: {:native, :millisecond}
+        description: "The time of a request in its controller or page, by route"
       ),
-      summary("phoenix.router_dispatch.exception.duration",
+      counter("rescord.http.exception.count",
+        event_name: [:phoenix, :router_dispatch, :exception],
         tags: [:route],
-        unit: {:native, :millisecond}
+        description: "The requests that stopped with a fault"
       ),
-      summary("phoenix.router_dispatch.stop.duration",
-        tags: [:route],
-        unit: {:native, :millisecond}
+      Metrics.duration("rescord.page.mount.duration.milliseconds",
+        event_name: [:phoenix, :live_view, :mount, :stop],
+        measurement: :duration,
+        tags: [:view],
+        tag_values: &view/1,
+        description: "The time that a page takes to open"
       ),
-      summary("phoenix.socket_connected.duration",
-        unit: {:native, :millisecond}
+      counter("rescord.page.mount.exception.count",
+        event_name: [:phoenix, :live_view, :mount, :exception],
+        tags: [:view],
+        tag_values: &view/1,
+        description: "The pages that stopped with a fault when they opened"
       ),
-      sum("phoenix.socket_drain.count"),
-      summary("phoenix.channel_joined.duration",
-        unit: {:native, :millisecond}
+      Metrics.duration("rescord.page.event.duration.milliseconds",
+        event_name: [:phoenix, :live_view, :handle_event, :stop],
+        measurement: :duration,
+        tags: [:view],
+        tag_values: &view/1,
+        description: "The time of an event of a page"
       ),
-      summary("phoenix.channel_handled_in.duration",
-        tags: [:event],
-        unit: {:native, :millisecond}
-      ),
-
-      # Database Metrics
-      summary("rescord.repo.query.total_time",
-        unit: {:native, :millisecond},
-        description: "The sum of the other measurements"
-      ),
-      summary("rescord.repo.query.decode_time",
-        unit: {:native, :millisecond},
-        description: "The time spent decoding the data received from the database"
-      ),
-      summary("rescord.repo.query.query_time",
-        unit: {:native, :millisecond},
-        description: "The time spent executing the query"
-      ),
-      summary("rescord.repo.query.queue_time",
-        unit: {:native, :millisecond},
-        description: "The time spent waiting for a database connection"
-      ),
-      summary("rescord.repo.query.idle_time",
-        unit: {:native, :millisecond},
-        description:
-          "The time the connection spent waiting before being checked out for the query"
-      ),
-
-      # VM Metrics
-      summary("vm.memory.total", unit: {:byte, :kilobyte}),
-      summary("vm.total_run_queue_lengths.total"),
-      summary("vm.total_run_queue_lengths.cpu"),
-      summary("vm.total_run_queue_lengths.io")
-    ]
+      counter("rescord.page.event.exception.count",
+        event_name: [:phoenix, :live_view, :handle_event, :exception],
+        tags: [:view],
+        tag_values: &view/1,
+        description: "The pages that stopped with a fault in an event"
+      )
+    ] ++ Metrics.metrics()
   end
 
-  defp periodic_measurements do
-    [
-      # A module, function and arguments to be invoked periodically.
-      # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {RescordWeb, :count_users, []}
-    ]
-  end
+  # The module of the page. The name of the event is not a tag: a client
+  # sends it.
+  defp view(%{socket: socket}), do: %{view: inspect(socket.view)}
 end

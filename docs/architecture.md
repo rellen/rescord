@@ -664,7 +664,7 @@ code does not have yet is what its phase lands.
   archive. Both are exceptions that ADR 0069 states.
 - No test calls a provider: a scripted model answers.
 
-## The log and the errors
+## The log, the metrics and the errors
 
 **The log says whose a line is, and holds nothing of a person** (ADR 0077).
 
@@ -685,6 +685,17 @@ code does not have yet is what its phase lands.
   writes none, and its own logger writes the arguments of the job.
 - The operator sets the level with `RESCORD_LOG_LEVEL`. The format is
   text.
+
+**The metrics are for the operator, and are off until the operator names a
+port** (ADR 0077). `RescordWeb.Telemetry.metrics/0` is the list, as
+`Telemetry.Metrics` definitions: the requests and the pages there, and the
+queries, the actions of Ash, the jobs, the emails, the photos and the VM
+in `Rescord.Metrics`. With `RESCORD_METRICS_PORT`, a reporter (Peep) keeps
+the numbers, and a web server of its own answers `GET /metrics` in the
+format of Prometheus. No tag holds a value that a client sends or the id
+of a person. A number about the work of a rescue is on a page (see "What
+needs attention"), and not a metric. Rescord does not use AshMetrics, and
+has no traces.
 
 **An error of our own is a Splode error in a class of Ash** (ADR 0077).
 Each action answers with the classes of Ash, and Rescord has no second

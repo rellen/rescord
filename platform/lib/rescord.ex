@@ -23,6 +23,7 @@ defmodule Rescord do
       Images.Limit,
       Log,
       Mailer,
+      Metrics,
       RateLimit,
       Repo,
       Resource,

@@ -128,6 +128,8 @@ defmodule Rescord.Images.Limit do
       {{^monitor, from, _timer}, rest} ->
         Process.demonitor(monitor, [:flush])
 
+        :telemetry.execute([:rescord, :photos, :refused], %{count: 1}, %{})
+
         Logger.warning(
           "A photo waited #{state.wait} ms for one of the #{state.slots} slots of libvips, " <>
             "and did not go through. RESCORD_PHOTO_SLOTS sets the number of the slots."

@@ -278,6 +278,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_S3_SECRET_ACCESS_KEY` | with `s3` | | Its secret. |
 | `RESCORD_PHOTO_SLOTS` | no | `2` | The number of photos that Rescord works on at the same time (ADR 0056). A photo of a phone takes about 150 MB while Rescord turns it and removes its metadata, and the largest photo about 300 MB. More photos wait for their turn. Give a server with more memory a larger number. |
 | `RESCORD_LOG_LEVEL` | no | `info` | How much the log holds: `debug`, `info`, `warning` or `error` (see "The log"). `debug` also writes what people type, so use it for a short time. |
+| `RESCORD_METRICS_PORT` | no | | A port for the metrics of the server, in the format of Prometheus (see "The metrics"). With no port, Rescord measures nothing. The metrics have no sign-in: do not publish this port. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |
 | `RESCORD_BACKUP_KEEP_DAYS` | no | `14` | The number of days that a backup keeps a dump of the database (see "Back up"). |
 | `ECTO_IPV6` | no | `false` | `true` to reach the database over IPv6. |
@@ -327,6 +328,34 @@ level, and the words:
   again.
 
 Rescord sends its log and its errors to no other service.
+
+## The metrics
+
+Rescord can give numbers about itself to a collector such as Prometheus:
+how long the requests, the pages, the queries and the actions take, the
+jobs that fail, the emails, and the memory. It is off until you set
+`RESCORD_METRICS_PORT`, for example to `9568`. Rescord then answers
+`GET /metrics` on that port, on the address of `RESCORD_LISTEN_ADDRESS`,
+in the text format of Prometheus. Each other path there answers 404.
+
+```yaml
+scrape_configs:
+  - job_name: rescord
+    static_configs:
+      - targets: ["127.0.0.1:9568"]
+```
+
+- The port has no sign-in and no TLS. Do not put it behind the reverse
+  proxy of the pages, and do not open it in a firewall. With Docker
+  Compose, publish it to the machine alone
+  (`127.0.0.1:9568:9568`), or let the collector join the network of the
+  Compose file.
+- The name of each metric starts with `rescord_`, and each time is in
+  milliseconds. No label holds the id of a person or the name of an
+  organisation: a label is a route, a module, a worker, or a status.
+- The numbers start at zero when Rescord starts.
+- The numbers of a rescue (the residents, the tasks) are on its pages, and
+  not here.
 
 ## Back up
 

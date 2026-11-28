@@ -78,8 +78,8 @@ release (ADR 0047).
   worker, the queue and the try of a background job. A background job
   that fails now writes a line, which is a warning while Rescord tries it
   again and an error after the last try. A tool that reads the log of
-  Rescord may need its pattern changed. One new setting is optional:
-  `RESCORD_LOG_LEVEL`.
+  Rescord may need its pattern changed. Two new settings are optional:
+  `RESCORD_LOG_LEVEL` and `RESCORD_METRICS_PORT`.
 
 ### Added
 
@@ -170,6 +170,14 @@ release (ADR 0047).
   A person who can invite and remove members sees who has a feed, and
   when a calendar app last read it, and can revoke it. The notes that
   people wrote are in a feed only when the member asks for them.
+- Rescord can give metrics about itself to a collector such as
+  Prometheus: how long the requests, the pages, the queries and the
+  actions take, the background jobs that fail, the emails, and the
+  memory. It is off until `RESCORD_METRICS_PORT` names a port. Rescord
+  then answers `GET /metrics` on that port, which is not the port of the
+  pages and has no sign-in, so keep it inside the network of the server.
+  No label holds the id of a person or the name of an organisation.
+  `docs/self-hosting.md`, "The metrics", has the steps.
 - `RESCORD_LOG_LEVEL` sets how much the log holds: `debug`, `info` (the
   default), `warning` or `error`. `debug` also writes what people type,
   so it is for a short look at a fault.
