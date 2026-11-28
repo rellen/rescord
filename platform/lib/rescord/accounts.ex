@@ -30,7 +30,13 @@ defmodule Rescord.Accounts do
     check aliases: true
     deps [Rescord, Rescord.Mail]
     # Another domain holds its own grants, and uses the check (ADR 0024).
-    exports [Rescord.Accounts.Grants, Rescord.Accounts.Checks.Granted]
+    exports [
+      Rescord.Accounts.Grants,
+      Rescord.Accounts.Checks.Granted,
+      # A change and a validation that each domain uses (ADR 0086).
+      Rescord.Accounts.Changes.SetAuthor,
+      Rescord.Accounts.Validations.NotAfterToday
+    ]
   end
 
   paper_trail do

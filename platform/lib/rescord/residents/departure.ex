@@ -20,7 +20,7 @@ defmodule Rescord.Residents.Departure do
 
     create :record do
       accept [:resident_id, :kind, :departed_on, :note]
-      validate {Rescord.Residents.Validations.NotAfterToday, attribute: :departed_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :departed_on}
 
       emit Rescord.Residents.Signals, :resident_departed, fields: [resident_id: :resident_id]
     end
@@ -29,7 +29,7 @@ defmodule Rescord.Residents.Departure do
       # The validation reads the date in Elixir.
       require_atomic? false
       accept [:kind, :departed_on, :note]
-      validate {Rescord.Residents.Validations.NotAfterToday, attribute: :departed_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :departed_on}
     end
 
     destroy :withdraw

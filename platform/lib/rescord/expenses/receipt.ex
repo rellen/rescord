@@ -51,7 +51,7 @@ defmodule Rescord.Expenses.Receipt do
       description "Attaches a file to an expense"
       accept [:expense_id, :name]
       argument :content, :binary, allow_nil?: false, sensitive?: true
-      change Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Changes.StoreReceipt
       validate Validations.ExpenseOfActor, before_action?: true
     end

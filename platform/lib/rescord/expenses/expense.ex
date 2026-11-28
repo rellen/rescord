@@ -95,14 +95,14 @@ defmodule Rescord.Expenses.Expense do
   pipelines do
     pipeline :new_expense do
       description "What each new expense gets: its author, its amount and the person who paid"
-      change Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Changes.SetAmount
       change Changes.SetPayer
     end
 
     pipeline :checked_facts do
       description "What holds for the facts of an expense, each time a person writes them"
-      validate {Validations.NotAfterToday, attribute: :incurred_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :incurred_on}
       validate Validations.CategoryOfOrganisation, before_action?: true
       validate Validations.ResidentOfOrganisation, before_action?: true
     end
@@ -168,7 +168,7 @@ defmodule Rescord.Expenses.Expense do
       change filter(expr(state == :approved and paid_by == :member))
       change transition_state(:reimbursed)
       change Changes.PayBack
-      validate {Validations.NotAfterToday, attribute: :reimbursed_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :reimbursed_on}
     end
 
     update :reopen do

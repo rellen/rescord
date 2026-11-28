@@ -426,6 +426,11 @@ hand (ADR 0073). Read it before you write a migration. In short:
     group with a validation before a change is not one pipeline. A pipeline
     holds no argument, no `accept` and no `emit`. `Rescord.Expenses.Expense`
     is the example.
+  - A record that a person writes gets its author with
+    `Rescord.Accounts.Changes.SetAuthor`, and a date of a thing that
+    happened is checked with
+    `{Rescord.Accounts.Validations.NotAfterToday, attribute: :the_date}`
+    (ADR 0086). Do not write another one in a domain.
   - A request for a sign-in link answers at once (ADR 0019). It starts a
     supervised task and gives the same answer in each case: a known address,
     an address that Rescord does not know, and a fault. Do no work that

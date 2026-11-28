@@ -14,14 +14,14 @@ defmodule Rescord.Residents.Arrival do
 
     create :record do
       accept [:resident_id, :kind, :arrived_on, :note]
-      validate {Rescord.Residents.Validations.NotAfterToday, attribute: :arrived_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :arrived_on}
     end
 
     update :correct do
       # The validation reads the date in Elixir.
       require_atomic? false
       accept [:kind, :arrived_on, :note]
-      validate {Rescord.Residents.Validations.NotAfterToday, attribute: :arrived_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :arrived_on}
     end
   end
 

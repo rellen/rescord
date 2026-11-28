@@ -2,8 +2,9 @@
 
 Status: accepted for the rule and for `Expense` (the maintainer asked on
 28 November 2026: "are we using Ash pipelines to clean up action
-declarations?"). The two proposals at the end wait for the maintainer.
-Issue 18 holds the assessment.
+declarations?"). The maintainer chose proposal P2 on 28 November 2026, and
+it is built. Proposal P1 waits for the maintainer. Issue 18 holds the
+assessment.
 
 ## Context
 
@@ -14,7 +15,7 @@ takes the group:
 ```elixir
 pipelines do
   pipeline :checked_facts do
-    validate {Validations.NotAfterToday, attribute: :incurred_on}
+    validate {Accounts.Validations.NotAfterToday, attribute: :incurred_on}
     validate Validations.CategoryOfOrganisation, before_action?: true
   end
 end
@@ -107,14 +108,21 @@ No, and there is little for a pipeline to take.
   person who reads a resource no longer sees its policy in it, and this is
   the part of a resource that a review reads first. The sweep of ADR 0063
   holds in both cases.
-- **P2. One `SetAuthor` and one `NotAfterToday`.** `Expenses`, `Journal`
-  and `Photos` each have a `SetAuthor` with the same body. `Expenses`,
-  `Photos` and `Residents` each have a `NotAfterToday`, and the three find
-  today in three ways: the one of `Expenses` reads the clock, which is
-  right for a resource that is not temporal, and the other two read the
-  instant of the action. One module of each, beside `Rescord.Resource`,
-  takes about 90 lines off. It is not a move that changes nothing by
-  construction, so it needs its tests.
+- **P2. One `SetAuthor` and one `NotAfterToday`. Built.** `Expenses`,
+  `Journal` and `Photos` each had a `SetAuthor` with the same body.
+  `Expenses`, `Photos` and `Residents` each had a `NotAfterToday`, and the
+  three found today in three ways. Now `Rescord.Accounts.Changes.SetAuthor`
+  and `Rescord.Accounts.Validations.NotAfterToday` are the only ones, and
+  `Rescord.Accounts` exports them as it exports `Checks.Granted`: both
+  need the user and the time zone of the organisation, which are of that
+  domain. The validation takes the date as the option `:attribute`. Today
+  is the date at the instant of the action when the action has one, and
+  else by the clock, which is what each of the three did for its own
+  resources. One thing differs: when the caller gives the organisation as
+  a record, the validation of an expense and of a photo now reads the time
+  zone from that record, as the one of a resident did, and makes no query
+  for it. The compiled actions are the same but for the names of the two
+  modules and the new option of the photo.
 
 ## Consequences
 
