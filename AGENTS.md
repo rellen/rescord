@@ -914,6 +914,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
     no `phx-disable-with` is needed against a second send. A confirm step
     ends with its danger button, and a form of one field in a row of a
     table needs no footer.
+  - **A count on a page** is `Locale.count(n, "photo", "photos")` or
+    `Locale.number(n)` of `RescordWeb.Locale`, never a bare `length/1`, so
+    1,200 reads as the language of the organisation writes it.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as

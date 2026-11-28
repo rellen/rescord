@@ -95,7 +95,9 @@ defmodule RescordWeb.AttentionComponents do
         </ul>
         <p>
           <span :if={part.total > length(part.rows)}>
-            These are the first {length(part.rows)} of {part.total}.
+            These are the first {RescordWeb.Locale.number(length(part.rows))} of {RescordWeb.Locale.number(
+              part.total
+            )}.
           </span>
           <.link navigate={part_path(@organisation, part.part)}>
             {link_words(part.part)} <.icon name="chevron-right" />
