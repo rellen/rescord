@@ -50,14 +50,17 @@ defmodule RescordWeb.LocationComponents do
   attr :organisation, :map, required: true
   attr :level, :integer, required: true, doc: "the level of the heading, from 2 to 6"
 
-  @doc "One location as a card, with the locations inside it as cards in it."
+  @doc "One location as a card named by its heading, with the locations inside it as cards in it."
   def place(assigns) do
     assigns = assign(assigns, free?: assigns.node.count == 0 and assigns.node.children == [])
 
     ~H"""
-    <article data-place={if @free?, do: "free", else: "used"}>
+    <article
+      data-place={if @free?, do: "free", else: "used"}
+      aria-labelledby={"place-#{@node.location.id}"}
+    >
       <header>
-        <.dynamic_tag tag_name={"h#{min(@level, 6)}"}>
+        <.dynamic_tag tag_name={"h#{min(@level, 6)}"} id={"place-#{@node.location.id}"}>
           <.link navigate={~p"/o/#{@organisation.short_name}/housing/#{@node.location.id}"}>{@node.location.name}</.link>
         </.dynamic_tag>
         <small>
