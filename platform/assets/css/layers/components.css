@@ -1748,3 +1748,14 @@ pre[data-source] {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+/* ------------------------------------------------------------ documents */
+
+/* A document that a page shows as it is, such as the JSON of the usage
+   counts (ADR 0098): its long lines wrap, so that nothing scrolls sideways
+   on a phone, and the indent stays. */
+pre[data-wrap] {
+  overflow-x: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -3,6 +3,11 @@ import Config
 # Jobs are not run unless a test runs them itself.
 config :rescord, Oban, testing: :manual
 
+# The usage counts stay in memory until a test writes them (ADR 0098).
+config :rescord, Rescord.Usage.Counter, auto?: false
+# A send of the usage counts goes to a stub of `Req.Test`.
+config :rescord, Rescord.Usage.Sender, req_options: [plug: {Req.Test, Rescord.Usage.Sender}]
+
 config :ash,
   policies: [show_policy_breakdowns?: true],
   keyset_signing_secret: "RCqjVbP5zdhSYiU+ArBvz7f6Vj0YEk2VjYm0j+PfFkI",

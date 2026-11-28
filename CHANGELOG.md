@@ -113,6 +113,15 @@ release (ADR 0047).
     or names that one. Each other kind gets no standard unit. It changes
     no measurement: each keeps the number and the unit that the person
     recorded.
+  - `20261128084020_add_the_usage_counts`, in the database: adds the table
+    of the usage counts, the table of their settings and the table of the
+    history of the settings. All three are empty until Rescord counts. It
+    changes no row.
+- After the upgrade, Rescord counts how often each feature is used on the
+  server, and keeps the counts in its database for its root users, at
+  `/root/usage`. It sends them nowhere. A root user can turn the counting
+  off there, or name an address that gets them (see "Usage counts" in
+  `docs/self-hosting.md`).
 - Each organisation has the paper A4 for its reports after the upgrade. An
   administrator of a rescue that prints on US Letter changes it on the
   settings page, in "Paper of the reports".
@@ -192,6 +201,15 @@ release (ADR 0047).
 
 ### Added
 
+- Usage counts (ADR 0098): Rescord counts, for each day, how often each
+  feature of the server is used: the pages that open, the actions that
+  people run and the files that it sends, with no person, organisation or
+  record in a count. A root user reads them on the new page `/root/usage`,
+  and chooses there whether the counts stay on the server (the default),
+  go each day to one address as OpenTelemetry metrics (OTLP, JSON over
+  HTTP) or as a plain JSON document, or are not counted at all. The page
+  shows the exact document before anything is sent, and has "Send a
+  test". The metrics endpoint has the counter `rescord_usage_count` too.
 - A kind of measurement, such as the weight, can have a standard unit,
   which an administrator chooses on the page Lists. Rescord then shows
   each measurement of that kind in that unit: in the charts and their

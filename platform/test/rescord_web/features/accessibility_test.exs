@@ -80,6 +80,29 @@ defmodule RescordWeb.Features.AccessibilityTest do
     end
   end
 
+  for {name, viewport, scheme} <- [
+        {"a phone in the light scheme", @phone, :light},
+        {"a wide screen in the dark scheme", @wide, :dark}
+      ] do
+    @tag browser_context_opts: [
+           viewport: viewport,
+           color_scheme: scheme,
+           has_touch: viewport.width < 1000
+         ]
+    test "the pages of a root user keep the rules on #{name}", %{conn: session} do
+      address = "root.#{unquote(scheme)}.#{unquote(viewport.width)}@wattle-creek.example.org"
+      root = root!(address)
+      Rescord.UsageFixtures.usage!(root)
+
+      session = sign_in_with_link(session, address)
+
+      found =
+        Enum.flat_map(~w(/root /root/ruby /root/usage), &problems(visit(session, &1), &1))
+
+      assert found == [], Enum.join(found, "\n\n")
+    end
+  end
+
   @tag browser_context_opts: [viewport: @phone, has_touch: true]
   test "a form with its errors, the open menu, an open filter and a notice keep the rules",
        %{conn: session, home: home} = context do

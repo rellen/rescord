@@ -925,6 +925,22 @@ of a person. A number about the work of a rescue is on a page (see "What
 needs attention"), and not a metric. Rescord does not use AshMetrics, and
 has no traces.
 
+**The usage counts say which features are in use, and stay on the server
+until a root user names an address** (ADR 0098). `Rescord.Usage.Actions`
+and `RescordWeb.Usage` listen to the `:telemetry` events of Ash and
+Phoenix, and `Rescord.Usage.count/3` adds one in memory for a day, a
+feature of `Rescord.Usage.Features`, a kind and the name of the item in
+the code. `Rescord.Usage.Counter` writes the memory to the shared table
+`usage_counts` each minute. A count holds nothing of a person, an
+organisation, a record or a host. `Rescord.Usage.Settings` holds the mode
+(`off`, `local` by default, `send`), the address, the format (OTLP JSON or
+the plain document of `Rescord.Usage.Document`) and the token under
+AshCloak, and a root user sets them at `/root/usage`. The job
+`Rescord.Usage.Workers.Send` sends each full day each hour in the mode
+`send`. The counter `rescord.usage.count` is on the metrics endpoint too.
+A new page, domain, resource or file route needs its feature: tests fail
+without one.
+
 **An error of our own is a Splode error in a class of Ash** (ADR 0077).
 Each action answers with the classes of Ash, and Rescord has no second
 tree. A new failure that can reach a person is a module with

@@ -362,8 +362,74 @@ scrape_configs:
   server. The use of one organisation is in its own records, and the bill
   of the provider is the truth.
 - The numbers start at zero when Rescord starts.
+- `rescord_usage_count` counts the use of each feature (see "Usage
+  counts").
 - The numbers of a rescue (the residents, the tasks) are on its pages, and
   not here.
+
+## Usage counts
+
+Rescord counts how often each feature is used on the server, for each
+day: the pages that open, the actions that people run, and the files
+that Rescord sends, such as a report or a calendar feed (ADR 0098). A
+count holds a day, a feature, a kind and the name of a page, an action
+or a file as the code names it. It holds no person, no organisation, no
+record, no host name and no time closer than the day.
+
+**Nothing leaves the server unless you send it.** A new or upgraded
+server counts, and shows the counts to its root users on the page
+`/root/usage`. Rescord has no address of its own to send to. On that
+page a root user chooses one of three modes:
+
+- **Count on this server** (the default): the counts stay in the
+  database, 400 days at most.
+- **Count, and send each day**: each hour, Rescord sends each full day
+  (UTC) that is not sent yet to the one address that you give, with
+  `POST`. It sends no day before the day that you turned this on, none
+  older than 7 days, and none with no count. It follows no redirect. A
+  day that the address does not take is sent again the next hour.
+- **Count nothing**: Rescord stores no new count. "Delete the counts"
+  empties the table.
+
+The format of a send is **OpenTelemetry** by default: the metrics of
+OTLP as JSON over HTTP, which an OpenTelemetry Collector takes at
+`/v1/metrics`. The other format is a plain JSON document of Rescord. The
+page shows the exact document of the last full day before you send
+anything, and "Send a test" sends a document with no count.
+
+```yaml
+# A Collector that takes the counts of Rescord.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+exporters:
+  debug: {}
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+```
+
+- A token is optional. Rescord sends it as `authorization: Bearer`, only
+  to an address with `https://` or to this machine. It keeps the token
+  encrypted with the secret of the server, and no page shows it again.
+- The document names the server only by a random id, which comes from
+  nothing of the server. "Make a new id" cuts the tie between what was
+  sent before and what comes next.
+- **The metrics endpoint has the counts too.** With
+  `RESCORD_METRICS_PORT` (see "The metrics"), the counter
+  `rescord_usage_count` with the labels `feature` and `kind` counts each
+  use, in each mode but "Count nothing". A collector that reads
+  Prometheus then has the counts, and you name no address. It starts at
+  zero when Rescord starts; the counts of each day stay in the database.
+- On a server with one person, a day of counts still says what that
+  person used on that day. You can tell the rescues on your server:
+  "Rescord counts which of its features are used on this server, each
+  day, with no name, record or organisation in a count. The counts stay
+  on the server" (and, in the mode that sends: "and go each day to …").
 
 ## Back up
 

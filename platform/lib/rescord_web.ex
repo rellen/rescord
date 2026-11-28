@@ -42,11 +42,12 @@ defmodule RescordWeb do
       Rescord.Calendars,
       Rescord.Expenses,
       Rescord.Reports,
+      Rescord.Usage,
       Rescord.Export,
       Rescord.Attention,
       Rescord.Mail
     ],
-    exports: [Endpoint, Telemetry],
+    exports: [Endpoint, Telemetry, Usage],
     check: [aliases: true, apps: [:ash]]
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)

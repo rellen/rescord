@@ -59,7 +59,7 @@ defmodule RescordWeb.Features.PhoneTest do
   end
 
   @tag browser_context_opts: @small
-  test "the pages of the assistant for a root user fit a small phone", %{conn: session} do
+  test "the pages of a root user fit a small phone", %{conn: session} do
     address = "a.root.user.with.a.long.address@wattle-creek-refuge.example.org"
     root = root!(address)
 
@@ -76,11 +76,14 @@ defmodule RescordWeb.Features.PhoneTest do
       base_url: "https://llm.a-long-name-of-a-server.example.org/v1"
     })
 
+    Rescord.UsageFixtures.usage!(root)
+
     session = sign_in_with_link(session, address)
 
     pages = [
       "/root",
       "/root/ruby",
+      "/root/usage",
       "/root/ruby/new",
       "/root/ruby/new?kind=openai_compatible",
       "/root/ruby/#{provider.id}"

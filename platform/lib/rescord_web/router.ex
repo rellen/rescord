@@ -93,6 +93,8 @@ defmodule RescordWeb.Router do
       live "/root/ruby", RootRubyLive, :index
       live "/root/ruby/new", RootRubyLive, :new
       live "/root/ruby/:id", RootRubyLive, :provider
+      # The usage counts of the server (ADR 0098).
+      live "/root/usage", RootUsageLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
