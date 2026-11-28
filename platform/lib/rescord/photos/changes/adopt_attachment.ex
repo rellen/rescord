@@ -40,6 +40,7 @@ defmodule Rescord.Photos.Changes.AdoptAttachment do
       |> Ash.Changeset.force_change_attribute(:size, attachment.size)
       |> Ash.Changeset.force_change_attribute(:key, attachment.key)
       |> Ash.Changeset.force_change_attribute(:thumbnail_key, attachment.thumbnail_key)
+      |> Ash.Changeset.force_change_attribute(:display_key, attachment.display_key)
       |> Ash.Changeset.force_change_attribute(
         :taken_on,
         Accounts.local_date(organisation, entry.happened_at)

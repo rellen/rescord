@@ -40,8 +40,9 @@ config :rescord, Oban,
   # hour of Ruby cannot fill the others (ADR 0069). A reply holds its place
   # for as long as the model writes. The files of the transfers have one
   # too, with two jobs at one time, so that a large transfer cannot take
-  # the queue of the emails (ADR 0100).
-  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2],
+  # the queue of the emails (ADR 0100). The job that completes the files of
+  # the photos runs one at a time (issue 34).
+  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2, images: 1],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Rescord.Repo,
@@ -59,7 +60,10 @@ config :rescord, Oban,
       {"41 3 * * *", Rescord.Notifications.Workers.Prune},
       # The holds of the money records that ended, the old closed requests,
       # and the pseudonymisation after the months of the settings (ADR 0105).
-      {"53 3 * * *", Rescord.Privacy.Workers.Daily}
+      {"53 3 * * *", Rescord.Privacy.Workers.Daily},
+      # The display files of the photos, and the journal photos of 0.1.0
+      # that still carry their metadata (issue 34).
+      {"53 * * * *", Rescord.Images.Workers.Complete}
     ]
   ]
 

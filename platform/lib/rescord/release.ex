@@ -52,6 +52,7 @@ defmodule Rescord.Release do
       Rescord,
       Rescord.Accounts,
       Rescord.Expenses,
+      Rescord.Images.Workers.Complete,
       Rescord.Journal,
       Rescord.Mail,
       Rescord.Photos,
@@ -62,6 +63,7 @@ defmodule Rescord.Release do
       Rescord.Vault
     ]
 
+  alias Rescord.Images.Workers.Complete
   alias Rescord.Release.Rehearsal
   alias Rescord.Storage.{Compare, Move}
 
@@ -219,8 +221,25 @@ defmodule Rescord.Release do
     end
   end
 
+  # The journal photos of Rescord 0.1.0 that still carry their metadata
+  # (issue 34): the job of the images cleans them after the start.
+  defp print_uncleaned do
+    case Enum.sum_by(Rescord.Repo.all_tenants(), fn "org_" <> id -> Complete.uncleaned(id) end) do
+      0 ->
+        :ok
+
+      count ->
+        IO.puts(
+          "\nJournal photos that still carry their metadata: #{count}. " <>
+            "Rescord cleans them in a job after the start, each hour; " <>
+            "a count that does not go down is in the warnings of the log."
+        )
+    end
+  end
+
   @doc """
   Compares the files of the store with the records of the database, and
+
   prints the report (ADR 0091): the files that a record names, the
   leftovers that no record names, with their size, and each file that a
   record names and that the store does not have. `all: true` prints each
@@ -241,6 +260,7 @@ defmodule Rescord.Release do
     case Rescord.Release.Files.compare() do
       {:ok, report} ->
         IO.puts(Compare.format(report, store, opts))
+        print_uncleaned()
         if Compare.complete?(report), do: :ok, else: :missing
 
       {:error, fault} ->

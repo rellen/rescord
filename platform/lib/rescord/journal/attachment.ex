@@ -113,6 +113,13 @@ defmodule Rescord.Journal.Attachment do
       description "The key of the thumbnail of a photo in the store, or nil for a PDF (ADR 0055)"
     end
 
+    attribute :display_key, :string do
+      public? true
+      writable? false
+
+      description "The key of the display file of a photo in the store, which a page opens, or nil for a PDF, a GIF and a photo that has none yet (issue 34)"
+    end
+
     attribute :author_id, :uuid do
       allow_nil? false
       public? true

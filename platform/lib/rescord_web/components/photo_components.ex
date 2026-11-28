@@ -13,7 +13,7 @@ defmodule RescordWeb.PhotoComponents do
 
   use RescordWeb, :html
 
-  alias RescordWeb.{ResidentWords, UploadWords}
+  alias RescordWeb.{JournalComponents, ResidentWords, UploadWords}
 
   @doc """
   The profile picture of a resident, with a link to its photos, or nothing
@@ -26,7 +26,7 @@ defmodule RescordWeb.PhotoComponents do
   def profile(assigns) do
     ~H"""
     <figure :if={@photo} data-profile id="profile-photo">
-      <a href={photo_url(@organisation, @photo)}>
+      <a href={open_url(@organisation, @photo)}>
         <img
           src={thumbnail_url(@organisation, @photo)}
           alt={@photo.caption || "The profile picture of #{name(@resident)}"}
@@ -261,7 +261,7 @@ defmodule RescordWeb.PhotoComponents do
     ~H"""
     <article>
       <figure>
-        <a href={item_photo_url(@organisation, @item)}>
+        <a href={item_open_url(@organisation, @item)}>
           <img src={item_thumbnail_url(@organisation, @item)} alt={alt(@item, @resident)} />
         </a>
         <figcaption>
@@ -273,6 +273,7 @@ defmodule RescordWeb.PhotoComponents do
           </small>
           <strong :if={@profile?}><.icon name="star" /> Profile picture</strong>
           <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
+          <a :if={item_display?(@item)} href={item_photo_url(@organisation, @item)}>Full size</a>
           <.link
             :if={@item.entry_id}
             navigate={
@@ -363,12 +364,30 @@ defmodule RescordWeb.PhotoComponents do
   @doc "The link to a photo record."
   def photo_url(organisation, photo), do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}"
 
+  @doc """
+  The link that opens a photo record: its display file (issue 34), or the
+  photo when it has none.
+  """
+  def open_url(organisation, photo) do
+    if photo.display_key,
+      do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}/display",
+      else: photo_url(organisation, photo)
+  end
+
   @doc "The link to the thumbnail of a photo record, or to the photo when it has none."
   def thumbnail_url(organisation, photo) do
     if photo.thumbnail_key,
       do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}/thumbnail",
       else: photo_url(organisation, photo)
   end
+
+  defp item_open_url(organisation, %{photo: %{} = photo}), do: open_url(organisation, photo)
+
+  defp item_open_url(organisation, %{attachment: attachment}),
+    do: JournalComponents.attachment_url(organisation, attachment)
+
+  defp item_display?(%{photo: %{} = photo}), do: not is_nil(photo.display_key)
+  defp item_display?(%{attachment: attachment}), do: not is_nil(attachment.display_key)
 
   defp item_photo_url(organisation, %{photo: %{} = photo}), do: photo_url(organisation, photo)
 

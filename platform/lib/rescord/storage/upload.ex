@@ -59,7 +59,7 @@ defmodule Rescord.Storage.Upload do
         refused(if Images.heif?(content), do: :heic, else: :not_a_photo_or_pdf)
 
       "application/pdf" ->
-        {:ok, %{bytes: content, content_type: "application/pdf", thumbnail: nil}}
+        {:ok, %{bytes: content, content_type: "application/pdf", thumbnail: nil, display: nil}}
 
       _image ->
         Images.prepare(content)
@@ -69,15 +69,21 @@ defmodule Rescord.Storage.Upload do
   defp refused(reason), do: {:error, RefusedFile.exception(reason: reason)}
 
   @doc """
-  Puts a prepared file under `key`, and its thumbnail under `thumbnail_key`
-  when it has one.
+  Puts a prepared file under `key`, its thumbnail under `thumbnail_key`
+  when it has one, and its display file under `display_key` when both are
+  given (issue 34). A receipt has no display file.
   """
-  @spec put(Storage.key(), Storage.key() | nil, files) :: :ok | {:error, term}
-  def put(key, thumbnail_key, files) do
-    with :ok <- Storage.put(key, files.bytes, files.content_type) do
-      if thumbnail_key && files.thumbnail,
-        do: Storage.put(thumbnail_key, files.thumbnail, "image/webp"),
-        else: :ok
+  @spec put(Storage.key(), Storage.key() | nil, files, Storage.key() | nil) ::
+          :ok | {:error, term}
+  def put(key, thumbnail_key, files, display_key \\ nil) do
+    with :ok <- Storage.put(key, files.bytes, files.content_type),
+         :ok <- put_webp(thumbnail_key, files.thumbnail) do
+      put_webp(display_key, files[:display])
     end
   end
+
+  defp put_webp(key, bytes) when is_binary(key) and is_binary(bytes),
+    do: Storage.put(key, bytes, "image/webp")
+
+  defp put_webp(_key, _bytes), do: :ok
 end

@@ -11,7 +11,9 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
   A photo goes through `Rescord.Images.prepare/1` first (ADR 0055): it
   turns as its EXIF says and loses its metadata, the GPS position with the
   rest, and gets a thumbnail at `<organisation id>/thumbnails/<attachment
-  id>`. The size is then the size of the photo that Rescord keeps. A PDF
+  id>`, and a display file at `<organisation id>/displays/<attachment id>`
+  unless it is a GIF (issue 34). The size is then the size of the photo
+  that Rescord keeps. A PDF
   stays as the person sent it.
 
   The files go into the store in an `after_action` hook, in the
@@ -48,6 +50,7 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
     organisation = Accounts.organisation_of(changeset.to_tenant)
     key = Storage.key(organisation.id, ["attachments", id])
     thumbnail_key = files.thumbnail && Storage.key(organisation.id, ["thumbnails", id])
+    display_key = files.display && Storage.key(organisation.id, ["displays", id])
 
     changeset
     |> Ash.Changeset.force_change_attribute(:id, id)
@@ -55,8 +58,9 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
     |> Ash.Changeset.force_change_attribute(:size, byte_size(files.bytes))
     |> Ash.Changeset.force_change_attribute(:key, key)
     |> Ash.Changeset.force_change_attribute(:thumbnail_key, thumbnail_key)
+    |> Ash.Changeset.force_change_attribute(:display_key, display_key)
     |> Ash.Changeset.after_action(fn _changeset, attachment ->
-      case Upload.put(key, thumbnail_key, files) do
+      case Upload.put(key, thumbnail_key, files, display_key) do
         :ok ->
           {:ok, attachment}
 

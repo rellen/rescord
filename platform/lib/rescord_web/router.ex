@@ -60,10 +60,12 @@ defmodule RescordWeb.Router do
     # (ADR 0041).
     get "/o/:organisation/attachments/:id", AttachmentController, :show
     get "/o/:organisation/attachments/:id/thumbnail", PhotoController, :attachment_thumbnail
+    get "/o/:organisation/attachments/:id/display", PhotoController, :attachment_display
 
     # The photos of the residents and their thumbnails (ADR 0055).
     get "/o/:organisation/photos/:id", PhotoController, :show
     get "/o/:organisation/photos/:id/thumbnail", PhotoController, :thumbnail
+    get "/o/:organisation/photos/:id/display", PhotoController, :display
 
     # The transfer files and the files of a copy (ADR 0043).
     post "/o/:organisation/transfers/export", TransferFileController, :export

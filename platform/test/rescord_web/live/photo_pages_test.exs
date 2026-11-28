@@ -146,6 +146,15 @@ defmodule RescordWeb.PhotoPagesTest do
     assert src(session, image(~r/^A photo of Biscuit/)) ==
              "/o/#{short}/attachments/#{attachment.id}/thumbnail"
 
+    # The photo opens as its display file, and "Full size" opens the file
+    # (issue 34).
+    assert_has(
+      session,
+      "#{sun} figure > a[href=\"/o/#{short}/attachments/#{attachment.id}/display\"]"
+    )
+
+    assert href(session, link("Full size")) == "/o/#{short}/attachments/#{attachment.id}"
+
     session =
       session
       # The journal photo has no removal here: it leaves with its entry.
@@ -321,9 +330,20 @@ defmodule RescordWeb.PhotoPagesTest do
     assert get_resp_header(conn, "content-type") == ["image/webp"]
     assert Rescord.Images.type_of(response(conn, 200)) == "image/webp"
 
+    # The display file, which a page opens (issue 34).
+    conn = get(context.conn, ~p"/o/#{short}/photos/#{photo.id}/display")
+    assert {:ok, display} = Rescord.Storage.get(photo.display_key)
+    assert response(conn, 200) == display
+    assert get_resp_header(conn, "content-type") == ["image/webp"]
+
+    assert get_resp_header(conn, "content-disposition") == [
+             ~s(inline; filename="photo-2026-11-03.webp")
+           ]
+
     for path <- [
           ~p"/o/#{short}/photos/#{photo.id}",
           ~p"/o/#{short}/photos/#{photo.id}/thumbnail",
+          ~p"/o/#{short}/photos/#{photo.id}/display",
           ~p"/o/#{short}/photos/#{Ash.UUID.generate()}",
           ~p"/o/#{short}/photos/not-an-id"
         ] do

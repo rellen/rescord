@@ -1,12 +1,13 @@
 defmodule RescordWeb.PhotoController do
   @moduledoc """
-  Sends a photo of a resident, or its thumbnail (ADR 0055):
+  Sends a photo of a resident, its thumbnail (ADR 0055), or its display
+  file, which a page opens in place of the photo (issue 34):
 
-    * `/o/<short name>/photos/<id>` and `/o/<short name>/photos/<id>/thumbnail`
-      for a photo record;
-    * `/o/<short name>/attachments/<id>/thumbnail` for the thumbnail of a
-      photo of a journal entry. `RescordWeb.AttachmentController` sends the
-      photo itself.
+    * `/o/<short name>/photos/<id>`, `/o/<short name>/photos/<id>/thumbnail`
+      and `/o/<short name>/photos/<id>/display` for a photo record;
+    * `/o/<short name>/attachments/<id>/thumbnail` and
+      `/o/<short name>/attachments/<id>/display` for a photo of a journal
+      entry. `RescordWeb.AttachmentController` sends the photo itself.
 
   The person reads the record with their own grants, in their organisation,
   so the policy decides who gets the file, as for an attachment
@@ -23,17 +24,25 @@ defmodule RescordWeb.PhotoController do
 
   def thumbnail(conn, params), do: send_photo(conn, params, :thumbnail)
 
-  def attachment_thumbnail(conn, %{"organisation" => short_name, "id" => id})
-      when is_binary(id) do
+  def display(conn, params), do: send_photo(conn, params, :display)
+
+  def attachment_thumbnail(conn, params),
+    do: send_attachment(conn, params, &Journal.attachment_thumbnail/2, "thumbnail.webp")
+
+  def attachment_display(conn, params),
+    do: send_attachment(conn, params, &Journal.attachment_display/2, "photo.webp")
+
+  defp send_attachment(conn, %{"organisation" => short_name, "id" => id}, read, name)
+       when is_binary(id) do
     with {:ok, options} <- options(conn, short_name, id),
-         {:ok, _attachment, bytes} <- Journal.attachment_thumbnail(id, options) do
-      send_file_bytes(conn, "image/webp", "thumbnail.webp", bytes)
+         {:ok, _attachment, bytes} <- read.(id, options) do
+      send_file_bytes(conn, "image/webp", name, bytes)
     else
       _no_file -> not_found(conn)
     end
   end
 
-  def attachment_thumbnail(conn, _params), do: not_found(conn)
+  defp send_attachment(conn, _params, _read, _name), do: not_found(conn)
 
   defp send_photo(conn, %{"organisation" => short_name, "id" => id}, which)
        when is_binary(id) do
@@ -42,6 +51,7 @@ defmodule RescordWeb.PhotoController do
       case which do
         :photo -> send_file_bytes(conn, photo.content_type, name(photo), bytes)
         :thumbnail -> send_file_bytes(conn, "image/webp", "thumbnail.webp", bytes)
+        :display -> send_file_bytes(conn, "image/webp", name(photo, "webp"), bytes)
       end
     else
       _no_file -> not_found(conn)
@@ -71,8 +81,10 @@ defmodule RescordWeb.PhotoController do
         _other -> "bin"
       end
 
-    "photo-#{Date.to_iso8601(photo.taken_on)}.#{extension}"
+    name(photo, extension)
   end
+
+  defp name(photo, extension), do: "photo-#{Date.to_iso8601(photo.taken_on)}.#{extension}"
 
   defp send_file_bytes(conn, type, name, bytes) do
     conn

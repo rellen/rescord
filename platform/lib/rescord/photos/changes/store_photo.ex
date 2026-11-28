@@ -12,8 +12,10 @@ defmodule Rescord.Photos.Changes.StorePhoto do
   the camera recorded, and with no such date, or with one after today, it
   is the day of the action in the time zone of the organisation.
 
-  The keys are `<organisation id>/photos/<id>` and
-  `<organisation id>/thumbnails/<id>`. The files go into the store in an
+  The keys are `<organisation id>/photos/<id>`,
+  `<organisation id>/thumbnails/<id>` and, for a photo that is not a GIF,
+  the display file `<organisation id>/displays/<id>` (issue 34). The files
+  go into the store in an
   `after_action` hook, in the transaction: a fault of the store returns an
   error, and the record is not written.
   """
@@ -21,6 +23,7 @@ defmodule Rescord.Photos.Changes.StorePhoto do
   use Ash.Resource.Change
 
   alias Rescord.{Accounts, Images, Storage}
+  alias Rescord.Storage.Upload
   alias Rescord.Storage.Errors.RefusedFile
 
   @max_size 20_000_000
@@ -66,6 +69,7 @@ defmodule Rescord.Photos.Changes.StorePhoto do
     organisation = Accounts.organisation_of(changeset.to_tenant)
     key = Storage.key(organisation.id, ["photos", id])
     thumbnail_key = Storage.key(organisation.id, ["thumbnails", id])
+    display_key = photo.display && Storage.key(organisation.id, ["displays", id])
 
     changeset
     |> Ash.Changeset.force_change_attribute(:id, id)
@@ -73,12 +77,13 @@ defmodule Rescord.Photos.Changes.StorePhoto do
     |> Ash.Changeset.force_change_attribute(:size, byte_size(photo.bytes))
     |> Ash.Changeset.force_change_attribute(:key, key)
     |> Ash.Changeset.force_change_attribute(:thumbnail_key, thumbnail_key)
+    |> Ash.Changeset.force_change_attribute(:display_key, display_key)
     |> date(photo.taken_at, organisation)
     |> Ash.Changeset.after_action(fn _changeset, record ->
-      with :ok <- Storage.put(key, photo.bytes, photo.content_type),
-           :ok <- Storage.put(thumbnail_key, photo.thumbnail, "image/webp") do
-        {:ok, record}
-      else
+      case Upload.put(key, thumbnail_key, photo, display_key) do
+        :ok ->
+          {:ok, record}
+
         {:error, _reason} ->
           {:error,
            Ash.Error.Changes.InvalidArgument.exception(

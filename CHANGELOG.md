@@ -194,6 +194,9 @@ release (ADR 0047).
     read to answer: the tool, and the records that it named. Each
     message that is there gets an empty list, and the page shows it with
     no step. It changes no other row.
+  - `20261128125913_add_the_display_files`, in each organisation: adds
+    an empty column `display_key` to the journal attachments and to the
+    photos (issue 34). It changes no row: a job fills it after the start.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -205,6 +208,34 @@ release (ADR 0047).
   `docker compose run --rm backup restore` (see "Restore" in
   `docs/self-hosting.md`). Keep the dumps for a short time, 14 days by
   default and not more than 90, so that erased data ages out of them.
+- After the upgrade, a job of the images (`Rescord.Images.Workers.Complete`)
+  starts each hour, by itself, and does two things (issue 34):
+  - It makes a display file of each photo that is not a GIF: a WebP image
+    of 1600 pixels at most, which a page opens on a phone in place of the
+    photo. The store grows by about a tenth of the size of the photos.
+  - It cleans each journal photo that Rescord 0.1.0 kept as it was sent,
+    with its EXIF and the GPS position of the place where it was taken.
+    The file is written again with no metadata, under the same key, and
+    gets its thumbnail; a copy of it in a transfer to another refuge of
+    the server gets the same bytes. Its size changes on the attachment,
+    on each version of its photo record, and in the copy, with no new
+    version and no entry in the history: the size is a fact of the file.
+
+  It runs in batches of 50 photos, one batch at a time and two photos at a
+  time at most with the uploads of people, so a server with many photos
+  uses more CPU for some hours after the upgrade. A photo that it cannot
+  read stays as it is, and a warning of the log gives the count each
+  hour. `bin/check-files` says how many journal photos still carry their
+  metadata.
+- **The job cannot clean what has left the server.** A backup made before
+  it ran, an older object version in a bucket with versioning, and an
+  export of a transfer to another server keep the journal photos of
+  0.1.0 as they were sent, with the GPS position. To be rid of them,
+  delete those backups and the older object versions, with the tools of
+  your store, once `bin/check-files` counts no such photo.
+- Before you go back to an earlier version after this upgrade: the
+  earlier version ignores the new column and opens the photo itself, and
+  its `bin/check-files` reports the display files as leftovers.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
@@ -307,6 +338,12 @@ release (ADR 0047).
 
 ### Added
 
+- A photo of a resident and a photo of the journal open as a display file
+  of 1600 pixels at most, a WebP image of a few hundred kilobytes, in
+  place of the photo of up to 4096 pixels, which costs a phone a few
+  megabytes of its data. The card of a photo has a link "Full size" to the
+  photo itself, and the cage card prints the profile picture from the
+  display file, which is sharper on paper than the thumbnail (issue 34).
 - The members page lists the former members, with the day each one left
   and a button "Invite again", and asks before it removes a member. The
   records of a member who was removed stay theirs: each page names them
@@ -908,7 +945,14 @@ release (ADR 0047).
 
 ### Security
 
+- A journal photo that Rescord 0.1.0 kept as it was sent, with its EXIF
+  block and the GPS position where it was taken, is cleaned after the
+  upgrade by a job, as each photo has been since 0.2.0: the file is
+  written again with no metadata, and its copies in the transfers on the
+  server too. See the upgrade notes for what the job cannot reach
+  (issue 34).
 - The history of a record is closed to each request that asks for it by
+
   itself. Rescord keeps each change of a record as a version, and the
   versions had no rule of their own about who reads them. A page shows the
   history of a resident only after the resident has passed the rules of

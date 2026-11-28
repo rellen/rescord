@@ -323,7 +323,7 @@ defmodule RescordWeb.JournalComponents do
     <section :if={@attachments != []} aria-label="Files of the entry">
       <ul>
         <li :for={attachment <- @attachments} id={"attachment-#{attachment.id}"}>
-          <a href={~p"/o/#{@organisation.short_name}/attachments/#{attachment.id}"}>
+          <a href={attachment_url(@organisation, attachment)}>
             {attachment.name}
           </a>
           <small>{JournalWords.file_size(attachment.size)}</small>
@@ -341,7 +341,19 @@ defmodule RescordWeb.JournalComponents do
     """
   end
 
+  @doc """
+  The link that opens a file of an entry: the display file of a photo
+  (issue 34), or the file itself for a PDF, a GIF and a photo with no
+  display file yet.
+  """
+  def attachment_url(organisation, attachment) do
+    if attachment.display_key,
+      do: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}/display",
+      else: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}"
+  end
+
   @doc "The form that adds to an entry."
+
   attr :entry, :any, required: true
 
   def addendum_form(assigns) do

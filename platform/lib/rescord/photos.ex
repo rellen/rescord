@@ -341,17 +341,18 @@ defmodule Rescord.Photos do
   end
 
   @doc """
-  A photo and the bytes of one of its files, `:photo` or `:thumbnail`, when
-  the actor can read the photo and the store has the file. A photo of an
-  attachment that is gone, and an old photo of the journal with no
-  thumbnail, have no such file.
+  A photo and the bytes of one of its files, `:photo`, `:thumbnail` or
+  `:display` (issue 34), when the actor can read the photo and the store
+  has the file. A photo of an attachment that is gone, an old photo of the
+  journal with no thumbnail, and a GIF or a photo with no display file yet
+  have no such file.
   """
-  @spec photo_file(String.t(), :photo | :thumbnail, keyword) ::
+  @spec photo_file(String.t(), :photo | :thumbnail | :display, keyword) ::
           {:ok, map, binary} | {:error, :not_found | term}
-  def photo_file(id, which, opts \\ []) when which in [:photo, :thumbnail] do
+  def photo_file(id, which, opts \\ []) when which in [:photo, :thumbnail, :display] do
     with {:ok, %{} = photo} <- photo(id, [load: [:attachment]] ++ opts),
          true <- is_nil(photo.attachment_id) or not is_nil(photo.attachment),
-         key when is_binary(key) <- if(which == :photo, do: photo.key, else: photo.thumbnail_key),
+         key when is_binary(key) <- key_of(photo, which),
          {:ok, bytes} <- Storage.get(key) do
       {:ok, photo, bytes}
     else
@@ -359,6 +360,10 @@ defmodule Rescord.Photos do
       _no_file -> {:error, :not_found}
     end
   end
+
+  defp key_of(photo, :photo), do: photo.key
+  defp key_of(photo, :thumbnail), do: photo.thumbnail_key
+  defp key_of(photo, :display), do: photo.display_key
 
   @doc """
   Each key of the store that a photo of the organisation names: the photo

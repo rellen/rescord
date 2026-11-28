@@ -116,7 +116,28 @@ defmodule Rescord.Transfers.Snapshot do
     Enum.uniq_by(of_entries ++ photos ++ thumbnails, & &1["id"])
   end
 
+  @doc """
+  The copy with `size` as the size of each place that names the file
+  `file_id`: a file of an entry, or a photo (issue 34).
+
+      iex> copy = %{"journal" => [%{"files" => [%{"id" => "a", "size" => 9}]}], "photos" => [%{"id" => "a", "size" => 9, "thumbnail" => nil}]}
+      iex> Rescord.Transfers.Snapshot.put_file_size(copy, "a", 4)
+      %{"journal" => [%{"files" => [%{"id" => "a", "size" => 4}]}], "photos" => [%{"id" => "a", "size" => 4, "thumbnail" => nil}]}
+  """
+  @spec put_file_size(term, String.t(), non_neg_integer) :: term
+  def put_file_size(%{"id" => file_id, "size" => _old} = file, file_id, size),
+    do: %{file | "size" => size}
+
+  def put_file_size(%{} = map, file_id, size),
+    do: Map.new(map, fn {key, value} -> {key, put_file_size(value, file_id, size)} end)
+
+  def put_file_size(list, file_id, size) when is_list(list),
+    do: Enum.map(list, &put_file_size(&1, file_id, size))
+
+  def put_file_size(other, _file_id, _size), do: other
+
   @doc "The photos of a copy, the newest first, or `[]` for a copy with no such part."
+
   @spec photos_of(map) :: [map]
   def photos_of(%{"photos" => %{"photos" => photos}}) when is_list(photos), do: photos
   def photos_of(_copy), do: []

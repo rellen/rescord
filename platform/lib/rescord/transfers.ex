@@ -294,8 +294,19 @@ defmodule Rescord.Transfers do
   @spec fail_stopped_copies() :: {:ok, non_neg_integer} | {:error, term}
   defdelegate fail_stopped_copies(), to: Rescord.Transfers.StoppedCopies, as: :run
 
+  @doc "The copies of a file in transfers to this server (`Rescord.Transfers.Files.copies_of/2`)."
+  @spec file_copies(String.t(), String.t()) :: [{String.t(), Rescord.Storage.key()}]
+  defdelegate file_copies(from_organisation_id, file_id),
+    to: Rescord.Transfers.Files,
+    as: :copies_of
+
+  @doc "Writes the size of a file in a copy (`Rescord.Transfers.Files.put_file_size/3`)."
+  @spec put_file_size(String.t(), String.t(), non_neg_integer) :: :ok
+  defdelegate put_file_size(transfer_id, file_id, size), to: Rescord.Transfers.Files
+
   @doc """
   Each key of the store that a transfer to the organisation names: each
+
   file of the copy of each transfer that the organisation received, in
   any state (`Rescord.Storage.Named`, ADR 0091). It reads the table with
   no actor, for `bin/check-files`, and no page calls it.

@@ -155,6 +155,7 @@ defmodule Rescord.Release.FilesTest do
 
       assert [
                <<^organisation::binary-size(36), "/attachments/", _id::binary>>,
+               <<^organisation::binary-size(36), "/displays/", _display::binary>>,
                <<^organisation::binary-size(36), "/thumbnails/", _same::binary>>
              ] = keys(report.leftover)
 
@@ -180,7 +181,8 @@ defmodule Rescord.Release.FilesTest do
       report = compare!()
       assert report.leftover == []
       assert report.missing == []
-      assert report.named.count == 5
+      # Two photos with a thumbnail and a display file, and one copy.
+      assert report.named.count == 7
       assert [{key, "transfer", id}] = Transfers.file_keys(context.banksia.id)
       assert id == transfer.id
       assert key =~ ~r"^#{context.banksia.id}/transfers/"
@@ -196,7 +198,8 @@ defmodule Rescord.Release.FilesTest do
                end)
 
       report = compare!()
-      assert [photo, thumbnail] = keys(report.leftover)
+      assert [display, photo, thumbnail] = keys(report.leftover)
+      assert display =~ "/displays/"
       assert photo =~ "/photos/"
       assert thumbnail =~ "/thumbnails/"
     end
@@ -211,12 +214,13 @@ defmodule Rescord.Release.FilesTest do
       assert report.unknown == [{"check/probe/0a1b2c3d", 26}]
       assert report.other == [{"notes.txt", 15}]
       assert report.leftover == []
-      assert report.named.count == 2
-      assert report.store.count == 4
+      assert report.named.count == 3
+      assert report.store.count == 5
       assert report.organisations == 2
 
       assert report.named.bytes ==
-               photo.size + byte_size(elem(Storage.get(photo.thumbnail_key), 1))
+               photo.size + byte_size(elem(Storage.get(photo.thumbnail_key), 1)) +
+                 byte_size(elem(Storage.get(photo.display_key), 1))
     end
   end
 
@@ -253,9 +257,10 @@ defmodule Rescord.Release.FilesTest do
       :ok = Photos.remove_photo(photo, context.options)
 
       report = compare!()
-      # A photo and a thumbnail for each of the three, and the PDF.
-      assert report.named.count == 7
-      assert report.store.count == 7
+      # A photo and a thumbnail for each of the three, a display file for
+      # the two photos (a receipt has none), and the PDF.
+      assert report.named.count == 9
+      assert report.store.count == 9
       assert report.leftover == []
       assert report.missing == []
     end
@@ -267,7 +272,7 @@ defmodule Rescord.Release.FilesTest do
       assert adopted.key == attachment.key
 
       report = compare!()
-      assert report.named.count == 2
+      assert report.named.count == 3
       assert report.leftover == []
 
       # Both records name the file when it is gone.
@@ -292,8 +297,9 @@ defmodule Rescord.Release.FilesTest do
       {:ok, _withdrawn} = Transfers.withdraw_transfer(withdrawn, actor: context.wattle_admin)
 
       report = compare!()
-      # The photo and its thumbnail, and a copy of both for each transfer.
-      assert report.named.count == 2 + 4 * 2
+      # The photo, its thumbnail and its display file, and a copy of the
+      # first two for each transfer: a transfer carries no display file.
+      assert report.named.count == 3 + 4 * 2
       assert report.leftover == []
       assert report.missing == []
 
@@ -322,7 +328,7 @@ defmodule Rescord.Release.FilesTest do
                {photo.thumbnail_key, context.wattle.id, [{"photo", photo.id}], :not_found}
              ]
 
-      assert report.named.count == 3
+      assert report.named.count == 5
       assert kept.key in keys(Disk.files() |> elem(1))
     end
   end
@@ -392,7 +398,8 @@ defmodule Rescord.Release.FilesTest do
       assert Enum.sort(Photos.file_keys(context.wattle.id)) ==
                Enum.sort([
                  {photo.key, "photo", photo.id},
-                 {photo.thumbnail_key, "photo", photo.id}
+                 {photo.thumbnail_key, "photo", photo.id},
+                 {photo.display_key, "photo", photo.id}
                ])
 
       for domain <- Files.domains(), do: assert(domain.file_keys(context.banksia.id) == [])

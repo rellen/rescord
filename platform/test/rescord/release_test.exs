@@ -174,9 +174,9 @@ defmodule Rescord.ReleaseTest do
 
       output = capture_io(fn -> assert :ok = Release.check_files() end)
 
-      assert output =~ "The bucket rescord at http://s3.test:3900 has 3 files"
+      assert output =~ "The bucket rescord at http://s3.test:3900 has 4 files"
       assert output =~ "and Rescord has 1 organisation."
-      assert output =~ "named     2 files"
+      assert output =~ "named     3 files"
       assert output =~ "leftover  1 file (2.5 kB) that no record names\n  #{leftover}  2.5 kB\n"
       assert output =~ "Run the command\nagain: a leftover is in both runs."
       assert output =~ "The store has each file that a record names.\nNothing was changed."
@@ -187,7 +187,8 @@ defmodule Rescord.ReleaseTest do
       refute output =~ photo.id
 
       assert FakeS3.objects(s3) == before
-      assert FakeS3.requests(s3, "PUT") |> length() == 2
+      assert FakeS3.requests(s3, "PUT") |> length() == 3
+
       assert FakeS3.requests(s3, "DELETE") == []
     end
 
