@@ -74,6 +74,7 @@ defmodule RescordWeb.GroupsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:groups}
     >
       <.header icon={Icons.section(:groups)}>

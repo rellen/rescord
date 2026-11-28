@@ -78,6 +78,7 @@ defmodule RescordWeb.OrganisationLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:home}
     >
       <.header icon={Icons.section(:home)}>
@@ -96,7 +97,7 @@ defmodule RescordWeb.OrganisationLive do
       <nav aria-labelledby="parts-heading">
         <h2 id="parts-heading">The parts of {@organisation.name}</h2>
         <ul data-links>
-          <li :for={{path, section, words} <- parts(@organisation.short_name)}>
+          <li :for={{path, section, words} <- parts(@organisation.short_name, @ruby?)}>
             <.link navigate={path}>
               <.icon name={Icons.section(section)} /> {words}
             </.link>
@@ -111,24 +112,28 @@ defmodule RescordWeb.OrganisationLive do
   defp role_words(%{name: name}), do: "Your role in this organisation: #{name}."
 
   # The parts of an organisation, each with the shape that it has in the
-  # menu too (`RescordWeb.Icons.section/1`).
-  defp parts(org) do
-    [
-      {~p"/o/#{org}/tasks", :tasks, "See the tasks of today"},
-      {~p"/o/#{org}/routines", :routines, "See the routines"},
-      {~p"/o/#{org}/calendar", :calendar, "See the calendar feeds"},
-      {~p"/o/#{org}/residents", :residents, "See the residents"},
-      {~p"/o/#{org}/groups", :groups, "See the groups"},
-      {~p"/o/#{org}/housing", :housing, "See the housing"},
-      {~p"/o/#{org}/inventory", :inventory, "See the inventory"},
-      {~p"/o/#{org}/tools", :tools, "Use the tools"},
-      {~p"/o/#{org}/lists", :lists, "See the lists of values"},
-      {~p"/o/#{org}/members", :members, "See the members"},
-      {~p"/o/#{org}/roles", :roles, "See the roles"},
-      {~p"/o/#{org}/transfers", :transfers, "See the transfers"},
-      {~p"/o/#{org}/partners", :partners, "See the partner refuges"},
-      {~p"/o/#{org}/settings", :settings, "See the settings"},
-      {~p"/o/#{org}/export", :export, "Export the data"}
-    ]
+  # menu too (`RescordWeb.Icons.section/1`). Ruby comes first, for a person
+  # who can ask it.
+  defp parts(org, ruby?) do
+    ask = if ruby?, do: [{~p"/o/#{org}/ruby", :ruby, "Ask Ruby"}], else: []
+
+    ask ++
+      [
+        {~p"/o/#{org}/tasks", :tasks, "See the tasks of today"},
+        {~p"/o/#{org}/routines", :routines, "See the routines"},
+        {~p"/o/#{org}/calendar", :calendar, "See the calendar feeds"},
+        {~p"/o/#{org}/residents", :residents, "See the residents"},
+        {~p"/o/#{org}/groups", :groups, "See the groups"},
+        {~p"/o/#{org}/housing", :housing, "See the housing"},
+        {~p"/o/#{org}/inventory", :inventory, "See the inventory"},
+        {~p"/o/#{org}/tools", :tools, "Use the tools"},
+        {~p"/o/#{org}/lists", :lists, "See the lists of values"},
+        {~p"/o/#{org}/members", :members, "See the members"},
+        {~p"/o/#{org}/roles", :roles, "See the roles"},
+        {~p"/o/#{org}/transfers", :transfers, "See the transfers"},
+        {~p"/o/#{org}/partners", :partners, "See the partner refuges"},
+        {~p"/o/#{org}/settings", :settings, "See the settings"},
+        {~p"/o/#{org}/export", :export, "Export the data"}
+      ]
   end
 end

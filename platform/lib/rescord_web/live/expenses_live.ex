@@ -123,6 +123,7 @@ defmodule RescordWeb.ExpensesLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:expenses}
     >
       <.header icon={Icons.section(:expenses)}>

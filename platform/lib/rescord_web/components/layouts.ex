@@ -56,6 +56,10 @@ defmodule RescordWeb.Layouts do
     default: nil,
     doc: "the number of new notifications of the person, from `RescordWeb.Inbox`"
 
+  attr :ruby, :boolean,
+    default: false,
+    doc: "the person can ask Ruby, from `RescordWeb.RubyLink`: the site bar links to it"
+
   attr :section, :atom,
     default: nil,
     values:
@@ -73,7 +77,15 @@ defmodule RescordWeb.Layouts do
 
     <header>
       <nav aria-label={gettext("Site")}>
-        <a href={~p"/"}><.icon name="mark" /> Rescord</a>
+        <a href={~p"/"}><.icon name="mark" /> <span>Rescord</span></a>
+        <.link
+          :if={@ruby && @organisation}
+          navigate={~p"/o/#{@organisation.short_name}/ruby"}
+          data-ruby
+          aria-current={current(@section, :ruby)}
+        >
+          <.icon name={Icons.section(:ruby)} /> Ruby
+        </.link>
         <a :if={!@current_user} href={~p"/sign-in"}><.icon name="door-in" /> {gettext("Sign in")}</a>
         <.inbox_link
           :if={@current_user && @organisation}

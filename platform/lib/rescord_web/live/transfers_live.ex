@@ -258,6 +258,7 @@ defmodule RescordWeb.TransfersLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
     >
       <nav aria-label="Breadcrumb">
         <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</.link>
@@ -275,6 +276,7 @@ defmodule RescordWeb.TransfersLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
     >
       <.header icon={Icons.section(:transfers)}>
         Transfers

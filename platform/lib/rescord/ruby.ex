@@ -74,6 +74,15 @@ defmodule Rescord.Ruby do
   alias Rescord.Accounts.User
   alias Rescord.Ruby.{Conversation, Events, Message, Provider, Settings, Steps, Usage}
 
+  # How each kind of record that a conversation can be about is read, and
+  # what it loads for its name: the name of a resident is a calculation.
+  @about %{
+    "resident" => {&Rescord.Residents.resident/2, [:name]},
+    "group" => {&Rescord.Residents.group/2, []},
+    "location" => {&Rescord.Locations.location/2, []},
+    "item" => {&Rescord.Inventory.item/2, []}
+  }
+
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
@@ -245,6 +254,35 @@ defmodule Rescord.Ruby do
   end
 
   def available?(_nobody, _tenant), do: false
+
+  @doc """
+  The record that a conversation is about, from its reference, such as
+  `resident:<id>`, read as the person of `opts`: its reference, its kind
+  and its name. A resident, a group, a location and an item can be what a
+  conversation is about. `:error` for any other reference, and for a
+  record that the person cannot read.
+  """
+  @spec about(String.t() | nil, keyword) :: {:ok, map} | :error
+  def about(ref, opts) when is_binary(ref) do
+    with [kind, id] <- String.split(ref, ":", parts: 2),
+         {:ok, id} <- Ecto.UUID.cast(id),
+         {:ok, {read, load}} <- Map.fetch(@about, kind),
+         {:ok, %{} = record} <- read.(id, Keyword.put(opts, :load, load)) do
+      name = about_name(record)
+      {:ok, %{ref: kind <> ":" <> id, kind: kind, name: name, label: name || about_label(kind)}}
+    else
+      _no_record -> :error
+    end
+  end
+
+  def about(_ref, _opts), do: :error
+
+  defp about_name(%{name: name}) when is_binary(name) and name != "", do: name
+  defp about_name(_record), do: nil
+
+  defp about_label("resident"), do: "A resident with no name"
+  defp about_label("group"), do: "A group with no name"
+  defp about_label(_kind), do: "A record with no name"
 
   @doc """
   Whether Ruby reads with the tool of this name for the person: the tool

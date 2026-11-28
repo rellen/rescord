@@ -147,6 +147,7 @@ defmodule RescordWeb.PartnersLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
     >
       <.header icon={Icons.section(:partners)}>
         Partner refuges

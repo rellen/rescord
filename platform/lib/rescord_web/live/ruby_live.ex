@@ -35,16 +35,13 @@ defmodule RescordWeb.RubyLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{current_user: user, organisation: organisation} = socket.assigns
-    unless Ruby.available?(user, organisation), do: raise(NotFound)
-
-    asks = for {tool, words} <- RubyWords.asks(), Ruby.reads?(user, organisation, tool), do: words
+    unless socket.assigns.ruby?, do: raise(NotFound)
 
     {:ok,
      socket
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
-     |> assign(problems: [], recent: [], asks: Enum.take(asks, @asks))
+     |> assign(problems: [], recent: [], about: nil, asks: [])
      |> assign(refused: nil, allowance: nil, closed?: false, settings?: Ruby.sets?(scope(socket)))
      |> assign_form("")}
   end
@@ -63,10 +60,14 @@ defmodule RescordWeb.RubyLive do
     end
   end
 
-  def handle_params(_params, _uri, socket) do
+  def handle_params(params, _uri, socket) do
+    %{current_user: user, organisation: organisation} = socket.assigns
+    about = about(params["about"], socket)
+
     {:noreply,
      socket
      |> leave()
+     |> assign(about: about, asks: asks(user, organisation, about))
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
      |> assign(problems: [], refused: nil, closed?: false, recent: recent(socket))}
@@ -80,6 +81,7 @@ defmodule RescordWeb.RubyLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:ruby}
       data-ruby
       phx-disconnected={
@@ -104,6 +106,8 @@ defmodule RescordWeb.RubyLive do
           </.link>
         </:actions>
       </.header>
+
+      <RubyChatComponents.about :if={@about} about={@about} organisation={@organisation} />
 
       <RubyChatComponents.start
         :if={!@conversation}
@@ -236,7 +240,8 @@ defmodule RescordWeb.RubyLive do
   # makes the conversation, and the page goes to its path, where `open/2`
   # takes up the topic and reads the message.
   defp say(%{assigns: %{answer: nil, conversation: nil}} = socket, text) when is_binary(text) do
-    with {:ok, conversation} <- Ruby.start_conversation(%{}, scope(socket)),
+    with {:ok, conversation} <-
+           Ruby.start_conversation(about_attrs(socket.assigns.about), scope(socket)),
          {:ok, _message} <- said(conversation, text, socket) do
       socket
       |> assign_form("")
@@ -303,7 +308,11 @@ defmodule RescordWeb.RubyLive do
     socket = leave(socket)
     if connected?(socket), do: Ruby.subscribe(conversation.id, scope(socket))
 
-    socket = socket |> assign(conversation: conversation, problems: [], refused: nil) |> read()
+    socket =
+      socket
+      |> assign(conversation: conversation, problems: [], refused: nil)
+      |> assign(:about, about(conversation.about, socket))
+      |> read()
 
     # A page that opens while Ruby answers says so once.
     said =
@@ -386,6 +395,32 @@ defmodule RescordWeb.RubyLive do
     after
       0 -> :ok
     end
+  end
+
+  # The record that a page opened Ruby from (`?about=resident:<id>`), or
+  # that a conversation is about, when the person can still read it. A
+  # reference that names no record of theirs is no record: the page opens
+  # as a plain start.
+  defp about(ref, socket) do
+    case Ruby.about(ref, scope(socket)) do
+      {:ok, about} -> about
+      :error -> nil
+    end
+  end
+
+  defp about_attrs(nil), do: %{}
+  defp about_attrs(%{ref: ref}), do: %{about: ref}
+
+  # The things to ask that the start shows: about the record, when there
+  # is one, and else about the organisation. Each needs a tool that the
+  # role of the person can read.
+  defp asks(user, organisation, about) do
+    all = if about, do: RubyWords.asks_about(about), else: RubyWords.asks()
+
+    all
+    |> Enum.filter(fn {tool, _words} -> Ruby.reads?(user, organisation, tool) end)
+    |> Enum.map(fn {_tool, words} -> words end)
+    |> Enum.take(@asks)
   end
 
   defp recent(socket) do

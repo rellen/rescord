@@ -202,6 +202,7 @@ defmodule RescordWeb.ListsLive do
       current_user={@current_user}
       organisation={assigns[:organisation]}
       inbox={assigns[:inbox]}
+      ruby={assigns[:ruby?] || false}
       section={if assigns[:organisation], do: :lists, else: :root}
     >
       <.header icon={Icons.section(:lists)}>

@@ -118,7 +118,8 @@ defmodule RescordWeb.Router do
     live_session :organisation,
       on_mount:
         @sandbox_hooks ++
-          [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] do
+          [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] ++
+          [{RescordWeb.RubyLink, :check}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
       live "/o/:organisation/privacy", PrivacyLive

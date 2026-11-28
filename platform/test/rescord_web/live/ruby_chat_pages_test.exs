@@ -33,7 +33,8 @@ defmodule RescordWeb.RubyChatPagesTest do
     {:ok, _member} = Accounts.set_member_role(ana_member, carer.id, admin)
 
     ruby_on!(root, admin)
-    biscuit = resident!(lists!(organisation, root), admin, %{name: "Biscuit"})
+    lists = lists!(organisation, root)
+    biscuit = resident!(lists, admin, %{name: "Biscuit"})
 
     {:ok,
      root: root,
@@ -42,6 +43,7 @@ defmodule RescordWeb.RubyChatPagesTest do
      admin: admin,
      ana: ana,
      biscuit: biscuit,
+     lists: lists,
      as_ana: [actor: ana, tenant: organisation],
      path: ~p"/o/#{organisation.short_name}/ruby",
      conn: sign_in(context.conn, ana)}
@@ -293,6 +295,162 @@ defmodule RescordWeb.RubyChatPagesTest do
       {:ok, again, _html} = live(context.conn, context.path <> "/" <> reply.conversation_id)
       assert has_element?(again, "#{ruby} [data-prose] a[href=\"#{page}\"]", "Biscuit")
       assert has_element?(again, "#{ruby} footer a[href=\"#{page}\"]")
+    end
+  end
+
+  describe "a conversation about a record" do
+    test "from a resident: the card, the things to ask about it, and the conversation", context do
+      ref = "resident:" <> context.biscuit.id
+      page = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}"
+
+      {:ok, view, _html} = live(context.conn, context.path <> "?" <> URI.encode_query(about: ref))
+
+      assert has_element?(
+               view,
+               "main > a#ruby-about[data-about][href=\"#{page}\"]",
+               "About Biscuit"
+             )
+
+      assert has_element?(view, "#ruby-about [data-portrait]", "B")
+
+      assert has_element?(
+               view,
+               "ul[data-suggestions] button",
+               "What happened to Biscuit this week?"
+             )
+
+      refute has_element?(view, "ul[data-suggestions] button", "What is running low?")
+
+      view |> element("button", "What happened to Biscuit this week?") |> render_click()
+      path = assert_patch(view)
+
+      [conversation] = Ruby.conversations!(context.as_ana)
+      assert conversation.about == ref
+      assert path == context.path <> "/" <> conversation.id
+
+      # The conversation keeps the card, and a page that opens it again shows it.
+      assert has_element?(view, "#ruby-about[href=\"#{page}\"]", "About Biscuit")
+      {:ok, again, _html} = live(context.conn, path)
+      assert has_element?(again, "#ruby-about[href=\"#{page}\"]", "About Biscuit")
+
+      # The header of the first message tells Ruby the record, by its
+      # reference and not by its name.
+      ScriptedModel.script([{:text, "Biscuit was weighed on Monday."}])
+      work!()
+
+      [%{messages: messages} | _rest] = ScriptedModel.requests()
+
+      sent =
+        for %{role: :user, content: parts} <- messages, %{text: text} <- parts, into: "", do: text
+
+      assert sent =~ "about: " <> ref
+      assert sent =~ "What happened to Biscuit this week?"
+    end
+
+    test "from an item of the inventory", context do
+      hay =
+        Rescord.Inventory.add_item!(
+          %{name: "Meadow hay", unit_id: context.lists.unit.bag},
+          context.admin
+        )
+
+      # An id in capitals is the same id.
+      about = URI.encode_query(about: "item:" <> String.upcase(hay.id))
+      {:ok, view, _html} = live(context.conn, context.path <> "?" <> about)
+
+      assert has_element?(
+               view,
+               "#ruby-about[href=\"/o/#{context.organisation.short_name}/inventory/#{hay.id}\"]",
+               "About Meadow hay"
+             )
+
+      refute has_element?(view, "#ruby-about [data-portrait]")
+      assert has_element?(view, "ul[data-suggestions] button", "How much Meadow hay is left?")
+    end
+
+    test "a reference that names no record of the person is a plain start", context do
+      for ref <- [
+            "resident:" <> Ecto.UUID.generate(),
+            "resident:not-an-id",
+            "member:" <> context.ana.id,
+            "Biscuit",
+            "",
+            String.duplicate("resident:", 1000)
+          ] do
+        {:ok, view, _html} =
+          live(context.conn, context.path <> "?" <> URI.encode_query(about: ref))
+
+        refute has_element?(view, "#ruby-about")
+        assert has_element?(view, "ul[data-suggestions] button", "What is running low?")
+      end
+
+      # A list or a map in the place of the reference.
+      for query <- ["about[]=x", "about[k]=v"] do
+        {:ok, view, _html} = live(context.conn, context.path <> "?" <> query)
+
+        refute has_element?(view, "#ruby-about")
+        assert has_element?(view, "ul[data-suggestions] button", "What is running low?")
+      end
+
+      # A conversation about a record that is gone opens with no card.
+      conversation =
+        Ruby.start_conversation!(%{about: "resident:" <> Ecto.UUID.generate()}, context.as_ana)
+
+      {:ok, view, _html} = live(context.conn, context.path <> "/" <> conversation.id)
+      refute has_element?(view, "#ruby-about")
+    end
+  end
+
+  describe "the links to Ruby" do
+    test "in the bar, on the first page and on a resident, for who may ask",
+         context do
+      org = context.organisation.short_name
+      ruby = ~p"/o/#{org}/ruby"
+
+      {:ok, home, _html} = live(context.conn, ~p"/o/#{org}")
+      assert has_element?(home, "header > nav > a[data-ruby][href=\"#{ruby}\"]", "Ruby")
+      # One link in the navigation of the site: none in the menu besides.
+      refute has_element?(home, "header nav ul a[data-ruby]")
+
+      assert has_element?(
+               home,
+               "main nav ul[data-links] li:first-child a[href=\"#{ruby}\"]",
+               "Ask Ruby"
+             )
+
+      {:ok, resident, _html} = live(context.conn, ~p"/o/#{org}/residents/#{context.biscuit.id}")
+      about = ruby <> "?" <> URI.encode_query(about: "resident:" <> context.biscuit.id)
+      assert has_element?(resident, "main a#ask-ruby[href=\"#{about}\"]", "Ask Ruby")
+
+      {:ok, tasks, _html} = live(context.conn, ~p"/o/#{org}/tasks")
+      assert has_element?(tasks, "main a#ask-ruby[href=\"#{ruby}\"]", "Ask Ruby")
+
+      # The page of Ruby is the current one in the bar.
+      {:ok, page, _html} = live(context.conn, ruby)
+      assert has_element?(page, "header > nav > a[data-ruby][aria-current]")
+    end
+
+    test "a person who cannot ask Ruby finds no link", context do
+      org = context.organisation.short_name
+      {_, other} = member!(context.organisation, :member, context.administrator)
+      conn = sign_in(build_conn(), other)
+
+      for path <- [
+            ~p"/o/#{org}",
+            ~p"/o/#{org}/residents/#{context.biscuit.id}",
+            ~p"/o/#{org}/tasks"
+          ] do
+        {:ok, view, _html} = live(conn, path)
+        refute has_element?(view, "a[href^=\"/o/#{org}/ruby\"]")
+        refute has_element?(view, "a[data-ruby]")
+        refute has_element?(view, "#ask-ruby")
+      end
+
+      # Nor does anybody while Ruby is off.
+      {:ok, _settings} = Ruby.save_settings(%{enabled: false}, context.admin)
+      {:ok, view, _html} = live(context.conn, ~p"/o/#{org}/residents/#{context.biscuit.id}")
+      refute has_element?(view, "a[data-ruby]")
+      refute has_element?(view, "#ask-ruby")
     end
   end
 

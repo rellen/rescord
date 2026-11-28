@@ -136,6 +136,7 @@ defmodule RescordWeb.RolesLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:members}
     >
       <.header icon={Icons.section(:roles)}>

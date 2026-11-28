@@ -220,6 +220,7 @@ defmodule RescordWeb.SettingsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:settings}
     >
       <.header icon={Icons.section(:settings)}>

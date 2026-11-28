@@ -312,6 +312,7 @@ defmodule RescordWeb.ResidentLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">
@@ -327,6 +328,14 @@ defmodule RescordWeb.ResidentLive do
           </.state>
         </:subtitle>
         <:actions>
+          <.link
+            :if={@ruby?}
+            navigate={~p"/o/#{@organisation.short_name}/ruby?#{[about: "resident:#{@resident.id}"]}"}
+            data-variant="secondary"
+            id="ask-ruby"
+          >
+            <.icon name={Icons.section(:ruby)} /> Ask Ruby
+          </.link>
           <.link
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/photos"}
             data-variant="secondary"

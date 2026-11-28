@@ -549,8 +549,7 @@ release (ADR 0047).
   `/o/<organisation>/ruby`, while the organisation has Ruby on. The page
   offers a few things to ask, keeps the conversations of the member, and
   shows the words of the answer as they arrive, with a button Stop. Ruby
-  reads only what the member can read, and records nothing. The page has
-  no link in the menu yet: that comes in a later version. For anybody
+  reads only what the member can read, and records nothing. For anybody
   else, or while Ruby is off, the address is a page that is not there.
 - While Ruby reads to answer, the page of Ruby shows each step, such as
   "Looks at the stock", and what it found. An answer keeps its steps in
@@ -564,6 +563,13 @@ release (ADR 0047).
   rest" for an answer that was cut short, a new conversation, or, for a
   person who sets Ruby up, the settings. A conversation in which the
   service refused to answer takes no more messages.
+- A member who can ask Ruby finds it in the bar at the top of each page
+  of the organisation, and first on its first page ("Ask Ruby"). The page
+  of a resident and of an item of the inventory, and the tasks of a day,
+  have a button "Ask Ruby". From a resident or an item, the conversation
+  is about that record: the page of Ruby names it, with a link back, and
+  offers things to ask about it, and Ruby knows which record the member
+  means. A person who cannot ask Ruby sees none of these links.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

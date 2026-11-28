@@ -256,6 +256,7 @@ defmodule RescordWeb.TasksLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:tasks}
     >
       <.header icon={Icons.section(:tasks)}>
@@ -276,6 +277,14 @@ defmodule RescordWeb.TasksLive do
           </.link>
           <.link patch={day_path(assigns, Date.add(@day, 1))} data-variant="secondary">
             The day after <.icon name="chevron-right" />
+          </.link>
+          <.link
+            :if={@ruby?}
+            navigate={~p"/o/#{@organisation.short_name}/ruby"}
+            data-variant="secondary"
+            id="ask-ruby"
+          >
+            <.icon name={Icons.section(:ruby)} /> Ask Ruby
           </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/routines"} data-variant="secondary">
             <.icon name={Icons.section(:routines)} /> Routines
