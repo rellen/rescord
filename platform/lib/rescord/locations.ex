@@ -63,15 +63,22 @@ defmodule Rescord.Locations do
   one transaction.
   """
   def move_location(%Location{} = location, parent_id, opts \\ []) do
-    Rescord.Repo.transaction(fn ->
-      with {:ok, tie} <- tie_of(location.id, opts),
-           :ok <- end_tie(tie, opts),
-           {:ok, result} <- new_tie(location.id, parent_id, opts) do
-        result
-      else
-        {:error, error} -> Rescord.Repo.rollback(error)
-      end
-    end)
+    # `Ash.transact`, and not a transaction of the repo: it sends the
+    # notifications of the two writes after the commit (ADR 0096).
+    Ash.transact(
+      [LocationParent],
+      fn ->
+        with {:ok, tie} <- tie_of(location.id, opts),
+             :ok <- end_tie(tie, opts) do
+          new_tie(location.id, parent_id, opts)
+        end
+      end,
+      tenant: opts[:tenant]
+    )
+    |> case do
+      {:ok, {:ok, result}} -> {:ok, result}
+      {:error, error} -> {:error, error}
+    end
   end
 
   defp tie_of(location_id, opts) do

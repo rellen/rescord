@@ -10,9 +10,10 @@ defmodule RescordWeb.OrganisationLive do
   what they can read and can act on, and each row leads to the page where
   they act. Below that, the page leads to each part of the organisation.
 
-  The page reads again each minute. The time alone makes a task overdue, so
-  no write tells the page about it, and the same read finds what another
-  member did.
+  The page reads again when a record of one of its parts changes
+  (ADR 0096), so it shows at once what another member did. It also reads
+  again each minute: the time alone makes a task overdue, and no write
+  tells the page about it.
   """
 
   use RescordWeb, :live_view
@@ -36,6 +37,8 @@ defmodule RescordWeb.OrganisationLive do
        page_title: socket.assigns.organisation.name,
        members: Enum.map(members, &{to_string(&1.email), &1.user_id})
      )
+     # Listen first, and then read: no change falls between the two.
+     |> LiveChanges.listen(Attention.domains(), &assign_attention/1)
      |> assign_attention()}
   end
 

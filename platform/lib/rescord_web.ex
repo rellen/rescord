@@ -91,6 +91,9 @@ defmodule RescordWeb do
       # A form drawn again from what the browser sent keeps only text.
       import RescordWeb.Input, only: [typed_form: 2, typed_fields: 1]
 
+      # A page that shows what another person changed (ADR 0096).
+      alias RescordWeb.LiveChanges
+
       unquote(html_helpers())
     end
   end

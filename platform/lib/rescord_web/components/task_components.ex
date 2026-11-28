@@ -88,7 +88,8 @@ defmodule RescordWeb.TaskComponents do
           </tr>
         </thead>
         <tbody>
-          <tr :for={task <- @tasks} id={"task-#{task.id}"}>
+          <%!-- The key: a read after a change sends the rows that changed (ADR 0096). --%>
+          <tr :for={task <- @tasks} :key={task.id} id={"task-#{task.id}"}>
             <td>{due(task, @organisation, @with_day)}</td>
             <th scope="row">
               {task.title}

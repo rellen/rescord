@@ -438,8 +438,44 @@ hand (ADR 0073). Read it before you write a migration. In short:
       no job by itself in a test.
     - Do not take `:ash_signals` out of the compilers in `mix.exs`, or the
       line `:temporal_safe_modules` out of `config/config.exs`.
-  - A widget that shows a resource reloads on that resource's
-    `Ash.Notifier.PubSub` notification, on a topic named `<resources>:changed`.
+  - **A page hears a change of another person** (ADR 0096). Each resource
+    publishes by itself: `Rescord.Resource` gives it the notifier
+    `Ash.Notifier.PubSub`, with `Rescord.Changes` as its module.
+    - A page calls `LiveChanges.listen(socket, [Domain], &read_again/1)`
+      in `mount/3`, before it reads. The function reads through the code
+      interface, as the person of the page, and assigns. It does not
+      assign a form again. For a `Cinder.collection` it calls
+      `Cinder.refresh_table(socket, "<id>", silent: true)`. That is not
+      enough for a collection of a temporal resource: its query holds
+      the instant at which the page built it, so a refresh reads the
+      past. Give such a query `as_of:` from an assign, and set the
+      assign again in the function.
+    - Never draw anything from a message. A `Rescord.Changes.Change` has
+      no attribute of a record, and it must stay so: do not give a
+      publication a `transform`, and do not broadcast a record on
+      `Rescord.PubSub` by hand. A topic is not a policy.
+    - A resource in the schema of an organisation needs no line. A
+      shared resource (`shared?: true`) writes its publications, with
+      the attribute that holds the id of the organisation
+      (`Rescord.Transfers.Transfer`), or it goes on the list of the
+      quiet resources in `Rescord.ChangesTest`, with the reason.
+    - Several writes in one transaction use `Ash.transact/3`. A write
+      inside `Rescord.Repo.transaction/1` loses its notification, and a
+      test raises for it (`config :ash, :missed_notifications, :raise`).
+    - In a test a page reads again at once: write, then render. A page
+      does not hear the process that wrote, and the test process is not
+      the page. For a page that has not read yet, open it inside
+      `with_slow_changes/1` of `RescordWeb.ConnCase`. For a
+      `Cinder.collection`, render with `render_changes/1` of the same
+      module, which also waits for the read of the collection.
+    - A `:for` over a list that reads again has a `:key`.
+    - The chat of the assistant does not use this: it has its own topic
+      (ADR 0069).
+  - **No stream of LiveView, and no `assign_async`, without a reason**
+    (ADR 0096). A list is an assign, or a `Cinder.collection`. A read
+    that the page is for stays in `mount/3` until the metrics say that
+    it is slow. An event that works outside the database while the page
+    waits can use `start_async`.
   - Once there is authentication, every Ash call from a LiveView passes the
     actor explicitly. A refused read returns an empty result, not an error,
     so a test that reads asserts a non-empty result.
@@ -1041,6 +1077,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/units.ex`, `units/` | the units of measure, the quantities and their arithmetic, and the two Ash types (ADR 0071) |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
+| `platform/lib/rescord/changes.ex` | what a page hears when a record changes: the topics, the message with no record, and the module that the notifier of each resource calls (ADR 0096) |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord/dosage.ex` | the arithmetic of a dose, for the dose calculator of the tools (ADR 0072) |
 | `platform/lib/rescord/reports.ex`, `reports/` | the reports as PDF: the actions, the facts of each report, and the render (ADR 0076) |
@@ -1061,6 +1098,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
+| `platform/lib/rescord_web/live_changes.ex` | a page listens for the changes of its domains, waits a moment, and reads once (ADR 0096) |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
 | `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
 | `platform/lib/rescord_web/controllers/catalogue_html.ex`, `catalogue_html/examples/` | the catalogue of the components at `/dev/components`, and a template for each example (ADR 0095) |

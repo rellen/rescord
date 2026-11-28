@@ -123,6 +123,13 @@ defmodule Rescord.Transfers.Transfer do
     end
   end
 
+  # A page of each of the two refuges hears of it (ADR 0096).
+  pub_sub do
+    publish_all :create, [[:from_organisation_id, :to_organisation_id], "transfers"]
+    publish_all :update, [[:from_organisation_id, :to_organisation_id], "transfers"]
+    publish_all :destroy, [[:from_organisation_id, :to_organisation_id], "transfers"]
+  end
+
   attributes do
     uuid_primary_key :id
 

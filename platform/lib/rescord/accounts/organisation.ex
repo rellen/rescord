@@ -135,6 +135,13 @@ defmodule Rescord.Accounts.Organisation do
     end
   end
 
+  # A page of the organisation hears of it (ADR 0096).
+  pub_sub do
+    publish_all :create, [:id, "accounts"]
+    publish_all :update, [:id, "accounts"]
+    publish_all :destroy, [:id, "accounts"]
+  end
+
   attributes do
     uuid_primary_key :id
 

@@ -8,6 +8,9 @@ defmodule RescordWeb.TasksLive do
   with a reason, and opens it again. A member plans a task for any day,
   which can be months ahead. The routines page makes the tasks that repeat.
 
+  The page reads the tasks again when a task changes (ADR 0096), so a
+  member sees at once that another member took a task or finished it.
+
   The page reads only the fields that it knows from what the browser sends,
   and makes no atom from it.
   """
@@ -29,7 +32,9 @@ defmodule RescordWeb.TasksLive do
     {:ok, members} = Accounts.members([load: [:email]] ++ options)
 
     {:ok,
-     assign(socket,
+     socket
+     |> LiveChanges.listen([Tasks], &assign_tasks/1)
+     |> assign(
        page_title: "Tasks",
        problems: [],
        refused_form?: false,

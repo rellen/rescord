@@ -174,8 +174,10 @@ defmodule Rescord.Release.FilesTest do
     end
 
     test "stays when the transaction of an upload does not commit", context do
-      assert {:error, :stopped} =
-               Repo.transaction(fn ->
+      # `Ash.transact/3`, so that Ash knows of the transaction and drops the
+      # notification of the photo that does not commit (ADR 0096).
+      assert {:error, %Ash.Error.Unknown.UnknownError{error: "unknown error: :stopped"}} =
+               Ash.transact(Rescord.Photos.Photo, fn ->
                  add_photo!(context)
                  Repo.rollback(:stopped)
                end)

@@ -481,6 +481,15 @@ release (ADR 0047).
   resident again, and add it to its routines again. A resident that left
   before this version keeps its place and its tasks until a member clears
   them.
+- Five pages show what another person did, without a reload: the first
+  page of an organisation, the tasks, the transfers, the partner refuges
+  and the expenses. A task that another member takes or finishes, a
+  transfer that arrives, the answer of the other refuge and a decision
+  on an expense show at once. The first page still reads each minute
+  too, for a task that becomes overdue (ADR 0096).
+  An instance on several machines shows such a change on each machine
+  only when the machines form a cluster (`DNS_CLUSTER_QUERY`); with no
+  cluster the pages on another machine are as before.
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,

@@ -61,7 +61,8 @@ defmodule RescordWeb.AttentionComponents do
       <p :if={@total == 0} id="attention-nothing">
         A task that is overdue or due today, an item to count or to order, a resident that is
         expected or late back, a location over its capacity, and a transfer that waits for an
-        answer are here when your role can act on them. The page reads them again each minute.
+        answer are here when your role can act on them. The page shows a change at once, and
+        reads them again each minute.
       </p>
 
       <section

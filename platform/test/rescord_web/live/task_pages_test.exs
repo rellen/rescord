@@ -157,7 +157,9 @@ defmodule RescordWeb.TaskPagesTest do
     end
 
     test "says so when another member finished the task a moment before", context do
-      {view, _html} = open(context.conn, context.day_path)
+      # The page has not read again yet (ADR 0096): the two presses are in
+      # the same moment.
+      {view, _html} = with_slow_changes(fn -> open(context.conn, context.day_path) end)
 
       other = [actor: context.other, tenant: context.organisation]
       {:ok, _done} = Tasks.complete_task(context.task, %{}, other)
@@ -285,5 +287,38 @@ defmodule RescordWeb.TaskPagesTest do
     end
 
     assert RescordWeb.TaskWords.day(~D[2026-11-16]) == "Monday, 16 November 2026"
+  end
+
+  describe "what another member does (ADR 0096)" do
+    test "shows at once: a new task, who took it, and that it is done", context do
+      {view, html} = open(context.conn, context.path)
+      refute html =~ "Hay and pellets"
+
+      other = [actor: context.other, tenant: context.organisation]
+      task = plan!(context, %{due_at: today_at(context, "23:30")})
+      assert render(view) =~ "Hay and pellets"
+      assert has_element?(view, "#task-#{task.id} td", "Anybody")
+
+      taken = Tasks.take_task!(task, other)
+      assert has_element?(view, "#task-#{task.id} td", to_string(context.other.email))
+
+      Tasks.complete_task!(taken, %{}, other)
+      assert has_element?(view, "#task-#{task.id} [data-state=ok]", "Done")
+    end
+
+    test "does not show a task of another organisation", context do
+      {view, _html} = open(context.conn, context.path)
+
+      elsewhere = organisation!(context.root, "Ironbark Flat")
+      {_, stranger} = member!(elsewhere, :administrator, context.root)
+
+      Tasks.plan_task!(
+        %{title: "A task of Ironbark Flat", due_at: today_at(context, "23:30")},
+        actor: stranger,
+        tenant: elsewhere
+      )
+
+      refute render(view) =~ "Ironbark Flat"
+    end
   end
 end

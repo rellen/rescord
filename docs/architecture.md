@@ -230,8 +230,8 @@ their members (ADR 0022). For each domain:
 
 - each domain uses `AshBoundary`, and the web layer calls resources through
   the code interfaces on their domain (see "Boundaries");
-- changes reach the pages through `Ash.Notifier.PubSub` notifications, which
-  the widgets that show a resource subscribe to;
+- changes reach the pages through `Ash.Notifier.PubSub` notifications
+  (ADR 0096, and "Pages that hear a change" below);
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
 
@@ -242,6 +242,47 @@ action is the same as one with the lines written in it. A pipeline keeps
 the order of the lines: it runs each change before each validation, and a
 group with another order stays in its actions. `Rescord.Expenses.Expense`
 has the first two.
+
+### Pages that hear a change
+
+**A page shows what another person changed, without a reload**
+(ADR 0096).
+
+- **Each resource says that a record changed.** `Rescord.Resource` gives
+  each resource with a table the notifier `Ash.Notifier.PubSub`. After a
+  create, an update or a destroy has committed, the notifier calls
+  `Rescord.Changes`, the module of the core that wraps `Phoenix.PubSub`.
+- **A topic is one domain of one organisation**:
+  `changes:org_<id>:tasks`. A process subscribes with its own
+  organisation, so it hears no other. A resource that organisations
+  share has no tenant: it writes its own publications, with the
+  attribute that holds the id of the organisation.
+- **A change says that something changed, and not what.** The message is
+  a `Rescord.Changes.Change`: the domain, the resource, the action and
+  the primary key, and no attribute of the record. A topic is not a
+  policy, so no record goes on one. A process that hears a change reads
+  again as its own actor, and the policies answer that read.
+  `Rescord.ChangesTest` sweeps each resource for it.
+- **A page listens with `RescordWeb.LiveChanges.listen/3`**, in
+  `mount/3`, with its domains and the function that reads them again.
+  The page waits 250 milliseconds after the first change and reads once
+  for all the changes of that time. The function leaves the forms alone.
+  For a collection of Cinder it calls
+  `Cinder.refresh_table(socket, id, silent: true)`. A collection of a
+  temporal resource needs a new query too, because its query holds the
+  instant at which the page built it (ADR 0096, "With Cinder").
+- **The process that wrote hears nothing of its own change.** A page that
+  writes reads again in its own event.
+- **A write in a transaction is `Ash.transact/3`**, and not a transaction
+  of the repo, which loses the notifications. A test fails for a lost
+  one.
+- **Not for the chat of the assistant**, which has the topic of one
+  conversation and the text of a reply as it comes (ADR 0069).
+
+A list is an assign, and a `:for` over a list that reads again has a
+`:key`. Rescord has no stream of LiveView outside the chat of the
+assistant, and reads in `mount/3` until the metrics say that a read is
+slow (ADR 0096 has the candidates for `assign_async` and `start_async`).
 
 ### Signals and workflows
 
@@ -254,7 +295,8 @@ same thing by hand.
   and the resource that acts should not know them, in place of a call from an
   `after_action` hook. The emitter gets nothing back, so call a code
   interface when the action needs an answer. A signal is not for PubSub:
-  what a page hears after a commit is still a notifier's work.
+  what a page hears after a commit is a notifier's work (see "Pages that
+  hear a change").
 - **AshWorkflow** declares a process of several steps on a resource: steps
   that run in the background, steps that wait for a person, deadlines and
   reminders. It generates the states and transitions of `ash_state_machine`
@@ -721,9 +763,10 @@ Each domain says what needs somebody in its part with a function
 `attention`, and `Rescord.Attention.parts/2` asks each of them. Three
 rules hold: a read runs as the person, so the policies decide what they
 see; a row is there only for a role that can act on it; and a part has a
-limit and a total. The page reads again each minute, because the time
-alone makes a task overdue. A row is a link to the page of its record,
-where the person acts.
+limit and a total. The page reads again when a record of one of its parts
+changes (ADR 0096), and each minute, because the time alone makes a task
+overdue. A row is a link to the page of its record, where the person
+acts.
 
 ### Calendar feeds
 

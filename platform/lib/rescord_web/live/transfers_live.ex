@@ -16,6 +16,10 @@ defmodule RescordWeb.TransfersLive do
   imports a file from such a partner here: it waits for an answer, as a
   transfer on this server does.
 
+  The page reads again when a transfer or a partner changes (ADR 0096), so
+  a transfer that arrives, and the answer of the other refuge, show at
+  once.
+
   The page acts only on a transfer that it has in hand, and reads only the
   fields that it knows from what the browser sends: a part comes from
   `RescordWeb.TransferWords.part_of/1`, which makes no atom.
@@ -34,6 +38,7 @@ defmodule RescordWeb.TransfersLive do
 
     {:ok,
      socket
+     |> LiveChanges.listen([Transfers], &read_again/1)
      |> assign(
        problems: [],
        can_send?: Transfers.role_can?(role, :transfer, :send),
@@ -83,7 +88,28 @@ defmodule RescordWeb.TransfersLive do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
 
+  # After a change of another person (ADR 0096): the copy that the page
+  # shows, or the lists. The form to send keeps what the person chose.
+  defp read_again(%{assigns: %{transfer: %{id: id}}} = socket) do
+    case Transfers.transfer_of(socket.assigns.organisation, id,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, %{} = transfer} -> assign(socket, transfer: transfer)
+      _no_transfer -> socket
+    end
+  end
+
+  defp read_again(socket), do: assign_transfers(socket)
+
   defp assign_lists(socket) do
+    parts = Enum.map(socket.assigns.organisation.transfer_parts, &Atom.to_string/1)
+
+    socket
+    |> assign_transfers()
+    |> assign(send_form: to_form(%{"parts" => parts}, as: :transfer))
+  end
+
+  defp assign_transfers(socket) do
     organisation = socket.assigns.organisation
     actor = [actor: socket.assigns.current_user]
     {:ok, transfers} = Transfers.transfers_of(organisation, actor)
@@ -106,12 +132,7 @@ defmodule RescordWeb.TransfersLive do
       sent: sent,
       partners: partners,
       remote: for(%{state: :active} = partner <- remote, do: {partner.name, partner.id}),
-      residents: residents,
-      send_form:
-        to_form(
-          %{"parts" => Enum.map(organisation.transfer_parts, &Atom.to_string/1)},
-          as: :transfer
-        )
+      residents: residents
     )
   end
 

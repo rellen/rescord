@@ -8,6 +8,14 @@ config :ash,
   keyset_signing_secret: "RCqjVbP5zdhSYiU+ArBvz7f6Vj0YEk2VjYm0j+PfFkI",
   disable_async?: true
 
+# An action in a transaction that Ash did not start loses its notification,
+# and a page then hears nothing (ADR 0096). A test fails for it.
+config :ash, :missed_notifications, :raise
+
+# A page reads again at once after a change, with no wait, so a test writes
+# and then renders (ADR 0096).
+config :rescord, RescordWeb.LiveChanges, wait: 0
+
 # The secret that signs a sign-in token, for the tests only.
 config :rescord,
   token_signing_secret: "VDTYZSc078CDlK1BowcxqaEqUjVYsKD9V8fnz9wwyYrAsRYDWwZLvr8fATXrUJCM"
