@@ -289,6 +289,8 @@ jobs:
   nix:
     name: Nix
     uses: ./.github/workflows/nix.yml
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
   # One result for the whole run, for a rule of the branch: it fails when a
   # job failed or was cancelled, as by its timeout. The messages of the

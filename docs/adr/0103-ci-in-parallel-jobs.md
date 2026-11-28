@@ -54,13 +54,17 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   break the start of a release, and the NixOS test is the one test that
   starts a release, migrates and runs each command of the server. A
   release calls CI and has no Nix job of its own.
-- **The Nix store has no cache.** The Magic Nix Cache of Determinate
-  Systems was in the first build. It keeps each path of the store as an
-  entry of the cache of GitHub Actions, and the first run hit the rate
-  limit of that cache about 400 times. A job of mix in the next run then
-  got 429 for its own restore and compiled everything again. A cache of
-  the toolchain on Cachix needs an account and a token of the maintainer,
-  so it is a choice for later.
+- **The Nix store has a cache on Cachix**, the public cache `rescord` of
+  the maintainer (28 November 2026). A run of CI on `main` (a push, or a
+  run from the Actions page) writes to it with the secret
+  `CACHIX_AUTH_TOKEN`; every other run only reads it, and a pull request
+  from a fork has no token at all. The source, the package of Rescord and
+  the NixOS test are not written, since they change with each commit. The
+  Magic Nix Cache of Determinate Systems was in the first build. It keeps
+  each path of the store as an entry of the cache of GitHub Actions, and
+  the first run hit the rate limit of that cache about 400 times. A job of
+  mix in the next run then got 429 for its own restore and compiled
+  everything again.
 - **The job "CI" gives one result** for the run: it fails when a job failed
   or was cancelled. The messages of the commits are skipped in a run with
   no push, which is no failure.
@@ -81,8 +85,9 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   sooner than two. The times of the parts in CI show when to change them.
   `mix test --slowest-modules` shows the slow files, outside CI: it turns
   on `--trace`, which runs every test one at a time.
-- The flake check builds Erlang, Elixir and rebar3 in each run, about 18
-  minutes, and is the longest path of a run.
+- With no cache, the flake check built Erlang, Elixir and rebar3 in each
+  run, about 18 minutes, the longest path of a run. With the cache, a run
+  builds them only after a change of `flake.lock` or of `nix/`.
 - Each job after "Compile" gives the files the time of the commit after it
   restored the build of that commit, so mix compiles nothing. A checkout
   gives each file the time of now, newer than the build, and mix then
