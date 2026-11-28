@@ -103,6 +103,10 @@ expect "the root user" "$(sql 'select count(*) from users where is_root')" 1
 expect "the organisation" "$(sql "select count(*) from organisations where short_name = 'upgrade-refuge'")" 1
 expect "the file" "$(compose exec -T rescord cat /var/lib/rescord/files/upgrade-probe.txt)" "a file of the old version"
 
+# The roles that the old version made get the power of the calendar feeds
+# (ADR 0074), and get it one time.
+expect "the calendar power of the first roles" "$(sql "select count(*) from \"$schema\".roles where key in ('administrator', 'member') and cardinality(array_positions(powers, 'calendar')) = 1")" 2
+
 # bin/check of the new version reads each migration of the database and of
 # each organisation. Its mail fails here, with no SMTP server.
 report=$(compose exec -T rescord bin/check 2>/dev/null || true)

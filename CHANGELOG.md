@@ -22,6 +22,15 @@ release (ADR 0047).
   - `20261128050845_add_ruby_providers`, in the database: adds the table
     of the providers of the assistant, and the table of their history.
     Both are empty until a root user adds a provider. It changes no row.
+  - `20261128050351_add_calendar_feeds`, in each organisation: adds the
+    two tables of the calendar feeds, for the feeds and for their
+    history. It changes no row.
+  - `20261128051000_give_the_first_roles_the_calendar`, in each
+    organisation: gives the new power "Subscribe to a calendar feed" to
+    the role with the key `administrator` and to the role with the key
+    `member`, which are the roles Administrator and Member that each
+    organisation starts with. No other row changes: a role that an
+    administrator defined does not get the power by itself.
 - `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
   the database, such as the key of a provider of the assistant. It did so
   for the private keys of the transfers already, so the rule is the same:
@@ -31,6 +40,14 @@ release (ADR 0047).
   `RESCORD_KEY_SECRET_PREVIOUS` is for the time when you change
   `RESCORD_KEY_SECRET`, and a server that does not change its secret
   does not set it.
+- After the upgrade, each person with the role Administrator or Member
+  can make a calendar feed, which copies tasks and dates to the calendar
+  service of that person. To keep that off, an administrator unticks the
+  power "Subscribe to a calendar feed" on the page of the roles.
+- The address of a calendar feed holds a secret token in its query. A
+  reverse proxy that logs the whole address of each request then holds
+  those tokens: see step 5 of the install with systemd in
+  `docs/self-hosting.md`.
 
 ### Added
 
@@ -74,6 +91,17 @@ release (ADR 0047).
   knows no medication: it offers no dose rate and does not say that a dose
   is safe. It stores nothing, and each member can use it. A number with a
   comma is refused, because `1,095` can mean two numbers.
+- Calendar feeds. A member makes a feed on the new page "Calendar feeds",
+  and subscribes to it in a calendar app such as Apple Calendar, Google
+  Calendar or Outlook. The feed holds the tasks that the member chooses:
+  the tasks that name them, those and the tasks for anybody, or each
+  task. It can also hold the days on which residents are expected back,
+  and the expiry dates of the stock. The calendar app only reads: each
+  event links to its record in Rescord. The address of a feed is a secret
+  that the page shows one time, and a member revokes a feed at any time.
+  A person who can invite and remove members sees who has a feed, and
+  when a calendar app last read it, and can revoke it. The notes that
+  people wrote are in a feed only when the member asks for them.
 
 ### Changed
 

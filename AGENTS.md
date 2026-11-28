@@ -435,6 +435,26 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `role`. Pass the user as the actor and the organisation as the tenant
     of each call. Show a form or a button only when
     `Rescord.Accounts.role_can?/3` says so.
+- **Calendar feeds** (ADR 0074).
+  - **The token of a feed is in one place: the address that the page
+    shows one time.** Rescord stores its hash. Never put a token in a path,
+    a line of the log, a version, a flash or a later render. The parameter
+    is named `token`, which `:filter_parameters` leaves out of the log.
+  - **A feed reads as its owner.** Each read for the content passes the
+    user of the member as the actor and the organisation as the tenant.
+    Only `Rescord.Calendars.fetch/3` reads with `authorize?: false`, to
+    find the feed of a token, and it asks the policy of `subscribe` about
+    the owner at each request.
+  - **An event holds the least that is useful.** No name and no address
+    of a member. The words that a person wrote are there only for a feed
+    with `with_notes`. A new field of an event is a decision about what
+    leaves Rescord.
+  - **Each refusal of the address gets the same answer**, so a new reason
+    to refuse returns `:error` from `fetch/3`.
+  - A new dated thing is a clause of the function `calendar` of its
+    domain, which reads as the actor of its options, and a clause of
+    `RescordWeb.CalendarEvents`. The text of a calendar comes from
+    `Rescord.Calendars.ICalendar` alone: never build a line by hand.
 - **Settings** (ADR 0068). A new setting is in the environment only when
   Rescord needs it before the database, before the first sign-in, or when
   it describes the machine. Each other setting is an Ash resource with a

@@ -162,6 +162,9 @@ We do not write those by hand.
 - **A `<details>` keeps its state** when LiveView draws the page again
   (ADR 0031): `assets/js/details.ts` carries it over, and each `<details>`
   of a page has an id.
+- **A button copies the address of a calendar feed** (ADR 0074):
+  `assets/js/copy.ts` listens for a press on a button with `data-copy`,
+  which names a field. Without the script the field still works.
 - **A hook may parse the data that the server sends with zod**, so that the
   shape of a `push_event` payload or of a `data-` attribute is checked where
   it enters the browser, and typed from there on. zod is not a dependency
@@ -561,6 +564,23 @@ see; a row is there only for a role that can act on it; and a part has a
 limit and a total. The page reads again each minute, because the time
 alone makes a task overdue. A row is a link to the page of its record,
 where the person acts.
+
+### Calendar feeds
+
+**A member subscribes to a calendar feed in their calendar app**
+(ADR 0074): the tasks, the days on which residents are expected back, and
+the expiry dates of the stock, as iCalendar text at
+`/o/<short name>/calendar.ics`. Rescord publishes and the app reads:
+nothing in a calendar changes a record. Each domain says what its dated
+things are with a function `calendar`, and `Rescord.Calendars.entries/4`
+asks each of them. Four rules hold. The address is the key: it holds a
+token, Rescord stores only the hash, and the page shows the address one
+time. A feed reads as the member who made it, so the policies decide what
+it holds, and it reads only while that member could make it. An event
+holds the least that is useful: no name of a member, and the words that a
+person wrote only when the member asks for them. And each refusal gets
+the same answer. A feed needs the power `calendar`, and a person with the
+power `members` sees and revokes the feed of each member.
 
 ### Settings
 

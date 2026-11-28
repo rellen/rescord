@@ -252,6 +252,39 @@ defmodule Rescord.Residents do
     end
   end
 
+  @doc """
+  The days of a calendar (ADR 0074): each resident that is away with a day
+  on which it is expected back, from the day `:from` of `opts`, in the
+  order of the days, `:limit` of them at most.
+
+  Returns an entry for each: `%{kind: :return, record: resident, absence:
+  absence, on: day}`. A resident that left is not away, whatever its
+  absence says.
+  """
+  @spec calendar(keyword) :: {:ok, [map]} | {:error, term}
+  def calendar(opts) do
+    {from, opts} = Keyword.pop!(opts, :from)
+    {limit, opts} = Keyword.pop(opts, :limit, 2_000)
+
+    with {:ok, absences} <-
+           Absence
+           |> Ash.Query.filter(expected_back_on >= ^from and resident.status == :away)
+           |> Ash.Query.sort(expected_back_on: :asc, id: :asc)
+           |> Ash.Query.limit(limit)
+           |> Ash.Query.load(resident: [:name])
+           |> Ash.read(opts) do
+      {:ok,
+       for absence <- absences do
+         %{
+           kind: :return,
+           record: absence.resident,
+           absence: absence,
+           on: absence.expected_back_on
+         }
+       end}
+    end
+  end
+
   defp history(resource, attribute, resident_id, opts) do
     # The policy of the versions refuses each actor: the resident decides.
     case resident(resident_id, opts) do

@@ -129,6 +129,45 @@ defmodule Rescord.Tasks do
     end
   end
 
+  @doc """
+  The tasks of a calendar (ADR 0074): each task whose time is at `:from` of
+  `opts` or after it, in the order of their times, `:limit` of them at
+  most, each with its kind and its subjects.
+
+  `scope` says which tasks: `:all`, `{:mine, user_id}` for the tasks that
+  name a user, or `{:mine_and_open, user_id}` for those and the tasks that
+  are for each member. Returns an entry for each task:
+  `%{kind: :task, record: task, at: due_at}`.
+  """
+  @spec calendar(:all | {:mine | :mine_and_open, String.t()}, keyword) ::
+          {:ok, [map]} | {:error, term}
+  def calendar(scope, opts) do
+    {from, opts} = Keyword.pop!(opts, :from)
+    {limit, opts} = Keyword.pop(opts, :limit, 2_000)
+
+    with {:ok, tasks} <-
+           Task
+           |> Ash.Query.filter(due_at >= ^from)
+           |> named(scope)
+           |> Ash.Query.sort(due_at: :asc, title: :asc, id: :asc)
+           |> Ash.Query.limit(limit)
+           |> Ash.Query.load(@facts)
+           |> Ash.read(opts) do
+      {:ok, for(task <- tasks, do: %{kind: :task, record: task, at: task.due_at})}
+    end
+  end
+
+  defp named(query, :all), do: query
+  defp named(query, {:mine, user_id}), do: Ash.Query.filter(query, ^user_id in assignee_ids)
+
+  # A task with no member is for each member.
+  defp named(query, {:mine_and_open, user_id}) do
+    Ash.Query.filter(
+      query,
+      ^user_id in assignee_ids or fragment("cardinality(?) = 0", assignee_ids)
+    )
+  end
+
   @doc "One task with its kind and its subjects, or `nil`."
   def task_with_facts(id, opts \\ []), do: task(id, Keyword.put(opts, :load, @facts))
 

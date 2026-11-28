@@ -70,11 +70,12 @@ defmodule Rescord.Accounts.Grants do
     :stock,
     :inventory,
     :transfers,
-    :export
+    :export,
+    :calendar
   ]
 
-  # The powers of a member of ADR 0021.
-  @member_powers [:residents, :placements, :journal, :tasks, :stock]
+  # The powers of a member of ADR 0021, and the calendar feed of ADR 0074.
+  @member_powers [:residents, :placements, :journal, :tasks, :stock, :calendar]
 
   @reads [{Member, :read, :all}, {Role, :read, :all}]
 

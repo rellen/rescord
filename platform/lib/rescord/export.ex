@@ -64,7 +64,9 @@ defmodule Rescord.Export do
       "A partner on another server is the setting of the transfers between servers.",
     Rescord.Transfers.RefugeKey => "The keys of a refuge are secrets of the transfers.",
     Rescord.Ruby.Provider =>
-      "A provider of the assistant is a setting of the server, and no record of a rescue."
+      "A provider of the assistant is a setting of the server, and no record of a rescue.",
+    Rescord.Calendars.Feed =>
+      "A calendar feed is a setting of one member, and its row holds the hash of the secret of its address."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."

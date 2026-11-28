@@ -28,6 +28,8 @@ import {hooks as cinderHooks} from "phoenix-colocated/cinder"
 // The sort of a table column of Cinder, for a keyboard (ADR 0017).
 import {enhance as enhanceCinderTables, keep as keepCinderTables, listen as listenToCinderTables} from "./cinder_tables"
 import {keepOpen as keepDetailsOpen} from "./details"
+// The button that copies the address of a calendar feed (ADR 0074).
+import {listen as listenForCopies} from "./copy"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -47,6 +49,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
 
 listenToCinderTables()
 enhanceCinderTables()
+listenForCopies()
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})

@@ -414,6 +414,13 @@ Only an administrator starts, changes, pauses and ends a routine (ADR
 each member. When one of its members completes a task, it is done for all
 of them. A member who takes a task joins the members that it names.
 
+A member can read the tasks in a calendar application (ADR 0074). The
+member makes a calendar feed: an address that the calendar application
+reads again and again. The feed holds the tasks that the member chooses.
+It can also hold the days on which residents are expected back, and the
+expiry dates of the stock. The calendar application only reads. A member
+completes a task in Rescord.
+
 ### 5.8 Inventory
 
 The inventory is the set of supplies of an organisation. The maintainer gave

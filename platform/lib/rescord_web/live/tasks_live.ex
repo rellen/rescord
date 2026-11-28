@@ -221,6 +221,9 @@ defmodule RescordWeb.TasksLive do
           <.link navigate={~p"/o/#{@organisation.short_name}/routines"} data-variant="secondary">
             Routines
           </.link>
+          <.link navigate={~p"/o/#{@organisation.short_name}/calendar"} data-variant="secondary">
+            Calendar feeds
+          </.link>
         </:actions>
       </.header>
 

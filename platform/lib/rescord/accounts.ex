@@ -72,6 +72,7 @@ defmodule Rescord.Accounts do
     resource Rescord.Accounts.Member do
       define :members, action: :read
       define :member, action: :read, get_by: [:id], not_found_error?: false
+      define :member_of_user, action: :read, get_by: [:user_id], not_found_error?: false
       define :invite_member, action: :invite_member, args: [:email]
       define :set_member_role, action: :set_role, args: [:role_id]
       define :invite_administrator, action: :invite_administrator, args: [:email]

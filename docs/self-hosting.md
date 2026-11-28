@@ -181,6 +181,11 @@ repository, on a machine with Docker.
    default; nginx does with `proxy_set_header X-Forwarded-For
    $proxy_add_x_forwarded_for;` and the headers for WebSocket. A proxy on
    another machine goes in `RESCORD_TRUSTED_PROXIES`.
+   The address of a calendar feed holds a secret token, as
+   `/o/<short name>/calendar.ics?token=...`. Rescord keeps it out of its
+   own log. A proxy that logs the whole address of each request holds
+   those tokens in its log: keep that log as you keep a secret, or leave
+   the query out of it.
 6. Check the server (see "Check the server" below), and make the first root
    user, each with the settings of the service:
 

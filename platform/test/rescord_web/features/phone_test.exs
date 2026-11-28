@@ -85,7 +85,7 @@ defmodule RescordWeb.Features.PhoneTest do
               residents/#{resident.id}/edit residents/#{resident.id}/journal
               residents/#{resident.id}/photos residents/#{resident.id}/timeline groups housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
-              lists members roles partners transfers settings export),
+              lists members roles partners transfers settings export calendar),
            &"#{home}/#{&1}"
          )}
   end

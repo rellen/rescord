@@ -284,6 +284,32 @@ defmodule Rescord.Inventory do
   end
 
   @doc """
+  The days of a calendar (ADR 0074): the expiry date of each lot that has
+  stock left, from the day `:from` of `opts`, in the order of the days. A
+  lot with nothing left is history, and has no day.
+
+  Returns an entry for each: `%{kind: :expiry, record: item, lot: lot,
+  level: level, on: day}`, with the item as `stock/1` gives it.
+  """
+  @spec calendar(keyword) :: {:ok, [map]} | {:error, term}
+  def calendar(opts) do
+    {from, opts} = Keyword.pop!(opts, :from)
+    {limit, opts} = Keyword.pop(opts, :limit, 2_000)
+
+    with {:ok, stock} <- stock(opts) do
+      entries =
+        for %{item: item, lots: lots} <- stock,
+            %{lot: %{expires_on: %Date{} = on} = lot, level: level} <- lots,
+            Decimal.positive?(level),
+            Date.compare(on, from) != :lt do
+          %{kind: :expiry, record: item, lot: lot, level: level, on: on}
+        end
+
+      {:ok, entries |> Enum.sort_by(& &1.on, Date) |> Enum.take(limit)}
+    end
+  end
+
+  @doc """
   Where a lot is with its expiry date on a day of the organisation:
   `:expired` after the date, `:soon` in the `soon_days` before it and on it,
   `:later` before that, and `:none` for a lot with no expiry date.

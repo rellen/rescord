@@ -31,6 +31,12 @@ defmodule RescordWeb.Router do
     get "/health", HealthController, :show
   end
 
+  # The calendar of a feed (ADR 0074): no session, no page. A calendar app
+  # asks, and the token in the address is the key.
+  scope "/", RescordWeb do
+    get "/o/:organisation/calendar.ics", CalendarFeedController, :show
+  end
+
   scope "/", RescordWeb do
     pipe_through :browser
 
@@ -83,6 +89,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/export", ExportLive
       live "/o/:organisation/lists", ListsLive, :organisation
       live "/o/:organisation/tasks", TasksLive
+      live "/o/:organisation/calendar", CalendarLive
       live "/o/:organisation/routines", RoutinesLive, :index
       live "/o/:organisation/routines/:id/edit", RoutinesLive, :edit
       live "/o/:organisation/inventory", InventoryLive
