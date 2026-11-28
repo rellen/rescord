@@ -37,20 +37,12 @@ defmodule Rescord.StorageTest do
   end
 
   test "a store says what it is, with no key and no secret" do
-    previous = Application.get_env(:rescord, S3)
-
-    Application.put_env(:rescord, S3,
+    Shoddy.Tests.put_app_env(:rescord, S3,
       endpoint: "https://t3.storage.dev",
       bucket: "rescord",
       access_key_id: "the-key-id",
       secret_access_key: "the-secret"
     )
-
-    on_exit(fn ->
-      if previous,
-        do: Application.put_env(:rescord, S3, previous),
-        else: Application.delete_env(:rescord, S3)
-    end)
 
     assert Storage.describe(S3) == "the bucket rescord at https://t3.storage.dev"
     assert Storage.describe(Disk) =~ ~r/^the directory /
@@ -60,10 +52,7 @@ defmodule Rescord.StorageTest do
     @describetag :tmp_dir
 
     setup %{tmp_dir: tmp_dir} do
-      previous = Application.get_env(:rescord, Disk)
-      Application.put_env(:rescord, Disk, root: tmp_dir)
-      on_exit(fn -> Application.put_env(:rescord, Disk, previous) end)
-      :ok
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: tmp_dir)
     end
 
     test "puts, gets and deletes a file", %{tmp_dir: tmp_dir} do
@@ -152,12 +141,12 @@ defmodule Rescord.StorageTest do
 
     test "says which directory it cannot read", %{tmp_dir: tmp_dir} do
       missing = Path.join(tmp_dir, "none")
-      Application.put_env(:rescord, Disk, root: missing)
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: missing)
       assert Disk.list() == {:error, {:enoent, missing}}
 
       file = Path.join(tmp_dir, "a-file")
       File.write!(file, "")
-      Application.put_env(:rescord, Disk, root: file)
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: file)
       assert Disk.list() == {:error, {:enotdir, file}}
       assert Disk.files() == {:error, {:enotdir, file}}
     end
@@ -165,9 +154,7 @@ defmodule Rescord.StorageTest do
 
   describe "the store of S3" do
     setup do
-      previous = Application.get_env(:rescord, S3)
-
-      Application.put_env(:rescord, S3,
+      Shoddy.Tests.put_app_env(:rescord, S3,
         endpoint: "http://garage.test:3900",
         region: "garage",
         bucket: "rescord",
@@ -175,14 +162,6 @@ defmodule Rescord.StorageTest do
         secret_access_key: "000000000000000000000000000000000000000000000000000000000000dec0",
         req_options: [plug: {Req.Test, S3}, retry: false]
       )
-
-      on_exit(fn ->
-        if previous,
-          do: Application.put_env(:rescord, S3, previous),
-          else: Application.delete_env(:rescord, S3)
-      end)
-
-      :ok
     end
 
     test "puts a file in the bucket, in the path, with its type and a signature" do
@@ -209,7 +188,7 @@ defmodule Rescord.StorageTest do
     end
 
     test "puts the bucket in the host, with a signature for S3, when the address is virtual" do
-      Application.put_env(
+      Shoddy.Tests.put_app_env(
         :rescord,
         S3,
         Keyword.merge(Application.get_env(:rescord, S3),
@@ -331,7 +310,7 @@ defmodule Rescord.StorageTest do
     end
 
     test "lists a bucket whose name is in the host, at the root of that host" do
-      Application.put_env(
+      Shoddy.Tests.put_app_env(
         :rescord,
         S3,
         Keyword.merge(Application.get_env(:rescord, S3),

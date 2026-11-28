@@ -48,14 +48,8 @@ defmodule Rescord.FakeAnthropic do
   until the test ends. A test that calls this does not run beside others.
   """
   def via(agent) do
-    before = Application.get_env(:rescord, :ruby_llm)
-    Application.put_env(:rescord, :fake_anthropic_url, url(agent))
-    Application.put_env(:rescord, :ruby_llm, __MODULE__.Via)
-
-    ExUnit.Callbacks.on_exit(fn ->
-      Application.put_env(:rescord, :ruby_llm, before)
-      Application.delete_env(:rescord, :fake_anthropic_url)
-    end)
+    Shoddy.Tests.put_app_env(:rescord, :fake_anthropic_url, url(agent))
+    Shoddy.Tests.put_app_env(:rescord, :ruby_llm, __MODULE__.Via)
   end
 
   defmodule Via do

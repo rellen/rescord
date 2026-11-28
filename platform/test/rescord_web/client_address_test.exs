@@ -17,15 +17,8 @@ defmodule RescordWeb.ClientAddressTest do
   doctest ClientAddress
 
   setup do
-    previous = Application.get_env(:rescord, ClientAddress)
     {:ok, trusted} = ClientAddress.parse_networks("127.0.0.1/8, ::1, 10.0.0.0/8, 2001:db8::/32")
-    Application.put_env(:rescord, ClientAddress, trusted: trusted)
-
-    on_exit(fn ->
-      if previous,
-        do: Application.put_env(:rescord, ClientAddress, previous),
-        else: Application.delete_env(:rescord, ClientAddress)
-    end)
+    Shoddy.Tests.put_app_env(:rescord, ClientAddress, trusted: trusted)
   end
 
   defp client(peer, forwarded \\ []) do

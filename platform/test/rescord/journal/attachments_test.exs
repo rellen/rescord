@@ -116,8 +116,7 @@ defmodule Rescord.Journal.AttachmentsTest do
     end
 
     test "is not written when the store refuses the file", context do
-      Application.put_env(:rescord, :storage, __MODULE__.DownStore)
-      on_exit(fn -> Application.put_env(:rescord, :storage, Rescord.Storage.Disk) end)
+      Shoddy.Tests.put_app_env(:rescord, :storage, __MODULE__.DownStore)
 
       assert {:error, %Ash.Error.Invalid{} = error} = attach(context, jpeg())
 
