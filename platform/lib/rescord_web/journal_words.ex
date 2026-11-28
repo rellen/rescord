@@ -123,8 +123,8 @@ defmodule RescordWeb.JournalWords do
 
   @doc "The facts of an entry in one line, or `nil` for an entry with words only."
   def facts(%{measurement: %{} = measurement}) do
-    unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""
-    "#{measurement.measure_kind.label}: #{number(measurement.value)}#{unit}"
+    # In the standard unit of the kind, with what was recorded (ADR 0094).
+    "#{measurement.measure_kind.label}: #{RescordWeb.MeasurementWords.measurement(measurement)}"
   end
 
   def facts(%{diagnosis: %{} = diagnosis}), do: "Condition: #{diagnosis.condition.label}"

@@ -1,11 +1,21 @@
 defmodule Rescord.Journal.Validations.UnitOfKind do
   @moduledoc """
-  The unit of a measurement is one of the units of its kind (the maintainer,
-  18 November 2026). A kind with no unit in its list accepts each unit.
+  The unit of a measurement fits its kind (`Rescord.Lists.units_for/2`).
+
+    * A kind with a standard unit (ADR 0094): the measurement needs a unit,
+      and the unit is the standard unit or one that Rescord converts to it.
+    * A kind that names its units and has no standard unit (the
+      maintainer, 18 November 2026): the unit is one of them, or the
+      measurement has no unit.
+    * A kind that names no unit and has no standard unit accepts each unit.
 
   The kind is the argument `measure_kind_id`, or the kind of the measurement
-  that a correction changes. The validation runs after the policy, so a
-  person who cannot write the entry gets the answer of the policy.
+  that a correction changes, and the unit likewise. A correction that gives
+  no kind and no unit is not checked: a person can put the value or the
+  words of an old measurement right, whose unit a newer rule would refuse.
+
+  The validation runs after the policy, so a person who cannot write the
+  entry gets the answer of the policy.
   """
 
   use Ash.Resource.Validation
@@ -20,37 +30,61 @@ defmodule Rescord.Journal.Validations.UnitOfKind do
 
   @impl true
   def validate(changeset, _opts, _context) do
-    with unit_id when is_binary(unit_id) <- argument(changeset, :unit_id),
-         kind_id when is_binary(kind_id) <- kind_id(changeset),
-         [_ | _] = unit_ids <- Rescord.Lists.unit_ids_of_kind(kind_id, options(changeset)),
-         false <- unit_id in unit_ids do
-      {:error, field: :unit_id, message: "is not a unit of this kind of measurement"}
-    else
-      _fits -> :ok
+    given_unit = argument(changeset, :unit_id)
+    given_kind = argument(changeset, :measure_kind_id)
+    existing = if changeset.action_type == :update, do: existing(changeset)
+
+    cond do
+      changeset.action_type == :update and is_nil(given_unit) and is_nil(given_kind) ->
+        :ok
+
+      kind_id = given_kind || (existing && existing.measure_kind_id) ->
+        fits(given_unit || (existing && existing.unit_id), kind_id, options(changeset))
+
+      true ->
+        :ok
     end
   end
 
-  defp kind_id(changeset) do
-    case argument(changeset, :measure_kind_id) do
-      nil ->
-        case changeset.data do
-          %{id: id} when is_binary(id) ->
-            Measurement
-            |> Ash.Query.filter(entry_id == ^id)
-            |> Ash.read_one!(options(changeset))
-            |> case do
-              nil -> nil
-              measurement -> measurement.measure_kind_id
-            end
+  defp fits(unit_id, kind_id, options) do
+    case Rescord.Lists.units_for(kind_id, options) do
+      :any ->
+        :ok
 
-          _new ->
-            nil
+      {:of_kind, unit_ids} ->
+        if is_nil(unit_id) or unit_id in unit_ids,
+          do: :ok,
+          else: {:error, field: :unit_id, message: "is not a unit of this kind of measurement"}
+
+      {:standard, label, unit_ids} ->
+        cond do
+          is_nil(unit_id) ->
+            # The name is in the message itself: the error of a fact of an
+            # entry loses the values beside its message on the way out.
+            {:error,
+             field: :unit_id,
+             message: "is needed: a measurement of this kind has a unit, such as #{label}"}
+
+          unit_id in unit_ids ->
+            :ok
+
+          true ->
+            {:error,
+             field: :unit_id,
+             message: "is not a unit that Rescord converts to #{label}, the unit of this kind"}
         end
-
-      kind_id ->
-        kind_id
     end
   end
+
+  # The measurement that a correction changes, or `nil` for an entry of
+  # another kind.
+  defp existing(%{data: %{id: id}} = changeset) when is_binary(id) do
+    Measurement
+    |> Ash.Query.filter(entry_id == ^id)
+    |> Ash.read_one!(options(changeset))
+  end
+
+  defp existing(_changeset), do: nil
 
   defp argument(changeset, name) do
     case Ash.Changeset.fetch_argument(changeset, name) do

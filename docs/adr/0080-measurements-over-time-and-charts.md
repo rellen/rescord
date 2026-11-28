@@ -78,7 +78,9 @@ has the table.
   a point: the card says how many are not in the chart, and the table has
   them as they were recorded. A value that Rescord converted is rounded to
   four significant digits for the page, and the table shows what was
-  recorded beside it.
+  recorded beside it. ADR 0094 changed this later: a kind can name its
+  standard unit, and the series of such a kind is in that unit. A kind
+  with no standard unit keeps the unit of its newest measurement.
 - **Three places show the measurements.**
   1. `/o/<short name>/residents/<id>/measurements`: a card for each kind
      with the newest value, its change, the chart, the point that the

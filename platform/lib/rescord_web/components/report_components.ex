@@ -7,9 +7,65 @@ defmodule RescordWeb.ReportComponents do
 
   use RescordWeb, :html
 
+  alias RescordWeb.ReportWords
+
+  @doc """
+  The control that chooses the paper of a report (ADR 0093), for a form
+  that asks for one: a select with the name `paper`. `value` is the paper
+  that is chosen at first, which is the one of the organisation.
+  """
+  attr :id, :string, required: true
+  attr :value, :atom, required: true
+
+  def paper_control(assigns) do
+    ~H"""
+    <.input
+      id={@id}
+      name="paper"
+      type="select"
+      label="Paper"
+      options={ReportWords.paper_options()}
+      value={Atom.to_string(@value)}
+    />
+    """
+  end
+
+  @doc """
+  The paper of the reports of an organisation (ADR 0093), and the form that
+  changes it.
+  """
+  attr :organisation, :any, required: true
+  attr :can_change?, :any, required: true
+
+  def paper_setting(assigns) do
+    ~H"""
+    <section aria-labelledby="paper-heading">
+      <h2 id="paper-heading">Paper of the reports</h2>
+      <p>
+        A report of {@organisation.name} is a PDF on
+        <strong>{ReportWords.paper_name(@organisation.paper_size)}</strong>
+        paper. A person who makes a report can choose the other paper for that one document.
+      </p>
+      <form :if={@can_change?} id="paper" phx-submit="save_paper">
+        <.input
+          id="paper-size"
+          name="paper[size]"
+          type="select"
+          label="Paper of a report"
+          value={Atom.to_string(@organisation.paper_size)}
+          options={ReportWords.paper_options()}
+        />
+        <footer><.button type="submit">Save the paper</.button></footer>
+      </form>
+    </section>
+    """
+  end
+
   @doc """
   The documents of one resident, on its page: its record, with the part of
-  the journal that the person chooses, and its cage card.
+  the journal that the person chooses, and its cage card. The two share the
+  control of the paper, so the cage card is a second button of the form,
+  which sends it to the address of the card.
   """
   attr :organisation, :map, required: true
   attr :resident, :map, required: true
@@ -35,16 +91,18 @@ defmodule RescordWeb.ReportComponents do
           value="medical"
         />
         <.input id="record-photos" name="photos" type="checkbox" label="With its photos" />
-        <button type="submit">Make the record (PDF)</button>
+        <.paper_control id="record-paper" value={@organisation.paper_size} />
+        <footer>
+          <button type="submit">Make the record (PDF)</button>
+          <button
+            id="cage-card"
+            type="submit"
+            formaction={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/card.pdf"}
+          >
+            Make the cage card (PDF)
+          </button>
+        </footer>
       </form>
-      <p>
-        <a
-          id="cage-card"
-          href={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/card.pdf"}
-        >
-          Make the cage card (PDF)
-        </a>
-      </p>
     </section>
     """
   end

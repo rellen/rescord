@@ -184,7 +184,7 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       assert has_element?(
                view,
-               "#{row} a[href='#{context.base}/residents/#{context.biscuit.id}/journal#entry-#{first.id}']"
+               "#{row} a[href='#{context.base}/residents/#{context.biscuit.id}/journal?entry=#{first.id}']"
              )
 
       assert has_element?(view, "#{row} td[data-label=Value]", "690 g")
@@ -336,7 +336,7 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       assert has_element?(
                view,
-               "p[data-picked] a[href='#{context.base}/residents/#{context.biscuit.id}/journal#entry-#{second.id}']",
+               "p[data-picked] a[href='#{context.base}/residents/#{context.biscuit.id}/journal?entry=#{second.id}']",
                "Open the entry"
              )
 
@@ -558,6 +558,172 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       {:ok, entries} = Journal.entries(context.biscuit.id, context.options)
       assert length(entries) == 5
+    end
+  end
+
+  describe "a kind with a standard unit (ADR 0094)" do
+    defp standard!(context, unit) do
+      {:ok, _} =
+        Rescord.Lists.set_standard_unit(
+          context.lists.measure_kind.weight,
+          unit && Map.fetch!(context.lists.unit, unit),
+          actor: context.administrator,
+          tenant: context.organisation
+        )
+    end
+
+    test "has its card, its chart and its table in that unit, whatever was recorded last",
+         context do
+      measure!(context, context.biscuit, :weight, "690", :g, 5)
+      measure!(context, context.biscuit, :weight, "0.76", :kg, 1)
+      standard!(context, :g)
+      kind = context.lists.measure_kind.weight
+
+      {view, _html} = open(context.conn, context.path)
+
+      assert has_element?(view, "#measure-#{kind} p[data-figure] strong", "760 g")
+      assert has_element?(view, "#measure-#{kind} p[data-change=up]", "70 g more than on")
+
+      assert has_element?(
+               view,
+               "#chart-#{kind} svg[role=img][aria-label='Weight of Biscuit, in g']"
+             )
+
+      assert has_element?(view, "#table-#{kind} td[data-label=Value]", "760 g")
+
+      assert has_element?(
+               view,
+               "#table-#{kind} td[data-label=Value] small",
+               "recorded as 0.76 kg"
+             )
+
+      # Another standard unit changes the page, and no record.
+      standard!(context, :kg)
+      {view, _html} = open(context.conn, context.path)
+
+      assert has_element?(view, "#measure-#{kind} p[data-figure] strong", "0.76 kg")
+
+      assert has_element?(
+               view,
+               "#chart-#{kind} svg[role=img][aria-label='Weight of Biscuit, in kg']"
+             )
+
+      assert has_element?(view, "#table-#{kind} td[data-label=Value] small", "recorded as 690 g")
+    end
+
+    test "has the standard unit chosen in the form, and no choice of no unit", context do
+      lists = context.lists
+      unit = "#measurement select[name='measurement[unit_id]']"
+
+      # The newest measurement is in kg: the form chooses the standard unit.
+      measure!(context, context.biscuit, :weight, "0.61", :kg, 2)
+      standard!(context, :g)
+
+      {view, _html} = open(context.conn, context.path)
+      assert has_element?(view, "#{unit} option", "No unit")
+
+      view
+      |> form("#measurement", measurement: %{measure_kind_id: lists.measure_kind.weight})
+      |> render_change()
+
+      assert has_element?(view, "#{unit}[required] option[selected][value='#{lists.unit.g}']")
+      assert has_element?(view, "#{unit} option", "kg")
+      refute has_element?(view, "#{unit} option", "bag")
+      refute has_element?(view, "#{unit} option", "No unit")
+
+      # A kind with no standard unit has each unit, and no unit.
+      view
+      |> form("#measurement", measurement: %{measure_kind_id: lists.measure_kind.temperature})
+      |> render_change()
+
+      assert has_element?(view, "#{unit} option", "bag")
+      assert has_element?(view, "#{unit} option", "No unit")
+      refute has_element?(view, "#{unit}[required]")
+    end
+
+    test "with a retired standard unit still needs a unit, and offers the others", context do
+      lists = context.lists
+      admin = [actor: context.administrator, tenant: context.organisation]
+      unit = "#measurement select[name='measurement[unit_id]']"
+      standard!(context, :g)
+      {:ok, _} = Rescord.Lists.retire_value(:unit, lists.unit.g, admin)
+
+      {view, _html} = open(context.conn, context.path)
+
+      view
+      |> form("#measurement", measurement: %{measure_kind_id: lists.measure_kind.weight})
+      |> render_change()
+
+      assert has_element?(view, "#{unit}[required] option", "kg")
+      refute has_element?(view, "#{unit} option[value='#{lists.unit.g}']")
+      refute has_element?(view, "#{unit} option", "bag")
+      refute has_element?(view, "#{unit} option", "No unit")
+    end
+
+    test "records another unit of the same sort as the person typed it", context do
+      lists = context.lists
+      standard!(context, :g)
+      {view, _html} = open(context.conn, context.path)
+
+      view
+      |> form("#measurement", measurement: %{measure_kind_id: lists.measure_kind.weight})
+      |> render_change()
+
+      {:ok, view, _html} =
+        view
+        |> form("#measurement",
+          measurement: %{
+            measure_kind_id: lists.measure_kind.weight,
+            value: "1.095",
+            unit_id: lists.unit.kg
+          }
+        )
+        |> render_submit()
+        |> follow_redirect(context.conn, context.path)
+
+      assert has_element?(view, "p[data-figure] strong", "1,095 g")
+
+      {:ok, [entry]} = Journal.entries(context.biscuit.id, context.options)
+      assert Decimal.equal?(entry.measurement.value, Decimal.new("1.095"))
+      assert entry.measurement.unit_id == lists.unit.kg
+    end
+
+    test "says why the journal refused a unit that the form did not offer", context do
+      lists = context.lists
+      standard!(context, :g)
+      {view, _html} = open(context.conn, context.path)
+
+      html =
+        render_submit(view, "record", %{
+          "measurement" => %{
+            "measure_kind_id" => lists.measure_kind.weight,
+            "value" => "2",
+            "unit_id" => lists.unit.bag
+          }
+        })
+
+      assert html =~ "Unit is not a unit that Rescord converts to g, the unit of this kind"
+      assert {:ok, []} = Journal.entries(context.biscuit.id, context.options)
+    end
+
+    test "puts each member of a group in that unit", context do
+      crumpet = resident!(context.lists, context.options, %{name: "Crumpet"})
+
+      group =
+        Residents.form_group!(
+          %{name: "The spring litter", resident_ids: [context.biscuit.id, crumpet.id]},
+          context.options
+        )
+
+      measure!(context, context.biscuit, :weight, "0.915", :kg, 1)
+      measure!(context, crumpet, :weight, "1095", :g, 2)
+      standard!(context, :g)
+
+      {view, _html} = open(context.conn, "#{context.base}/groups/#{group.id}/measurements")
+
+      assert has_element?(view, "ul[data-multiples] strong", "915 g")
+      assert has_element?(view, "ul[data-multiples] strong", "1,095 g")
+      assert has_element?(view, "p[data-scale]", "Weight in g.")
     end
   end
 

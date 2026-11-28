@@ -11,6 +11,9 @@ defmodule RescordWeb.ReportController do
     * `/o/<short name>/reports/stock.pdf` and `/o/<short name>/reports/housing.pdf`;
     * `/o/<short name>/reports/expenses.pdf`, with `from` and `to`.
 
+  Each takes `paper`, `a4` or `us_letter` (ADR 0093). With none, and with
+  another value, the document is on the paper of the organisation.
+
   Each is a `GET`, so a link and a form with no script can ask for one, and
   a download goes through a controller, because a page of LiveView cannot
   send a file. The action of `Rescord.Reports` runs as the person, in their
@@ -34,10 +37,11 @@ defmodule RescordWeb.ReportController do
 
   def resident_record(conn, %{"id" => id} = params) do
     with_resident(conn, params, fn resident, organisation, options ->
-      arguments = %{
-        journal: journal(params["journal"]),
-        photos: params["photos"] == "true"
-      }
+      arguments =
+        Map.merge(paper(params), %{
+          journal: journal(params["journal"]),
+          photos: params["photos"] == "true"
+        })
 
       id
       |> Reports.resident_record(arguments, options)
@@ -48,7 +52,7 @@ defmodule RescordWeb.ReportController do
   def cage_card(conn, %{"id" => id} = params) do
     with_resident(conn, params, fn resident, organisation, options ->
       id
-      |> Reports.cage_card(options)
+      |> Reports.cage_card(paper(params), options)
       |> answer(conn, organisation, file_name(resident, "cage-card", organisation))
     end)
   end
@@ -56,7 +60,9 @@ defmodule RescordWeb.ReportController do
   def register(conn, params) do
     with_organisation(conn, params, fn organisation, options ->
       with {:ok, on} <- date(params["on"]) do
-        %{on: on}
+        params
+        |> paper()
+        |> Map.put(:on, on)
         |> Reports.register(options)
         |> answer(conn, organisation, "register-#{day(on, organisation)}.pdf")
       end
@@ -68,7 +74,7 @@ defmodule RescordWeb.ReportController do
       with {:ok, %Date{} = from} <- date(params["from"]),
            {:ok, %Date{} = to} <- date(params["to"]) do
         from
-        |> Reports.movements(to, options)
+        |> Reports.movements(to, paper(params), options)
         |> answer(conn, organisation, "movements-#{from}-to-#{to}.pdf")
       else
         {:ok, nil} -> {:error, "Give the first day and the last day."}
@@ -80,7 +86,9 @@ defmodule RescordWeb.ReportController do
   def task_sheet(conn, params) do
     with_organisation(conn, params, fn organisation, options ->
       with {:ok, on} <- date(params["on"]) do
-        %{on: on}
+        params
+        |> paper()
+        |> Map.put(:on, on)
         |> Reports.task_sheet(options)
         |> answer(conn, organisation, "tasks-#{day(on, organisation)}.pdf")
       end
@@ -89,16 +97,18 @@ defmodule RescordWeb.ReportController do
 
   def stock(conn, params) do
     with_organisation(conn, params, fn organisation, options ->
-      options
-      |> Reports.stock()
+      params
+      |> paper()
+      |> Reports.stock(options)
       |> answer(conn, organisation, "stock-#{day(nil, organisation)}.pdf")
     end)
   end
 
   def housing(conn, params) do
     with_organisation(conn, params, fn organisation, options ->
-      options
-      |> Reports.housing()
+      params
+      |> paper()
+      |> Reports.housing(options)
       |> answer(conn, organisation, "housing-#{day(nil, organisation)}.pdf")
     end)
   end
@@ -108,7 +118,7 @@ defmodule RescordWeb.ReportController do
       with {:ok, %Date{} = from} <- date(params["from"]),
            {:ok, %Date{} = to} <- date(params["to"]) do
         from
-        |> Reports.expenses(to, options)
+        |> Reports.expenses(to, paper(params), options)
         |> answer(conn, organisation, "expenses-#{from}-to-#{to}.pdf")
       else
         {:ok, nil} -> {:error, "Give the first day and the last day."}
@@ -192,6 +202,17 @@ defmodule RescordWeb.ReportController do
   end
 
   defp date(_other), do: {:error, "The date is not a date."}
+
+  # The paper that the address names, as an argument of a report, or no
+  # argument: then the document is on the paper of the organisation.
+  defp paper(%{"paper" => text}) do
+    case Accounts.paper_size(text) do
+      nil -> %{}
+      paper -> %{paper: paper}
+    end
+  end
+
+  defp paper(_params), do: %{}
 
   defp journal("all"), do: :all
   defp journal("none"), do: :none

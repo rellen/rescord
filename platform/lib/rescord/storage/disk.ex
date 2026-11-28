@@ -63,7 +63,17 @@ defmodule Rescord.Storage.Disk do
   """
   @impl true
   def list do
-    with {:ok, names} <- walk(root(), "", []), do: {:ok, Enum.sort(names)}
+    with {:ok, files} <- files(), do: {:ok, Enum.map(files, &elem(&1, 0))}
+  end
+
+  @doc """
+  Lists each file as `list/0` does, with its size in bytes. The size comes
+  from the directory entry, and no file is opened. A directory that is
+  listed and not opened has the size 0.
+  """
+  @impl true
+  def files do
+    with {:ok, files} <- walk(root(), "", []), do: {:ok, Enum.sort(files)}
   end
 
   defp walk(directory, prefix, found) do
@@ -72,13 +82,24 @@ defmodule Rescord.Storage.Disk do
         Enum.reduce_while(entries, {:ok, found}, fn entry, {:ok, found} ->
           path = Path.join(directory, entry)
 
-          if Storage.segment?(entry) and directory?(path) do
-            case walk(path, prefix <> entry <> "/", found) do
-              {:ok, found} -> {:cont, {:ok, found}}
-              {:error, reason} -> {:halt, {:error, reason}}
-            end
-          else
-            {:cont, {:ok, [prefix <> entry | found]}}
+          # A link to a directory is not a directory of the store, so the
+          # entry is read as it is.
+          case File.lstat(path) do
+            {:ok, %File.Stat{type: :directory}} ->
+              if Storage.segment?(entry),
+                do: walk_into(path, prefix <> entry <> "/", found),
+                else: {:cont, {:ok, [{prefix <> entry, 0} | found]}}
+
+            {:ok, %File.Stat{size: size}} ->
+              {:cont, {:ok, [{prefix <> entry, size} | found]}}
+
+            # The file went away after the directory was read: the part
+            # of a put that got its name in between (`put/3`).
+            {:error, :enoent} ->
+              {:cont, {:ok, found}}
+
+            {:error, reason} ->
+              {:halt, {:error, {reason, path}}}
           end
         end)
 
@@ -87,8 +108,12 @@ defmodule Rescord.Storage.Disk do
     end
   end
 
-  # A link to a directory is not a directory of the store.
-  defp directory?(path), do: match?({:ok, %File.Stat{type: :directory}}, File.lstat(path))
+  defp walk_into(path, prefix, found) do
+    case walk(path, prefix, found) do
+      {:ok, found} -> {:cont, {:ok, found}}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
 
   @doc "The directory of the files."
   @spec root() :: Path.t()

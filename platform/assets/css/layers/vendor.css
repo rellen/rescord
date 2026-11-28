@@ -410,6 +410,12 @@
   border-block-end: 1px solid var(--border);
 }
 
+/* An item that is a card has its own edge, and needs no line below it. */
+[data-key="list_item_class"]:has(> article) {
+  padding-block: 0;
+  border-block-end: 0;
+}
+
 [data-key="grid_container_class"] {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));

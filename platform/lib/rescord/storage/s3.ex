@@ -69,17 +69,35 @@ defmodule Rescord.Storage.S3 do
   is left.
   """
   @impl true
-  def list, do: list(nil, [])
+  def list do
+    with {:ok, files} <- pages(nil, []), do: {:ok, Enum.map(files, &elem(&1, 0))}
+  end
 
-  defp list(token, found) do
+  @doc """
+  Lists each file as `list/0` does, with its size in bytes: ListObjectsV2
+  gives the size of each object beside its key, so no request reads a
+  file. A list that gives no size for an object is `{:error, :bad_listing}`.
+  """
+  @impl true
+  def files do
+    with {:ok, files} <- pages(nil, []) do
+      if Enum.all?(files, fn {_key, size} -> is_integer(size) end),
+        do: {:ok, files},
+        else: {:error, :bad_listing}
+    end
+  end
+
+  # Each page of the list, as `{key, size}`. The size is `nil` for an
+  # object whose size the service did not give as a number.
+  defp pages(token, found) do
     with {:ok, %{status: 200, body: body}} <-
            Req.get(request(), url: list_url(token), decode_body: false),
          {:ok, page} <- parse_page(body) do
-      found = [page.keys | found]
+      found = [page.files | found]
 
       case page do
         %{truncated?: false} -> {:ok, found |> Enum.reverse() |> Enum.concat()}
-        %{token: token} when is_binary(token) -> list(token, found)
+        %{token: token} when is_binary(token) -> pages(token, found)
         # More pages, and no way to ask for the next one.
         _no_token -> {:error, :bad_listing}
       end
@@ -116,11 +134,21 @@ defmodule Rescord.Storage.S3 do
     end
   end
 
-  # Reads a page of ListObjectsV2: the keys, whether more pages follow, and
-  # the token that asks for the next page. The parser of Erlang reads no
-  # entity of the document and nothing from outside it.
+  # Reads a page of ListObjectsV2: the key and the size of each object,
+  # whether more pages follow, and the token that asks for the next page.
+  # The parser of Erlang reads no entity of the document and nothing from
+  # outside it.
   defp parse_page(xml) do
-    page = %{listing?: false, path: [], text: "", keys: [], truncated?: false, token: nil}
+    page = %{
+      listing?: false,
+      path: [],
+      text: "",
+      files: [],
+      key: nil,
+      size: nil,
+      truncated?: false,
+      token: nil
+    }
 
     options = [
       :disallow_entities,
@@ -131,8 +159,8 @@ defmodule Rescord.Storage.S3 do
     ]
 
     case :xmerl_sax_parser.stream(xml, options) do
-      {:ok, %{listing?: true, keys: keys} = page, _rest} ->
-        {:ok, %{page | keys: Enum.reverse(keys)}}
+      {:ok, %{listing?: true, files: files} = page, _rest} ->
+        {:ok, %{page | files: Enum.reverse(files)}}
 
       # A document that is no XML, or the XML of something else.
       _fault ->
@@ -158,7 +186,14 @@ defmodule Rescord.Storage.S3 do
 
     case {name, above} do
       {~c"Key", [~c"Contents", ~c"ListBucketResult"]} ->
-        %{page | keys: [text | page.keys]}
+        %{page | key: text}
+
+      {~c"Size", [~c"Contents", ~c"ListBucketResult"]} ->
+        %{page | size: size(text)}
+
+      # The end of an object: its key and its size are read.
+      {~c"Contents", [~c"ListBucketResult"]} when is_binary(page.key) ->
+        %{page | files: [{page.key, page.size} | page.files], key: nil, size: nil}
 
       {~c"IsTruncated", [~c"ListBucketResult"]} ->
         %{page | truncated?: String.trim(text) == "true"}
@@ -172,6 +207,13 @@ defmodule Rescord.Storage.S3 do
   end
 
   defp page_event(_event, _location, page), do: page
+
+  defp size(text) do
+    case Integer.parse(String.trim(text)) do
+      {size, ""} when size >= 0 -> size
+      _other -> nil
+    end
+  end
 
   defp config, do: Application.fetch_env!(:rescord, __MODULE__)
 

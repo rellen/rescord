@@ -124,6 +124,32 @@ defmodule Rescord.StorageTest do
                {:ok, ["lost+found", "org-1/attachments/a", "org-1/attachments/a.part-0a1b2c3d"]}
     end
 
+    test "lists each file with its size, and reads no file for it", %{tmp_dir: tmp_dir} do
+      assert Disk.files() == {:ok, []}
+
+      :ok = Disk.put("org-1/attachments/a", "five!", "image/jpeg")
+      :ok = Disk.put("org-1/photos/b", String.duplicate("b", 2_000), "image/jpeg")
+      :ok = Disk.put("org-2/photos/empty", "", "image/jpeg")
+      File.write!(Path.join(tmp_dir, "org-1/attachments/a.part-0a1b2c3d"), "half")
+      File.mkdir_p!(Path.join(tmp_dir, "lost+found"))
+      # A file that nobody reads has a size all the same.
+      File.chmod!(Path.join(tmp_dir, "org-1/photos/b"), 0o000)
+
+      assert Disk.files() ==
+               {:ok,
+                [
+                  {"lost+found", 0},
+                  {"org-1/attachments/a", 5},
+                  {"org-1/attachments/a.part-0a1b2c3d", 4},
+                  {"org-1/photos/b", 2_000},
+                  {"org-2/photos/empty", 0}
+                ]}
+
+      # The names are those of the list.
+      {:ok, files} = Disk.files()
+      assert Disk.list() == {:ok, Enum.map(files, &elem(&1, 0))}
+    end
+
     test "says which directory it cannot read", %{tmp_dir: tmp_dir} do
       missing = Path.join(tmp_dir, "none")
       Application.put_env(:rescord, Disk, root: missing)
@@ -133,6 +159,7 @@ defmodule Rescord.StorageTest do
       File.write!(file, "")
       Application.put_env(:rescord, Disk, root: file)
       assert Disk.list() == {:error, {:enotdir, file}}
+      assert Disk.files() == {:error, {:enotdir, file}}
     end
   end
 
@@ -338,6 +365,69 @@ defmodule Rescord.StorageTest do
     test "lists an empty bucket" do
       Req.Test.stub(S3, &send_listing(&1, [], "<IsTruncated>false</IsTruncated>"))
       assert S3.list() == {:ok, []}
+      assert S3.files() == {:ok, []}
+    end
+
+    test "lists each file with the size that the bucket gives, over each page" do
+      Req.Test.stub(S3, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        body =
+          case conn.query_params do
+            %{"continuation-token" => "next"} ->
+              sized_listing([{"org-2/photos/c", "0"}], "<IsTruncated>false</IsTruncated>")
+
+            _first ->
+              sized_listing(
+                [{"org-1/attachments/a", "5"}, {"org-1/photos/b", " 20971520 "}],
+                "<IsTruncated>true</IsTruncated><NextContinuationToken>next</NextContinuationToken>"
+              )
+          end
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/xml")
+        |> Plug.Conn.send_resp(200, body)
+      end)
+
+      assert S3.files() ==
+               {:ok,
+                [
+                  {"org-1/attachments/a", 5},
+                  {"org-1/photos/b", 20_971_520},
+                  {"org-2/photos/c", 0}
+                ]}
+    end
+
+    test "refuses a list with no size for a file, which names its keys all the same" do
+      for size <- ["", "<Size></Size>", "<Size>large</Size>", "<Size>-1</Size>"] do
+        body =
+          ~s(<?xml version="1.0"?><ListBucketResult><Contents><Key>org-1/photos/a</Key>) <>
+            size <> "</Contents><IsTruncated>false</IsTruncated></ListBucketResult>"
+
+        Req.Test.stub(S3, fn conn ->
+          conn
+          |> Plug.Conn.put_resp_content_type("application/xml")
+          |> Plug.Conn.send_resp(200, body)
+        end)
+
+        assert S3.files() == {:error, :bad_listing}, body
+        assert S3.list() == {:ok, ["org-1/photos/a"]}, body
+      end
+    end
+
+    # A page of a list as a service writes it, with the size of each file
+    # after other facts of it.
+    defp sized_listing(files, more) do
+      contents =
+        Enum.map_join(files, fn {key, size} ->
+          "<Contents><Key>#{key}</Key><LastModified>2026-11-27T00:00:00.000Z</LastModified>" <>
+            "<ETag>&quot;etag&quot;</ETag><Size>#{size}</Size>" <>
+            "<Owner><ID>owner</ID><DisplayName>Size</DisplayName></Owner></Contents>"
+        end)
+
+      ~s(<?xml version="1.0" encoding="UTF-8"?>\n) <>
+        ~s(<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">) <>
+        "<Name>rescord</Name><KeyCount>#{length(files)}</KeyCount>#{contents}#{more}</ListBucketResult>"
     end
 
     test "refuses a list that it cannot read, and a list with more pages and no token" do
@@ -356,6 +446,7 @@ defmodule Rescord.StorageTest do
         end)
 
         assert S3.list() == {:error, :bad_listing}, body
+        assert S3.files() == {:error, :bad_listing}, body
       end
     end
   end

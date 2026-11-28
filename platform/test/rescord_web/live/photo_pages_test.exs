@@ -125,7 +125,7 @@ defmodule RescordWeb.PhotoPagesTest do
 
     assert has_element?(
              view,
-             ~s(#item-#{ref} a[href$="/journal#entry-#{entry.id}"]),
+             ~s(#item-#{ref} a[href$="/journal?entry=#{entry.id}"]),
              "From the journal"
            )
 

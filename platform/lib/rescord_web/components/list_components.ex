@@ -74,18 +74,62 @@ defmodule RescordWeb.ListComponents do
   end
 
   @doc """
-  The units of a measure kind, and the form that changes them. A kind with
-  no unit accepts each unit.
+  The units of a measure kind and its standard unit (ADR 0094), and the
+  forms that change them. A kind with no unit accepts each unit. A kind
+  with a standard unit accepts that unit and each unit that Rescord
+  converts to it, and the page names a unit of the kind that does not
+  convert.
   """
   attr :value, :map, required: true
   attr :list, :map, required: true
   attr :can_change?, :boolean, required: true
 
   def value_units(assigns) do
-    assigns = assign(assigns, names: unit_names(assigns.value.unit_ids, assigns.list.units))
+    value = assigns.value
+    all = assigns.list.all_units
+    standard = Enum.find(all, &(&1.id == value.standard_unit_id))
+    accepted = value |> Rescord.Lists.accepted_units(all) |> MapSet.new(& &1.id)
+
+    # The units of the kind that a new measurement can not have.
+    refused =
+      if standard,
+        do: for(unit <- all, unit.id in value.unit_ids, unit.id not in accepted, do: unit.label),
+        else: []
+
+    # The standard unit is one of the units of the kind, or any unit for
+    # a kind that names none. A retired standard unit stays a choice.
+    choices =
+      for {_name, id} = choice <- assigns.list.units,
+          value.unit_ids == [] or id in value.unit_ids,
+          do: choice
+
+    choices =
+      if standard && not Enum.any?(choices, fn {_name, id} -> id == standard.id end),
+        do: [{standard.label, standard.id} | choices],
+        else: choices
+
+    assigns =
+      assign(assigns,
+        names: unit_names(value.unit_ids, assigns.list.units),
+        standard: standard,
+        refused: refused,
+        choices: choices
+      )
 
     ~H"""
     <small>Units: {if @names == [], do: "any unit", else: Enum.join(@names, ", ")}</small>
+    <small :if={@standard}>
+      Standard unit: {@standard.label}. Rescord shows each measurement in it
+    </small>
+    <small :if={!@standard}>
+      No standard unit: Rescord shows each measurement as it was recorded
+    </small>
+    <small :if={@refused != []}>
+      Not for a new measurement, because Rescord does not convert it to {@standard.label}: {Enum.join(
+        @refused,
+        ", "
+      )}
+    </small>
     <details :if={@can_change? and @list.units != []} id={"units-details-#{@value.id}"}>
       <summary>Units of {@value.label}</summary>
       <form id={"units-#{@value.id}"} phx-submit="set_units">
@@ -98,6 +142,26 @@ defmodule RescordWeb.ListComponents do
           </label>
         </fieldset>
         <.button type="submit">Save the units of {@value.label}</.button>
+      </form>
+    </details>
+    <details :if={@can_change? and @choices != []} id={"standard-details-#{@value.id}"}>
+      <summary>Standard unit of {@value.label}</summary>
+      <form id={"standard-#{@value.id}"} phx-submit="set_standard_unit">
+        <input type="hidden" name="value_id" value={@value.id} />
+        <.input
+          id={"standard-#{@value.id}-unit"}
+          name="standard[unit_id]"
+          type="select"
+          label={"The unit in which Rescord shows each measurement of #{@value.label}"}
+          prompt="No standard unit"
+          options={@choices}
+          value={@value.standard_unit_id}
+        />
+        <p>
+          A person can still record another unit that Rescord converts to it, and the
+          journal keeps what the person recorded.
+        </p>
+        <.button type="submit">Save the standard unit of {@value.label}</.button>
       </form>
     </details>
     """

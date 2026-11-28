@@ -170,21 +170,29 @@ defmodule Rescord.Ruby.Changes.Say do
     today = Accounts.local_date(organisation, DateTime.utc_now())
 
     cond do
-      is_nil(last) ->
-        Prompt.header(%{
-          organisation: organisation.name,
-          role: role_name(user, tenant),
-          today: today,
-          time_zone: organisation.time_zone,
-          about: conversation.about
-        })
-
-      Accounts.local_date(organisation, last) != today ->
-        Prompt.day_note(today)
-
-      true ->
-        nil
+      is_nil(last) -> opening(user, tenant, conversation.about)
+      Accounts.local_date(organisation, last) != today -> Prompt.day_note(today)
+      true -> nil
     end
+  end
+
+  @doc """
+  The header of the first message of a conversation of this member: the
+  rescue, the role of the member, the day there and its time zone, and
+  what the conversation is about (`about`, or `nil`). The evaluation set
+  asks here too, so that its questions start as a conversation does.
+  """
+  @spec opening(User.t(), term, String.t() | nil) :: String.t()
+  def opening(%User{} = user, tenant, about) do
+    organisation = Accounts.organisation_of(tenant)
+
+    Prompt.header(%{
+      organisation: organisation.name,
+      role: role_name(user, tenant),
+      today: Accounts.local_date(organisation, DateTime.utc_now()),
+      time_zone: organisation.time_zone,
+      about: about
+    })
   end
 
   # The name of the role, as the organisation named it. It says what the

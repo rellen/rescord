@@ -70,6 +70,7 @@ defmodule Rescord.Accounts do
 
       define :set_organisation_currency, action: :set_currency, args: [:currency]
       define :set_organisation_tax_name, action: :set_tax_name, args: [:tax_name]
+      define :set_organisation_paper_size, action: :set_paper_size, args: [:paper_size]
 
       define :authorize_export, action: :export, args: [:organisation_id]
 
@@ -299,6 +300,36 @@ defmodule Rescord.Accounts do
       nil -> tag
     end
   end
+
+  # The papers of the reports (ADR 0093), in the order of a form. Each is a
+  # value of the attribute `paper_size` of an organisation.
+  @paper_sizes [:a4, :us_letter]
+
+  @doc """
+  The papers that a report can have (ADR 0093). An organisation has one of
+  them as the paper of its reports, A4 until a person chooses another.
+
+      iex> Rescord.Accounts.paper_sizes()
+      [:a4, :us_letter]
+  """
+  @spec paper_sizes() :: [atom]
+  def paper_sizes, do: @paper_sizes
+
+  @doc """
+  The paper that a text names, or `nil` for a text that names none. A page
+  and an address give a paper as text, and this function makes no new atom.
+
+      iex> Rescord.Accounts.paper_size("us_letter")
+      :us_letter
+
+      iex> Rescord.Accounts.paper_size("a3")
+      nil
+  """
+  @spec paper_size(term) :: atom | nil
+  def paper_size(text) when is_binary(text),
+    do: Enum.find(@paper_sizes, &(Atom.to_string(&1) == text))
+
+  def paper_size(_other), do: nil
 
   @doc """
   The names of the time zones that PostgreSQL knows, for the suggestions of

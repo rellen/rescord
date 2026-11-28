@@ -185,6 +185,88 @@ defmodule RescordWeb.ResidentPagesTest do
       refute html =~ ~s(phx-submit="set_soon_days")
     end
 
+    test "have the standard unit of a kind of measurement, which an administrator sets",
+         context do
+      lists = lists!(context.organisation, context.root)
+      admin = [actor: context.administrator, tenant: context.organisation]
+      weight = lists.measure_kind.weight
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, html} = open(conn, context.base <> "/lists")
+
+      assert html =~ "No standard unit: Rescord shows each measurement as it was recorded"
+      refute html =~ "Standard unit: "
+
+      {view, html} = submit(view, conn, "#standard-#{weight}", standard: %{unit_id: lists.unit.g})
+
+      assert html =~ "Standard unit: g. Rescord shows each measurement in it"
+      assert Ash.get!(Lists.MeasureKind, weight, admin).standard_unit_id == lists.unit.g
+
+      assert has_element?(
+               view,
+               "#standard-#{weight}-unit option[selected][value='#{lists.unit.g}']"
+             )
+
+      # A unit of the kind that Rescord does not convert to the standard unit.
+      {view, html} =
+        submit(view, conn, "#units-#{weight}",
+          units: %{ids: [lists.unit.g, lists.unit.kg, lists.unit.bag]}
+        )
+
+      assert html =~ "Units: bag, g, kg"
+      assert html =~ "Not for a new measurement, because Rescord does not convert it to g: bag"
+
+      # The units of the kind keep its standard unit.
+      html = view |> form("#units-#{weight}", units: %{ids: [lists.unit.kg]}) |> render_submit()
+
+      assert html =~
+               "Unit ids must keep the standard unit of the kind. Change the standard unit first"
+
+      # With no standard unit again.
+      {_view, html} = submit(view, conn, "#standard-#{weight}", standard: %{unit_id: ""})
+      assert html =~ "No standard unit: Rescord shows each measurement as it was recorded"
+      assert Ash.get!(Lists.MeasureKind, weight, admin).standard_unit_id == nil
+
+      # A member reads the standard unit, and has no form.
+      {:ok, _} = Lists.set_standard_unit(weight, lists.unit.kg, admin)
+      {_view, html} = open(context.conn, context.base <> "/lists")
+      assert html =~ "Standard unit: kg. Rescord shows each measurement in it"
+      refute html =~ ~s(phx-submit="set_standard_unit")
+    end
+
+    test "take no standard unit for a value of another list, or from a member", context do
+      lists = lists!(context.organisation, context.root)
+      admin = [actor: context.administrator, tenant: context.organisation]
+      conn = build_conn() |> sign_in(context.administrator)
+      {view, _html} = open(conn, context.base <> "/lists")
+
+      # A species is not a kind of measurement: the page changes nothing.
+      render_submit(view, "set_standard_unit", %{
+        "value_id" => lists.species.guinea_pig,
+        "standard" => %{"unit_id" => lists.unit.g}
+      })
+
+      # A value that is no unit is refused, and the page says so.
+      html =
+        render_submit(view, "set_standard_unit", %{
+          "value_id" => lists.measure_kind.weight,
+          "standard" => %{"unit_id" => lists.species.guinea_pig}
+        })
+
+      assert html =~ "Standard unit is not a unit of the organisation"
+
+      # A member has no form, and the event of a member is refused.
+      {view, _html} = open(context.conn, context.base <> "/lists")
+
+      html =
+        render_submit(view, "set_standard_unit", %{
+          "value_id" => lists.measure_kind.weight,
+          "standard" => %{"unit_id" => lists.unit.g}
+        })
+
+      assert html =~ "You cannot do that"
+      assert Ash.get!(Lists.MeasureKind, lists.measure_kind.weight, admin).standard_unit_id == nil
+    end
+
     test "say which units Rescord converts, on each lists page", context do
       lists!(context.organisation, context.root)
       {:ok, _litre} = Lists.add_shared_value(:unit, "Litres", actor: context.root)

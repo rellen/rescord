@@ -104,9 +104,9 @@ We do not write those by hand.
   arrives.
 - A collection that is the page keeps its search, its filters, its sort
   and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
-  residents, the members, the organisations, the items of the inventory.
-  A collection that is a part of a page does not: the stock history of
-  an item.
+  residents, the members, the organisations, the items of the inventory,
+  the journal of a resident (in the list layout, ADR 0092). A collection
+  that is a part of a page does not: the stock history of an item.
 - Cinder is for a collection that needs a filter, a sort or pages. A
   short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
@@ -373,7 +373,10 @@ table (ADR 0025).
 - **The journal** (ADR 0030). `Rescord.Journal` has the entry and the facts
   of each medical kind. The time that a thing happened is an attribute of
   the entry. The author and an administrator correct an entry, through a
-  grant with the scope `own`.
+  grant with the scope `own`. The journal page reads the entries in
+  pages, with `Rescord.Journal.query_to_journal/2` (ADR 0092), and an
+  event of the page finds an entry again with
+  `Rescord.Journal.entry_of/3`.
 - **A task** (ADR 0032) is due, done or skipped. It is not temporal, and it
   names a resident, a group or a location by a plain id. A task that names a
   prescription writes the dose to the journal when a member completes it.
@@ -454,9 +457,25 @@ dependency.
 that the server writes** (ADR 0080). There is no chart library and no
 script of ours.
 
+- **A measure kind can name its standard unit** (ADR 0094), which an
+  administrator sets on the page Lists. A person may record another unit
+  that `Rescord.Units` converts to it, and the measurement keeps the
+  number and the unit that the person recorded: nothing is stored in a
+  converted form. A new measurement of such a kind needs the standard
+  unit or a unit that converts to it: `Rescord.Lists.units_for/2` and
+  `accepted_units/2` hold the rule for the journal and for the forms. A
+  measurement from before stays as it is.
+- **A read gives a measurement in the standard unit**:
+  `Rescord.Journal.standard/1` gives `%Rescord.Journal.Standard{}`, with
+  the value in the standard unit of the kind and what was recorded, and
+  rounds nothing. `RescordWeb.MeasurementWords.measurement/1` writes it
+  for a page: "610 g (recorded as 0.61 kg)". The export has the
+  calculations `standard_value` and `standard_unit` of a measurement
+  beside `value` and `unit_id`.
 - **A series** is `%Rescord.Journal.Series{}`: the measurements of one
   kind for one resident, in the order of time, in one unit, which is the
-  unit of the newest measurement. A measurement in another unit is a point
+  standard unit of the kind, or the unit of the newest measurement for a
+  kind with none. A measurement in another unit is a point
   when `Rescord.Units` converts it, and is in `others` when it does not.
   Each point has its change from the point before.
   `Rescord.Journal.series/2` gives the series of a resident and
@@ -544,6 +563,15 @@ A key gets its bytes one time, and no page deletes a file. So
 of one store into the other while the server works, for a server that
 changes its store: it lists the old store, puts each file that the new
 store does not have, reads it back, and compares it. It deletes nothing.
+
+Rescord writes a record before it puts the file, in one transaction, so a
+fault after the put leaves a file that no record names. `bin/check-files`
+(`Rescord.Storage.Compare`, ADR 0091) finds those leftovers and says how
+much space they take, and it finds a file that a record names and the
+store lost. It lists the store with the size of each file
+(`Rescord.Storage.files/0`), and each domain that keeps files gives the
+keys of its records with `file_keys/1`, read from each row of the table
+with no actor (`Rescord.Storage.Named`). It changes nothing.
 
 A photo goes through `Rescord.Images` before it reaches the store
 (ADR 0055): libvips turns it as its EXIF says, writes it again with no
@@ -648,6 +676,14 @@ template of `priv/typst`, which gets the text as one value, `d`, and the
 photos as virtual files. No text of a record is markup of Typst. Each role
 can make each report, and a person makes 30 in a minute at most.
 `RescordWeb.ReportController` sends a report for a `GET`.
+
+**A report is on A4 or on US Letter** (ADR 0093). The paper is the
+attribute `paper_size` of the organisation, A4 at first, which an
+administrator changes on the settings page. Each report action takes the
+optional argument `paper` for one document on the other paper, and each
+address of a report takes `paper`. The render puts the paper into the
+frame of the document, and `report` of `look.typ` sets the page from it:
+a template has one layout for both papers.
 
 ### Expenses
 
@@ -789,6 +825,19 @@ code does not have yet is what its phase lands.
   organisation. It is deleted for real: not temporal, no paper trail, no
   archive. Both are exceptions that ADR 0069 states.
 - No test calls a provider: a scripted model answers.
+- The evaluation set measures what a real model does with the tools and
+  the prompt. `mix rescord.ruby.eval` plants a rescue of made-up records
+  (`Rescord.Ruby.Eval.Seed`), asks each question of
+  `Rescord.Ruby.Eval.Cases` three times with the options of a reply, and
+  scores each answer by code (`Rescord.Ruby.Eval.Score`): the tools that
+  were called, each reference and each number against the tool results,
+  patterns for what the answer must and must not say, and its form. A
+  case passes when each run passes, and each group has a bar: 95% of the
+  reads, and each case of the groups where Ruby must say that the records
+  hold nothing, must not advise on the care of an animal, and must not
+  follow an instruction inside a record. Only a person runs it, because
+  it costs money and its result can change. The checks see words and not
+  meaning, so a person reads the answers that failed.
 
 ## The log, the metrics and the errors
 

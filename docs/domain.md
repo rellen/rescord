@@ -132,6 +132,7 @@ These subjects are out of scope for now:
 | In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
 | How does a page write a date, a time and a number? | In the forms of the language and region of the organisation, which is a setting (ADR 0075). A root user gives it when they create the organisation, and an administrator can change it. The words of a page are English. |
 | Which units can a measurement have? | Each kind of measurement lists the units that it accepts, and the form offers only those (18 November 2026). |
+| In which unit does Rescord show a measurement? | In the standard unit of its kind, when the kind has one. A person may record another unit of the same sort, and the record keeps what was typed (28 November 2026, ADR 0094). |
 | Does Rescord know what a unit means? | Yes, for a unit of its catalogue, by the name of the unit: `kg` is a mass, and Rescord converts it. A unit that only the organisation knows, such as `bag`, stays a name (ADR 0071). |
 | Can a use of stock take more than the record has? | Yes. The level can go below zero, and the item shows a warning until a member records a count. |
 | When does a lot expire soon? | In a number of days before its expiry date. Each category of item has its own number. A category with no number uses 30 days. |
@@ -592,6 +593,11 @@ from the label. The page tells the member to check the result with a vet.
 An organisation makes reports for paper (ADR 0076). A report is a PDF. It
 is not a record, and Rescord keeps no copy of it. Each member can make
 each report, and a report holds what that member can read.
+
+A report is on A4 paper or on US Letter paper (ADR 0093). The settings of
+the organisation give the paper of its reports, which is A4 at first. An
+administrator changes it. A member can make one document on the other
+paper.
 
 - The record of a resident has its facts, its stay, its family and its
   groups. The member chooses the part of the journal: the medical history,

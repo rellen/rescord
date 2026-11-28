@@ -123,6 +123,42 @@ defmodule RescordWeb.MeasurementWordsTest do
     end
   end
 
+  describe "a measurement of the journal (ADR 0094)" do
+    defp measurement(value, unit, standard) do
+      %{
+        value: Decimal.new(value),
+        unit_id: unit && "unit-" <> unit,
+        unit: unit && %{id: "unit-" <> unit, label: unit},
+        measure_kind: %{
+          label: "Weight",
+          standard_unit: standard && %{id: "unit-" <> standard, label: standard}
+        }
+      }
+    end
+
+    test "is as it was recorded for a kind with no standard unit" do
+      assert MeasurementWords.measurement(measurement("0.61", "kg", nil)) == "0.61 kg"
+      assert MeasurementWords.measurement(measurement("38.5", nil, nil)) == "38.5"
+      assert MeasurementWords.measurement(measurement("2", "bag", nil)) == "2 bag"
+    end
+
+    test "is in the standard unit, with what was recorded when Rescord converted it" do
+      assert MeasurementWords.measurement(measurement("610", "g", "g")) == "610 g"
+
+      assert MeasurementWords.measurement(measurement("0.61", "kg", "g")) ==
+               "610 g (recorded as 0.61 kg)"
+
+      # A converted value is rounded for a page.
+      assert MeasurementWords.measurement(measurement("2", "lb", "kg")) ==
+               "0.9072 kg (recorded as 2 lb)"
+    end
+
+    test "is as it was recorded when it does not convert to the standard unit" do
+      assert MeasurementWords.measurement(measurement("610", nil, "g")) == "610"
+      assert MeasurementWords.measurement(measurement("2", "bag", "g")) == "2 bag"
+    end
+  end
+
   test "four digits keep each digit before the point, and small numbers" do
     four = &(&1 |> Decimal.new() |> MeasurementWords.four_digits() |> Decimal.to_string(:normal))
 

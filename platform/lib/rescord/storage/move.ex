@@ -168,14 +168,16 @@ defmodule Rescord.Storage.Move do
   def format_fault({:list, side, reason}, from, to) do
     store = if side == :from, do: from, else: to
 
-    "Rescord cannot list the files of #{Storage.describe(store)}: #{reason_words(reason)}.\n" <>
+    "Rescord cannot list the files of #{Storage.describe(store)}: #{Storage.reason_words(reason)}.\n" <>
       "Nothing was copied."
   end
 
   defp copied_lines(%{copied: 0}), do: ["copied  0 files"]
 
   defp copied_lines(report),
-    do: ["copied  #{files(report.copied)} (#{size(report.bytes)}), and read each one back"]
+    do: [
+      "copied  #{files(report.copied)} (#{Storage.size_words(report.bytes)}), and read each one back"
+    ]
 
   defp same_lines(%{same: 0}, _to), do: []
 
@@ -204,39 +206,23 @@ defmodule Rescord.Storage.Move do
     ["FAIL    #{files(length(failed))}"] ++ shown ++ more
   end
 
-  defp failure_words(:read, reason), do: "the store did not give it: #{reason_words(reason)}"
-  defp failure_words(:put, reason), do: "the new store did not take it: #{reason_words(reason)}"
+  defp failure_words(:read, reason),
+    do: "the store did not give it: #{Storage.reason_words(reason)}"
+
+  defp failure_words(:put, reason),
+    do: "the new store did not take it: #{Storage.reason_words(reason)}"
 
   defp failure_words(:check, :differs),
     do: "the new store gives back other bytes than it took"
 
   defp failure_words(:check, reason),
-    do: "the new store did not give it back: #{reason_words(reason)}"
+    do: "the new store did not give it back: #{Storage.reason_words(reason)}"
 
   defp failure_words(:compare, :differs),
     do: "the new store has other bytes under this key, which stay as they are"
 
   defp failure_words(:compare, reason),
-    do: "the new store did not give it: #{reason_words(reason)}"
-
-  defp reason_words({:status, status}), do: "the service answered #{status}"
-  defp reason_words(:not_found), do: "it is not there"
-  defp reason_words(:bad_listing), do: "the service gave a list that Rescord cannot read"
-
-  # A fault of a file or a directory, as `Rescord.Storage.Disk` gives it.
-  defp reason_words({reason, path}) when is_atom(reason) and is_binary(path),
-    do: "#{posix_words(reason)}: #{path}"
-
-  defp reason_words(reason) when is_atom(reason), do: posix_words(reason)
-  defp reason_words(reason) when is_exception(reason), do: Exception.message(reason)
-  defp reason_words(reason), do: inspect(reason)
-
-  defp posix_words(reason) do
-    case to_string(:file.format_error(reason)) do
-      "unknown POSIX error" <> _rest -> inspect(reason)
-      words -> words
-    end
-  end
+    do: "the new store did not give it: #{Storage.reason_words(reason)}"
 
   defp files(1), do: "1 file"
   defp files(count), do: "#{count} files"
@@ -245,10 +231,6 @@ defmodule Rescord.Storage.Move do
     shown = names |> Enum.take(count) |> Enum.join(", ")
     if length(names) > count, do: shown <> ", and #{length(names) - count} more", else: shown
   end
-
-  defp size(bytes) when bytes < 1_000_000, do: "#{Float.round(bytes / 1_000, 1)} kB"
-  defp size(bytes) when bytes < 1_000_000_000, do: "#{Float.round(bytes / 1_000_000, 1)} MB"
-  defp size(bytes), do: "#{Float.round(bytes / 1_000_000_000, 2)} GB"
 
   defp capitalize(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 

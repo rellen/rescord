@@ -555,6 +555,79 @@ defmodule Rescord.Accounts.OrganisationTest do
     end
   end
 
+  describe "the paper of the reports of an organisation" do
+    setup %{root: root} do
+      organisation = organisation!(root, "Wattle Creek", "Australia/Brisbane")
+      {_, administrator} = member!(organisation, :administrator, root)
+      {_, member} = member!(organisation, :member, administrator)
+      {:ok, organisation: organisation, administrator: administrator, member: member}
+    end
+
+    test "is A4 at first, and the list of the papers is the list of the attribute", context do
+      assert context.organisation.paper_size == :a4
+
+      attribute = Ash.Resource.Info.attribute(Rescord.Accounts.Organisation, :paper_size)
+      assert attribute.default == :a4
+      assert attribute.constraints[:one_of] == Accounts.paper_sizes()
+      assert Accounts.paper_sizes() == [:a4, :us_letter]
+
+      # A text names a paper only as the value of a form has it.
+      assert Accounts.paper_size("a4") == :a4
+      assert Accounts.paper_size("us_letter") == :us_letter
+
+      for other <- ["", "A4", "us-letter", "a3", nil, 4] do
+        assert Accounts.paper_size(other) == nil
+      end
+    end
+
+    test "changes for an administrator and for a root user, and the version names who",
+         context do
+      assert {:ok, %{paper_size: :us_letter} = letter} =
+               Accounts.set_organisation_paper_size(context.organisation, :us_letter,
+                 actor: context.administrator
+               )
+
+      assert {:ok, %{paper_size: :a4}} =
+               Accounts.set_organisation_paper_size(letter, :a4, actor: context.root)
+
+      for paper <- [:a3, "a3", "", nil] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.set_organisation_paper_size(context.organisation, paper,
+                   actor: context.administrator
+                 )
+      end
+
+      version = AshPaperTrail.Resource.Info.version_resource(Rescord.Accounts.Organisation)
+
+      users =
+        version
+        |> Ash.read!(authorize?: false)
+        |> Enum.filter(&(&1.version_source_id == context.organisation.id))
+        |> Enum.filter(&(&1.version_action_name == :set_paper_size))
+        |> Enum.map(& &1.user_id)
+
+      assert Enum.sort(users) == Enum.sort([context.administrator.id, context.root.id])
+    end
+
+    test "does not change for a member, for a user of another organisation, or for nobody",
+         context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for actor <- [context.member, outsider, user!(), nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.set_organisation_paper_size(context.organisation, :us_letter,
+                   actor: actor
+                 )
+      end
+
+      assert {:ok, %{paper_size: :a4}} =
+               Accounts.organisation_by_short_name(context.organisation.short_name,
+                 actor: context.root
+               )
+    end
+  end
+
   describe "the organisations of a user" do
     test "are the ones where the user is a member, and each one for a root user", %{root: root} do
       mine = organisation!(root, "Mine")

@@ -57,7 +57,12 @@ defmodule Rescord.Export do
   ]
 
   # Columns that are calculations, after the attributes.
-  @calculations %{Member => [:email]}
+  @calculations %{
+    Member => [:email],
+    # A measurement in the standard unit of its kind (ADR 0094), beside the
+    # value and the unit that the person recorded.
+    Rescord.Journal.Measurement => [:standard_value, :standard_unit]
+  }
 
   @excluded %{
     Rescord.Accounts.User =>

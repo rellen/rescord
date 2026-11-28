@@ -496,7 +496,13 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A key gets its bytes one time: never put other bytes under a key that
     has a file. `bin/move-storage` copies the files of a server that
     works, and relies on it (ADR 0059). A new store implements each
-    callback of `Rescord.Storage`, `list/0` too.
+    callback of `Rescord.Storage`, `list/0` and `files/0` too.
+  - A resource that keeps a file holds the key in the attribute `key`,
+    and the key of a thumbnail in `thumbnail_key`. Its domain has
+    `file_keys/1` (`Rescord.Storage.Named.keys/3`) and is in
+    `Rescord.Release.Files.domains/0`, or `bin/check-files` calls each of
+    its files a leftover (ADR 0091). `Rescord.Release.FilesTest` names a
+    resource that is left out. No code deletes a file of the store.
   - A test of the store of S3 with more than one request uses
     `Rescord.StorageFixtures.s3_store!/1`, which starts `Rescord.FakeS3`,
     a service in the memory of the test.
@@ -629,6 +635,17 @@ hand (ADR 0073). Read it before you write a migration. In short:
     task, outside `mix test` and CI. `config/test.exs` names the scripted
     model under `:ruby_llm`. That line is a seam for the tests, and
     `Rescord.Ruby.LLM.Client` is its one reader: add no other.
+  - **The evaluation set measures a real model**, and only a person
+    starts it: `mix rescord.ruby.eval` asks a provider each question of
+    `Rescord.Ruby.Eval.Cases` three times, against the made-up rescue of
+    `Rescord.Ruby.Eval.Seed`, and `Rescord.Ruby.Eval.Score` checks each
+    answer by code. It costs money, so never run it for a check of your
+    own, and never add it to a workflow of a push. A change of the system
+    prompt, of a tool, of the description of a tool, of the effort or of
+    the default model goes with a run that a person makes. After a report
+    of a wrong answer, the question becomes a case first. The key of a
+    run is never a flag and never a variable of the environment: a row of
+    a provider, or the standard input.
   - **Never log the text of a conversation**, a prompt, the arguments of a
     tool or its result. Log the ids, the names, the counts and the reason
     of a failure as an atom, never an error struct of ReqLLM: it holds the
@@ -777,6 +794,20 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A new unit takes a line in the catalogue of `Rescord.Units`, words for
     a new dimension in `RescordWeb.UnitWords`, and a line with its factor
     in `Rescord.UnitsTest`.
+- **Measurements and their standard unit** (ADR 0094). A measure kind can
+  name its standard unit. A measurement keeps the number and the unit that
+  the person recorded: never store a converted value, and never change
+  what was recorded to fit the standard unit.
+  - Code that shows a measurement uses `Rescord.Journal.standard/1`, and a
+    page writes it with `RescordWeb.MeasurementWords.measurement/1`. Do
+    not write `value` beside the label of `unit` by hand.
+  - The units that a form offers come from `RescordWeb.MeasurementUnits`,
+    and the rule of the journal from `Rescord.Lists.units_for/2`. Both
+    read `Rescord.Lists.accepted_units/2`: change the rule there.
+  - A read that shows a measurement loads
+    `measure_kind: [standard_unit: [:label]]` and `unit: [:label]`, as
+    `Rescord.Journal.entries/2` does. Without the standard unit loaded,
+    the measurement is shown as it was recorded.
 - **Charts** (ADR 0080). A chart is SVG that the server writes, with
   `line_chart/1` or `sparkline/1` of `RescordWeb.ChartComponents`, and
   the geometry of `RescordWeb.Chart`. Do not add a chart library, and do
@@ -840,6 +871,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
     never call `eval` in a template: the data is the value `d` alone.
   - The fonts of a report are the files of `priv/typst/fonts`. A report
     is not PDF/A.
+  - **A report is on A4 or on US Letter** (ADR 0093): the argument `paper`
+    of its action, or the paper of the organisation, which
+    `Rescord.Reports.Render` puts into `d.frame.paper`. A template never
+    names a paper. It has one layout for both: give a width as a fraction
+    of the page, or as a size that fits the smaller side of each paper,
+    and look at a new template on both. A new action takes the argument
+    `paper` as the others do, and its path passes `paper(params)`. A link
+    to a report with no `paper` gets the paper of the organisation.
   - To look at a report, render it in a scratch test with
     `Rescord.ReportsFixtures.refuge!/1`, write the bytes to a file, and
     read the pages as pictures (`pdftoppm -png`). Do not commit the
@@ -883,6 +922,18 @@ hand (ADR 0073). Read it before you write a migration. In short:
     tax (`tax_name`), and writes that name with
     `RescordWeb.ExpenseWords.tax_name/1`. A sum of the tax is
     `Rescord.Expenses.tax_sum/1`.
+- **The journal page** (ADR 0092). The entries are a collection of
+  Cinder, so the page does not hold them.
+  - An event that names an entry or a file by its id reads it with
+    `Rescord.Journal.entry_of/3` or `attachment_of/3`: as the person,
+    and only from the journal of this resident. Never read it by the id
+    alone.
+  - A link from another page to one entry is `journal?entry=<id>`, never
+    `journal#entry-<id>`: the entry can be on a later page.
+  - The parameters `episode`, `entry` and `new` are of the page. Each
+    other parameter is of Cinder: the page gives it back in a link, and
+    does not read it. A new parameter of the page must not have the name
+    of a field of a filter.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through
@@ -973,6 +1024,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind; the conditions of a resident (ADR 0083) |
 | `platform/lib/rescord/journal/series.ex` | the measurements of one kind over time, in one unit, for a chart (ADR 0080) |
+| `platform/lib/rescord/journal/standard.ex` | a measurement in the standard unit of its kind, beside what was recorded (ADR 0094) |
 | `platform/lib/rescord/photos/` | the photos of the residents, their albums and the profile pictures (ADR 0055) |
 | `platform/lib/rescord/images.ex` | a photo made safe to keep, and its thumbnail, with libvips (ADR 0055) |
 | `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |
@@ -989,12 +1041,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/log.ex`, `log/` | what the log holds and keeps out: the fields of a line, the safe text of a failure, the crash reports, the lines of the jobs (ADR 0077) |
 | `platform/lib/rescord/metrics.ex`, `platform/lib/rescord_web/telemetry.ex` | the metrics, and the endpoint that a collector reads (ADR 0077) |
 | `platform/lib/rescord/expenses.ex`, `expenses/` | the expenses, their receipts, their states and their grants (ADR 0082) |
+| `platform/lib/rescord/storage/compare.ex`, `storage/named.ex`, `release/files.ex` | the comparison of the store with the records, for `bin/check-files`: the groups and the report, the keys that a resource names, and the read of both (ADR 0091) |
 | `platform/lib/rescord/storage/upload.ex` | the check of a file that a person sends: its type from its bytes, its size, and a photo made safe (ADR 0041, ADR 0082) |
 | `platform/lib/rescord_web/expense_words.ex` | the words of the expenses: the states, the amounts, the rows of the CSV file |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
-| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt and the job that writes a reply (ADR 0069) |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt, the job that writes a reply, and the evaluation set under `ruby/eval/` (ADR 0069) |
+| `platform/lib/mix/tasks/rescord.ruby.eval.ex` | the task that runs the evaluation set of Ruby against a real model. Only a person starts it |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
@@ -1011,7 +1065,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, with the rehearsal of an upgrade in `release/rehearsal.ex` (ADR 0081), and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage` and `rotate-vault` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, with the rehearsal of an upgrade in `release/rehearsal.ex` (ADR 0081), and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage`, `rotate-vault` and `check-files` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068, ADR 0091) |
 | `platform/lib/rescord/storage.ex`, `storage/` | the stores of the files, a directory and a bucket of S3, and the move from one into the other (ADR 0038, ADR 0059) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |

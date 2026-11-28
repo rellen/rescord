@@ -38,6 +38,13 @@ defmodule Rescord.Storage do
   """
   @callback list() :: {:ok, [String.t()]} | {:error, term}
 
+  @doc """
+  Lists each file in the store with its size in bytes, as `{name, size}`.
+  The store gives the size with its list, and reads no file for it. The
+  names are those of `list/0`.
+  """
+  @callback files() :: {:ok, [{String.t(), non_neg_integer}]} | {:error, term}
+
   @doc "The module of the store that the configuration names."
   @spec store() :: module
   def store, do: Application.fetch_env!(:rescord, :storage)
@@ -53,6 +60,10 @@ defmodule Rescord.Storage do
   @doc "Deletes a file from the store of the configuration."
   @spec delete(key) :: :ok | {:error, term}
   def delete(key), do: store().delete(key)
+
+  @doc "Lists each file of the store of the configuration, with its size in bytes."
+  @spec files() :: {:ok, [{String.t(), non_neg_integer}]} | {:error, term}
+  def files, do: store().files()
 
   @doc """
   The key of a file of an organisation: the id of the organisation, a kind,
@@ -110,6 +121,47 @@ defmodule Rescord.Storage do
       config[:root] -> "the directory #{config[:root]}"
       config[:bucket] -> "the bucket #{config[:bucket]} at #{config[:endpoint]}"
       true -> inspect(store)
+    end
+  end
+
+  @doc """
+  A size in words, for a report of a command.
+
+      iex> Rescord.Storage.size_words(512)
+      "512 B"
+      iex> Rescord.Storage.size_words(2_540_000)
+      "2.5 MB"
+  """
+  @spec size_words(non_neg_integer) :: String.t()
+  def size_words(bytes) when bytes < 1_000, do: "#{bytes} B"
+  def size_words(bytes) when bytes < 1_000_000, do: "#{Float.round(bytes / 1_000, 1)} kB"
+
+  def size_words(bytes) when bytes < 1_000_000_000,
+    do: "#{Float.round(bytes / 1_000_000, 1)} MB"
+
+  def size_words(bytes), do: "#{Float.round(bytes / 1_000_000_000, 2)} GB"
+
+  @doc """
+  Why a store did not do what Rescord asked, in words, for a report of a
+  command: the status of a service, or the fault of a file or a directory
+  as `Rescord.Storage.Disk` gives it.
+  """
+  @spec reason_words(term) :: String.t()
+  def reason_words({:status, status}), do: "the service answered #{status}"
+  def reason_words(:not_found), do: "it is not there"
+  def reason_words(:bad_listing), do: "the service gave a list that Rescord cannot read"
+
+  def reason_words({reason, path}) when is_atom(reason) and is_binary(path),
+    do: "#{posix_words(reason)}: #{path}"
+
+  def reason_words(reason) when is_atom(reason), do: posix_words(reason)
+  def reason_words(reason) when is_exception(reason), do: Exception.message(reason)
+  def reason_words(reason), do: inspect(reason)
+
+  defp posix_words(reason) do
+    case to_string(:file.format_error(reason)) do
+      "unknown POSIX error" <> _rest -> inspect(reason)
+      words -> words
     end
   end
 end

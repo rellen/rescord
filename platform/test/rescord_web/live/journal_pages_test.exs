@@ -44,6 +44,14 @@ defmodule RescordWeb.JournalPagesTest do
     {view, render_async(view)}
   end
 
+  # The cards of the entries of a page, with no control of the collection.
+  defp cards(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#entries article")
+    |> LazyHTML.to_html()
+  end
+
   defp submit(view, conn, selector, fields) do
     {:ok, view, _html} =
       view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
@@ -148,6 +156,71 @@ defmodule RescordWeb.JournalPagesTest do
       assert html =~ "Unit is not a unit of this kind of measurement"
     end
 
+    test "of a kind with a standard unit chooses that unit, and writes the entry in it",
+         context do
+      lists = context.lists
+      admin = [actor: context.administrator, tenant: context.organisation]
+
+      # Recorded in kg before the kind had a standard unit.
+      Rescord.Journal.write_entry!(
+        %{
+          resident_id: context.biscuit.id,
+          kind: :measurement,
+          measure_kind_id: lists.measure_kind.weight,
+          value: "0.61",
+          unit_id: lists.unit.kg
+        },
+        context.options
+      )
+
+      {:ok, _} = Rescord.Lists.set_standard_unit(lists.measure_kind.weight, lists.unit.g, admin)
+
+      {view, html} = open(context.conn, context.path)
+      assert html =~ "Weight: 610 g (recorded as 0.61 kg)"
+      # A correction changes the value as it was recorded.
+      assert html =~ "Value, in kg"
+
+      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
+      assert has_element?(view, "#entry_unit_id option", "No unit")
+
+      view
+      |> form("#entry", entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight})
+      |> render_change()
+
+      assert has_element?(
+               view,
+               "#entry_unit_id[required] option[selected][value='#{lists.unit.g}']"
+             )
+
+      assert has_element?(view, "#entry_unit_id option", "kg")
+      refute has_element?(view, "#entry_unit_id option", "bag")
+      refute has_element?(view, "#entry_unit_id option", "No unit")
+
+      # The person chooses kg, and the form keeps it while they type.
+      view
+      |> form("#entry",
+        entry: %{
+          kind: "measurement",
+          measure_kind_id: lists.measure_kind.weight,
+          unit_id: lists.unit.kg,
+          value: "0.7"
+        }
+      )
+      |> render_change()
+
+      assert has_element?(view, "#entry_unit_id option[selected][value='#{lists.unit.kg}']")
+
+      # The kind refuses a unit that the form did not offer.
+      html =
+        view
+        |> form("#entry",
+          entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight}
+        )
+        |> render_submit(%{entry: %{value: "2", unit_id: lists.unit.bag}})
+
+      assert html =~ "Unit is not a unit that Rescord converts to g, the unit of this kind"
+    end
+
     test "records a weight, and the page of the resident shows the newest one", context do
       {view, _html} = open(context.conn, context.path)
       view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
@@ -212,10 +285,177 @@ defmodule RescordWeb.JournalPagesTest do
       assert html =~ "Ate well."
       assert html =~ "Vaccine: A sample vaccine"
 
-      html = view |> element("a", "Show the medical history") |> render_click()
-      refute html =~ "Ate well."
-      assert html =~ "Vaccine: A sample vaccine"
-      assert html =~ "The medical history"
+      # The filter writes the address that the page had before (ADR 0092).
+      view
+      |> element("#journal-filter-form")
+      |> render_change(%{"filters" => %{"only" => "medical"}})
+
+      assert assert_patch(view) =~ "only=medical"
+
+      cards = view |> render_async() |> cards()
+      refute cards =~ "Ate well."
+      assert cards =~ "Vaccine: A sample vaccine"
+
+      # And that address opens the medical history.
+      {_view, html} = open(context.conn, context.path <> "?only=medical")
+      refute cards(html) =~ "Ate well."
+      assert cards(html) =~ "Vaccine: A sample vaccine"
+    end
+  end
+
+  describe "the entries as a collection (ADR 0092)" do
+    setup context do
+      write = fn facts, days ->
+        Journal.write_entry!(
+          Map.merge(facts, %{
+            resident_id: context.biscuit.id,
+            happened_at: DateTime.add(DateTime.utc_now(), -days, :day)
+          }),
+          context.options
+        )
+      end
+
+      general = write.(%{kind: :general, note: "Ate well."}, 40)
+      vaccination = write.(%{kind: :vaccination, vaccine: "A sample vaccine"}, 20)
+      behaviour = write.(%{kind: :behaviour, note: "Popcorning at floor time."}, 1)
+
+      addendum =
+        Journal.write_entry!(
+          %{
+            resident_id: context.biscuit.id,
+            kind: :general,
+            note: "And drank well.",
+            follows_id: general.id
+          },
+          actor: context.other,
+          tenant: context.organisation
+        )
+
+      {:ok, general: general, vaccination: vaccination, behaviour: behaviour, addendum: addendum}
+    end
+
+    test "reads the search and the filters from the address", context do
+      day = fn days -> Date.to_iso8601(Date.add(Date.utc_today(), -days)) end
+
+      for {parameters, shown, hidden} <- [
+            {"", ["Ate well.", "A sample vaccine", "Popcorning", "And drank well."], []},
+            {"?kind=vaccination", ["A sample vaccine"], ["Ate well.", "Popcorning"]},
+            {"?search=popcorn", ["Popcorning"], ["Ate well.", "A sample vaccine"]},
+            {"?search=sample+vac", ["A sample vaccine"], ["Ate well.", "Popcorning"]},
+            {"?happened_at=#{day.(30)},#{day.(10)}", ["A sample vaccine"],
+             ["Ate well.", "Popcorning"]},
+            {"?only=medical&search=well", [], ["Ate well.", "A sample vaccine", "Popcorning"]},
+            # A value that is no choice changes nothing, and makes no fault.
+            {"?only=x&kind=nothing&page=x", ["Ate well.", "A sample vaccine", "Popcorning"], []}
+          ] do
+        {_view, html} = open(context.conn, context.path <> parameters)
+        cards = cards(html)
+
+        for words <- shown, do: assert(cards =~ words, "#{parameters} hides #{words}")
+        for words <- hidden, do: refute(cards =~ words, "#{parameters} shows #{words}")
+      end
+
+      {_view, html} = open(context.conn, context.path <> "?search=nothing+such")
+      assert html =~ "No entry matches the search and the filters."
+    end
+
+    test "shows one entry with what was added to it, for a link from another page", context do
+      {view, html} = open(context.conn, context.path <> "?entry=#{context.general.id}")
+      cards = cards(html)
+
+      assert cards =~ "Ate well."
+      assert cards =~ "And drank well."
+      refute cards =~ "Popcorning"
+      refute cards =~ "A sample vaccine"
+      assert has_element?(view, "#one-entry a[href='#{context.path}']", "Show each entry")
+
+      # An id that names no entry of this journal shows the whole journal.
+      clover = resident!(context.lists, context.options, %{name: "Clover"})
+
+      theirs =
+        Journal.write_entry!(
+          %{resident_id: clover.id, kind: :general, note: "Of another resident."},
+          context.options
+        )
+
+      for id <- [theirs.id, "nothing"] do
+        {view, html} = open(context.conn, context.path <> "?entry=#{id}")
+        assert cards(html) =~ "Popcorning"
+        refute html =~ "Of another resident."
+        refute has_element?(view, "#one-entry")
+      end
+    end
+
+    test "takes no event for an entry of another resident", context do
+      clover = resident!(context.lists, context.options, %{name: "Clover"})
+
+      theirs =
+        Journal.write_entry!(
+          %{resident_id: clover.id, kind: :general, note: "Of another resident."},
+          context.options
+        )
+
+      {view, _html} = open(context.conn, context.path)
+
+      render_submit(view, "correct", %{
+        "entry_id" => theirs.id,
+        "entry" => %{"note" => "Changed from the wrong page."}
+      })
+
+      assert {:ok, %{note: "Of another resident."}} = Journal.entry(theirs.id, context.options)
+    end
+
+    test "has pages of 25 entries, the newest first", context do
+      for number <- 10..34 do
+        Journal.write_entry!(
+          %{
+            resident_id: context.biscuit.id,
+            kind: :general,
+            note: "Note #{number}.",
+            happened_at: DateTime.add(DateTime.utc_now(), -number, :hour)
+          },
+          context.options
+        )
+      end
+
+      {view, html} = open(context.conn, context.path)
+      cards = cards(html)
+
+      # 29 entries: the newest 25 are on the first page.
+      assert has_element?(view, "#entries button[title='Next page']")
+      assert cards =~ "And drank well."
+      assert cards =~ "Note 32."
+      refute cards =~ "Note 33."
+      refute cards =~ "Ate well."
+
+      {_view, html} = open(context.conn, context.path <> "?page=2")
+      assert cards(html) =~ "Ate well."
+      refute cards(html) =~ "Note 10."
+    end
+
+    test "keeps the search and the filters in the links of the conditions", context do
+      Journal.write_entry!(
+        %{
+          resident_id: context.biscuit.id,
+          kind: :diagnosis,
+          condition_id: context.lists.condition.respiratory_infection
+        },
+        context.options
+      )
+
+      {:ok, [episode]} = Journal.episodes_of(context.biscuit.id, context.options)
+      {view, _html} = open(context.conn, context.path <> "?only=medical&page=1&search=a")
+
+      assert has_element?(
+               view,
+               "nav[aria-label=Conditions] a[href='#{context.path}?episode=#{episode.id}&only=medical&search=a']"
+             )
+
+      # An old address of the form of a diagnosis is the filter on the kind now.
+      {view, html} = open(context.conn, context.path <> "?kind=diagnosis")
+      refute has_element?(view, "details#new-entry[open]")
+      assert cards(html) =~ "Respiratory infection"
+      refute cards(html) =~ "Popcorning"
     end
   end
 

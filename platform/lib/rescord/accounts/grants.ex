@@ -99,7 +99,8 @@ defmodule Rescord.Accounts.Grants do
       {Organisation, :set_task_days_ahead, :all},
       {Organisation, :set_transfer_parts, :all},
       {Organisation, :set_currency, :all},
-      {Organisation, :set_tax_name, :all}
+      {Organisation, :set_tax_name, :all},
+      {Organisation, :set_paper_size, :all}
     ],
     # The export of the data of the organisation (ADR 0054).
     export: [{Organisation, :export, :all}]

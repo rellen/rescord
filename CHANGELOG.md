@@ -100,6 +100,22 @@ release (ADR 0047).
     price and no word of a conversation, and a column to the messages of
     the conversations. Both are empty after the upgrade, because no
     member can ask the assistant yet. It changes no row.
+  - `20261128075805_add_the_paper_size_of_an_organisation`, in the
+    database: adds a column to the organisations, for the paper of the
+    reports. Each organisation that is there gets A4, which is the paper
+    that its reports had, and no other value of a row changes.
+  - `20261128080500_add_the_standard_unit_of_a_measure_kind`, in each
+    organisation: adds a column to the kinds of measurement, for the
+    standard unit of a kind, and fills it for a kind where the answer is
+    no guess. A kind that names exactly one unit gets that unit.
+    Otherwise, a kind whose measurements all have one and the same unit,
+    and none without a unit, gets that unit, when the kind names no unit
+    or names that one. Each other kind gets no standard unit. It changes
+    no measurement: each keeps the number and the unit that the person
+    recorded.
+- Each organisation has the paper A4 for its reports after the upgrade. An
+  administrator of a rescue that prints on US Letter changes it on the
+  settings page, in "Paper of the reports".
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -114,6 +130,15 @@ release (ADR 0047).
   for the private keys of the transfers already, so the rule is the same:
   keep a copy of the secret with the backups. A backup of the database
   without this secret cannot open those values.
+- After the upgrade, a kind of measurement can have a standard unit, and
+  the migration above gave one to each kind where the answer was no
+  guess. Rescord now shows each measurement of such a kind in that unit,
+  and a new measurement of the kind needs that unit or a unit that
+  Rescord converts to it: a measurement with no unit, or in a unit such
+  as "bag", is refused. A measurement that is there stays as it is. An
+  administrator reads the standard unit of each kind on the page Lists,
+  under "Measure kind", and changes it or removes it there. With no
+  standard unit, a kind works as in the earlier versions.
 - No new setting is needed. One new variable is optional:
   `RESCORD_KEY_SECRET_PREVIOUS` is for the time when you change
   `RESCORD_KEY_SECRET`, and a server that does not change its secret
@@ -167,6 +192,19 @@ release (ADR 0047).
 
 ### Added
 
+- A kind of measurement, such as the weight, can have a standard unit,
+  which an administrator chooses on the page Lists. Rescord then shows
+  each measurement of that kind in that unit: in the charts and their
+  tables, in the journal, in the timeline, on the cage card and in the
+  record of a resident. A person can still record another unit that
+  Rescord converts, such as kg for the standard unit g, and the journal
+  keeps what the person recorded and says it: "610 g (recorded as
+  0.61 kg)". The forms choose the standard unit when a person chooses
+  what was measured (ADR 0094).
+- The file `measurements.csv` of the export has two new columns at its
+  end, `standard_value` and `standard_unit`: the measurement in the
+  standard unit of its kind, with no rounding. The columns `value` and
+  `unit_id` stay as the person recorded them (ADR 0094).
 - Rescord now has a colophon, at `/colophon`: what Rescord is, its
   licence, what it is built with, how its pages are made, and an
   accessibility statement that says what is tested and what is not right
@@ -177,6 +215,17 @@ release (ADR 0047).
   is now a page of Rescord: it has the look of the site, a heading, words
   that say what to do, and a link to the first page. Before, it was the
   two words "Not Found" (ADR 0090).
+- The new command `bin/check-files` (`rescord-check-files` on NixOS)
+  compares the files of the store with the records of the database
+  (ADR 0091). An upload or a transfer that fails after it put a file in
+  the store leaves that file there, and no record names it. Until now
+  nothing counted those leftovers. The command says how many files a
+  record names, how many are leftovers and how much space they take, and
+  it names each file that a record names and that the store does not
+  have, with the kind of the record, its id and its organisation. It
+  changes nothing: it deletes no file. It exits with 1 when a file is
+  missing, and with 0 for leftovers alone. `docs/self-hosting.md` has
+  the section "Check the files".
 - Rescord now records the conditions that a resident has, such as
   bumblefoot or a respiratory infection, each with its first day, its last
   day when it is over, a mark for a chronic condition and a note
@@ -285,6 +334,13 @@ release (ADR 0047).
   opens in the browser, which prints it or saves it. The release now
   carries the Typst compiler, about 73 MB, and needs no new setting
   (ADR 0076).
+- A report is on A4 or on US Letter (ADR 0093). The settings page has the
+  new part "Paper of the reports", where an administrator chooses the
+  paper of the organisation: A4 at first. The page Reports and the part
+  "On paper" of the page of a resident have a control "Paper", with the
+  paper of the organisation chosen, so a person can make one document on
+  the other paper. The address of a report takes `paper=a4` or
+  `paper=us_letter`.
 - Rescord now knows what a unit of measure means, from its name. The
   lists page says for each unit of an organisation, and for each shared
   unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and
@@ -401,6 +457,13 @@ release (ADR 0047).
 
 ### Changed
 
+- The chart of a kind of measurement with a standard unit is in that
+  unit. It was in the unit of the newest measurement, so one weight in
+  kg changed a chart in g. A kind with no standard unit keeps the unit of
+  its newest measurement (ADR 0094).
+- A new measurement of a kind with a standard unit needs a unit: that
+  unit, or one that Rescord converts to it. The form has no choice "No
+  unit" for such a kind (ADR 0094).
 - The title of each page, which the tab of the browser shows, now has
   the name of the page first and the name of the site after it:
   "Residents · Rescord". The sign-in pages, which all had the title
@@ -478,6 +541,16 @@ release (ADR 0047).
   is the list of what to order. The page also reads less: the stock
   movements of the items that it shows, and not of each item
   (ADR 0088).
+- The journal of a resident now shows 25, 50 or 100 entries on a page,
+  the newest first, with a search and filters: a text of a note, of a
+  medication, of a vaccine or of a dose; the kind of the entry; and the
+  dates between which a thing happened. "The medical history" is one of
+  the filters, and its address, which ends in `?only=medical`, is the
+  same as before. The two links in the header that did this are gone.
+  The address holds the search and the filters, and a link to another
+  condition keeps them. A link from the measurements or from a photo to
+  its entry now opens that one entry, with what a member added to it
+  (ADR 0092).
 
 ### Fixed
 

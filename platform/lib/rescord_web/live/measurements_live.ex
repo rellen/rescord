@@ -17,7 +17,8 @@ defmodule RescordWeb.MeasurementsLive do
 
   import RescordWeb.MeasurementComponents
 
-  alias Rescord.{Accounts, Journal, Lists, Residents}
+  alias Rescord.{Accounts, Journal, Residents}
+  alias RescordWeb.MeasurementUnits
   alias Rescord.Journal.Series
 
   @impl true
@@ -57,21 +58,20 @@ defmodule RescordWeb.MeasurementsLive do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
 
-  # The kinds and the units that the form offers, and the units of each
-  # kind that names some.
+  # The kinds that the form offers, and the units of each kind.
   defp assign_lists(%{assigns: %{can_write?: false}} = socket),
-    do: assign(socket, kinds: [], all_units: [], units_of: %{})
+    do: assign(socket, kinds: [], measurement_units: %MeasurementUnits{})
 
   defp assign_lists(socket) do
-    options = options(socket)
-    {:ok, kinds} = Lists.offered_values(:measure_kind, options)
-    {:ok, units} = Lists.offered_values(:unit, options)
+    lists = MeasurementUnits.read(options(socket))
 
-    assign(socket,
-      kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
-      all_units: Enum.map(units, &{to_string(&1.label), &1.id}),
-      units_of: for(kind <- kinds, kind.unit_ids != [], into: %{}, do: {kind.id, kind.unit_ids})
-    )
+    kinds =
+      for kind <-
+            lists.kinds |> Map.values() |> Enum.sort_by(&String.downcase(to_string(&1.label))),
+          not kind.retired,
+          do: {to_string(kind.label), kind.id}
+
+    assign(socket, kinds: kinds, measurement_units: lists)
   end
 
   defp assign_series(socket) do
@@ -95,32 +95,27 @@ defmodule RescordWeb.MeasurementsLive do
     from
   end
 
-  # The units that the form offers: those of the chosen kind, or each unit
-  # when the kind names none.
-  defp unit_options(socket, kind_id) do
-    case Map.get(socket.assigns.units_of, kind_id) do
-      nil -> socket.assigns.all_units
-      ids -> Enum.filter(socket.assigns.all_units, fn {_label, id} -> id in ids end)
-    end
-  end
-
   # A form with the kind that the person chose. When the kind changes, the
-  # unit is the unit of the newest measurement of that kind, when the form
-  # offers it: a person who weighs in grams does not choose grams each day.
+  # unit is the standard unit of the kind (ADR 0094). For a kind with no
+  # standard unit it is the unit of the newest measurement of that kind,
+  # when the form offers it: a person who weighs in grams does not choose
+  # grams each day.
   defp assign_form(socket, fields) do
     fields = typed_fields(fields)
     kind_id = fields["measure_kind_id"]
-    units = unit_options(socket, kind_id)
+    units = MeasurementUnits.options(socket.assigns.measurement_units, kind_id)
+    standard = MeasurementUnits.standard(socket.assigns.measurement_units, kind_id)
 
     fields =
       if kind_id != socket.assigns[:form_kind],
-        do: Map.put(fields, "unit_id", usual_unit(socket, kind_id, units)),
+        do: Map.put(fields, "unit_id", standard || usual_unit(socket, kind_id, units)),
         else: fields
 
     assign(socket,
       form: typed_form(fields, as: :measurement),
       form_kind: kind_id,
-      units: units
+      units: units,
+      unit_needed?: MeasurementUnits.needed?(socket.assigns.measurement_units, kind_id)
     )
   end
 
@@ -235,7 +230,13 @@ defmodule RescordWeb.MeasurementsLive do
         path={&page_path(@organisation, @resident, &1)}
       />
 
-      <.record_form :if={@can_write?} form={@form} kinds={@kinds} units={@units} />
+      <.record_form
+        :if={@can_write?}
+        form={@form}
+        kinds={@kinds}
+        units={@units}
+        unit_needed?={@unit_needed?}
+      />
 
       <p :if={@series == []}>No measurement is recorded.</p>
 

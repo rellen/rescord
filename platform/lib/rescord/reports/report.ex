@@ -18,6 +18,9 @@ defmodule Rescord.Reports.Report do
   usual one: `Rescord.Reports.Grants` gives each report to each role. A
   person makes at most 30 reports in a minute, in one count for all the
   reports (ADR 0020).
+
+  Each action takes `paper`, A4 or US Letter (ADR 0093). With none, the
+  document is on the paper of the organisation.
   """
 
   use Rescord.Resource,
@@ -27,6 +30,10 @@ defmodule Rescord.Reports.Report do
     authorizers: [Ash.Policy.Authorizer]
 
   alias Rescord.Reports.Render
+
+  # The papers of a document, and what the argument `paper` says (ADR 0093).
+  @papers Rescord.Accounts.paper_sizes()
+  @paper "The paper of the document, or none for the paper of the organisation"
 
   typst do
     root({:rescord, "priv/typst"})
@@ -98,18 +105,21 @@ defmodule Rescord.Reports.Report do
         allow_nil? false
       end
 
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :resident_record}
     end
 
     action :cage_card, AshTypst.Type.Document do
       description "One page about a resident for the door of its pen"
       argument :resident_id, :uuid, allow_nil?: false
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :cage_card}
     end
 
     action :register, AshTypst.Type.Document do
       description "Each resident that the organisation had at the end of a day, today when no day is given"
       argument :on, :date
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :register}
     end
 
@@ -117,22 +127,26 @@ defmodule Rescord.Reports.Report do
       description "The arrivals and the departures of a period, with their totals"
       argument :from, :date, allow_nil?: false
       argument :to, :date, allow_nil?: false
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :movements}
     end
 
     action :task_sheet, AshTypst.Type.Document do
       description "The tasks that are due on one day, today when no day is given, each with a box to tick"
       argument :on, :date
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :task_sheet}
     end
 
     action :stock, AshTypst.Type.Document do
       description "The stock of each item, and what needs somebody first"
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :stock}
     end
 
     action :housing, AshTypst.Type.Document do
       description "The locations of the organisation, each with who lives there"
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :housing}
     end
 
@@ -141,6 +155,7 @@ defmodule Rescord.Reports.Report do
 
       argument :from, :date, allow_nil?: false
       argument :to, :date, allow_nil?: false
+      argument :paper, :atom, constraints: [one_of: @papers], description: @paper
       run {Render, report: :expenses}
     end
   end

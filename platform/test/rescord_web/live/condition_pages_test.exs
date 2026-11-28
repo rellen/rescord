@@ -87,7 +87,7 @@ defmodule RescordWeb.ConditionPagesTest do
       {view, html} = open(context.conn, context.resident_path)
 
       assert html =~ "No condition is recorded now."
-      assert has_element?(view, "a[href='#{context.path}?kind=diagnosis']", "Record a diagnosis")
+      assert has_element?(view, "a[href='#{context.path}?new=diagnosis']", "Record a diagnosis")
       assert has_element?(view, "a[href='#{context.conditions_path}']")
     end
 
@@ -134,7 +134,7 @@ defmodule RescordWeb.ConditionPagesTest do
 
   describe "the form of a diagnosis" do
     test "opens with the kind diagnosis from the link of the resident", context do
-      {view, _html} = open(context.conn, context.path <> "?kind=diagnosis")
+      {view, _html} = open(context.conn, context.path <> "?new=diagnosis")
 
       assert has_element?(view, "details#new-entry[open]")
       assert has_element?(view, "#entry select[name='entry[kind]'] option[selected]", "Diagnosis")
@@ -146,7 +146,7 @@ defmodule RescordWeb.ConditionPagesTest do
     end
 
     test "starts a condition with its first day and the mark for a chronic one", context do
-      {view, _html} = open(context.conn, context.path <> "?kind=diagnosis")
+      {view, _html} = open(context.conn, context.path <> "?new=diagnosis")
       first = Date.add(context.today, -5)
 
       {view, _html} =
@@ -172,7 +172,7 @@ defmodule RescordWeb.ConditionPagesTest do
 
     test "says that a diagnosis joins the condition that the resident has now", context do
       diagnose!(context, context.bumblefoot)
-      {view, _html} = open(context.conn, context.path <> "?kind=diagnosis")
+      {view, _html} = open(context.conn, context.path <> "?new=diagnosis")
 
       refute has_element?(view, "#entry-joins")
 
@@ -194,7 +194,7 @@ defmodule RescordWeb.ConditionPagesTest do
     end
 
     test "says what is wrong with a first day after today", context do
-      {view, _html} = open(context.conn, context.path <> "?kind=diagnosis")
+      {view, _html} = open(context.conn, context.path <> "?new=diagnosis")
 
       view
       |> form("#entry",
@@ -276,7 +276,7 @@ defmodule RescordWeb.ConditionPagesTest do
 
       # The filter works with the medical history.
       {view, html} = open(context.conn, context.filtered <> "&only=medical")
-      assert html =~ "The medical history about Bumblefoot"
+      assert html =~ "The entries about Bumblefoot"
       assert has_element?(view, "#entry-#{context.diagnosis.id}")
     end
 
