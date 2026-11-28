@@ -45,8 +45,10 @@ config :rescord, Rescord.Repo,
 config :rescord, RescordWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "9iDnT6galUTuMetbw7HGDpETn9kOplPWofCu2/hsMdMN7kGHzrwJ4iTte0GffAyG",
-  # A browser test needs a real server (ADR 0023).
-  server: true
+  # A browser test needs a real server (ADR 0023). A run of muex starts
+  # several `mix test` at one time and has no browser test, so it starts no
+  # server (ADR 0100, `RESCORD_MUTATION_RUN` in `mix.exs`).
+  server: System.get_env("RESCORD_MUTATION_RUN") != "1"
 
 # The catalogue of the components, at /dev/components: a browser test holds
 # each example to the rules of a page (ADR 0095).
