@@ -100,6 +100,9 @@ defmodule Rescord.Export do
       "The usage counts are of the whole server, with no organisation in them (ADR 0098).",
     Rescord.Usage.Settings =>
       "What the server does with its usage counts is a setting of the server (ADR 0098).",
+    Rescord.Health.Result =>
+      "What a sanity check found is a count and some ids for the root users of the server " <>
+        "(ADR 0114), and no record of the rescue.",
     Rescord.Comments.Follow =>
       "Who follows a record is a setting of each member for their notifications (ADR 0106).",
     Rescord.Notifications.Notification =>
