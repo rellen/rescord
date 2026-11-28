@@ -44,6 +44,11 @@ defmodule RescordWeb.MeasurementPagesTest do
     {view, render_async(view)}
   end
 
+  # The page after a measurement of a kind: the form is open again with
+  # that kind (ADR 0111).
+  defp again(context, kind),
+    do: context.path <> "?again=#{Map.fetch!(context.lists.measure_kind, kind)}"
+
   # Records a measurement of a resident some days ago, at 08:30 of the
   # organisation on that day.
   defp measure!(context, resident, kind, value, unit, days_ago, extra \\ %{}) do
@@ -378,6 +383,27 @@ defmodule RescordWeb.MeasurementPagesTest do
   end
 
   describe "the form that records a measurement" do
+    test "is open again after a measurement, with its kind, and the value takes the focus",
+         context do
+      weight = context.lists.measure_kind.weight
+      {view, _html} = open(context.conn, context.path)
+
+      refute has_element?(view, "details#record[open]")
+      refute has_element?(view, "#measurement input[autofocus]")
+
+      {view, _html} = open(context.conn, again(context, :weight))
+
+      assert has_element?(view, "details#record[open]")
+      assert has_element?(view, "#measurement option[selected][value='#{weight}']", "Weight")
+      assert has_element?(view, "#measurement input[name='measurement[value]'][autofocus]")
+    end
+
+    test "is closed for a kind that is not of the page", context do
+      {view, _html} = open(context.conn, context.path <> "?again=no-such-kind")
+
+      refute has_element?(view, "details#record[open]")
+    end
+
     test "writes a journal entry, and the page shows the new value", context do
       lists = context.lists
       {view, _html} = open(context.conn, context.path)
@@ -393,7 +419,7 @@ defmodule RescordWeb.MeasurementPagesTest do
           }
         )
         |> render_submit()
-        |> follow_redirect(context.conn, context.path)
+        |> follow_redirect(context.conn, again(context, :weight))
 
       assert render(view) =~ "The measurement is recorded."
       assert has_element?(view, "p[data-figure] strong", "1,095 g")
@@ -422,7 +448,10 @@ defmodule RescordWeb.MeasurementPagesTest do
         )
         |> render_submit()
         # The page keeps its time range.
-        |> follow_redirect(context.conn, context.path <> "?range=30")
+        |> follow_redirect(
+          context.conn,
+          context.path <> "?again=#{lists.measure_kind.temperature}&range=30"
+        )
 
       assert has_element?(view, "p[data-figure] span", date(context, 3))
 
@@ -679,7 +708,7 @@ defmodule RescordWeb.MeasurementPagesTest do
           }
         )
         |> render_submit()
-        |> follow_redirect(context.conn, context.path)
+        |> follow_redirect(context.conn, again(context, :weight))
 
       assert has_element?(view, "p[data-figure] strong", "1,095 g")
 

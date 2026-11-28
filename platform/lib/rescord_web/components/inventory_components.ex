@@ -212,6 +212,19 @@ defmodule RescordWeb.InventoryComponents do
           options={@lots}
         />
         <.input
+          field={@form[:quantity]}
+          type="decimal"
+          label={quantity_label("How much came in", @item)}
+          required
+        />
+        <.input
+          field={@form[:location_id]}
+          type="select"
+          label="Where it is now"
+          prompt="No place in particular"
+          options={@places}
+        />
+        <.input
           field={@form[:code]}
           type="text"
           label="Code on the pack of a new lot, if it has one"
@@ -228,19 +241,6 @@ defmodule RescordWeb.InventoryComponents do
           label="Supplier of a new lot"
           prompt="Not recorded"
           options={@suppliers}
-        />
-        <.input
-          field={@form[:quantity]}
-          type="decimal"
-          label={quantity_label("How much came in", @item)}
-          required
-        />
-        <.input
-          field={@form[:location_id]}
-          type="select"
-          label="Where it is now"
-          prompt="No place in particular"
-          options={@places}
         />
         <.input
           field={@form[:at]}

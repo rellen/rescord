@@ -778,6 +778,15 @@ release (ADR 0047).
 
 ### Changed
 
+- The forms take fewer keys. A form that a person opens gives the focus to
+  its first field, and Ctrl or Cmd with Enter sends a form from its note.
+  After a measurement, the form stays open with the same kind and unit,
+  and the value has the focus, so a run of weights is a value and Enter
+  each. The new task form is above the tasks of the day. The date of an
+  arrival is today once a person chooses how the resident came. Stock
+  that came in asks for the quantity and the place right after the lot.
+  A new expense from the expenses of a resident is for that resident
+  (ADR 0111).
 - A HEIC or an AVIF photo, which Rescord cannot read, is refused with
   words that say what to do: on an iPhone, pick it from Photos, which
   sends a JPEG, or set the camera to Most Compatible; elsewhere, save it as

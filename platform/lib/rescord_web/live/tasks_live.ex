@@ -304,6 +304,18 @@ defmodule RescordWeb.TasksLive do
 
       <.problems :if={not @refused_form?} list={@problems} />
 
+      <.new_task
+        :if={@can_plan?}
+        refused_form?={@refused_form?}
+        problems={@problems}
+        form={@form}
+        kinds={@kinds}
+        residents={@residents}
+        groups={@groups}
+        locations={@locations}
+        members={@members}
+      />
+
       <.tasks
         day={@day}
         today={@today}
@@ -317,18 +329,6 @@ defmodule RescordWeb.TasksLive do
         user={@current_user}
         role={@role}
         now={@now}
-      />
-
-      <.new_task
-        :if={@can_plan?}
-        refused_form?={@refused_form?}
-        problems={@problems}
-        form={@form}
-        kinds={@kinds}
-        residents={@residents}
-        groups={@groups}
-        locations={@locations}
-        members={@members}
       />
     </Layouts.app>
     """

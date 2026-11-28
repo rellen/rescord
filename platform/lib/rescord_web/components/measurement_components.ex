@@ -243,9 +243,13 @@ defmodule RescordWeb.MeasurementComponents do
     default: false,
     doc: "the chosen kind has a standard unit, so a measurement needs a unit"
 
+  attr :again?, :boolean,
+    default: false,
+    doc: "a measurement was just recorded: the form is open, and its value has the focus"
+
   def record_form(assigns) do
     ~H"""
-    <details id="record">
+    <details id="record" open={@again?}>
       <summary><.icon name="plus" /> Record a measurement</summary>
       <.form for={@form} id="measurement" phx-change="choose" phx-submit="record">
         <.input
@@ -256,7 +260,7 @@ defmodule RescordWeb.MeasurementComponents do
           options={@kinds}
           required
         />
-        <.input field={@form[:value]} type="decimal" label="Value" required />
+        <.input field={@form[:value]} type="decimal" label="Value" required autofocus={@again?} />
         <.input
           field={@form[:unit_id]}
           type="select"

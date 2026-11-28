@@ -145,6 +145,22 @@ defmodule RescordWeb.ConditionPagesTest do
       refute has_element?(view, "details#new-entry[open]")
     end
 
+    test "opens with another kind that the address names, and not with an unknown one",
+         context do
+      {view, _html} = open(context.conn, context.path <> "?new=measurement")
+
+      assert has_element?(view, "details#new-entry[open]")
+
+      assert has_element?(
+               view,
+               "#entry select[name='entry[kind]'] option[selected]",
+               "Measurement"
+             )
+
+      {view, _html} = open(context.conn, context.path <> "?new=no-such-kind")
+      refute has_element?(view, "details#new-entry[open]")
+    end
+
     test "starts a condition with its first day and the mark for a chronic one", context do
       {view, _html} = open(context.conn, context.path <> "?new=diagnosis")
       first = Date.add(context.today, -5)

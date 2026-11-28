@@ -564,6 +564,27 @@ defmodule RescordWeb.ResidentPagesTest do
       assert {resident.name, resident.status} == {"Biscuit", :in_care}
     end
 
+    test "puts today in the date of the arrival when a person chooses how it came", context do
+      today = Date.to_iso8601(Rescord.Accounts.today(context.organisation))
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+
+      refute has_element?(view, "#resident input[name='resident[arrived_on]'][value='#{today}']")
+
+      view |> form("#resident", resident: %{arrival_kind: "stray"}) |> render_change()
+
+      assert has_element?(view, "#resident input[name='resident[arrived_on]'][value='#{today}']")
+
+      # A date that the person typed stays.
+      view
+      |> form("#resident", resident: %{arrival_kind: "stray", arrived_on: "2026-09-12"})
+      |> render_change()
+
+      assert has_element?(
+               view,
+               "#resident input[name='resident[arrived_on]'][value='2026-09-12']"
+             )
+    end
+
     test "records a resident that is expected, with only a species", context do
       lists = lists!(context.organisation, context.root)
       {view, _html} = open(context.conn, context.base <> "/residents/new")

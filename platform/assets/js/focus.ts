@@ -116,7 +116,14 @@ function focusPlace(element: HTMLElement): boolean {
   return document.activeElement === element
 }
 
+// The heading of the page, or the field that a page names with `autofocus`:
+// a form that the person goes on with, such as the measurement after a
+// measurement (ADR 0111). A browser gives that field the focus on a load of
+// a document, and this does it on a live page.
 function focusHeading(): void {
+  const field = Array.from(document.querySelectorAll<HTMLElement>("main [autofocus]")).find(inPage)
+  if (field && give(field)) return
+
   const heading = document.querySelector<HTMLElement>("main h1")
   if (heading) focusPlace(heading)
 }

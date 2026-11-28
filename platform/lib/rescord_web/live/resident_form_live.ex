@@ -15,7 +15,7 @@ defmodule RescordWeb.ResidentFormLive do
 
   import RescordWeb.ResidentComponents
 
-  alias Rescord.{Lists, Residents}
+  alias Rescord.{Accounts, Lists, Residents}
 
   # A dimension of which a resident has one value, and its field.
   @one [species: "species_id", size_class: "size_class_id", coat: "coat_id"]
@@ -104,6 +104,26 @@ defmodule RescordWeb.ResidentFormLive do
   end
 
   @impl true
+  # A resident that came has come on a day, and most come on the day of the
+  # intake: when a person chooses how the resident came and the date is
+  # empty, the date is today in the organisation (ADR 0111). They change it
+  # for a resident that came before.
+  def handle_event("choose", %{"resident" => fields}, socket) when is_map(fields) do
+    fields = text_fields(fields)
+
+    fields =
+      if non_blank(fields["arrival_kind"]) && !non_blank(fields["arrived_on"]),
+        do:
+          Map.put(
+            fields,
+            "arrived_on",
+            Date.to_iso8601(Accounts.today(socket.assigns.organisation))
+          ),
+        else: fields
+
+    {:noreply, assign_form(socket, fields)}
+  end
+
   def handle_event("save", %{"resident" => fields}, socket) when is_map(fields) do
     facts = facts(fields)
 
@@ -202,7 +222,7 @@ defmodule RescordWeb.ResidentFormLive do
         values on <.link navigate={~p"/o/#{@organisation.short_name}/lists"}>the lists page</.link>.
       </p>
 
-      <.form for={@form} id="resident" phx-submit="save">
+      <.form for={@form} id="resident" phx-change="choose" phx-submit="save">
         <.resident_fields form={@form} lists={@lists} />
 
         <fieldset :for={{key, legend} <- @many}>

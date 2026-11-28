@@ -46,6 +46,8 @@ import {listen as listenToRuby} from "./ruby"
 import {Push} from "./push"
 // The menu of a phone closes when the Tab key leaves it (ADR 0111).
 import {listen as listenToMenus} from "./menu"
+// A form that opens takes the focus, and Ctrl+Enter sends a text area (ADR 0111).
+import {listen as listenToForms} from "./forms"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -75,6 +77,7 @@ listenToRuby()
 watchFocus()
 listenForNewPages()
 listenToMenus()
+listenToForms()
 
 // The bar at the top of a page that loads, on a live navigation and on a
 // form that sends. The stylesheet draws it while the root element has

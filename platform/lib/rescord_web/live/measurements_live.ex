@@ -51,8 +51,23 @@ defmodule RescordWeb.MeasurementsLive do
   @impl true
   def handle_params(params, _uri, socket) do
     range = if days(params["range"]), do: params["range"], else: "all"
-    {:noreply, socket |> assign(range: range, selected: nil) |> assign_shown()}
+
+    {:noreply,
+     socket |> assign(range: range, selected: nil) |> assign_shown() |> assign_again(params)}
   end
+
+  # After a measurement the form is open again with the same kind, and its
+  # value has the focus: a person who weighs one resident after another
+  # does not choose the kind each time (ADR 0111). `?again=<kind id>` says
+  # so; another value of it is not a kind of this page.
+  defp assign_again(socket, %{"again" => kind_id}) when is_binary(kind_id) do
+    if socket.assigns.can_write? and
+         Enum.any?(socket.assigns.kinds, fn {_label, id} -> id == kind_id end),
+       do: socket |> assign(again?: true) |> assign_form(%{"measure_kind_id" => kind_id}),
+       else: assign(socket, again?: false)
+  end
+
+  defp assign_again(socket, _params), do: assign(socket, again?: false)
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
@@ -154,7 +169,13 @@ defmodule RescordWeb.MeasurementsLive do
        socket
        |> put_flash(:info, "The measurement is recorded.")
        |> push_navigate(
-         to: page_path(socket.assigns.organisation, socket.assigns.resident, socket.assigns.range)
+         to:
+           again_path(
+             socket.assigns.organisation,
+             socket.assigns.resident,
+             socket.assigns.range,
+             fields["measure_kind_id"]
+           )
        )}
     else
       {:error, error} ->
@@ -188,6 +209,11 @@ defmodule RescordWeb.MeasurementsLive do
 
   defp page_path(organisation, resident, range),
     do: ~p"/o/#{organisation.short_name}/residents/#{resident.id}/measurements?#{[range: range]}"
+
+  defp again_path(organisation, resident, range, kind_id) do
+    query = if range == "all", do: [again: kind_id], else: [range: range, again: kind_id]
+    ~p"/o/#{organisation.short_name}/residents/#{resident.id}/measurements?#{query}"
+  end
 
   defp name(resident), do: resident.name || "a resident with no name"
 
@@ -235,6 +261,7 @@ defmodule RescordWeb.MeasurementsLive do
         kinds={@kinds}
         units={@units}
         unit_needed?={@unit_needed?}
+        again?={@again?}
       />
 
       <p :if={@series == []}>

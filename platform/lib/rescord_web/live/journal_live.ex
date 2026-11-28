@@ -100,7 +100,14 @@ defmodule RescordWeb.JournalLive do
   def handle_params(params, uri, socket) do
     # Only a condition of this resident: the page has them in hand.
     episode = Enum.find(socket.assigns.episodes, &(&1.id == params["episode"]))
-    kind = if params["new"] == "diagnosis", do: "diagnosis", else: "general"
+    # `?new=<kind>` opens the form with that kind (ADR 0111): `?new=diagnosis`
+    # from a condition, and any other kind for a link that names one.
+    new =
+      Enum.find_value(JournalWords.options(:kind), fn {_word, kind} ->
+        kind == params["new"] && kind
+      end)
+
+    kind = new || "general"
 
     {:noreply,
      socket
@@ -108,7 +115,7 @@ defmodule RescordWeb.JournalLive do
        episode: episode,
        entry: one_entry(socket, params["entry"]),
        query: query_of(uri),
-       open_form?: params["new"] == "diagnosis"
+       open_form?: new != nil
      )
      |> assign_form(%{"kind" => kind, "episode_id" => (episode && episode.id) || ""})
      |> comments_of()}

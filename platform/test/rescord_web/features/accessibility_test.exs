@@ -239,6 +239,28 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> refute_has("tbody button:focus")
   end
 
+  # A person who weighs one resident after another opens the form, types,
+  # and goes on with the next value (ADR 0111).
+  @tag browser_context_opts: [viewport: @wide]
+  test "a form that a person opens takes the focus, and Ctrl+Enter sends it from a note",
+       %{conn: session, pages: pages} = context do
+    measurements = Enum.find(pages, &(&1 =~ ~r{/residents/[^/]+/measurements$}))
+
+    session
+    |> sign_in_as_administrator(context, "focus.form")
+    |> visit(measurements)
+    |> assert_connected()
+    |> evaluate(~s|document.querySelector("#record > summary").focus()|)
+    |> press("#record > summary", "Enter")
+    |> assert_has("#measurement select[name='measurement[measure_kind_id]']:focus")
+    |> select("What was measured", option: "Weight")
+    |> fill_in("Value", with: "1110")
+    |> fill_in("Note", with: "After breakfast")
+    |> press("#measurement textarea", "Control+Enter")
+    |> assert_has("[role=status]", text: "The measurement is recorded.")
+    |> assert_has("#record[open] input[name='measurement[value]']:focus")
+  end
+
   @tag browser_context_opts: [viewport: @phone]
   test "the menu of a phone closes when the Tab key leaves it",
        %{conn: session, home: home} = context do

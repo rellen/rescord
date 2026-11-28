@@ -185,11 +185,18 @@ defmodule RescordWeb.ExpensePagesTest do
       expense!(context, %{resident_id: biscuit.id})
       expense!(context, %{description: "Fuel"})
 
-      {_view, html} = open(context.conn, context.path <> "?resident=#{biscuit.id}")
+      {view, html} = open(context.conn, context.path <> "?resident=#{biscuit.id}")
 
       assert html =~ "Only the expenses for"
       assert html =~ "Vet consult for Biscuit"
       refute html =~ "Fuel"
+
+      # A new expense from here is an expense of the resident (ADR 0111).
+      assert has_element?(
+               view,
+               "a[href$='/expenses/new?resident=#{biscuit.id}']",
+               "Record an expense"
+             )
     end
   end
 

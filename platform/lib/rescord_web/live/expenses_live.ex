@@ -100,6 +100,12 @@ defmodule RescordWeb.ExpensesLive do
 
   defp resident(_socket, _none), do: nil
 
+  # The list of one resident records an expense of that resident (ADR 0111).
+  defp new_path(organisation, nil), do: ~p"/o/#{organisation.short_name}/expenses/new"
+
+  defp new_path(organisation, resident),
+    do: ~p"/o/#{organisation.short_name}/expenses/new?#{[resident: resident.id]}"
+
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
@@ -135,7 +141,7 @@ defmodule RescordWeb.ExpensesLive do
         <:actions>
           <.link
             :if={@can_record?}
-            navigate={~p"/o/#{@organisation.short_name}/expenses/new"}
+            navigate={new_path(@organisation, @resident)}
             data-variant="primary"
           >
             <.icon name="plus" /> Record an expense
