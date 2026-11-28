@@ -433,6 +433,12 @@ release (ADR 0047).
   the share of the tasks due in it that were done more than an hour late.
   It counts the tasks of the refuge, and never the work of a person. Each
   member can open it.
+- The fifth insight, "Stays" (issue 36, ADR 0121): a bar for each
+  resident in care on a day of the last 12 months, from the arrival to
+  the departure, or dashed to today for a stay that goes on, with the name
+  as a link and how the stay began, its days and how it ended. A species
+  narrows it, and the rows come in the order of the arrivals or of the
+  lengths. Each member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

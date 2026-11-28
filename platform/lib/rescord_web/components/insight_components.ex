@@ -35,6 +35,15 @@ defmodule RescordWeb.InsightComponents do
         </small>
       </li>
       <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/stays"}>
+          Stays
+        </.link>
+        <small>
+          Who came when, and who has been here longest? A bar for the stay of each resident of
+          the last year.
+        </small>
+      </li>
+      <li>
         <.link navigate={~p"/o/#{@organisation.short_name}/insights/conditions"}>
           Conditions by week
         </.link>

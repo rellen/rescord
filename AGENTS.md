@@ -983,6 +983,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `:total` (ADR 0119).
   - A punch card is `heat_table/1` with the variant `"dots"`: the step of
     a cell is the size of its dot (ADR 0120).
+  - A time line is `timeline/1` (ADR 0121): a list with a link and a note
+    in words for each row, and bars that are decoration, placed with
+    `Chart.span/4` on a scale of days.
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the

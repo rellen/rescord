@@ -314,4 +314,59 @@ defmodule RescordWeb.InsightPagesTest do
       |> assert_has(region("Hours that slip"), text: "No task was done, so no hour slipped.")
     end
   end
+
+  describe "stays (ADR 0121)" do
+    test "has a row for each stay of the year, with its words, in the order chosen", context do
+      biscuit =
+        resident!(context.lists, context.options, %{
+          name: "Biscuit",
+          arrived_on: Date.add(context.today, -20)
+        })
+
+      resident!(context.lists, context.options, %{
+        name: "Sage",
+        arrived_on: Date.add(context.today, -10)
+      })
+
+      {:ok, _} =
+        Rescord.Residents.record_departure(
+          %{resident_id: biscuit.id, kind: :release, departed_on: Date.add(context.today, -15)},
+          context.options
+        )
+
+      gone =
+        resident!(context.lists, context.options, %{
+          name: "Gone",
+          arrived_on: Date.add(context.today, -500)
+        })
+
+      {:ok, _} =
+        Rescord.Residents.record_departure(
+          %{resident_id: gone.id, kind: :release, departed_on: Date.add(context.today, -400)},
+          context.options
+        )
+
+      session =
+        context.conn
+        |> visit(~p"/o/#{context.organisation.short_name}/insights/stays")
+        |> assert_has(heading("Stays", level: 1))
+        |> assert_has(list("The stays") |> link("Biscuit"))
+        |> assert_has(list("The stays") |> link("Sage"))
+        |> refute_has(list("The stays") |> link("Gone"))
+        |> assert_has(list("The stays"),
+          text:
+            "Surrender by an owner, #{Locale.date(Date.add(context.today, -20))} to #{Locale.date(Date.add(context.today, -15))}, 5 days, Release"
+        )
+        |> assert_has(region("The stays of the last 12 months"),
+          text:
+            "2 residents were in care in the last 12 months, and 1 stay goes on. The longest that goes on is of Sage: 10 days."
+        )
+
+      assert ["Biscuit", "Sage"] = names(session, list("The stays") |> link(nil))
+
+      session
+      |> select("Order", option: "Length, the longest first")
+      |> then(&assert ["Sage", "Biscuit"] = names(&1, list("The stays") |> link(nil)))
+    end
+  end
 end
