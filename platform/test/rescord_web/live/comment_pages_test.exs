@@ -15,7 +15,7 @@ defmodule RescordWeb.CommentPagesTest do
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
-  alias Rescord.{Comments, Notifications, Tasks}
+  alias Rescord.{Accounts, Comments, Notifications, Tasks}
 
   setup %{conn: conn} do
     root = root!()
@@ -198,11 +198,13 @@ defmodule RescordWeb.CommentPagesTest do
 
   describe "the page of a task" do
     test "shows the task and its comments, and the list links to it", context do
-      task =
-        Tasks.plan_task!(
-          %{title: "Clean the barn pens", due_at: DateTime.add(DateTime.utc_now(), 1, :hour)},
-          context.admin
-        )
+      # Noon of today in the organisation, since the list shows the tasks of
+      # the day there. An hour from now fell on the next day there in the
+      # last hour before its midnight.
+      organisation = context.organisation
+      due_at = Accounts.local_instant(organisation, Accounts.today(organisation), ~T[12:00:00])
+
+      task = Tasks.plan_task!(%{title: "Clean the barn pens", due_at: due_at}, context.admin)
 
       {:ok, _} =
         Comments.write({:task, task.id}, %{body: "The hose leaks."}, as(context, context.kim))
