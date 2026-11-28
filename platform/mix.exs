@@ -200,8 +200,13 @@ defmodule Rescord.MixProject do
   # database and the assets once, before the run.
   @mutation_run "RESCORD_MUTATION_RUN"
 
+  # scripts/test-in-parts.sh sets up each database and builds the assets
+  # once, then runs several `mix test` side by side with RESCORD_TEST_SET_UP
+  # (ADR 0103): two builds of the assets at once would write the same files.
+  @test_set_up "RESCORD_TEST_SET_UP"
+
   defp test_setup do
-    if System.get_env(@mutation_run) == "1",
+    if System.get_env(@mutation_run) == "1" or System.get_env(@test_set_up) == "1",
       do: [],
       else: ["ash.setup --quiet", "assets.build"]
   end

@@ -61,7 +61,8 @@ version, and the two hashes of its native library. The same holds for
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
 ADR 0047), in jobs side by side from one compile (ADR 0103): the checks of
-the code, the tests in parts (`mix test --partitions`), the browser tests in
+the code, the tests in parts (`mix test --partitions`, four parts side by
+side on each runner with `scripts/test-in-parts.sh`), the browser tests in
 parts of their own, the checks of the workflows and the scripts, and the
 flake check (`nix.yml`). The job `CI` gives one result for the run. A push to
 `main` cancels the run of the push before it. When `main` has waited an hour

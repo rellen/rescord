@@ -48,14 +48,18 @@ jobs:
 
       # Only a push to main and a run from the Actions page on main write to
       # the cache. In a workflow that CI calls, the ref and the event are
-      # those of CI. The source, the package of Rescord itself and the
-      # NixOS test change with each commit, so they are not kept.
+      # those of CI. The filter keeps out the sources and the run of the
+      # NixOS test, so the test runs again in each run. The package of
+      # Rescord and the system of the test machine are kept all the same:
+      # they are in the closure of the units of that machine. A commit that
+      # changes no file of the package (only tests, say) then needs no
+      # build at all.
       - uses: cachix/cachix-action@v17
         with:
           name: rescord
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: ${{ github.ref != 'refs/heads/main' || !contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name) }}
-          pushFilter: "(-source$|-rescord-[0-9][^/]*$|vm-test-run-|nixos-test-driver|-nixos-system-)"
+          pushFilter: "(-source$|vm-test-run-|nixos-test-driver)"
 
       - name: Check the flake
         run: nix flake check -L

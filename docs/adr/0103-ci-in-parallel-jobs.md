@@ -38,10 +38,11 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   fails when a resource needs a migration that nobody generated. Each step
   runs even when one before it failed, so one run shows each fault.
 - **The tests run in parts.** `mix test --exclude playwright --partitions N`
-  (N is 6) on N runners, each with its own PostgreSQL and its database
-  `rescord_test<k>`. Mix deals all the sorted test files out in turn,
-  before `--only` or `--exclude` picks the tests, so a part gets files, not
-  a share of the time.
+  on J runners, each with its own PostgreSQL. Each runner runs N / J parts
+  at once (`scripts/test-in-parts.sh`; J is 6 and N is 24), and each part
+  has its database `rescord_test<k>` and its port 4002 + k. Mix deals all
+  the sorted test files out in turn, before `--only` or `--exclude` picks
+  the tests, so a part gets files, not a share of the time.
 - **The browser tests run apart**, in M parts (M is 2), with
   `mix test --only playwright --partitions M`. `--only` finds a browser
   test in any file. A part with no browser test fails with "no test was
@@ -58,8 +59,13 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   the maintainer (28 November 2026). A run of CI on `main` (a push, or a
   run from the Actions page) writes to it with the secret
   `CACHIX_AUTH_TOKEN`; every other run only reads it, and a pull request
-  from a fork has no token at all. The source, the package of Rescord and
-  the NixOS test are not written, since they change with each commit. The
+  from a fork has no token at all. A filter keeps out the sources and the
+  run of the NixOS test, which runs again each time. The package of
+  Rescord is kept all the same, since it is in the closure of the test
+  machine. The first run that filled the cache took 17.6 minutes; the next,
+  on a commit that changed only tests, 1.5 (it fetched the package and ran
+  the NixOS test, 67 seconds). A commit that changes the package builds it
+  again, about 4 minutes with the test. The
   Magic Nix Cache of Determinate Systems was in the first build. It keeps
   each path of the store as an entry of the cache of GitHub Actions, and
   the first run hit the rate limit of that cache about 400 times. A job of
@@ -79,15 +85,24 @@ Elixir and rebar3 from source each time (ADR 0053): 13 of its 18 minutes.
   run waits for runners.
 - The caches of mix and of Nix share the 10 GB of the repository, and GitHub
   evicts the least recently used entries first.
-- N is 6 and M is 2 at first. The tests with no browser took about 35
-  minutes in one job. The browser tests took 204 seconds on `main`, 105 of
+- N was 6 at first, one part on each runner. The tests with no browser
+  took about 35 minutes in one job, and the six parts 4 to 9 minutes each
+  (28 November 2026). Most tests run one at a time (a test that makes an
+  organisation is `async: false`, ADR 0022), so one `mix test` kept one of
+  the four cores busy. On a machine with 4 cores and 16 GB, like a runner,
+  a part took 22 to 24 per cent longer beside 2 or 3 others than alone, so
+  4 parts at once do about 3.2 times the work of one. The script sets up
+  the databases and builds the assets once, and the alias `test` skips its
+  set-up when RESCORD_TEST_SET_UP is 1: two builds of the assets at once
+  would write the same files. M is 2. The browser tests took 204 seconds on `main`, 105 of
   them in the file of `AccessibilityTest`, so a third part would end no
   sooner than two. The times of the parts in CI show when to change them.
   `mix test --slowest-modules` shows the slow files, outside CI: it turns
   on `--trace`, which runs every test one at a time.
 - With no cache, the flake check built Erlang, Elixir and rebar3 in each
   run, about 18 minutes, the longest path of a run. With the cache, a run
-  builds them only after a change of `flake.lock` or of `nix/`.
+  builds them only after a change of `flake.lock` or of `nix/`, and the
+  longest path is the tests again.
 - Each job after "Compile" gives the files the time of the commit after it
   restored the build of that commit, so mix compiles nothing. A checkout
   gives each file the time of now, newer than the build, and mix then
