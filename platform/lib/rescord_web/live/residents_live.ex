@@ -151,7 +151,6 @@ defmodule RescordWeb.ResidentsLive do
           label="Sex"
           filter={[type: :select, prompt: "Any sex", options: ResidentWords.options(:sex)]}
         >
-          <.icon :if={Icons.sex(resident.sex)} name={Icons.sex(resident.sex)} />
           {ResidentWords.sex(resident.sex)}
         </:col>
         <:col

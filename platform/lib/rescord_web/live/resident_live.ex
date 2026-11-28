@@ -318,9 +318,7 @@ defmodule RescordWeb.ResidentLive do
       <.header>
         {@resident.name || "A resident with no name"}
         <:subtitle>
-          {@resident.species.label} ·
-          <.icon :if={Icons.sex(@resident.sex)} name={Icons.sex(@resident.sex)} />
-          {ResidentWords.sex(@resident.sex)} ·
+          {@resident.species.label} · {ResidentWords.sex(@resident.sex)} ·
           <.state kind={ResidentWords.status_kind(@resident.status)}>
             {ResidentWords.status(@resident.status)}
           </.state>

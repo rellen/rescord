@@ -97,7 +97,6 @@ defmodule RescordWeb.Icons do
     "map-pin" =>
       ~S|<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/>|,
     "mark" => ~S|<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/>|,
-    "mars" => ~S|<circle cx="10" cy="14" r="5.5"/><path d="M14 10l6-6M15 4h5v5"/>|,
     "minus-circle" => ~S|<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>|,
     "minus" => ~S|<path d="M5 12h14"/>|,
     "no-symbol" => ~S|<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>|,
@@ -153,7 +152,6 @@ defmodule RescordWeb.Icons do
     "users" =>
       ~S|<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20.5a6.5 6.5 0 0 1 13 0M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.3a6.5 6.5 0 0 1 3.5 6.2"/>|,
     "user" => ~S|<circle cx="12" cy="8" r="3.5"/><path d="M5.5 20.5a6.5 6.5 0 0 1 13 0"/>|,
-    "venus" => ~S|<circle cx="12" cy="9" r="5.5"/><path d="M12 14.5V21M9 18h6"/>|,
     "wrench" =>
       ~S|<path d="M14.6 3.6a5 5 0 0 0-4.8 6.7l-6 6a2 2 0 0 0 2.9 2.9l6-6a5 5 0 0 0 6.7-4.8l-3 3-3-.8-.8-3z"/>|,
     "x-circle" => ~S|<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>|,
@@ -270,9 +268,4 @@ defmodule RescordWeb.Icons do
   def movement(:moved), do: "arrow-right"
   def movement(:discarded), do: "trash"
   def movement(:counted), do: "hashtag"
-
-  @doc "The shape of the sex of a resident, or `nil` for one that is not known."
-  def sex(:female), do: "venus"
-  def sex(:male), do: "mars"
-  def sex(_sex), do: nil
 end
