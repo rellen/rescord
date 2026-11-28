@@ -63,6 +63,12 @@ defmodule RescordWeb.ResidentsLive do
         <:subtitle>The animals in the care of {@organisation.name}</:subtitle>
         <:actions>
           <.link
+            navigate={~p"/o/#{@organisation.short_name}/residents/conditions"}
+            data-variant="secondary"
+          >
+            Conditions
+          </.link>
+          <.link
             :if={@can_register?}
             navigate={~p"/o/#{@organisation.short_name}/residents/new"}
             data-variant="primary"

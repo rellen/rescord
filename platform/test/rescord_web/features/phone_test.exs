@@ -77,6 +77,27 @@ defmodule RescordWeb.Features.PhoneTest do
         options
       )
 
+    # A condition of the resident, with a long note, for the pages of the
+    # conditions (ADR 0083).
+    Journal.write_entry!(
+      %{
+        resident_id: resident.id,
+        kind: :diagnosis,
+        condition_id: lists.condition.respiratory_infection,
+        chronic: true
+      },
+      options
+    )
+
+    {:ok, [episode]} = Journal.episodes_of(resident.id, options)
+
+    {:ok, _episode} =
+      Journal.revise_episode(
+        episode,
+        %{note: "Sneezes at night, and more in the cold months of the year"},
+        options
+      )
+
     shed = Locations.add_location!(%{name: "Feed shed"}, options)
     hay = Inventory.add_item!(%{name: "Meadow hay", unit_id: lists.unit.bag}, options)
 
@@ -160,6 +181,7 @@ defmodule RescordWeb.Features.PhoneTest do
          Enum.map(
            ~w(tasks routines residents residents/new residents/#{resident.id}
               residents/#{resident.id}/edit residents/#{resident.id}/journal
+              residents/conditions residents/#{resident.id}/journal?episode=#{episode.id}
               residents/#{resident.id}/photos residents/#{resident.id}/timeline
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose

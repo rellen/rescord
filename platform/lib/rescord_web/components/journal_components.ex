@@ -17,10 +17,14 @@ defmodule RescordWeb.JournalComponents do
   attr :units, :list, required: true, doc: "the units of the chosen measure kind"
   attr :prescriptions, :any, required: true
   attr :uploads, :any, required: true
+  attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
+  attr :joins, :any, default: nil, doc: "the ongoing condition that a diagnosis joins, or nil"
+  attr :resident, :any, default: nil
+  attr :open?, :boolean, default: false
 
   def new_entry(assigns) do
     ~H"""
-    <details id="new-entry">
+    <details id="new-entry" open={@open?}>
       <summary>New journal entry</summary>
       <.form for={@form} id="entry" phx-change="choose" phx-submit="write">
         <.input
@@ -37,6 +41,31 @@ defmodule RescordWeb.JournalComponents do
           prompt="Choose"
           options={@lists.condition}
           required
+        />
+        <p :if={@kind == :diagnosis and @joins} id="entry-joins">
+          {name(@resident)} has {@joins.condition.label} since {RescordWeb.ResidentWords.date(
+            @joins.started_on
+          )}. This entry joins it.
+        </p>
+        <.input
+          :if={@kind == :diagnosis and is_nil(@joins)}
+          field={@form[:onset_on]}
+          type="date"
+          label="First day, if not the day of the entry"
+        />
+        <.input
+          :if={@kind == :diagnosis and is_nil(@joins)}
+          field={@form[:chronic]}
+          type="checkbox"
+          label={"Chronic: #{name(@resident)} keeps this condition"}
+        />
+        <.input
+          :if={@kind != :diagnosis and @conditions != []}
+          field={@form[:episode_id]}
+          type="select"
+          label="About the condition"
+          prompt="No condition"
+          options={@conditions}
         />
         <.input
           :if={@kind == :measurement}
@@ -142,6 +171,7 @@ defmodule RescordWeb.JournalComponents do
 
   @doc "The form that corrects an entry, for its author and an administrator."
   attr :entry, :any, required: true
+  attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
 
   def correct_form(assigns) do
     ~H"""
@@ -158,6 +188,16 @@ defmodule RescordWeb.JournalComponents do
           step="any"
           label="Value"
           value={@entry.measurement.value |> Decimal.normalize() |> Decimal.to_string(:normal)}
+        />
+        <.input
+          :if={about?(@entry) and @conditions != []}
+          id={"correct-#{@entry.id}-episode"}
+          name="entry[episode_id]"
+          type="select"
+          label="About the condition"
+          prompt="No condition"
+          options={@conditions}
+          value={@entry.episode_id}
         />
         <.input
           id={"correct-#{@entry.id}-note"}
@@ -323,6 +363,8 @@ defmodule RescordWeb.JournalComponents do
   attr :can_start_routine?, :boolean, default: false
 
   attr :attachments, :list, default: []
+  attr :conditions, :list, default: [], doc: "the conditions of the resident, as options"
+  attr :can_track?, :boolean, default: false
 
   def entry_card(assigns) do
     ~H"""
@@ -339,6 +381,14 @@ defmodule RescordWeb.JournalComponents do
       <p :if={@entry.follows}>
         Adds to the entry of {when_words(@organisation, @entry.follows.happened_at)}.
       </p>
+      <p :if={@entry.episode} data-about>
+        About
+        <.link patch={
+          RescordWeb.ConditionComponents.journal_path(@organisation, @entry.resident_id,
+            episode: @entry.episode_id
+          )
+        }>{@entry.episode.condition.label}</.link>
+      </p>
       <p :if={JournalWords.facts(@entry)}>{JournalWords.facts(@entry)}</p>
       <p :if={@entry.note}>{@entry.note}</p>
 
@@ -350,7 +400,21 @@ defmodule RescordWeb.JournalComponents do
         current_user={@current_user}
       />
 
-      <.correct_form :if={Journal.can_correct?(@role, @current_user, @entry)} entry={@entry} />
+      <.correct_form
+        :if={Journal.can_correct?(@role, @current_user, @entry)}
+        entry={@entry}
+        conditions={@conditions}
+      />
+
+      <details :if={@can_track? and untracked?(@entry)} id={"track-details-#{@entry.id}"}>
+        <summary>Track this condition</summary>
+        <p>
+          This diagnosis is from before Rescord recorded the conditions of a resident. Track it to
+          start the condition on the day of this entry. Then mark the condition as resolved when
+          it is over.
+        </p>
+        <.button phx-click="track" phx-value-entry_id={@entry.id}>Track this condition</.button>
+      </details>
 
       <.dose_form
         :if={@entry.prescription && @can_plan?}
@@ -364,6 +428,18 @@ defmodule RescordWeb.JournalComponents do
     </article>
     """
   end
+
+  # An entry that a correction can give a condition: a diagnosis has the
+  # condition that it names, and an addendum the one of its entry.
+  defp about?(entry), do: entry.kind != :diagnosis and is_nil(entry.follows_id)
+
+  # A diagnosis with no condition of the resident: one from before Rescord
+  # recorded them (ADR 0083), or one whose condition a person removed.
+  defp untracked?(entry),
+    do: entry.kind == :diagnosis and is_nil(entry.follows_id) and is_nil(entry.episode)
+
+  defp name(%{name: name}) when is_binary(name), do: name
+  defp name(_resident), do: "The resident"
 
   # The address of the author, when the author is a member. A root user is
   # not a member, and reads their own entries as their own.

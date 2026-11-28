@@ -77,6 +77,11 @@ release (ADR 0047).
     Administrator and Member that each organisation starts with. No
     other row changes: a role that an administrator defined gets neither
     power by itself.
+  - `20261128055711_add_episodes`, in each organisation: adds the table
+    of the conditions of the residents, which holds its history too, and
+    a column to the journal entries, for the condition that an entry is
+    about. The table is empty and the column is empty for each entry
+    that is there. It changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -111,6 +116,12 @@ release (ADR 0047).
   has exactly the forms of the earlier versions. The exports do not
   change. A build of Rescord from its source needs no network for this:
   the data of each language and region is in the repository.
+- A diagnosis that is in a journal before the upgrade starts no condition
+  by itself, because the entry does not say if the condition is over. The
+  page Conditions is thus empty after the upgrade. In the journal of a
+  resident, each such diagnosis has a button "Track this condition", for
+  a person who can write journal entries. Nothing must be done: a
+  diagnosis that nobody tracks stays as it is, and is in no count.
 - A line of the log has more fields than before, between the time and the
   level: the id of the user and of the organisation, and the id, the
   worker, the queue and the try of a background job. A background job
@@ -138,6 +149,25 @@ release (ADR 0047).
 
 ### Added
 
+- Rescord now records the conditions that a resident has, such as
+  bumblefoot or a respiratory infection, each with its first day, its last
+  day when it is over, a mark for a chronic condition and a note
+  (ADR 0083). A journal entry of the kind diagnosis starts a condition, or
+  joins the one that the resident has now. A member marks a condition as
+  resolved, opens it again, or changes it, and an administrator removes
+  one that was a mistake.
+- A journal entry can say which condition of the resident it is about.
+  The journal of a resident has a link for each condition, which shows
+  the entries about it, and the page of a resident shows what the
+  resident has now. The timeline says when a condition was resolved.
+- The new page Conditions, from the list of the residents, counts what
+  the residents in care have now, by condition and by where they live,
+  and how many conditions started in each of the last 3, 6, 12 or 24
+  months. It lists each condition of each resident, with a search and
+  filters by condition, state and first day.
+- The copy of a resident in a transfer now holds the conditions of the
+  resident, and the export of the data has the file `episodes.csv` and the
+  column `episode_id` in `journal_entries.csv`.
 - A start rehearses an upgrade before it changes anything (ADR 0081).
   Until now a migration that failed on the data of one organisation left
   the server half migrated, and only a backup went back. Now each

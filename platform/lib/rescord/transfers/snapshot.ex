@@ -11,7 +11,12 @@ defmodule Rescord.Transfers.Snapshot do
       colours, the temperaments, the identifiers, the arrival date and the
       status;
     * `"medical"` - always: each entry of a medical kind, the newest first,
-      with its kind, its time, its note, its facts and its files (ADR 0043);
+      with its kind, its time, its note, its facts and its files (ADR 0043),
+      and under `"about"` the name of the condition that it is about;
+    * `"conditions"` - always (ADR 0083): each condition of the resident by
+      its name, with its first day, its last day when it is over, the mark
+      for a chronic condition and its note. The ones that are not over are
+      first. A copy of an earlier version of Rescord has no such key;
     * `"journal"` - with the part `:journal`: each other entry;
     * `"stay"` - with the part `:stay`: the arrival, the absence and the
       departure;
@@ -53,7 +58,8 @@ defmodule Rescord.Transfers.Snapshot do
   @spec build(String.t(), [atom], keyword) :: {:ok, map, [map]} | :error
   def build(resident_id, parts, opts) do
     with {:ok, %{} = resident} <- Residents.resident_with_facts(resident_id, opts),
-         {:ok, entries} <- Journal.entries(resident_id, opts) do
+         {:ok, entries} <- Journal.entries(resident_id, opts),
+         {:ok, episodes} <- Journal.episodes_of(resident_id, opts) do
       {medical, other} = Enum.split_with(entries, &Journal.medical?(&1.kind))
       included = if :journal in parts, do: entries, else: medical
       {:ok, files_of} = Journal.attachments_of(Enum.map(included, & &1.id), opts)
@@ -66,6 +72,7 @@ defmodule Rescord.Transfers.Snapshot do
         %{
           "facts" => facts(resident),
           "medical" => Enum.map(medical, entry),
+          "conditions" => Enum.map(episodes, &condition/1),
           "taken_at" => DateTime.to_iso8601(DateTime.utc_now())
         }
         |> put_part(:journal in parts, "journal", fn -> Enum.map(other, entry) end)
@@ -141,6 +148,7 @@ defmodule Rescord.Transfers.Snapshot do
       "kind" => text(entry.kind),
       "at" => DateTime.to_iso8601(entry.happened_at),
       "note" => entry.note,
+      "about" => about(entry),
       "facts" => entry_facts(entry),
       "files" =>
         Enum.map(
@@ -152,6 +160,20 @@ defmodule Rescord.Transfers.Snapshot do
             "size" => &1.size
           }
         )
+    }
+  end
+
+  # The name of the condition that an entry is about, or nil.
+  defp about(%{episode: %{condition: condition}}), do: label(condition)
+  defp about(_entry), do: nil
+
+  defp condition(episode) do
+    %{
+      "condition" => label(episode.condition),
+      "started_on" => date(episode.started_on),
+      "ended_on" => date(episode.ended_on),
+      "chronic" => episode.chronic,
+      "note" => episode.note
     }
   end
 
@@ -346,6 +368,11 @@ defmodule Rescord.Transfers.Snapshot do
         "medical" => clean_list(copy["medical"], &clean_entry/1),
         "taken_at" => instant(copy["taken_at"])
       }
+      |> maybe(
+        "conditions",
+        copy,
+        &clean_list(&1, fn condition -> clean_condition(condition) end)
+      )
       |> maybe("journal", copy, &clean_list(&1, fn entry -> clean_entry(entry) end))
       |> maybe("stay", copy, &clean_stay/1)
       |> maybe(
@@ -377,7 +404,7 @@ defmodule Rescord.Transfers.Snapshot do
 
   defp clean_entry(%{} = entry) do
     entry
-    |> pick(~w(kind note), at: ["at"])
+    |> pick(~w(kind note about), at: ["at"])
     |> Map.put(
       "facts",
       pick(
@@ -390,6 +417,20 @@ defmodule Rescord.Transfers.Snapshot do
   end
 
   defp clean_entry(_other), do: nil
+
+  # A condition with no name or no first day says nothing: it is dropped.
+  defp clean_condition(%{} = condition) do
+    case pick(condition, ~w(condition note), dates: ~w(started_on ended_on)) do
+      %{"condition" => name, "started_on" => from} = cleaned
+      when is_binary(name) and is_binary(from) ->
+        Map.put(cleaned, "chronic", condition["chronic"] == true)
+
+      _incomplete ->
+        nil
+    end
+  end
+
+  defp clean_condition(_other), do: nil
 
   defp clean_file(%{"id" => id, "size" => size} = file) when is_integer(size) and size >= 0 do
     case Ecto.UUID.cast(id) do

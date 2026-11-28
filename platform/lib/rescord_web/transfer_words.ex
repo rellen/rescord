@@ -99,6 +99,31 @@ defmodule RescordWeb.TransferWords do
 
   def facts(_entry), do: nil
 
+  @doc """
+  The state of a condition of a copy, as the kind of a state and its word:
+  resolved with a last day, and else chronic or ongoing.
+  """
+  def condition_state(%{"ended_on" => day}) when is_binary(day), do: {"ok", "Resolved"}
+  def condition_state(%{"chronic" => true}), do: {"info", "Chronic"}
+  def condition_state(_ongoing), do: {"info", "Ongoing"}
+
+  @doc """
+  The days and the note of a condition of a copy, in one line:
+  `Since 3 November 2026 · left hind foot`.
+  """
+  def condition(%{} = condition) do
+    days =
+      case {date(condition["started_on"]), date(condition["ended_on"])} do
+        {nil, _to} -> nil
+        {from, nil} -> "Since #{from}"
+        {from, to} -> "#{from} to #{to}"
+      end
+
+    [days, condition["note"]]
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.join(" · ")
+  end
+
   defp days(nil, nil), do: nil
   defp days(from, nil), do: "from #{date(from)}"
   defp days(nil, to), do: "to #{date(to)}"

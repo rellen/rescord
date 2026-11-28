@@ -75,6 +75,52 @@ defmodule RescordWeb.JournalWords do
   def file_size(bytes) when bytes < 1_000_000, do: "#{round(bytes / 1000)} kB"
   def file_size(bytes), do: "#{Float.round(bytes / 1_000_000, 1)} MB"
 
+  @doc """
+  The state of a condition of a resident (ADR 0083), as the kind of a
+  `<.state>` and its word. A chronic condition says so while it is ongoing.
+  """
+  def condition_state(%{ended_on: %Date{}}), do: {"ok", "Resolved"}
+  def condition_state(%{chronic: true}), do: {"info", "Chronic"}
+  def condition_state(_ongoing), do: {"info", "Ongoing"}
+
+  @doc """
+  The days of a condition of a resident in words, with how long it is:
+  `Since 3 November 2026, 25 days` and `24 September 2026 to 2 October
+  2026, 9 days`. A resolved condition counts its first day and its last day.
+  """
+  def condition_days(%{started_on: from, ended_on: nil}, today) do
+    case Date.diff(today, from) do
+      0 -> "Since today"
+      days -> "Since #{ResidentWords.date(from)}, #{count(days, "day")}"
+    end
+  end
+
+  def condition_days(%{started_on: from, ended_on: to}, _today) do
+    "#{ResidentWords.date(from)} to #{ResidentWords.date(to)}, " <>
+      count(Date.diff(to, from) + 1, "day")
+  end
+
+  @doc """
+  A condition of a resident as the choice of a form: `Bumblefoot, since 3
+  November 2026`. The episode has its condition with the label.
+  """
+  def condition_choice(%{ended_on: nil} = episode),
+    do: "#{episode.condition.label}, since #{ResidentWords.date(episode.started_on)}"
+
+  def condition_choice(episode) do
+    "#{episode.condition.label}, #{ResidentWords.date(episode.started_on)} to " <>
+      ResidentWords.date(episode.ended_on)
+  end
+
+  @doc "A number of things in words: `1 entry`, `4 entries`, `1,095 days`."
+  def count(1, "entry"), do: "1 entry"
+  def count(number, "entry"), do: "#{number(number)} entries"
+  def count(1, thing), do: "1 #{thing}"
+  def count(number, thing), do: "#{number(number)} #{thing}s"
+
+  @doc "A month in words, from a day of it (ADR 0075): `November 2026`."
+  def month(%Date{} = day), do: RescordWeb.Locale.month(day)
+
   @doc "The facts of an entry in one line, or `nil` for an entry with words only."
   def facts(%{measurement: %{} = measurement}) do
     unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""
@@ -116,4 +162,5 @@ defmodule RescordWeb.JournalWords do
   of it, and no zeros after the point: `1,095`. It never rounds.
   """
   def number(%Decimal{} = value), do: RescordWeb.Locale.number(value)
+  def number(value) when is_integer(value), do: RescordWeb.Locale.number(value)
 end

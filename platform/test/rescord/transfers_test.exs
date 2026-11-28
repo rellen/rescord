@@ -206,6 +206,63 @@ defmodule Rescord.TransfersTest do
       assert {:error, %Ash.Error.Invalid{}} = send!(context, %{parts: [:no_such_part]})
     end
 
+    test "holds the conditions of the resident by name, and what each entry is about",
+         context do
+      partners!(context)
+      options = [actor: context.wattle_admin, tenant: context.wattle]
+      today = Accounts.today(context.wattle)
+
+      assert {:ok, %{snapshot: %{"conditions" => []}}} = send!(context)
+
+      Journal.write_entry!(
+        %{
+          resident_id: context.biscuit.id,
+          kind: :diagnosis,
+          condition_id: context.lists.condition.respiratory_infection,
+          onset_on: Date.add(today, -6),
+          chronic: true
+        },
+        options
+      )
+
+      {:ok, [episode]} = Journal.episodes_of(context.biscuit.id, options)
+      {:ok, episode} = Journal.revise_episode(episode, %{note: "Sneezes at night"}, options)
+
+      Journal.write_entry!(
+        %{
+          resident_id: context.biscuit.id,
+          kind: :procedure,
+          procedure_kind_id: context.lists.procedure_kind.desexing,
+          episode_id: episode.id
+        },
+        options
+      )
+
+      {:ok, _resolved} =
+        Journal.resolve_episode(episode, %{ended_on: Date.add(today, -1)}, options)
+
+      assert {:ok, transfer} = send!(context)
+
+      assert transfer.snapshot["conditions"] == [
+               %{
+                 "condition" => "Respiratory infection",
+                 "started_on" => today |> Date.add(-6) |> Date.to_iso8601(),
+                 "ended_on" => today |> Date.add(-1) |> Date.to_iso8601(),
+                 "chronic" => true,
+                 "note" => "Sneezes at night"
+               }
+             ]
+
+      about = Map.new(transfer.snapshot["medical"], &{&1["kind"], &1["about"]})
+      assert about["procedure"] == "Respiratory infection"
+      assert about["diagnosis"] == "Respiratory infection"
+      assert about["measurement"] == nil
+
+      # The copy names no id of the refuge that sends it.
+      refute inspect(transfer.snapshot["conditions"]) =~ episode.id
+      refute inspect(transfer.snapshot["medical"]) =~ episode.id
+    end
+
     test "does not change: a later change to the resident is not in the copy", context do
       partners!(context)
       {:ok, transfer} = send!(context)

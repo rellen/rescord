@@ -39,6 +39,17 @@ defmodule RescordWeb.TransferPagesTest do
       tenant: wattle
     )
 
+    Journal.write_entry!(
+      %{
+        resident_id: biscuit.id,
+        kind: :diagnosis,
+        condition_id: lists.condition.respiratory_infection,
+        chronic: true
+      },
+      actor: wattle_admin,
+      tenant: wattle
+    )
+
     {:ok,
      root: root,
      wattle: wattle,
@@ -170,6 +181,16 @@ defmodule RescordWeb.TransferPagesTest do
     assert has_element?(view, "h1", "Biscuit")
     assert has_element?(view, "p", "A copy from Wattle Creek")
     assert has_element?(view, "#copy-medical ~ article p", "Vaccine: A sample vaccine")
+    assert has_element?(view, "#copy-conditions ~ ul li strong", "Respiratory infection")
+    assert has_element?(view, "#copy-conditions ~ ul li", "Chronic")
+    assert has_element?(view, "#copy-conditions ~ ul li small", "Since ")
+
+    assert has_element?(
+             view,
+             "#copy-medical ~ article p[data-about]",
+             "About Respiratory infection"
+           )
+
     assert has_element?(view, "h2", "Stay at the first refuge")
     assert has_element?(view, "h2", "Families and groups")
     refute has_element?(view, "h2", "Placements at the first refuge")

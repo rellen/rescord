@@ -490,6 +490,18 @@ defmodule RescordWeb.TransferComponents do
       file_path={file_path(@transfer, @organisation)}
     />
 
+    <section :if={is_list(@copy["conditions"])} aria-labelledby="copy-conditions">
+      <h2 id="copy-conditions">Conditions</h2>
+      <p :if={@copy["conditions"] == []}>The copy has no condition.</p>
+      <ul :if={@copy["conditions"] != []} data-conditions>
+        <li :for={condition <- @copy["conditions"]}>
+          <strong>{condition["condition"]}</strong>
+          <.copy_condition_state condition={condition} />
+          <small>{TransferWords.condition(condition)}</small>
+        </li>
+      </ul>
+    </section>
+
     <.entries
       id="copy-medical"
       title="Medical history"
@@ -558,6 +570,18 @@ defmodule RescordWeb.TransferComponents do
     """
   end
 
+  attr :condition, :map, required: true
+
+  # The state of a condition of the copy: a shape and a word.
+  defp copy_condition_state(assigns) do
+    {kind, word} = TransferWords.condition_state(assigns.condition)
+    assigns = assign(assigns, kind: kind, word: word)
+
+    ~H"""
+    <.state kind={@kind}>{@word}</.state>
+    """
+  end
+
   attr :term, :string, required: true
   attr :value, :any, required: true
   attr :rest, :global
@@ -589,6 +613,7 @@ defmodule RescordWeb.TransferComponents do
           <strong>{TransferWords.value(entry["kind"])}</strong>
           <small>{TransferWords.time(entry["at"], @zone)}</small>
         </header>
+        <p :if={entry["about"]} data-about>About {entry["about"]}</p>
         <p :if={TransferWords.facts(entry)}>{TransferWords.facts(entry)}</p>
         <p :if={entry["note"]}>{entry["note"]}</p>
         <ul :if={(entry["files"] || []) != []} aria-label="Files of the entry">

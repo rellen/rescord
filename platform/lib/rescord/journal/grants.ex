@@ -4,8 +4,10 @@ defmodule Rescord.Journal.Grants do
 
   Each role reads the journal and its files. The power `:journal` writes an
   entry, attaches a file, and corrects the entries and removes the files
-  that the person wrote: the scope `own`. The power `:correct_journal`
-  corrects each entry and removes each file (`docs/domain.md`, section 5.6, and
+  that the person wrote: the scope `own`. It also marks a condition of a
+  resident as resolved, opens it again and revises it (ADR 0083). The power
+  `:correct_journal` corrects each entry, removes each file, and removes a
+  condition that was recorded by mistake (`docs/domain.md`, section 5.6, and
   ADR 0040). A member has the first at first, and an administrator both. A role reads the facts of an entry,
   and writes them only through the entry.
   """
@@ -18,6 +20,7 @@ defmodule Rescord.Journal.Grants do
     Attachment,
     Diagnosis,
     Dose,
+    Episode,
     JournalEntry,
     Measurement,
     Prescription,
@@ -36,7 +39,9 @@ defmodule Rescord.Journal.Grants do
           Prescription,
           Dose,
           # A file of an entry (ADR 0041).
-          Attachment
+          Attachment,
+          # A condition of a resident (ADR 0083).
+          Episode
         ],
         do: {resource, :read, :all}
   end
@@ -48,9 +53,18 @@ defmodule Rescord.Journal.Grants do
         {JournalEntry, :write, :all},
         {JournalEntry, :correct, :own},
         {Attachment, :attach, :all},
-        {Attachment, :remove, :own}
+        {Attachment, :remove, :own},
+        # The conditions of a resident (ADR 0083). A diagnosis starts one.
+        {JournalEntry, :track, :all},
+        {Episode, :resolve, :all},
+        {Episode, :reopen, :all},
+        {Episode, :revise, :all}
       ],
-      correct_journal: [{JournalEntry, :correct, :all}, {Attachment, :remove, :all}]
+      correct_journal: [
+        {JournalEntry, :correct, :all},
+        {Attachment, :remove, :all},
+        {Episode, :remove, :all}
+      ]
     }
   end
 

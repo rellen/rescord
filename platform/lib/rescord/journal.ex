@@ -19,7 +19,7 @@ defmodule Rescord.Journal do
 
   require Ash.Query
 
-  alias Rescord.Journal.{EntryKind, JournalEntry, Series}
+  alias Rescord.Journal.{EntryKind, Episode, JournalEntry, Series}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -37,7 +37,17 @@ defmodule Rescord.Journal do
     resource Rescord.Journal.JournalEntry do
       define :write_entry, action: :write
       define :correct_entry, action: :correct
+      define :track_entry, action: :track
       define :entry, action: :read, get_by: [:id], not_found_error?: false
+    end
+
+    resource Rescord.Journal.Episode do
+      define :episodes, action: :read
+      define :episode, action: :read, get_by: [:id], not_found_error?: false
+      define :resolve_episode, action: :resolve
+      define :reopen_episode, action: :reopen
+      define :revise_episode, action: :revise
+      define :remove_episode, action: :remove
     end
 
     resource Rescord.Journal.Diagnosis
@@ -59,6 +69,7 @@ defmodule Rescord.Journal do
     :vaccination,
     :prescription,
     :follows,
+    episode: [condition: [:label]],
     diagnosis: [condition: [:label]],
     measurement: [measure_kind: [:label], unit: [:label]],
     procedure: [procedure_kind: [:label]],
@@ -68,12 +79,19 @@ defmodule Rescord.Journal do
   @doc """
   The journal of a resident: its entries with their facts, the newest first
   by the time that each thing happened. `only: :medical` gives the medical
-  history.
+  history, and `episode: id` the entries about one condition of the
+  resident (ADR 0083).
   """
   def entries(resident_id, opts \\ []) do
     {only, opts} = Keyword.pop(opts, :only)
+    {episode_id, opts} = Keyword.pop(opts, :episode)
 
     query = Ash.Query.filter(JournalEntry, resident_id == ^resident_id)
+
+    query =
+      if episode_id,
+        do: Ash.Query.filter(query, episode_id == ^episode_id),
+        else: query
 
     query =
       if only == :medical,
@@ -88,7 +106,7 @@ defmodule Rescord.Journal do
 
   # The order of two events at one instant: the name of a new resident is
   # before its arrival.
-  @order [:name, :arrival, :placement, :group_member, :absence, :departure, :entry]
+  @order [:name, :arrival, :placement, :group_member, :absence, :departure, :entry, :episode]
 
   @doc """
   The timeline of a resident (`docs/domain.md`, section 5.6, and ADR 0035):
@@ -100,6 +118,11 @@ defmodule Rescord.Journal do
   the thing happened. Each other event is a change of
   `Rescord.Residents.changes/2` or of `Rescord.Locations.changes/2`, at the
   time that Rescord recorded it.
+
+  An event with the subject `:episode` says that a condition of the
+  resident was resolved or was opened again (ADR 0083): its kind is
+  `:resolved` or `:reopened`, and it has the name of the condition in
+  `condition`. The start of a condition is its diagnosis, which is an entry.
   """
   def timeline(resident_id, opts \\ []) do
     with {:ok, entries} <- entries(resident_id, opts) do
@@ -116,7 +139,7 @@ defmodule Rescord.Journal do
 
       changes =
         Rescord.Residents.changes(resident_id, opts) ++
-          Rescord.Locations.changes(resident_id, opts)
+          Rescord.Locations.changes(resident_id, opts) ++ episode_changes(resident_id, opts)
 
       {:ok,
        Enum.sort_by(
@@ -128,8 +151,230 @@ defmodule Rescord.Journal do
     end
   end
 
+  # When each condition of a resident was resolved and was opened again,
+  # from the versions of its episodes. The policy of the versions refuses
+  # each actor (ADR 0063), so the resident decides.
+  defp episode_changes(resident_id, opts) do
+    with {:ok, %{id: ^resident_id}} <- Rescord.Residents.resident(resident_id, opts),
+         {:ok, conditions} <- Rescord.Lists.values(:condition, opts) do
+      labels = Map.new(conditions, &{&1.id, to_string(&1.label)})
+
+      Episode
+      |> AshPaperTrail.Resource.Info.version_resource()
+      |> Ash.Query.filter(resident_id == ^resident_id)
+      |> Ash.read!(tenant: opts[:tenant], authorize?: false)
+      |> Enum.group_by(& &1.id)
+      |> Enum.flat_map(fn {_id, versions} ->
+        versions
+        |> Enum.sort_by(& &1.valid_at.lower, DateTime)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.flat_map(fn [before, version] ->
+          case {before.ended_on, version.ended_on} do
+            {nil, %Date{}} -> [episode_change(:resolved, version, labels)]
+            {%Date{}, nil} -> [episode_change(:reopened, version, labels)]
+            _the_same -> []
+          end
+        end)
+      end)
+    else
+      _no_resident -> []
+    end
+  end
+
+  defp episode_change(kind, version, labels) do
+    %{
+      subject: :episode,
+      kind: kind,
+      at: version.valid_at.lower,
+      record: version,
+      user_id: Map.get(version, :user_id),
+      condition: Map.get(labels, version.condition_id)
+    }
+  end
+
   @doc "One entry with its facts, or `nil` when the actor can read no such entry."
   def entry_with_facts(id, opts \\ []), do: entry(id, Keyword.put(opts, :load, @facts))
+
+  @doc """
+  The conditions of a resident (ADR 0083): its episodes, each with the name
+  of its condition, its state and the number of its entries. The ongoing
+  ones are first, the newest first day first, and then the resolved ones,
+  the newest last day first.
+  """
+  def episodes_of(resident_id, opts \\ []) do
+    Episode
+    |> Ash.Query.filter(resident_id == ^resident_id)
+    |> Ash.Query.load([:state, :entry_count, condition: [:label]])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, episodes} -> {:ok, Enum.sort_by(episodes, &episode_order/1)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp episode_order(%{ended_on: nil} = episode),
+    do: {0, -Date.to_gregorian_days(episode.started_on), episode.id}
+
+  defp episode_order(episode),
+    do: {1, -Date.to_gregorian_days(episode.ended_on), episode.id}
+
+  @doc "One condition of a resident, as `episodes_of/2` gives it, or `nil`."
+  def episode_with_facts(id, opts \\ []),
+    do: episode(id, Keyword.put(opts, :load, [:state, :entry_count, condition: [:label]]))
+
+  @doc """
+  What the residents have now (ADR 0083): the ongoing conditions of the
+  residents that are in care or away.
+
+  Returns `%{conditions: number, residents: number, by_condition: rows,
+  by_location: rows}`. A row of `by_condition` is
+  `%{condition: value, count: residents}`, with the value of the list of the
+  organisation. A row of `by_location` is `%{location: location, count:
+  conditions}`, by where each resident lives now, and the location is `nil`
+  for the residents with no place. Each list has the largest number first.
+  """
+  @spec conditions_now(keyword) :: {:ok, map} | {:error, term}
+  def conditions_now(opts \\ []) do
+    Episode
+    |> Ash.Query.filter(is_nil(ended_on))
+    |> Ash.Query.load(condition: [:label], resident: [:status])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, episodes} ->
+        current = Enum.filter(episodes, &(&1.resident && &1.resident.status in [:in_care, :away]))
+        resident_ids = current |> Enum.map(& &1.resident_id) |> Enum.uniq()
+
+        {:ok,
+         %{
+           conditions: length(current),
+           residents: length(resident_ids),
+           by_condition: by_condition(current, & &1.resident_id),
+           by_location: by_location(current, resident_ids, opts)
+         }}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # The episodes by condition, with the number of different values of
+  # `count_by` in each, the largest number first.
+  defp by_condition(episodes, count_by) do
+    episodes
+    |> Enum.group_by(& &1.condition_id)
+    |> Enum.map(fn {_id, [first | _] = of_condition} ->
+      %{
+        condition: first.condition,
+        count: of_condition |> Enum.map(count_by) |> Enum.uniq() |> length()
+      }
+    end)
+    |> Enum.sort_by(&{-&1.count, String.downcase(to_string(&1.condition.label))})
+  end
+
+  defp by_location(episodes, resident_ids, opts) do
+    homes =
+      Map.new(resident_ids, fn resident_id ->
+        case Rescord.Locations.home(resident_id, opts) do
+          {:ok, [%{location: location} | _]} -> {resident_id, location}
+          _no_place -> {resident_id, nil}
+        end
+      end)
+
+    # Two reads of one location are two records: group by its id.
+    episodes
+    |> Enum.group_by(fn episode ->
+      location = Map.get(homes, episode.resident_id)
+      location && location.id
+    end)
+    |> Enum.map(fn {_id, [first | _] = there} ->
+      %{location: Map.get(homes, first.resident_id), count: length(there)}
+    end)
+    |> Enum.sort_by(&{-&1.count, is_nil(&1.location), &1.location && &1.location.name})
+  end
+
+  @doc """
+  The conditions that started in each of the last `months` months
+  (ADR 0083), by the first day of each, this month included. `condition:
+  id` counts one condition only, and `today:` is the date of today in the
+  organisation.
+
+  Returns `%{total: number, by_month: rows, by_condition: rows}`. A row of
+  `by_month` is `%{month: first_day, count: conditions}`, the newest month
+  first, with a row for a month with none. A row of `by_condition` is
+  `%{condition: value, count: conditions}`, the largest number first.
+  """
+  @spec conditions_started(pos_integer, keyword) :: {:ok, map} | {:error, term}
+  def conditions_started(months, opts \\ []) when is_integer(months) and months > 0 do
+    {condition_id, opts} = Keyword.pop(opts, :condition)
+
+    {today, opts} =
+      Keyword.pop_lazy(opts, :today, fn -> Rescord.Accounts.today(opts[:tenant]) end)
+
+    this_month = Date.beginning_of_month(today)
+    first = Date.shift(this_month, month: -(months - 1))
+
+    query = Ash.Query.filter(Episode, started_on >= ^first and started_on <= ^today)
+
+    query =
+      if condition_id,
+        do: Ash.Query.filter(query, condition_id == ^condition_id),
+        else: query
+
+    query
+    |> Ash.Query.load(condition: [:label])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, episodes} ->
+        counts = Enum.frequencies_by(episodes, &Date.beginning_of_month(&1.started_on))
+
+        {:ok,
+         %{
+           total: length(episodes),
+           by_month:
+             for back <- 0..(months - 1) do
+               month = Date.shift(this_month, month: -back)
+               %{month: month, count: Map.get(counts, month, 0)}
+             end,
+           by_condition: by_condition(episodes, & &1.id)
+         }}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
+  The ongoing episode of a condition that a resident has, or `nil`: the one
+  that a new diagnosis of that condition joins.
+  """
+  def ongoing_episode(resident_id, condition_id, opts \\ []) do
+    Episode
+    |> Ash.Query.filter(
+      resident_id == ^resident_id and condition_id == ^condition_id and is_nil(ended_on)
+    )
+    |> Ash.Query.sort(started_on: :desc, id: :asc)
+    |> Ash.Query.limit(1)
+    |> Ash.read(opts)
+    |> case do
+      {:ok, [episode]} -> {:ok, episode}
+      {:ok, []} -> {:ok, nil}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Whether a role can run an action of a condition of a resident at all:
+  `:resolve`, `:reopen`, `:revise` or `:remove`. A page asks this to decide
+  what to show. The policy decides when the action runs.
+  """
+  @spec role_can_episode?(atom | nil, atom) :: boolean
+  def role_can_episode?(role, action)
+      when action in [:resolve, :reopen, :revise, :remove],
+      do: Rescord.Accounts.granted?(role, Episode, action)
+
+  @doc "Whether a role can start the condition of a diagnosis that has none."
+  @spec role_can_track?(atom | nil) :: boolean
+  def role_can_track?(role), do: Rescord.Accounts.granted?(role, JournalEntry, :track)
 
   @doc """
   The newest measurement of each kind for a resident, each as the entry with

@@ -125,6 +125,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/groups/:id", GroupLive
       live "/o/:organisation/groups/:id/measurements", GroupMeasurementsLive
       live "/o/:organisation/residents", ResidentsLive
+      live "/o/:organisation/residents/conditions", ConditionsLive
       live "/o/:organisation/residents/new", ResidentFormLive, :new
       live "/o/:organisation/residents/:id", ResidentLive
       live "/o/:organisation/residents/:id/edit", ResidentFormLive, :edit

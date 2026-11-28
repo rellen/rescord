@@ -55,6 +55,15 @@ defmodule RescordWeb.TimelineWords do
     end
   end
 
+  # A condition of the resident (ADR 0083). Its start is its diagnosis,
+  # which is an entry.
+  def event(%{subject: :episode, kind: :resolved, record: record} = event, _names) do
+    "#{condition(event)} was resolved. Its last day was #{ResidentWords.date(record.ended_on)}"
+  end
+
+  def event(%{subject: :episode, kind: :reopened} = event, _names),
+    do: "#{condition(event)} was opened again: it was not over"
+
   def event(%{subject: :group_member, kind: kind, record: record}, names) do
     group = Map.get(names.groups, record.group_id, "a group that is not here now")
 
@@ -63,6 +72,9 @@ defmodule RescordWeb.TimelineWords do
       _joined -> "Joined #{group}"
     end
   end
+
+  defp condition(%{condition: name}) when is_binary(name), do: name
+  defp condition(_event), do: "A condition that is not in the list now"
 
   @doc """
   A group in the words of a sentence: `the group The nursery` for a group
@@ -86,5 +98,6 @@ defmodule RescordWeb.TimelineWords do
   end
 
   @doc "The subjects that have words, for the test that holds them."
-  def subjects, do: [:entry, :name, :arrival, :departure, :absence, :placement, :group_member]
+  def subjects,
+    do: [:entry, :name, :arrival, :departure, :absence, :placement, :group_member, :episode]
 end

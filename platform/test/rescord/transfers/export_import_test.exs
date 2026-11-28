@@ -560,6 +560,59 @@ defmodule Rescord.Transfers.ExportImportTest do
       assert Snapshot.clean("text") == :error
     end
 
+    test "keeps the conditions that have a name and a first day, and what an entry is about" do
+      assert {:ok, clean} =
+               Snapshot.clean(%{
+                 "facts" => %{"name" => "Biscuit"},
+                 "medical" => [
+                   %{"kind" => "procedure", "about" => "Bumblefoot"},
+                   %{"kind" => "procedure", "about" => %{"a" => "map"}}
+                 ],
+                 "conditions" => [
+                   %{
+                     "condition" => "Bumblefoot",
+                     "started_on" => "2026-11-03",
+                     "ended_on" => "not a date",
+                     "chronic" => "yes",
+                     "note" => "left hind foot",
+                     "id" => "dropped"
+                   },
+                   %{"condition" => "Arthritis", "started_on" => "2025-06-16", "chronic" => true},
+                   %{"condition" => "No first day"},
+                   %{"started_on" => "2026-11-03"},
+                   %{"condition" => %{"a" => "map"}, "started_on" => "2026-11-03"},
+                   "not a condition"
+                 ]
+               })
+
+      assert clean["conditions"] == [
+               %{
+                 "condition" => "Bumblefoot",
+                 "started_on" => "2026-11-03",
+                 "ended_on" => nil,
+                 "chronic" => false,
+                 "note" => "left hind foot"
+               },
+               %{
+                 "condition" => "Arthritis",
+                 "started_on" => "2025-06-16",
+                 "ended_on" => nil,
+                 "chronic" => true,
+                 "note" => nil
+               }
+             ]
+
+      assert Enum.map(clean["medical"], & &1["about"]) == ["Bumblefoot", nil]
+
+      # A copy of an earlier version has no such part, and a part that is
+      # no list is an empty one.
+      assert {:ok, earlier} = Snapshot.clean(%{"facts" => %{"name" => "Biscuit"}})
+      refute Map.has_key?(earlier, "conditions")
+
+      assert {:ok, %{"conditions" => []}} =
+               Snapshot.clean(%{"facts" => %{"name" => "Biscuit"}, "conditions" => "text"})
+    end
+
     test "keeps the photos that are images, and the albums and the profile that name them" do
       [one, two, small] = for _ <- 1..3, do: Ash.UUID.generate()
       image = %{"content_type" => "image/jpeg", "size" => 10}

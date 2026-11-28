@@ -171,6 +171,21 @@ defmodule RescordWeb.TimelinePagesTest do
       assert words(:departure, :ended, departure) == "The departure was withdrawn"
     end
 
+    test "say when a condition was resolved, and when it was opened again" do
+      event = %{
+        subject: :episode,
+        kind: :resolved,
+        condition: "Bumblefoot",
+        record: %{ended_on: ~D[2026-11-16]}
+      }
+
+      assert TimelineWords.event(event, @names) ==
+               "Bumblefoot was resolved. Its last day was 16 November 2026"
+
+      assert TimelineWords.event(%{event | kind: :reopened}, @names) ==
+               "Bumblefoot was opened again: it was not over"
+    end
+
     test "say what happened to an absence, a placement and a group" do
       assert words(:absence, :started, %{reason: "At the clinic"}) == "Went away: At the clinic"
       assert words(:absence, :ended, %{reason: "At the clinic"}) == "Came back"
@@ -210,7 +225,8 @@ defmodule RescordWeb.TimelinePagesTest do
                  :departure,
                  :absence,
                  :placement,
-                 :group_member
+                 :group_member,
+                 :episode
                ])
     end
   end

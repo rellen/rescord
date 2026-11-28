@@ -54,6 +54,7 @@ defmodule RescordWeb.ResidentLive do
          relations: Residents.relations(resident.id, options(socket)),
          homes: homes(resident.id, options(socket)),
          measurements: measurements(resident.id, options(socket)),
+         episodes: episodes(resident.id, options(socket)),
          profile_photo: profile_photo(resident.id, options(socket))
        )
        |> assign_choices()}
@@ -89,6 +90,12 @@ defmodule RescordWeb.ResidentLive do
   defp profile_photo(resident_id, options) do
     {:ok, photo} = Photos.profile_photo(resident_id, options)
     photo
+  end
+
+  # The conditions that the resident has and had (ADR 0083).
+  defp episodes(resident_id, options) do
+    {:ok, episodes} = Journal.episodes_of(resident_id, options)
+    episodes
   end
 
   # The measurements of each kind over time, for example the weight: the
@@ -352,6 +359,14 @@ defmodule RescordWeb.ResidentLive do
         arrival_form={@arrival_form}
         absence_form={@absence_form}
         departure_form={@departure_form}
+      />
+
+      <RescordWeb.ConditionComponents.resident_conditions
+        episodes={@episodes}
+        organisation={@organisation}
+        resident={@resident}
+        today={@today}
+        can_write?={Journal.role_can_write?(@role)}
       />
 
       <.journal_summary

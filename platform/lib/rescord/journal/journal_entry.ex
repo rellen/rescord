@@ -41,7 +41,7 @@ defmodule Rescord.Journal.JournalEntry do
 
     create :write do
       description "Writes a journal entry about a resident"
-      accept [:resident_id, :kind, :note, :happened_at, :follows_id]
+      accept [:resident_id, :kind, :note, :happened_at, :follows_id, :episode_id]
 
       argument :condition_id, :uuid
       argument :measure_kind_id, :uuid
@@ -56,12 +56,15 @@ defmodule Rescord.Journal.JournalEntry do
       argument :ends_on, :date
       argument :prescription_id, :uuid
       argument :amount, :string
+      argument :onset_on, :date
+      argument :chronic, :boolean
 
       change Journal.Changes.SetAuthor
       change Journal.Changes.HappenedAt
       validate Journal.Validations.KindHasItsFacts
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+      change Journal.Changes.LinkEpisode
       change Journal.Changes.WriteDetail
     end
 
@@ -69,7 +72,7 @@ defmodule Rescord.Journal.JournalEntry do
       description "Corrects a mistake in a journal entry. The paper trail keeps the entry as it was"
       # The changes write other resources after the update.
       require_atomic? false
-      accept [:note, :happened_at]
+      accept [:note, :happened_at, :episode_id]
 
       argument :condition_id, :uuid
       argument :measure_kind_id, :uuid
@@ -88,7 +91,25 @@ defmodule Rescord.Journal.JournalEntry do
       change Journal.Changes.HappenedAt
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+      change Journal.Changes.LinkEpisode
       change Journal.Changes.WriteDetail
+    end
+
+    update :track do
+      description "Starts the condition of a diagnosis that has none: a diagnosis from before Rescord recorded the conditions of a resident"
+      # The change writes another resource before the update.
+      require_atomic? false
+      accept []
+
+      change {Journal.Changes.LinkEpisode, track: true}
+    end
+
+    # No list of grants has this action: only Rescord runs it, when a
+    # person removes the condition (ADR 0033).
+    update :release do
+      description "Takes the condition off an entry, when a person removes that condition"
+      accept []
+      change set_attribute(:episode_id, nil)
     end
   end
 
@@ -141,6 +162,12 @@ defmodule Rescord.Journal.JournalEntry do
       public? true
       temporal_keys {:valid_at, :valid_at}
       description "The earlier entry that this entry adds to: this entry is an addendum"
+    end
+
+    belongs_to :episode, Journal.Episode do
+      public? true
+      temporal_keys {:valid_at, :valid_at}
+      description "The condition of the resident that this entry is about"
     end
 
     has_many :addenda, __MODULE__ do

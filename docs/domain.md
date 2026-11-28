@@ -358,6 +358,25 @@ A journal entry has one of these kinds:
 | behaviour | no |
 | general | no |
 
+#### The conditions of a resident
+
+A condition of a resident is a record (ADR 0083): one time that a resident
+has a condition of the list Condition, from its first day to its last day.
+A condition with no last day is ongoing, and a condition with a last day is
+resolved. A member marks a condition as chronic when the resident keeps it.
+
+- A journal entry of the kind diagnosis starts a condition. A diagnosis of
+  a condition that the resident has now joins that condition. A diagnosis
+  after the condition was resolved starts a new one.
+- A journal entry can name one condition of its resident that it is about.
+  The journal of a resident shows the entries about one condition.
+- A member marks a condition as resolved, opens it again, and changes its
+  days and its note. An administrator removes a condition that was a
+  mistake. Its entries stay in the journal.
+- The page Conditions counts what the residents in care have now, by
+  condition and by location, and the conditions that started in each
+  month.
+
 #### A change to a placement or a group
 
 Rescord records such a change in the resource that holds the fact. A move of

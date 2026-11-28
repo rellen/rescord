@@ -81,6 +81,20 @@ defmodule RescordWeb.Locale do
   end
 
   @doc """
+  A month in words, from a day of it: the month and the year.
+
+      iex> RescordWeb.Locale.month(~D[2026-11-01])
+      "November 2026"
+  """
+  @spec month(Date.t()) :: String.t()
+  def month(%Date{} = date) do
+    case Localize.Date.to_string(date, locale: current(), format: :yMMMM) do
+      {:ok, words} -> words
+      {:error, reason} -> plain(Calendar.strftime(date, "%Y-%m"), reason)
+    end
+  end
+
+  @doc """
   A time of day, to the minute. A date and time gives its time of day as it
   is: turn an instant into the local time of the organisation first.
 

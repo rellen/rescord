@@ -767,6 +767,17 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - The list of the currencies is `Rescord.Accounts.currencies/0`. The
     data of Localize marks each code as tender, so that function names
     the codes that are no money.
+- **The conditions of a resident** (ADR 0083). A condition of a resident
+  is an episode, `Rescord.Journal.Episode`.
+  - Only a diagnosis starts an episode, through
+    `Rescord.Journal.Changes.LinkEpisode`. Add no form and no action that
+    starts one for a person, and no migration that makes one from old
+    entries.
+  - An entry names an episode of its own resident alone. A page reads the
+    id of an episode from the episodes that it has in hand, never from
+    what the browser sends.
+  - A new count is a function of `Rescord.Journal` that reads as the
+    actor, and a list of `RescordWeb.ConditionComponents.counts/1`.
 - **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
   time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
   for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
@@ -844,7 +855,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/lists/` | the lists of values: a base list and a list of the organisation for each dimension |
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
-| `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind; the conditions of a resident (ADR 0083) |
 | `platform/lib/rescord/journal/series.ex` | the measurements of one kind over time, in one unit, for a chart (ADR 0080) |
 | `platform/lib/rescord/photos/` | the photos of the residents, their albums and the profile pictures (ADR 0055) |
 | `platform/lib/rescord/images.ex` | a photo made safe to keep, and its thumbnail, with libvips (ADR 0055) |
