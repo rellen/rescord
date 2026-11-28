@@ -543,6 +543,11 @@ animal, the dose rate for each kilogram, and the strength of the product.
 The calculator gives the dose, and the volume or the number of tablets
 that holds the dose. It shows each step of the arithmetic.
 
+A member can take the weight from the journal of a resident. The
+calculator then shows the date of that measurement and its age in days.
+When the journal has more than one measurement that can be a body weight,
+the member chooses one.
+
 The calculator knows no medication. It gives no dose rate, and it does not
 say that a dose is safe. The dose rate and the strength come from a vet or
 from the label. The page tells the member to check the result with a vet.

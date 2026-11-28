@@ -227,6 +227,14 @@ defmodule RescordWeb.ResidentComponents do
         >
           Open the timeline
         </.link>
+        <%!-- The dose calculator of the tools, with the weight of this resident (ADR 0072). --%>
+        <.link
+          :if={@resident.status != :left}
+          navigate={~p"/o/#{@organisation.short_name}/tools/dose?#{[resident: @resident.id]}"}
+          data-variant="secondary"
+        >
+          Calculate a dose
+        </.link>
       </p>
     </section>
     """

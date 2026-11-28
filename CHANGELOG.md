@@ -90,7 +90,11 @@ release (ADR 0047).
   each step of the arithmetic, and says to check the result with a vet. It
   knows no medication: it offers no dose rate and does not say that a dose
   is safe. It stores nothing, and each member can use it. A number with a
-  comma is refused, because `1,095` can mean two numbers.
+  comma is refused, because `1,095` can mean two numbers. The weight can
+  come from the journal of a resident: the member chooses the resident, or
+  presses "Calculate a dose" on the page of the resident, and the
+  calculator says the date of that measurement and how many days ago it
+  was.
 - Calendar feeds. A member makes a feed on the new page "Calendar feeds",
   and subscribes to it in a calendar app such as Apple Calendar, Google
   Calendar or Outlook. The feed holds the tasks that the member chooses:

@@ -257,17 +257,92 @@ defmodule Rescord.Dosage do
   end
 
   defp read_strength(typed) do
-    cond do
-      volume?(typed[:rate_unit]) ->
-        {:ok, nil}
-
-      parse_number(typed[:strength]) == {:error, :blank} ->
-        {:ok, nil}
-
-      true ->
-        quantity(typed[:strength], strength_unit(typed[:strength_unit], typed[:strength_per]))
-    end
+    if volume?(typed[:rate_unit]),
+      do: {:ok, nil},
+      else: strength(typed[:strength], typed[:strength_unit], typed[:strength_per])
   end
+
+  @doc ~S'''
+  Reads the strength of a product as a person typed and chose it: the text
+  of the number, the code of its unit, and the code of what it is in each
+  of. A blank number is no strength, which is `nil`.
+
+  The form of an item of the inventory reads its strength with this, so a
+  record holds only a strength that the calculator takes.
+
+      iex> {:ok, strength} = Rescord.Dosage.strength("1.5", "mg", "mL")
+      iex> to_string(strength)
+      "1.5 mg/mL"
+
+      iex> Rescord.Dosage.strength("", "mg", "mL")
+      {:ok, nil}
+
+      iex> Rescord.Dosage.strength("1,5", "mg", "mL")
+      {:error, :not_a_number}
+
+      iex> Rescord.Dosage.strength("1.5", "mL", "mL")
+      {:error, :unknown_unit}
+  '''
+  @spec strength(term, term, term) :: {:ok, Quantity.t() | nil} | {:error, reason}
+  def strength(number, unit, per) do
+    if parse_number(number) == {:error, :blank},
+      do: {:ok, nil},
+      else: quantity(number, strength_unit(unit, per))
+  end
+
+  @doc ~S'''
+  Whether a quantity of a record is a body weight that the calculator
+  takes: one of its units of weight, with a number above zero that a person
+  can type in the field.
+
+  A measurement in grams can be a body weight or the food that an animal
+  ate. This says only that the quantity fits. The person says which
+  measurement is the weight.
+
+      iex> {:ok, weight} = Rescord.Units.Quantity.parse("1095 g")
+      iex> Rescord.Dosage.weight?(weight)
+      true
+
+      iex> {:ok, dose} = Rescord.Units.Quantity.parse("5 mg")
+      iex> Rescord.Dosage.weight?(dose)
+      false
+  '''
+  @spec weight?(term) :: boolean
+  def weight?(%Quantity{unit: %Units.Unit{code: code}} = quantity) when code in @weight_units,
+    do: typed?(quantity)
+
+  def weight?(_other), do: false
+
+  @doc ~S'''
+  Whether a quantity of a record is a strength that the calculator takes:
+  one of its units of mass in each mL or in each tablet, with a number
+  above zero that a person can type in the field.
+
+      iex> {:ok, strength} = Rescord.Units.Quantity.parse("50 mg/tablet")
+      iex> Rescord.Dosage.strength?(strength)
+      true
+
+      iex> {:ok, rate} = Rescord.Units.Quantity.parse("5 mg/kg")
+      iex> Rescord.Dosage.strength?(rate)
+      false
+  '''
+  @spec strength?(term) :: boolean
+  def strength?(
+        %Quantity{
+          unit: %Units.Unit{
+            numerator: %Units.Unit{code: code},
+            denominator: %Units.Unit{code: per}
+          }
+        } = quantity
+      )
+      when code in @strength_units and per in @strength_per,
+      do: typed?(quantity)
+
+  def strength?(_other), do: false
+
+  # The number of the quantity is one that `parse_number/1` reads, so the
+  # field shows it as it is and the calculator takes it back.
+  defp typed?(quantity), do: match?({:ok, _number}, parse_number(Quantity.plain(quantity)))
 
   defp value({:ok, value}), do: value
 

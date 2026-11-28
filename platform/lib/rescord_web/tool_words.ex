@@ -9,7 +9,7 @@ defmodule RescordWeb.ToolWords do
 
   alias Rescord.Dosage
   alias Rescord.Units.Quantity
-  alias RescordWeb.UnitWords
+  alias RescordWeb.{ResidentWords, UnitWords}
 
   # The figures of a number in the working. A result has three
   # (`Rescord.Dosage.round_figures/2`), and the working has more, so a
@@ -103,6 +103,36 @@ defmodule RescordWeb.ToolWords do
   def strength(%Quantity{unit: unit} = strength) do
     "#{UnitWords.quantity(%{strength | unit: unit.numerator})} in each #{unit.denominator.symbol}"
   end
+
+  @doc """
+  A measurement of the journal that can be the body weight, in one line:
+  `Weight: 1,095 g, 16 November 2026, 12 days ago`.
+  """
+  @spec measurement(map) :: String.t()
+  def measurement(%{kind: kind, quantity: quantity, on: on, days: days}) do
+    "#{kind}: #{quantity(quantity)}, #{when_measured(on, days)}"
+  end
+
+  @doc """
+  Where the body weight of the form came from:
+  `From the journal of Biscuit: Weight, 16 November 2026, 12 days ago.`
+  """
+  @spec source(map) :: String.t()
+  def source(%{resident: resident, kind: kind, on: on, days: days}) do
+    "From the journal of #{resident}: #{kind}, #{when_measured(on, days)}."
+  end
+
+  # The date of a measurement and how old it is. The calculator gives no
+  # limit for an old weight: a young animal changes in days.
+  defp when_measured(%Date{} = on, days),
+    do: Enum.join([ResidentWords.date(on) | ago(days)], ", ")
+
+  @doc "How long ago a day was, in words: `today`, `yesterday`, `12 days ago`."
+  @spec ago(integer) :: [String.t()]
+  def ago(0), do: ["today"]
+  def ago(1), do: ["yesterday"]
+  def ago(days) when is_integer(days) and days > 1, do: ["#{days} days ago"]
+  def ago(_days), do: []
 
   @doc """
   A step of the working in one line, as a person writes arithmetic:

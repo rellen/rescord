@@ -12,6 +12,10 @@ defmodule RescordWeb.ToolPagesTest do
 
   import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
+  import Rescord.ResidentsFixtures
+
+  alias Rescord.{Accounts, Journal, Lists, Residents}
+  alias RescordWeb.{ResidentWords, ToolWords}
 
   setup do
     root = root!()
@@ -21,6 +25,7 @@ defmodule RescordWeb.ToolPagesTest do
     home = ~p"/o/#{organisation.short_name}"
 
     {:ok,
+     root: root,
      organisation: organisation,
      member: member,
      home: home,
@@ -381,6 +386,282 @@ defmodule RescordWeb.ToolPagesTest do
       view = open(context, context.dose)
       refute has_element?(view, "#dose-amount")
       assert has_element?(view, ~s(input#dose_weight[value=""]))
+    end
+  end
+
+  describe "the weight of a resident in the dose calculator" do
+    setup context do
+      lists = lists!(context.organisation, context.root)
+      options = [actor: context.root, tenant: context.organisation]
+      biscuit = resident!(lists, options)
+
+      {:ok, lists: lists, options: options, biscuit: biscuit}
+    end
+
+    # Writes a measurement in the journal of a resident, some days ago.
+    defp measure!(context, resident, kind, value, unit, days_ago) do
+      Journal.write_entry!(
+        %{
+          resident_id: resident.id,
+          kind: :measurement,
+          measure_kind_id: kind,
+          value: value,
+          unit_id: unit,
+          happened_at: DateTime.add(DateTime.utc_now(), -days_ago, :day)
+        },
+        context.options
+      )
+    end
+
+    # The words for a measurement of some days ago, in the zone of the
+    # organisation.
+    defp measured(context, days_ago) do
+      organisation = context.organisation
+      at = DateTime.add(DateTime.utc_now(), -days_ago, :day)
+      on = Accounts.local_date(organisation, at)
+
+      Enum.join(
+        [ResidentWords.date(on) | ToolWords.ago(Date.diff(Accounts.today(organisation), on))],
+        ", "
+      )
+    end
+
+    test "is in the form when the address names the resident, with where it came from",
+         context do
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1101",
+        context.lists.unit.g,
+        40
+      )
+
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1095",
+        context.lists.unit.g,
+        12
+      )
+
+      view = open(context, "#{context.dose}?resident=#{context.biscuit.id}")
+
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+      assert has_element?(view, ~s(select#dose_weight_unit option[value="g"][selected]))
+
+      assert has_element?(
+               view,
+               ~s(select#dose_resident option[value="#{context.biscuit.id}"][selected])
+             )
+
+      assert has_element?(
+               view,
+               "#dose_weight-hint",
+               "From the journal of Biscuit: Weight, #{measured(context, 12)}."
+             )
+
+      # One measurement that fits needs no choice.
+      refute has_element?(view, "#dose-weights")
+
+      calculate(view, %{
+        "weight" => "1095",
+        "weight_unit" => "g",
+        "rate" => "0.2",
+        "resident" => context.biscuit.id
+      })
+
+      assert has_element?(view, "#dose-amount", "0.219 mg")
+      assert has_element?(view, "#dose-weight-from", "From the journal of Biscuit: Weight")
+    end
+
+    test "comes with the choice of a resident in the form, which the address follows", context do
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1.2",
+        context.lists.unit.kg,
+        0
+      )
+
+      view = open(context, context.dose)
+      assert has_element?(view, ~s(input#dose_weight[value=""]))
+
+      view
+      |> form("#dose", dose: fields(%{"resident" => context.biscuit.id}))
+      |> render_change()
+
+      assert_patch(view, "#{context.dose}?resident=#{context.biscuit.id}")
+      assert has_element?(view, ~s(input#dose_weight[value="1.2"]))
+      assert has_element?(view, ~s(select#dose_weight_unit option[value="kg"][selected]))
+      assert has_element?(view, "#dose_weight-hint", "today")
+
+      # No resident again: the weight of the journal goes with it.
+      view
+      |> form("#dose", dose: fields(%{"weight" => "1.2", "resident" => ""}))
+      |> render_change()
+
+      assert_patch(view, context.dose)
+      assert has_element?(view, ~s(input#dose_weight[value=""]))
+      refute has_element?(view, "#dose_weight-hint")
+    end
+
+    test "is a typed weight after the person changes it, and the result says so", context do
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1095",
+        context.lists.unit.g,
+        3
+      )
+
+      view = open(context, "#{context.dose}?resident=#{context.biscuit.id}")
+      assert has_element?(view, "#dose_weight-hint", "From the journal of Biscuit")
+
+      sent = %{
+        "weight" => "1100",
+        "weight_unit" => "g",
+        "rate" => "0.2",
+        "resident" => context.biscuit.id
+      }
+
+      view |> form("#dose", dose: fields(sent)) |> render_change()
+      refute has_element?(view, "#dose_weight-hint")
+
+      calculate(view, sent)
+      assert has_element?(view, "#dose-amount", "0.22 mg")
+
+      assert has_element?(
+               view,
+               "#dose-weight-from",
+               "Typed, and not from the journal of Biscuit."
+             )
+    end
+
+    test "is the choice of the person when more than one measurement fits", context do
+      {:ok, eaten} =
+        Lists.add_local_value(:measure_kind, "Food eaten",
+          actor: context.root,
+          tenant: context.organisation
+        )
+
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1095",
+        context.lists.unit.g,
+        2
+      )
+
+      measure!(context, context.biscuit, eaten.id, "40", context.lists.unit.g, 1)
+
+      view = open(context, "#{context.dose}?resident=#{context.biscuit.id}")
+
+      # The page does not guess which one is the body weight.
+      assert has_element?(view, ~s(input#dose_weight[value=""]))
+      assert has_element?(view, "#dose-weights li", "Weight: 1,095 g, #{measured(context, 2)}")
+      assert has_element?(view, "#dose-weights li", "Food eaten: 40 g, #{measured(context, 1)}")
+
+      view
+      |> element(~s(#dose-weights button[phx-value-kind="#{context.lists.measure_kind.weight}"]))
+      |> render_click()
+
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+      assert has_element?(view, "#dose_weight-hint", "From the journal of Biscuit: Weight")
+      assert has_element?(view, ~s(#dose-weights button[aria-pressed="true"]), "Use this weight")
+
+      # A kind that the page did not read gives nothing.
+      render_click(view, "use_weight", %{"kind" => Ecto.UUID.generate()})
+      render_click(view, "use_weight", %{"kind" => %{"a" => "b"}})
+      render_click(view, "use_weight", %{})
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+    end
+
+    test "is no measurement with another unit, and the page says that there is none", context do
+      # A temperature has no unit that is a mass, and a bag is no unit that
+      # Rescord knows.
+      measure!(context, context.biscuit, context.lists.measure_kind.temperature, "38.5", nil, 1)
+
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "2",
+        context.lists.unit.bag,
+        1
+      )
+
+      view = open(context, "#{context.dose}?resident=#{context.biscuit.id}")
+
+      assert has_element?(view, ~s(input#dose_weight[value=""]))
+      assert has_element?(view, "#dose-no-weight", "The journal of Biscuit has no weight")
+      refute has_element?(view, "#dose_weight-hint")
+    end
+
+    test "of one resident is not the weight of the next", context do
+      rex = resident!(context.lists, context.options, %{name: "Rex"})
+
+      measure!(
+        context,
+        context.biscuit,
+        context.lists.measure_kind.weight,
+        "1095",
+        context.lists.unit.g,
+        1
+      )
+
+      view = open(context, "#{context.dose}?resident=#{context.biscuit.id}")
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+
+      view
+      |> form("#dose",
+        dose: fields(%{"weight" => "1095", "weight_unit" => "g", "resident" => rex.id})
+      )
+      |> render_change()
+
+      assert_patch(view, "#{context.dose}?resident=#{rex.id}")
+      assert has_element?(view, ~s(input#dose_weight[value=""]))
+      assert has_element?(view, "#dose-no-weight", "The journal of Rex has no weight")
+    end
+
+    test "has no resident for an address that names none of the list", context do
+      gone = resident!(context.lists, context.options, %{name: "Gone"})
+
+      {:ok, _departure} =
+        Residents.record_departure(
+          %{
+            resident_id: gone.id,
+            kind: :release,
+            departed_on: Accounts.today(context.organisation)
+          },
+          context.options
+        )
+
+      for id <- [gone.id, Ecto.UUID.generate(), "no-id", ""] do
+        view = open(context, "#{context.dose}?resident=#{id}")
+        assert has_element?(view, "h1", "Dose calculator")
+        assert has_element?(view, ~s(input#dose_weight[value=""]))
+        refute has_element?(view, "#dose-no-weight")
+        refute has_element?(view, ~s(select#dose_resident option[selected][value="#{id}"]))
+      end
+
+      view = open(context, context.dose)
+      assert has_element?(view, "select#dose_resident option", "Biscuit")
+      refute has_element?(view, "select#dose_resident option", "Gone")
+    end
+
+    test "has a link from the page of the resident", context do
+      view = open(context, "#{context.home}/residents/#{context.biscuit.id}")
+
+      assert has_element?(
+               view,
+               ~s(a[href="#{context.dose}?resident=#{context.biscuit.id}"]),
+               "Calculate a dose"
+             )
     end
   end
 end

@@ -12,6 +12,8 @@ defmodule RescordWeb.Features.ToolsTest do
 
   use RescordWeb.FeatureCase, async: false
 
+  import Rescord.ResidentsFixtures
+
   @address "a.member.who.calculates@wattle-creek.example.org"
 
   @small [viewport: %{width: 320, height: 640}, has_touch: true]
@@ -24,7 +26,7 @@ defmodule RescordWeb.Features.ToolsTest do
     # The email of the invitation is not what the test looks at.
     flush_emails()
 
-    {:ok, tools: "/o/#{organisation.short_name}/tools"}
+    {:ok, tools: "/o/#{organisation.short_name}/tools", organisation: organisation, root: root}
   end
 
   # Whether the whole of an element is in the screen, below the site bar.
@@ -75,6 +77,42 @@ defmodule RescordWeb.Features.ToolsTest do
     |> click_button("Calculate")
     |> assert_has("output strong", text: "0.22 mL")
     |> assert_has("output", text: "is the dose")
+  end
+
+  @tag browser_context_opts: @small
+  test "a member takes the weight from the journal of a resident",
+       %{conn: session, tools: tools, organisation: organisation, root: root} do
+    lists = lists!(organisation, root)
+    options = [actor: root, tenant: organisation]
+    biscuit = resident!(lists, options)
+
+    Rescord.Journal.write_entry!(
+      %{
+        resident_id: biscuit.id,
+        kind: :measurement,
+        measure_kind_id: lists.measure_kind.weight,
+        value: "1095",
+        unit_id: lists.unit.g
+      },
+      options
+    )
+
+    session
+    |> sign_in_with_link(@address)
+    |> visit("#{tools}/dose")
+    |> assert_connected()
+    |> select("From the journal of a resident (optional)", option: "Biscuit")
+    |> assert_has("#dose_weight[value='1095']")
+    |> assert_has("#dose_weight-hint", text: "From the journal of Biscuit: Weight")
+    |> fill_in("Dose", with: "0.2", exact: true)
+    |> click_button("Calculate")
+    |> assert_has("output strong", text: "0.219 mg")
+    |> assert_has("#dose-weight-from", text: "From the journal of Biscuit")
+    # A weight that the person types is no more the one of the journal.
+    |> fill_in("Weight", with: "1100")
+    |> refute_has("#dose_weight-hint")
+    |> click_button("Calculate")
+    |> assert_has("#dose-weight-from", text: "Typed, and not from the journal of Biscuit.")
   end
 
   @tag browser_context_opts: @small

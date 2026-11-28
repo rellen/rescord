@@ -62,10 +62,18 @@ defmodule RescordWeb.ToolComponents do
   field of the type `number`: such a field changes its value under the
   wheel of a mouse, and takes `1e3`. A unit is a choice from a list. A dose
   rate in mL gives a volume, so the form then has no strength.
+
+  The body weight can come from the journal of a resident. The form then
+  lists the measurements that can be a body weight when there is more than
+  one, and says below the field which one it holds and how old it is.
   """
   attr :form, Phoenix.HTML.Form, required: true
   attr :problems, :map, required: true, doc: "the problems of each field, in words"
   attr :volume?, :boolean, required: true, doc: "the dose rate gives a volume"
+  attr :residents, :list, default: [], doc: "the residents of the choice, each with its id"
+  attr :resident, :map, default: nil, doc: "the resident that the person chose"
+  attr :weights, :list, default: [], doc: "the measurements of that resident that fit"
+  attr :source, :map, default: nil, doc: "the measurement that the weight came from"
 
   def dose_form(assigns) do
     assigns =
@@ -80,8 +88,44 @@ defmodule RescordWeb.ToolComponents do
     <.form for={@form} id="dose" phx-change="change" phx-submit="calculate" novalidate>
       <fieldset>
         <legend>Body weight</legend>
+        <.input
+          :if={@residents != []}
+          field={@form[:resident]}
+          type="select"
+          label="From the journal of a resident (optional)"
+          prompt="No resident"
+          options={@residents}
+        />
+        <p :if={@resident && @weights == []} id="dose-no-weight">
+          The journal of {@resident.name} has no weight in kg, g, lb or oz that you can read.
+          Type the body weight.
+        </p>
+        <div :if={match?([_, _ | _], @weights)} id="dose-weights">
+          <p>
+            The journal of {@resident.name} has more than one measurement that can be a body weight.
+          </p>
+          <ul data-weights>
+            <li :for={weight <- @weights}>
+              <span>{ToolWords.measurement(weight)}</span>
+              <button
+                type="button"
+                data-variant="secondary"
+                phx-click="use_weight"
+                phx-value-kind={weight.id}
+                aria-pressed={to_string(@source != nil and @source.id == weight.id)}
+              >
+                Use this weight
+              </button>
+            </li>
+          </ul>
+        </div>
         <div data-quantity>
-          <.number field={@form[:weight]} label="Weight" errors={@problems[:weight]} />
+          <.number
+            field={@form[:weight]}
+            label="Weight"
+            errors={@problems[:weight]}
+            hint={@source && ToolWords.source(@source)}
+          />
           <.input
             field={@form[:weight_unit]}
             type="select"
@@ -206,6 +250,8 @@ defmodule RescordWeb.ToolComponents do
   the word "about" before it.
   """
   attr :result, Dosage.Result, default: nil
+  attr :resident, :map, default: nil, doc: "the resident that the person chose"
+  attr :source, :map, default: nil, doc: "the measurement that the weight came from"
 
   def dose_result(assigns) do
     ~H"""
@@ -223,7 +269,7 @@ defmodule RescordWeb.ToolComponents do
         <span :if={@result && !@result.amount}>is the dose</span>
       </output>
 
-      <.dose_working :if={@result} result={@result} />
+      <.dose_working :if={@result} result={@result} resident={@resident} source={@source} />
     </section>
     """
   end
@@ -231,6 +277,8 @@ defmodule RescordWeb.ToolComponents do
   # What a result says below its answer: a result that is too small to
   # measure, what went in, the steps, and the note to check it with a vet.
   attr :result, Dosage.Result, required: true
+  attr :resident, :map, default: nil
+  attr :source, :map, default: nil
 
   defp dose_working(assigns) do
     ~H"""
@@ -241,7 +289,13 @@ defmodule RescordWeb.ToolComponents do
 
     <h3>What went in</h3>
     <.list>
-      <:item title="Body weight">{ToolWords.quantity(@result.weight)}</:item>
+      <:item title="Body weight">
+        {ToolWords.quantity(@result.weight)}
+        <small :if={@source} id="dose-weight-from">{ToolWords.source(@source)}</small>
+        <small :if={@resident && !@source} id="dose-weight-from">
+          Typed, and not from the journal of {@resident.name}.
+        </small>
+      </:item>
       <:item title="Dose rate">{ToolWords.rate(@result.rate)}</:item>
       <:item :if={@result.strength} title="Strength">
         {ToolWords.strength(@result.strength)}

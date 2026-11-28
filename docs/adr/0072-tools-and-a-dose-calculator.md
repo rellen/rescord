@@ -69,6 +69,19 @@ work and is no record.
 - **The dose rate is for each kilogram.** A rate for each pound is another
   number that is easy to mix up, so the page does not offer it. A weight
   can be in kg, g, lb or oz.
+- **The body weight can come from the journal of a resident.** A member
+  chooses a resident in the form, or comes from the page of a resident,
+  which opens the calculator with `?resident=<id>`. The choice has the
+  residents that are not gone. The page reads the journal as the member,
+  and takes the newest measurement of each kind whose unit is one of the
+  units of weight of the calculator. With one such measurement it fills
+  in the weight. With more it asks: a measurement in grams can be the
+  body weight or the food that the animal ate, and the page does not
+  guess. Below the field it says the kind, the date and how many days ago
+  that was. It gives no limit for an old weight: a young animal changes
+  in days and an adult in months, and the member sees the date. A weight
+  that the member then changes is a typed weight, and the result says
+  so. The weight of one resident never stays in the form for the next.
 - **A result has three figures on the page**, rounded half up, with the
   word "about" before a number that was rounded. The working has six. The
   arithmetic keeps each digit (`Decimal`, and 28 digits for a division).

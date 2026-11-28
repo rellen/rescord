@@ -76,4 +76,28 @@ defmodule RescordWeb.ToolWordsTest do
              {:divide, quantity("62 mg"), quantity("50 mg/tablet"), quantity("1.24 tablet")}
            ) == "62 mg ÷ 50 mg/tablet = 1.24 tablets"
   end
+
+  test "a measurement of the journal has its kind, its date and its age" do
+    weight = %{
+      resident: "Biscuit",
+      kind: "Weight",
+      quantity: quantity("1095 g"),
+      on: ~D[2026-11-16],
+      days: 12
+    }
+
+    assert ToolWords.measurement(weight) == "Weight: 1,095 g, 16 November 2026, 12 days ago"
+
+    assert ToolWords.source(weight) ==
+             "From the journal of Biscuit: Weight, 16 November 2026, 12 days ago."
+
+    assert ToolWords.source(%{weight | days: 0}) ==
+             "From the journal of Biscuit: Weight, 16 November 2026, today."
+
+    assert ToolWords.source(%{weight | days: 1}) =~ "16 November 2026, yesterday."
+
+    # A date after today has no age: the page says the date alone.
+    assert ToolWords.source(%{weight | days: -1}) ==
+             "From the journal of Biscuit: Weight, 16 November 2026."
+  end
 end

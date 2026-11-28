@@ -1004,6 +1004,11 @@ output > strong:focus {
   outline: none;
 }
 
+/* Where a value of the result came from is a line of its own below it. */
+section:has(> output) dd > small {
+  display: block;
+}
+
 /* A step of the working is arithmetic: figures of one width, which do not
    break between a number and its unit more than they must. */
 ol[data-working] {

@@ -414,4 +414,50 @@ defmodule Rescord.DosageTest do
       assert Dosage.round_figures(Decimal.new("0.000")) == {Decimal.new(0), true}
     end
   end
+
+  describe "a quantity of a record" do
+    defp parsed(text) do
+      {:ok, quantity} = Rescord.Units.Quantity.parse(text)
+      quantity
+    end
+
+    test "is a body weight in a unit of weight of the calculator, above zero" do
+      for text <- ["1095 g", "1.2 kg", "3 lb", "10 oz"] do
+        assert Dosage.weight?(parsed(text)), text
+      end
+
+      for text <- ["5 mg", "0 kg", "2 mL", "5 mg/kg", "1 tablet", "12345678 g", "0.1234567 kg"] do
+        refute Dosage.weight?(parsed(text)), text
+      end
+
+      refute Dosage.weight?(nil)
+      refute Dosage.weight?("1095 g")
+    end
+
+    test "is a strength as a mass in each mL or in each tablet, above zero" do
+      for text <- ["1.5 mg/mL", "50 mg/tablet", "100 mcg/mL", "1 g/tablet"] do
+        assert Dosage.strength?(parsed(text)), text
+      end
+
+      for text <- ["5 mg/kg", "5 mg", "0 mg/mL", "1 mL/kg", "5 mg/capsule", "5 kg/mL"] do
+        refute Dosage.strength?(parsed(text)), text
+      end
+
+      refute Dosage.strength?(nil)
+    end
+
+    test "is read from the form of a record with the guards of the calculator" do
+      assert {:ok, strength} = Dosage.strength(" 1.5 ", "mg", "mL")
+      assert to_string(strength) == "1.5 mg/mL"
+      assert Dosage.strength?(strength)
+
+      assert Dosage.strength("", "mg", "mL") == {:ok, nil}
+      assert Dosage.strength(nil, nil, nil) == {:ok, nil}
+      assert Dosage.strength("1,5", "mg", "mL") == {:error, :not_a_number}
+      assert Dosage.strength("0", "mg", "mL") == {:error, :not_positive}
+      assert Dosage.strength("1.5", "kg", "mL") == {:error, :unknown_unit}
+      assert Dosage.strength("1.5", "mg", "kg") == {:error, :unknown_unit}
+      assert Dosage.strength("1.5", %{}, ["mL"]) == {:error, :unknown_unit}
+    end
+  end
 end
