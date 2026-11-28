@@ -2,15 +2,15 @@ defmodule RescordWeb.TransferFilePagesTest do
   @moduledoc """
   Holds the pages of the transfers between servers (ADR 0043): the partner
   card and its fingerprint, the record of a card, the download of an
-  export, the upload of an import, and a photo of a copy.
+  export, the upload of an import, and a photo of a copy. The tests find what a person finds (ADR 0107).
 
   Each test creates organisations, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -60,10 +60,16 @@ defmodule RescordWeb.TransferFilePagesTest do
      biscuit: biscuit}
   end
 
-  defp open(user, path) do
-    conn = build_conn() |> sign_in(user)
-    {:ok, view, _html} = live(conn, path)
-    {conn, view, render_async(view)}
+  defp visit_as(user, path), do: build_conn() |> sign_in(user) |> visit(path)
+
+  defp remote, do: main() |> region("Refuges on other servers")
+  defp received, do: main() |> region("Received")
+
+  # A file on the disk, for an upload of the page.
+  defp file!(context, name, content) do
+    path = Path.join(context.tmp_dir, name)
+    File.write!(path, content)
+    path
   end
 
   defp partners!(context) do
@@ -80,47 +86,48 @@ defmodule RescordWeb.TransferFilePagesTest do
   end
 
   test "an administrator gives the card of the refuge and records the card of another", context do
-    {conn, view, _html} = open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/partners")
-    {_card, print} = Transfers.card(context.wattle)
+    partners = ~p"/o/#{context.wattle.short_name}/partners"
+    {card, print} = Transfers.card(context.wattle)
     {banksia_card, banksia_print} = Transfers.card(context.banksia)
 
-    assert has_element?(view, "#own-card")
-    assert has_element?(view, "#own-fingerprint", print)
+    session = visit_as(context.wattle_admin, partners)
+    assert value(session, remote() |> field("Partner card")) == card
 
-    {:ok, view, _html} =
-      view
-      |> form("#record", remote: %{card: banksia_card})
-      |> render_submit()
-      |> follow_redirect(conn)
-
-    assert has_element?(view, "tbody td", "Banksia Rise")
-    assert has_element?(view, "tbody code", banksia_print)
+    session
+    |> assert_has(remote(), text: "Fingerprint: #{print}")
+    |> fill_in("The partner card of the other refuge", with: banksia_card)
+    |> click(button("Record the partner"))
+    |> assert_has(remote() |> row(~r/^Banksia Rise\b/), text: banksia_print)
 
     # A member reads the partners, and has no card and no form.
-    {_conn, view, _html} =
-      open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/partners")
-
-    assert has_element?(view, "tbody td", "Banksia Rise")
-    refute has_element?(view, "#own-card")
-    refute has_element?(view, "#record")
+    context.wattle_member
+    |> visit_as(partners)
+    |> assert_has(remote() |> row(~r/^Banksia Rise\b/))
+    |> refute_has(remote() |> field("Partner card"))
+    |> refute_has(remote() |> button("Record the partner"))
   end
 
   test "text that is no card gets an answer in words", context do
-    {_conn, view, _html} =
-      open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/partners")
-
-    view |> form("#record", remote: %{card: "hello"}) |> render_submit()
-    assert has_element?(view, "main p[role=alert]", "Card is not a partner card of Rescord")
+    context.wattle_admin
+    |> visit_as(~p"/o/#{context.wattle.short_name}/partners")
+    |> fill_in("The partner card of the other refuge", with: "hello")
+    |> click(button("Record the partner"))
+    |> assert_has(main() |> alert(), text: "Card is not a partner card of Rescord")
   end
 
   test "an export downloads a file, which the other refuge imports and accepts", context do
     partner = partners!(context)
 
-    {_conn, view, _html} =
-      open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+    context.wattle_admin
+    |> visit_as(~p"/o/#{context.wattle.short_name}/transfers")
+    |> assert_has(
+      main()
+      |> region("Send a resident to a refuge on another server")
+      |> field("Partner on another server"),
+      text: "Banksia Rise"
+    )
 
-    assert has_element?(view, "#export-partner option", "Banksia Rise")
-
+    # The file comes from a controller, so the test posts the form.
     conn =
       build_conn()
       |> sign_in(context.wattle_admin)
@@ -138,50 +145,40 @@ defmodule RescordWeb.TransferFilePagesTest do
     assert [disposition] = get_resp_header(conn, "content-disposition")
     assert disposition =~ ~r/attachment; filename="biscuit-\d{4}-\d{2}-\d{2}\.rescord"/
 
-    {conn, view, _html} =
-      open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
+    context.banksia_admin
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers")
+    |> upload("Transfer file", file!(context, "biscuit.rescord", file))
+    |> click(button("Import the file"))
+    |> assert_has(received() |> row(~r/^Biscuit\b/), text: "Wattle Creek")
+    |> click(received() |> row(~r/^Biscuit\b/) |> button("Accept the transfer of Biscuit"))
 
-    upload =
-      file_input(view, "#import", :transfer_file, [
-        %{name: "biscuit.rescord", content: file, type: "application/octet-stream"}
-      ])
-
-    render_upload(upload, "biscuit.rescord")
-
-    {:ok, view, _html} =
-      view |> form("#import") |> render_submit() |> follow_redirect(conn)
-
-    assert has_element?(view, "#received tbody td", "Biscuit")
-    assert has_element?(view, "#received tbody td", "Wattle Creek")
     [transfer] = Transfers.transfers!(actor: context.banksia_admin)
     assert transfer.parts == [:stay, :photos]
-
-    {:ok, _view, _html} =
-      view |> render_click("accept", %{"id" => transfer.id}) |> follow_redirect(conn)
+    assert transfer.state == :accepted
 
     # A member there reads the copy, with its photo.
-    {_conn, view, _html} =
-      open(context.banksia_member, ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+    session =
+      context.banksia_member
+      |> visit_as(~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+      |> assert_has(main(), text: "A copy from Wattle Creek")
+      |> assert_has(main() |> region("Stay at Wattle Creek"))
+      |> assert_has(main() |> list("Files of the entry") |> link("card.jpg"))
 
-    assert has_element?(view, "p", "A copy from Wattle Creek")
-    assert has_element?(view, "h2", "Stay at Wattle Creek")
     [%{"files" => [photo]}] = transfer.snapshot["medical"]
-    assert has_element?(view, "a", "card.jpg")
 
     # The photos of the copy: the photo of the journal and the photo with a
     # caption, which is the profile picture, each as its thumbnail.
-    assert has_element?(view, "h2", "Photos")
-    assert has_element?(view, "#copy-photo-list figcaption", "On the lawn")
-    assert has_element?(view, "#copy-profile-photo img[alt='On the lawn']")
-
-    %{"photos" => photos, "profile" => profile} = transfer.snapshot["photos"]
-    assert length(photos) == 2
-    %{"thumbnail" => %{"id" => thumbnail_id}} = Enum.find(photos, &(&1["id"] == profile))
+    photos = main() |> region("Photos")
+    %{"photos" => list, "profile" => profile} = transfer.snapshot["photos"]
+    assert length(list) == 2
+    %{"thumbnail" => %{"id" => thumbnail_id}} = Enum.find(list, &(&1["id"] == profile))
 
     thumbnail =
       ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}/files/#{thumbnail_id}"
 
-    assert has_element?(view, "#copy-photo-#{profile} img[src='#{thumbnail}']")
+    assert_has(session, photos |> figure("Profile picture") |> image("On the lawn"))
+    assert src(session, photos |> figure(~r/^On the lawn\b/) |> image("On the lawn")) == thumbnail
+
     conn = build_conn() |> sign_in(context.banksia_member) |> get(thumbnail)
     assert <<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>> = response(conn, 200)
     assert get_resp_header(conn, "content-type") == ["image/webp"]
@@ -212,17 +209,11 @@ defmodule RescordWeb.TransferFilePagesTest do
   test "a refused import says why, and a refused export goes back with the words", context do
     partner = partners!(context)
 
-    {_conn, view, _html} =
-      open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
-
-    upload =
-      file_input(view, "#import", :transfer_file, [
-        %{name: "odd.rescord", content: "not a transfer file", type: "application/octet-stream"}
-      ])
-
-    render_upload(upload, "odd.rescord")
-    view |> form("#import") |> render_submit()
-    assert has_element?(view, "main p[role=alert]", "File is not a transfer file of Rescord")
+    context.banksia_admin
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers")
+    |> upload("Transfer file", file!(context, "odd.rescord", "not a transfer file"))
+    |> click(button("Import the file"))
+    |> assert_has(main() |> alert(), text: "File is not a transfer file of Rescord")
 
     conn =
       build_conn()
@@ -238,11 +229,11 @@ defmodule RescordWeb.TransferFilePagesTest do
   test "a member has no export and no import, and the controller refuses them", context do
     partner = partners!(context)
 
-    {_conn, view, _html} =
-      open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/transfers")
-
-    refute has_element?(view, "#export")
-    refute has_element?(view, "#import")
+    context.wattle_member
+    |> visit_as(~p"/o/#{context.wattle.short_name}/transfers")
+    |> assert_has(main() |> heading(level: 1), text: "Transfers")
+    |> refute_has(main() |> region("Send a resident to a refuge on another server"))
+    |> refute_has(main() |> region("Import a transfer file"))
 
     conn =
       build_conn()
