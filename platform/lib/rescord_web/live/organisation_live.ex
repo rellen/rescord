@@ -77,6 +77,7 @@ defmodule RescordWeb.OrganisationLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:home}
     >
       <.header icon={Icons.section(:home)}>

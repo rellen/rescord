@@ -652,6 +652,27 @@ defmodule RescordWeb.OrganisationPagesTest do
                nil
     end
 
+    test "lists a member who was removed as a former member, who can be invited again",
+         context do
+      {another, user} = member!(context.organisation, :member, context.administrator)
+      path = ~p"/o/#{context.organisation.short_name}/members"
+      {view, html} = open(context.conn, context.administrator, path)
+
+      refute html =~ "Former members"
+      render_click(view, "remove", %{"id" => another.id})
+      render_async(view)
+
+      assert has_element?(view, "#former-#{another.id}", to_string(user.email))
+
+      view |> element("#former-#{another.id} button") |> render_click()
+      render_async(view)
+
+      refute has_element?(view, "#former-#{another.id}")
+
+      assert {:ok, %{}} =
+               Accounts.member_of_user(user.id, tenant: context.organisation, authorize?: false)
+    end
+
     test "does nothing for a member who sends an event that the page did not offer", context do
       path = ~p"/o/#{context.organisation.short_name}/members"
       {view, _html} = open(context.conn, context.member, path)

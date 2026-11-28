@@ -133,12 +133,42 @@ release (ADR 0047).
   - `20261128091913_add_correlation_ids`, in each organisation: the same
     three columns and the same index in the 61 tables of the records
     with a history and of the histories. It changes no row.
+  - `20261128101612_add_comments_and_notifications`, in the database:
+    adds the tables of what leaves the server with a notification: the
+    settings of Web Push and ntfy, with their history, the devices of each
+    person, and the topic of ntfy of each person (issue 29, ADR 0106).
+    All are empty: no notification leaves the server until a root user
+    turns a channel on at `/root/push`. It changes no row.
+  - `20261128101606_add_comments_and_notifications`, in each
+    organisation: adds the tables of the comments, with their history,
+    of who follows a record, of the notifications, and of the channels
+    that each person chose. All are empty. It changes no row.
+  - `20261128101700_give_roles_the_comments`, in each organisation:
+    gives the new power "Write a comment on a record, tell a member, and
+    change or delete their own" to the role with the key
+    `administrator` and to the role with the key `member`, and the new
+    power "Delete any comment, and each comment of one person" to the
+    role with the key `administrator`.
+    These are the roles Administrator and Member that each organisation
+    starts with. No other row changes: a role that an administrator
+    defined does not get a power by itself.
+  - `20261128120839_add_comments_on_journal_entries`, in each
+    organisation: a comment and a follow can name a journal entry, as a
+    fifth kind of record (issue 29, ADR 0106). It adds an empty column to
+    each of the two tables, and the check that a row names one record
+    counts it. Each row that is there names one record of the four, so it
+    keeps to the new check. It changes no row.
   - The index is a plain `CREATE INDEX`, because the rehearsal refuses
     `CONCURRENTLY`. It locks each table against reads and writes until
     the migration of its organisation commits. The migrations run at the
     start, before the server answers, so no person waits on a lock, and
     the index reads each row once: on a table of 500,200 rows it took
     about 50 ms. A large organisation starts a little slower one time.
+  - `20261128114550_add_ruby_message_steps`, in each organisation: adds a
+    column to the messages of the conversations with Ruby, for what Ruby
+    read to answer: the tool, and the records that it named. Each
+    message that is there gets an empty list, and the page shows it with
+    no step. It changes no other row.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
@@ -241,12 +271,38 @@ release (ADR 0047).
 
 ### Added
 
+- The members page lists the former members, with the day each one left
+  and a button "Invite again", and asks before it removes a member. The
+  records of a member who was removed stay theirs: each page names them
+  "email (former member)", and the work of a root user who is not a
+  member says "Rescord operator". `members.csv` of the export has the
+  former members too, with the new column `former?` (ADR 0105).
+- Comments and notifications (issue 29, ADR 0106). A member writes a
+  comment on a resident, a task, an expense, a transfer or a journal
+  entry, with bold, italics, lists and links, and ticks the members to
+  tell. The writer and each person told follow the record, and each
+  follower gets a notification: on the new page Notifications, behind
+  the bell of the site bar, and, when the server has it on, on their
+  devices with Web Push and on a topic of ntfy. A notification that leaves the server
+  names only the organisation and the kind of news: no resident, no
+  person and no word of a comment. A comment on an expense is read only
+  by the people who read the expense. A task has a page of its own now,
+  with its comments.
+- Rescord can be installed as a web app: it has a manifest and a service
+  worker. An iPhone or an iPad with iOS 16.4 or later shows the
+  notifications of Rescord once it is on the Home Screen.
+- The page `/root/push` sets what leaves the server with a notification:
+  the keys of Web Push, which Rescord makes and keeps encrypted, the
+  contact for the push services, the server of ntfy and its access
+  token. Each channel is off until a root user turns it on.
 - A transfer of a resident with photos or PDFs to a partner on this
   server shows "Sending" and how many files are there, such as "120 of
   300 files", while its files go to the partner. When a file does not
   arrive, it shows "Not sent" and why, with the new button "Send again"
   beside "Withdraw". A transfer that is sending or not sent can be
-  withdrawn too (ADR 0100).
+  withdrawn too. A transfer whose copy stopped when the server stopped,
+  and did not start again, is "Not sent" within an hour after the
+  2 hours that Oban waits for such a job (ADR 0100).
 - For a person who changes Rescord: mutation testing with muex (ADR 0104).
   `mix test.mutation` and the new workflow "Mutation testing" make copies
   of the code with one small change each, and report each change that no
@@ -380,6 +436,12 @@ release (ADR 0047).
   reads only what the member can read, and records nothing. The page has
   no link in the menu yet: that comes in a later version. For anybody
   else, or while Ruby is off, the address is a page that is not there.
+- While Ruby reads to answer, the page of Ruby shows each step, such as
+  "Looks at the stock", and what it found. An answer keeps its steps in
+  a section that opens, "What Ruby read", and shows a card for each
+  record that the answer names, which goes to the page of the record.
+  A link in the words of Ruby goes only to a record that Ruby read in
+  that conversation: each other link is plain words.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.
@@ -542,6 +604,11 @@ release (ADR 0047).
 
 ### Changed
 
+- The removal of a member takes them out of each task that is due and
+  each routine. A task that was for them alone is for anybody. Their
+  calendar feeds are revoked, and an invitation of theirs that waits is
+  not sent. The last member who can change the members cannot be removed
+  (ADR 0105).
 - A line of the log now writes the shape of a value with
   `Shoddy.Terms.shape/2` of `shoddy`, and Rescord no longer has its own
   copy. A tuple of more than 6 values now shows each value, an Ash error
@@ -611,6 +678,11 @@ release (ADR 0047).
   An instance on several machines shows such a change on each machine
   only when the machines form a cluster (`DNS_CLUSTER_QUERY`); with no
   cluster the pages on another machine are as before.
+- The inventory and the page of an item show what another person did,
+  without a reload too: a new or removed item, a delivery, a use, a move
+  or a count, with the levels, the states and the history. A form that a
+  person is filling in stays as it is. When another person removes the
+  item, its page goes back to the inventory and says so (ADR 0096).
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,
@@ -694,6 +766,9 @@ release (ADR 0047).
 
 ### Fixed
 
+- The table "Owed to members" of the expense report put every person who
+  had left in one row "A person who left". Each payer has their own row
+  now (ADR 0105).
 - The name of a location now keeps its capitals where it starts a line of
   the inventory: in the levels of a lot, the history of an item, the
   reorder levels and the stock to order. Before, only its first letter

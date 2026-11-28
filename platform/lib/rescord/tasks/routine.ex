@@ -86,6 +86,13 @@ defmodule Rescord.Tasks.Routine do
       pagination keyset?: true, required?: false
     end
 
+    read :for_member do
+      description "The routines that are for a member"
+      argument :user_id, :uuid, allow_nil?: false
+      filter expr(^arg(:user_id) in assignee_ids)
+      pagination keyset?: true, required?: false
+    end
+
     create :start do
       description "Starts a routine, and makes its first tasks"
       accept @facts ++ [:prescription_id]
@@ -141,6 +148,15 @@ defmodule Rescord.Tasks.Routine do
       change Rescord.Tasks.Changes.ForgetResident
     end
 
+    update :forget_member do
+      description "Takes a member who was removed out of the routine. A listener runs this, and no role has a grant for it"
+
+      accept []
+      require_atomic? false
+      argument :user_id, :uuid, allow_nil?: false
+      change Rescord.Tasks.Changes.ForgetMember
+    end
+
     destroy :remove do
       description "Ends the routine. Its tasks that are due after now are cancelled"
       require_atomic? false
@@ -157,6 +173,7 @@ defmodule Rescord.Tasks.Routine do
       # The removal of a resident is the decision (ADR 0067).
       authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
       authorize_if signal_in(Rescord.Residents.Signals, :resident_departed)
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_removed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -278,6 +295,14 @@ defmodule Rescord.Tasks.Routine do
         read_action: :for_resident,
         args: [:resident_id],
         inputs: [:resident_id]
+    end
+
+    # Nor a member who was taken out of the organisation (ADR 0105).
+    from Rescord.Accounts.Signals do
+      on :member_removed, :forget_member,
+        read_action: :for_member,
+        args: [:user_id],
+        inputs: [:user_id]
     end
   end
 end

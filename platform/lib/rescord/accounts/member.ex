@@ -45,8 +45,18 @@ defmodule Rescord.Accounts.Member do
     belongs_to_actor :user, Rescord.Accounts.User, domain: Rescord.Accounts
   end
 
+  # A removed member is archived. `:with_former` reads them too, so a page
+  # can still say who wrote a record (ADR 0105).
+  archive do
+    exclude_read_actions [:with_former]
+  end
+
   actions do
     defaults [:read]
+
+    read :with_former do
+      description "The members of the organisation, and the members who were removed from it"
+    end
 
     create :invite_member do
       description "Invites a person to the organisation, with the role `role_id` or the role of a member"
@@ -95,7 +105,12 @@ defmodule Rescord.Accounts.Member do
     end
 
     destroy :remove do
-      description "Takes the member out of the organisation"
+      description "Takes the member out of the organisation. The records of the member stay theirs, marked as a former member"
+      require_atomic? false
+      validate Rescord.Accounts.Validations.NotTheLastManager
+
+      # Tasks, routines and calendar feeds let go of the person (ADR 0105).
+      emit Rescord.Accounts.Signals, :member_removed, fields: [user_id: :user_id]
     end
 
     action :send_invitation do
@@ -160,6 +175,11 @@ defmodule Rescord.Accounts.Member do
     calculate :email, :ci_string, Rescord.Accounts.Calculations.MemberEmail do
       public? true
       description "The email address of the user of the member"
+    end
+
+    calculate :former?, :boolean, expr(not is_nil(archived_at)) do
+      public? true
+      description "Whether the member was taken out of the organisation (ADR 0105)"
     end
   end
 

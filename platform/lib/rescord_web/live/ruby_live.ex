@@ -43,6 +43,7 @@ defmodule RescordWeb.RubyLive do
     {:ok,
      socket
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
+     |> assign(:known, MapSet.new())
      |> assign(problems: [], recent: [], asks: Enum.take(asks, @asks))
      |> assign_form("")}
   end
@@ -66,6 +67,7 @@ defmodule RescordWeb.RubyLive do
      socket
      |> leave()
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
+     |> assign(:known, MapSet.new())
      |> assign(problems: [], recent: recent(socket))}
   end
 
@@ -111,7 +113,7 @@ defmodule RescordWeb.RubyLive do
       <section :if={@conversation} data-log aria-label="Conversation">
         <ol id="ruby-messages" data-chat>
           <li :for={message <- @messages} :key={message.id} id={"message-#{message.id}"}>
-            <RubyChatComponents.message message={message} organisation={@organisation} />
+            <RubyChatComponents.message message={message} organisation={@organisation} known={@known} />
           </li>
         </ol>
 
@@ -165,8 +167,31 @@ defmodule RescordWeb.RubyLive do
   def handle_info({:ruby, :text, id, text}, %{assigns: %{answer: %{} = answer}} = socket)
       when is_binary(text) and text != "" and (is_nil(answer.id) or answer.id == id) do
     said = if answer.blocks == [], do: RubyWords.said(:writing), else: socket.assigns.said
-    answer = %{answer | id: id, blocks: RubyMarkdown.blocks(text)}
+    answer = %{answer | id: id, blocks: blocks(text, socket.assigns)}
     {:noreply, assign(socket, answer: answer, said: said)}
+  end
+
+  # A step of the reply: a call of a tool that started or ended, as code
+  # made it. The references that it returned are records that a link of
+  # Ruby may name.
+  def handle_info(
+        {:ruby, :step, id, %{"call_id" => call_id} = step},
+        %{assigns: %{answer: %{} = answer}} = socket
+      )
+      when is_nil(answer.id) or answer.id == id do
+    steps =
+      if Enum.any?(answer.steps, &(&1["call_id"] == call_id)),
+        do: Enum.map(answer.steps, &if(&1["call_id"] == call_id, do: step, else: &1)),
+        else: answer.steps ++ [step]
+
+    known = for %{"ref" => ref} <- step["refs"] || [], into: socket.assigns.known, do: ref
+
+    {:noreply,
+     assign(socket,
+       answer: %{answer | id: id, steps: steps},
+       known: known,
+       said: RubyWords.said_step(step)
+     )}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -241,9 +266,13 @@ defmodule RescordWeb.RubyLive do
   defp read(%{assigns: %{conversation: %{id: id}}} = socket) do
     with {:ok, %{} = conversation} <- Ruby.conversation(id, scope(socket)),
          {:ok, messages} <- Ruby.messages(id, scope(socket)) do
-      {messages, answer} = split(messages)
+      known = Ruby.refs(messages)
+
+      {messages, answer} =
+        split(messages, %{organisation: socket.assigns.organisation, known: known})
 
       assign(socket,
+        known: known,
         conversation: conversation,
         page_title: RubyWords.title(conversation),
         messages: messages,
@@ -254,11 +283,11 @@ defmodule RescordWeb.RubyLive do
     end
   end
 
-  defp split(messages) do
+  defp split(messages, assigns) do
     case List.last(messages) do
       %{source: :ruby, state: :streaming} = reply ->
-        answer = %{new_answer(reply.response_to_id) | id: reply.id}
-        {Enum.drop(messages, -1), %{answer | blocks: RubyMarkdown.blocks(reply.text)}}
+        answer = %{new_answer(reply.response_to_id) | id: reply.id, steps: reply.steps || []}
+        {Enum.drop(messages, -1), %{answer | blocks: blocks(reply.text, assigns)}}
 
       # The job has not made the reply yet.
       %{source: :user} = message ->
@@ -272,11 +301,27 @@ defmodule RescordWeb.RubyLive do
   # A page that moves to another conversation, or to the start, leaves the
   # topic of the one before.
   defp leave(%{assigns: %{conversation: %{id: id}}} = socket) do
-    if connected?(socket), do: Ruby.unsubscribe(id)
+    if connected?(socket) do
+      Ruby.unsubscribe(id)
+      forget()
+    end
+
     socket
   end
 
   defp leave(socket), do: socket
+
+  # A message of the topic that the page left, which was on its way: the
+  # page of the next conversation must not take its words or its records.
+  # No message of the next topic is here yet, since the page listens to it
+  # only after this.
+  defp forget do
+    receive do
+      {:ruby, _kind, _reply_id, _value} -> forget()
+    after
+      0 -> :ok
+    end
+  end
 
   defp recent(socket) do
     case Ruby.conversations(scope(socket)) do
@@ -287,7 +332,11 @@ defmodule RescordWeb.RubyLive do
 
   # `asked` is the message of the member that the answer is for: Stop
   # names it.
-  defp new_answer(asked), do: %{id: nil, asked: asked, blocks: []}
+  defp new_answer(asked), do: %{id: nil, asked: asked, steps: [], blocks: []}
+
+  # The words of Ruby, with a link only to a record of this conversation.
+  defp blocks(text, %{organisation: organisation, known: known}),
+    do: RubyMarkdown.blocks(text, organisation: organisation, known: known)
 
   defp assign_form(socket, text),
     do: assign(socket, :form, to_form(%{"text" => text}, as: :message))

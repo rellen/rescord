@@ -274,6 +274,7 @@ defmodule RescordWeb.ExpenseFormLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:expenses}
     >
       <nav aria-label="Breadcrumb">

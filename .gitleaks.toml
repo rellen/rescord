@@ -52,6 +52,14 @@ keywords = ["@"]
     '''^git@''',
   ]
 
+  # The test of an address of a push service with a user in it, which the
+  # server refuses (ADR 0106). It names nobody.
+  [[rules.allowlists]]
+  condition = "AND"
+  paths = ['''^platform/test/rescord/notifications/web_push_test\.exs$''']
+  regexTarget = "match"
+  regexes = ['''^user@fcm\.googleapis\.com$''']
+
 [[rules]]
 id = "rescord-deployment-host"
 description = "The host name of one deployment on a hosting service. It belongs in the private repository of that deployment"

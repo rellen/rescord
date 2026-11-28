@@ -297,9 +297,33 @@ defmodule Rescord.Ruby.RepliesTest do
       assert_received {:ruby, :text, ^id, "Biscuit is in your care."}
       assert_received {:ruby, :reply, ^id, :complete}
 
-      # Each message holds the words or the state, and no tool result.
+      # The step of the call, as it starts and as it ends: what code made
+      # of the result, and not the result.
+      biscuit = "resident:" <> context.biscuit.id
+
+      assert_received {:ruby, :step, ^id,
+                       %{"tool" => "find_residents", "state" => "running", "call_id" => call}}
+
+      assert_received {:ruby, :step, ^id,
+                       %{"call_id" => ^call, "state" => "done", "count" => 1} = step}
+
+      assert [%{"ref" => ^biscuit, "label" => "Biscuit"}] = step["refs"]
+
+      assert Map.keys(step) |> Enum.sort() ==
+               ~w(arguments call_id count refs state tool)
+
+      # The reply keeps the steps.
+      assert [%{"call_id" => ^call, "state" => "done"}] = reply.steps
+
+      # Each message holds the words, a step or the state, and no tool result.
       heard = heard()
-      assert Enum.all?(heard, &match?({:ruby, kind, ^id, _} when kind in [:text, :reply], &1))
+
+      assert Enum.all?(
+               heard,
+               &match?({:ruby, kind, ^id, _} when kind in [:text, :reply, :step], &1)
+             )
+
+      refute Enum.any?(heard, &match?({:ruby, :step, _, %{"result" => _}}, &1))
       refute {:ruby, :text, id, ""} in heard
 
       # A page that left hears nothing more.
@@ -553,7 +577,9 @@ defmodule Rescord.Ruby.RepliesTest do
 
       # A write of a reply whose conversation went while it was written.
       assert Replies.stop_asked?(message, context.organisation)
-      assert Replies.save(%{message | source: :ruby}, "words", [], context.organisation) == :gone
+
+      assert Replies.save(%{message | source: :ruby}, %{text: "words"}, context.organisation) ==
+               :gone
     end
   end
 

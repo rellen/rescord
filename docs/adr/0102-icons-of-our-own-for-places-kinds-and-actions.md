@@ -2,10 +2,10 @@
 
 Status: accepted. The maintainer asked for the design (issue 28, 28
 November 2026) and chose to build all three phases on a decision card.
-The four other calls of the issue (paw prints for the groups, a building
-for the organisation, an icon on the heading of each place, the signs of
-female and male) took the choice of the design: the maintainer did not
-answer them.
+Later the same day the maintainer confirmed paw prints for the groups,
+a building for the organisation and an icon on the heading of each
+place, and chose words only for the sex of a resident: the signs of
+female and male of the first build came out again.
 
 ## Context
 
@@ -28,7 +28,7 @@ which means "waiting".
   dot is a line of no length; the colour of the words; 1em. A name says
   the shape, not the meaning.
 - **A meaning names its shape in one place**: `Icons.section/1` for a
-  part of the site, `entry_kind/1`, `movement/1` and `sex/1`. The menu,
+  part of the site, `entry_kind/1` and `movement/1`. The menu,
   the page of the organisation, the parts that need attention, the
   reports and the heading of a page read `section/1`, so one place has
   one shape everywhere.
@@ -41,9 +41,9 @@ which means "waiting".
 - **Where no icon goes**: the button that sends a form whose `summary`
   has the icon, each "Save", Cancel, a heading that says the `h1` again, a
   link inside a sentence, an option of a `select`, the head of a column,
-  the name of a record (but in the list of who lives in a place, where a
-  paw and two paws tell a resident from a group), a chart, a photo, the kinds of an arrival and of a
-  departure.
+  the sex of a resident, the name of a record (but in the list of who
+  lives in a place, where a paw and two paws tell a resident from a
+  group), a chart, a photo, the kinds of an arrival and of a departure.
 - **An icon is never alone.** It is `aria-hidden`, and words beside it
   say what it means. No control shows an icon alone, but the close button
   of a notice, which has its `aria-label`.

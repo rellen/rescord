@@ -38,7 +38,8 @@ config :rescord, RescordWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "dNDjC3Dii9wKVpGrelfFCHjXXpGaxcWVazbkIrPJyoNZXkzJ5KeK14M830CmSkpD",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:rescord, ~w(--sourcemap=inline --watch)]}
+    esbuild: {Esbuild, :install_and_run, [:rescord, ~w(--sourcemap=inline --watch)]},
+    esbuild_worker: {Esbuild, :install_and_run, [:rescord_worker, ~w(--sourcemap=inline --watch)]}
   ]
 
 # ## SSL Support

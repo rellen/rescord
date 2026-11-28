@@ -19,6 +19,7 @@ defmodule Rescord.Transfers.CopyFilesTest do
   import Rescord.StorageFixtures
 
   require Ash.Query
+  require Ecto.Query
 
   alias Rescord.{Photos, Storage, Transfers}
   alias Rescord.Storage.Disk
@@ -273,6 +274,41 @@ defmodule Rescord.Transfers.CopyFilesTest do
 
       assert {:ok, %{state: :withdrawn}} =
                Transfers.withdraw_transfer(reload(transfer), actor: context.wattle_admin)
+    end
+  end
+
+  describe "a transfer whose job is gone" do
+    test "is failed by the check of each hour, and goes again with Send again", context do
+      gone = send!(context)
+
+      # The server stopped during the last try, and the lifeline discarded
+      # the job.
+      {1, _} =
+        Ecto.Query.from(job in "oban_jobs",
+          where: job.queue == "transfers" and job.state == "available"
+        )
+        |> Rescord.Repo.update_all(set: [state: "discarded"])
+
+      waiting = send!(context)
+
+      assert {:ok, 1} = Transfers.fail_stopped_copies()
+
+      failed = reload(gone)
+      assert failed.state == :failed
+      assert failed.failure == :interrupted
+      assert reload(waiting).state == :sending
+
+      # The check of the next hour finds nothing more.
+      assert :ok = Rescord.Transfers.Workers.FailStoppedCopies.perform(%Oban.Job{})
+      assert reload(waiting).state == :sending
+
+      assert {:ok, %{state: :sending}} =
+               Transfers.send_transfer_again(failed, actor: context.wattle_admin)
+
+      assert {:ok, 0} = Transfers.fail_stopped_copies()
+      assert %{success: 2} = drain()
+      assert reload(gone).state == :sent
+      assert reload(waiting).state == :sent
     end
   end
 

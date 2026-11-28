@@ -16,6 +16,8 @@ defmodule RescordWeb.UsageWords do
     photos: "Photos",
     tasks: "Tasks",
     routines: "Routines",
+    comments: "Comments",
+    notifications: "Notifications",
     calendar: "The calendar",
     inventory: "The inventory",
     expenses: "Expenses",

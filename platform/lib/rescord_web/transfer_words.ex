@@ -50,7 +50,12 @@ defmodule RescordWeb.TransferWords do
   def failure(:file_missing),
     do:
       "A photo or a file of the resident is no longer in the store of this refuge. " <>
-        "Withdraw the transfer, and send the resident again."
+        "Send it again when the file is back, or withdraw it and send the resident again."
+
+  def failure(:interrupted),
+    do:
+      "The copy of the files stopped when the server stopped, and did not start again. " <>
+        "Send it again, or withdraw it."
 
   def failure(:store_refused),
     do:

@@ -33,6 +33,7 @@ defmodule RescordWeb.MembersLive do
      |> assign(roles: for(r <- roles, givable?(role, r), do: {to_string(r.name), r.id}))
      |> assign(all_roles: for(r <- roles, do: {to_string(r.name), r.id}))
      |> assign(member_role_id: Enum.find_value(roles, &(&1.key == :member && &1.id)))
+     |> assign_former()
      |> assign_invite_form()}
   end
 
@@ -48,6 +49,8 @@ defmodule RescordWeb.MembersLive do
         to_form(%{"email" => "", "role_id" => socket.assigns.member_role_id}, as: :invite)
     )
   end
+
+  defp assign_former(socket), do: assign(socket, former: Accounts.former_members(options(socket)))
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
@@ -72,6 +75,7 @@ defmodule RescordWeb.MembersLive do
          socket
          |> assign(problems: [])
          |> assign_invite_form()
+         |> assign_former()
          |> put_flash(:info, "An invitation is on its way to #{address}.")
          |> Cinder.Refresh.refresh_table("members")}
 
@@ -93,7 +97,21 @@ defmodule RescordWeb.MembersLive do
   end
 
   def handle_event("remove", %{"id" => id}, socket) when is_binary(id) do
-    change(socket, id, &Accounts.remove_member/2)
+    {:noreply, socket} = change(socket, id, &Accounts.remove_member/2)
+    {:noreply, assign_former(socket)}
+  end
+
+  # A former member comes back with the role of a member, and their records
+  # are theirs again (ADR 0105).
+  def handle_event("invite_again", %{"id" => id}, socket) when is_binary(id) do
+    case Enum.find(socket.assigns.former, &(&1.id == id)) do
+      nil ->
+        {:noreply, socket}
+
+      member ->
+        address = to_string(member.email)
+        handle_event("invite", %{"invite" => %{"email" => address}}, socket)
+    end
   end
 
   # Ignore an event that this page does not know.
@@ -127,6 +145,7 @@ defmodule RescordWeb.MembersLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:members}
     >
       <.header icon={Icons.section(:members)}>
@@ -151,6 +170,8 @@ defmodule RescordWeb.MembersLive do
       />
 
       <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />
+
+      <.former_members former={@former} organisation={@organisation} can_invite?={@can_invite?} />
     </Layouts.app>
     """
   end

@@ -171,7 +171,14 @@ present. For a temporal collection, the page must hold the instant of
 its last read in an assign, give it to the query as `as_of`, and set it
 again in its function: Cinder reads again by itself when the query
 changes. The residents, the inventory and the history of an item are
-such collections. None of them listens yet.
+such collections. The inventory and the page of an item listen this way
+(28 November 2026): each holds `as_of` in an assign, and its function of
+the change sets it to now. A query that Ash builds with no `as_of` takes
+the instant of the build, so a refresh of the same query reads the past,
+and two queries of one instant are not equal: a new instant is a new
+query, and Cinder reads it again with its own state of loading, not
+silently. The filter on the state of the stock reads the stock as of the
+instant of the query.
 
 ### With signals
 
@@ -205,6 +212,8 @@ the domains that `parts/2` reads.
 | Transfers | Transfers | The other refuge writes, and nobody of this refuge does. |
 | Partner refuges | Transfers | The same. |
 | Expenses | Expenses | A person waits for a decision of another. It is also the first collection of Cinder that listens. |
+| The inventory | Inventory | Members record the use of the supplies, and the state says what to order. The first temporal collection that listens (see "With Cinder"). Added 28 November 2026. |
+| An item | Inventory, locations | The level, the lots and the history change with each delivery and use of another member. The forms stay as they are. An item that another person removes takes the page back to the inventory. Added 28 November 2026. |
 
 ## The pages that should listen next
 
@@ -216,7 +225,6 @@ to Cinder), not for a decision.
 | --- | --- |
 | An expense | The decision, the receipts and the history. |
 | The journal of a resident, the conditions | After the journal is a collection of Cinder (M2 of ADR 0079). The page has several forms: read the entries, leave the forms. |
-| The inventory, an item | The items and the history of an item are collections of Cinder of temporal resources (ADR 0088, ADR 0084): see "With Cinder" for what they need first. The page of an item has several forms. |
 | The residents, a resident, the housing, a group | The list of the residents is a collection of Cinder of a temporal resource too: see "With Cinder". |
 | The photos of a resident | A photo that another person adds. Low value. |
 | The members and the roles | A page holds the role of its person from the mount. The policies still decide each action, so this is a button that is there and refuses, and not a hole. A page could read the role again when `Rescord.Accounts` changes. |

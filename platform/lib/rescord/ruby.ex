@@ -72,7 +72,7 @@ defmodule Rescord.Ruby do
 
   alias Rescord.Accounts.Checks.Granted
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Conversation, Events, Message, Provider, Settings, Usage}
+  alias Rescord.Ruby.{Conversation, Events, Message, Provider, Settings, Steps, Usage}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -282,6 +282,15 @@ defmodule Rescord.Ruby do
   @spec unsubscribe(String.t()) :: :ok
   def unsubscribe(conversation_id) when is_binary(conversation_id),
     do: Events.leave(conversation_id)
+
+  @doc """
+  The references of the records that the tools of these replies returned,
+  such as `resident:<uuid>`: the records of the conversation that a link
+  of Ruby may name (`Rescord.Ruby.Steps`).
+  """
+  @spec refs([%{steps: [map] | nil}]) :: MapSet.t(String.t())
+  def refs(messages) when is_list(messages),
+    do: messages |> Enum.flat_map(&Steps.refs(&1.steps)) |> MapSet.new()
 
   @doc "The number of organisations that have Ruby on with this provider, for the page of a root user."
   @spec organisations_with(Provider.t()) :: non_neg_integer

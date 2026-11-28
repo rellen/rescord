@@ -64,10 +64,15 @@ defmodule RescordWeb.RubyChatComponents do
 
   @doc """
   One message of the conversation, as an `<article>` with a heading: what
-  the member said, as plain text, or a reply of Ruby, as Markdown.
+  the member said, as plain text, or a reply of Ruby, as Markdown, with
+  the records that it links to and the steps that it took.
   """
   attr :message, :map, required: true
   attr :organisation, :map, required: true
+
+  attr :known, :any,
+    default: [],
+    doc: "the references that a tool returned in this conversation"
 
   def message(%{message: %{source: :user}} = assigns) do
     ~H"""
@@ -89,15 +94,38 @@ defmodule RescordWeb.RubyChatComponents do
         <.at time={@message.inserted_at} organisation={@organisation} />
       </header>
 
-      <.prose text={@message.text} />
+      <.prose text={@message.text} organisation={@organisation} known={@known} />
 
       <p :if={@message.state == :stopped}>
         <small>You stopped this answer. Ruby recorded nothing.</small>
       </p>
       <p :if={@message.state == :failed} role="alert">{RubyWords.problem(@message.reason)}</p>
+
+      <.records
+        :if={@message.state == :complete}
+        id={"records-#{@message.id}"}
+        records={records(@message, @organisation, @known)}
+        organisation={@organisation}
+      />
+      <.steps_done id={"steps-#{@message.id}"} steps={@message.steps || []} />
     </article>
     """
   end
+
+  # The records that a tool of this reply returned and that a link of its
+  # words goes to, as the page shows the words.
+  defp records(%{text: text, steps: steps}, organisation, known) when is_binary(text) do
+    linked = RubyMarkdown.paths(text, organisation: organisation, known: known)
+
+    for %{"refs" => refs} <- steps || [],
+        %{"ref" => ref} = record <- refs,
+        path = RubyMarkdown.path(ref, organisation),
+        MapSet.member?(linked, path),
+        uniq: true,
+        do: Map.put(record, "path", path)
+  end
+
+  defp records(_message, _organisation, _known), do: []
 
   attr :time, DateTime, required: true
   attr :organisation, :map, required: true
@@ -110,9 +138,19 @@ defmodule RescordWeb.RubyChatComponents do
 
   @doc "Words of Ruby that are whole: Markdown, as HTML that `RubyMarkdown` made safe."
   attr :text, :string, required: true
+  attr :organisation, :map, required: true
+  attr :known, :any, default: []
 
   def prose(assigns) do
-    assigns = assign(assigns, :blocks, RubyMarkdown.blocks(assigns.text))
+    assigns =
+      assign(
+        assigns,
+        :blocks,
+        RubyMarkdown.blocks(assigns.text,
+          organisation: assigns.organisation,
+          known: assigns.known
+        )
+      )
 
     ~H"""
     <div :if={@blocks != []} data-prose>
@@ -123,11 +161,85 @@ defmodule RescordWeb.RubyChatComponents do
   end
 
   @doc """
-  The answer that is on its way: "is working" until the first words, and
-  then the words as they arrive, one block of Markdown each, with a key,
-  so that LiveView sends only the block that changed.
+  The records that an answer comes from, each a card that goes to its
+  page: six, and the others in a `<details>`.
   """
-  attr :answer, :map, required: true, doc: "with `blocks`, the safe HTML of the words so far"
+  attr :id, :string, required: true
+  attr :records, :list, required: true, doc: "each with `ref`, `label`, `path` and maybe `detail`"
+  attr :organisation, :map, required: true
+
+  def records(assigns) do
+    {shown, more} = Enum.split(assigns.records, 6)
+    assigns = assign(assigns, shown: shown, more: more)
+
+    ~H"""
+    <footer :if={@records != []}>
+      <h3>From the records</h3>
+      <ul data-links>
+        <li :for={record <- @shown}><.record record={record} /></li>
+      </ul>
+      <details :if={@more != []} id={"#{@id}-more"}>
+        <summary>and {length(@more)} more</summary>
+        <ul data-links>
+          <li :for={record <- @more}><.record record={record} /></li>
+        </ul>
+      </details>
+    </footer>
+    """
+  end
+
+  attr :record, :map, required: true
+
+  defp record(assigns) do
+    ~H"""
+    <.link navigate={@record["path"]}>
+      <span :if={String.starts_with?(@record["ref"], "resident:")} data-portrait>
+        <span>{String.first(@record["label"])}</span>
+      </span>
+      <span>{@record["label"]} <small :if={@record["detail"]}>{@record["detail"]}</small></span>
+    </.link>
+    """
+  end
+
+  @doc "The steps of a reply, closed in a `<details>`: \"What Ruby read: 2 steps\"."
+  attr :id, :string, required: true
+  attr :steps, :list, required: true
+
+  def steps_done(assigns) do
+    ~H"""
+    <details :if={@steps != []} id={@id}>
+      <summary>{RubyWords.steps_summary(@steps)}</summary>
+      <.steps steps={@steps} />
+    </details>
+    """
+  end
+
+  attr :steps, :list, required: true
+  attr :rest, :global
+
+  defp steps(assigns) do
+    ~H"""
+    <ul data-steps {@rest}>
+      <li :for={step <- @steps} :key={step["call_id"]} data-step={step["state"]}>
+        <.icon :if={step["state"] == "running"} name="arrow-path" spin />
+        <.icon :if={step["state"] == "done"} name="check" />
+        <.icon :if={step["state"] == "failed"} name="exclamation-triangle" />
+        <.icon :if={step["state"] == "stopped"} name="stop" />
+        {RubyWords.step(step)}
+        <small :if={RubyWords.outcome(step)}>{RubyWords.outcome(step)}</small>
+      </li>
+    </ul>
+    """
+  end
+
+  @doc """
+  The answer that is on its way: its steps while Ruby reads, and then the
+  words as they arrive, one block of Markdown each, with a key, so that
+  LiveView sends only the block that changed; the steps fold then.
+  """
+  attr :answer, :map,
+    required: true,
+    doc: "with `id`, `steps` and `blocks`, the safe HTML of the words so far"
 
   def answer(assigns) do
     ~H"""
@@ -138,12 +250,24 @@ defmodule RescordWeb.RubyChatComponents do
         <small :if={@answer.blocks != []}>is writing</small>
       </header>
 
+      <.steps
+        :if={@answer.blocks == [] and @answer.steps != []}
+        steps={@answer.steps}
+        aria-label="What Ruby does"
+      />
+
       <div :if={@answer.blocks != []} data-prose aria-busy="true">
         <%!-- The words are HTML that RubyMarkdown made safe. --%>
         <div :for={{html, index} <- Enum.with_index(@answer.blocks)} :key={index} data-block>
           {Phoenix.HTML.raw(html)}
         </div>
       </div>
+
+      <.steps_done
+        :if={@answer.blocks != []}
+        id={"steps-#{@answer.id || "answer"}"}
+        steps={@answer.steps}
+      />
     </article>
     """
   end

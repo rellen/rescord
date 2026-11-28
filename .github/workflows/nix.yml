@@ -6,13 +6,20 @@
 #
 # The toolchain of the package is newer than the binary cache of nixpkgs has
 # (ADR 0053): with no cache of its own, each run built Erlang, Elixir and
-# rebar3, 13 of its 18 minutes. It still does: the Magic Nix Cache, which
-# keeps each path in the cache of GitHub Actions, hit the rate limit of that
-# cache and starved the cache of mix of the other jobs (ADR 0103).
+# rebar3, 13 of its 18 minutes. The public Cachix cache `rescord` keeps what
+# a run on main builds, and each run takes it from there (ADR 0103). A run
+# of a pull request or of another branch only reads the cache. The Magic Nix
+# Cache, which keeps each path in the cache of GitHub Actions, hit the rate
+# limit of that cache and starved the cache of mix of the other jobs.
 name: Nix
 
 on:
   workflow_call:
+    secrets:
+      # A token of the cache `rescord` that may write. With none, as in a
+      # pull request from a fork, the job only reads the cache.
+      CACHIX_AUTH_TOKEN:
+        required: false
   workflow_dispatch:
 
 permissions:
@@ -38,6 +45,17 @@ jobs:
         with:
           extra_nix_config: |
             system-features = nixos-test benchmark big-parallel kvm
+
+      # Only a push to main and a run from the Actions page on main write to
+      # the cache. In a workflow that CI calls, the ref and the event are
+      # those of CI. The source, the package of Rescord itself and the
+      # NixOS test change with each commit, so they are not kept.
+      - uses: cachix/cachix-action@v17
+        with:
+          name: rescord
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: ${{ github.ref != 'refs/heads/main' || !contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name) }}
+          pushFilter: "(-source$|-rescord-[0-9][^/]*$|vm-test-run-|nixos-test-driver|-nixos-system-)"
 
       - name: Check the flake
         run: nix flake check -L

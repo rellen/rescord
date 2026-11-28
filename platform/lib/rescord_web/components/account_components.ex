@@ -64,6 +64,7 @@ defmodule RescordWeb.AccountComponents do
           :if={Accounts.role_can?(@role, :remove, member, @organisation)}
           phx-click="remove"
           phx-value-id={member.id}
+          data-confirm={"Remove #{member.email} from #{@organisation.name}? Their records stay theirs, marked as a former member. The tasks that are due for them alone become for anybody, and their calendar feeds stop."}
           aria-label={"Remove #{member.email} from #{@organisation.name}"}
         >
           <.icon name="user-minus" /> Remove
@@ -76,6 +77,39 @@ defmodule RescordWeb.AccountComponents do
   # The search of the members table. Cinder cannot search the email address
   # itself, which Elixir calculates, so the domain narrows the query.
   defp search_members(query, _columns, text), do: Accounts.members_with_email(query, text)
+
+  @doc """
+  The members who were removed from the organisation and are not members
+  again (ADR 0105). Their records stay theirs, marked as a former member.
+  """
+  attr :former, :list, required: true, doc: "each former member, with `email`"
+  attr :organisation, :any, required: true
+  attr :can_invite?, :boolean, required: true
+
+  def former_members(assigns) do
+    ~H"""
+    <section :if={@former != []} aria-labelledby="former-heading">
+      <h2 id="former-heading"><.icon name="user-minus" /> Former members</h2>
+      <p>
+        These people left {@organisation.name}. What they recorded stays theirs, marked as a former member.
+      </p>
+      <ul id="former-members">
+        <li :for={member <- @former} id={"former-#{member.id}"}>
+          <span>{member.email}</span>
+          <small>left on {ResidentWords.date(Accounts.local_date(@organisation, member.archived_at))}</small>
+          <.button
+            :if={@can_invite?}
+            phx-click="invite_again"
+            phx-value-id={member.id}
+            aria-label={"Invite #{member.email} to #{@organisation.name} again"}
+          >
+            <.icon name="user-plus" /> Invite again
+          </.button>
+        </li>
+      </ul>
+    </section>
+    """
+  end
 
   @doc "The form that invites a person to an organisation, with a role that the person can give."
   attr :invite_form, :any, required: true

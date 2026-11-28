@@ -735,6 +735,66 @@ history of Rescord.
 - A backup of the database holds the key in its encrypted form. Without
   `RESCORD_KEY_SECRET` nobody opens it.
 
+## Notifications on devices and on ntfy
+
+A member gets a notification when somebody tells them about a comment, or
+comments on a record that they follow (ADR 0106). Each one is on the page
+of notifications of the organisation, and the bell in the site bar counts
+them. That needs nothing from you.
+
+A notification can also reach a phone or a computer, through the push
+service of its browser (Web Push), and a topic of ntfy. Both are off
+until a root user turns them on, on the page `/root/push`. **None of it is
+in the environment.**
+
+**What leaves the server** is the name of the organisation, one sentence
+("Somebody told you about a comment.") and the address of the page of
+notifications. It names no resident, no person and no word of a comment.
+
+### Web Push
+
+1. Open `/root/push` and press "Make the keys". The private key is
+   encrypted in the database with `RESCORD_KEY_SECRET`, and no page shows
+   it.
+2. Give a contact: an address that starts with `mailto:` or `https://`.
+   The push services of Apple, Google, Mozilla and Microsoft can write to
+   it about the notifications of your server.
+3. Tick "Send notifications to devices" and save.
+
+Each person then turns notifications on for each of their devices, on
+the page of notifications. Rescord sends only to the push services of the
+browsers, over HTTPS: your server needs to reach `fcm.googleapis.com`,
+`*.push.services.mozilla.com`, `*.push.apple.com` and
+`*.notify.windows.com` on port 443.
+
+- Web Push needs Rescord served over HTTPS. A browser offers no push to
+  a page over plain HTTP.
+- On an iPhone or an iPad, a person adds Rescord to the Home Screen
+  first (Share, then "Add to Home Screen"), and turns notifications on
+  in the app that opens from there. The page says so.
+- **New keys end each subscription.** Make them only when the private key
+  may have left the server. Each person then turns notifications on
+  again, on each device.
+- A device that the push service no longer knows is removed by itself.
+
+### ntfy
+
+[ntfy](https://ntfy.sh) sends a notification to its app on a phone or a
+computer. Use ntfy.sh, or a server of ntfy of your own.
+
+1. On `/root/push`, give the address of the server, which starts with
+   `https://`, tick "Send notifications to ntfy", and save.
+2. If your server of ntfy lets only its users write, make an access token
+   for a user that can write to all topics (the names are random), and save it under "The access
+   token of ntfy". It is encrypted in the database, and no page shows it
+   again. ntfy.sh needs none.
+
+Each person who wants it presses "Get notifications on ntfy" on the page
+of notifications, and subscribes to the address that the page shows in
+the ntfy app. The name of the topic is random, and anybody who knows it
+can read the topic: that is why it gets only the sentence. A person can
+renew the name, or stop.
+
 ## Upgrade
 
 1. Make a backup, as "Back up" says, and copy it from the server.

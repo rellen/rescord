@@ -42,6 +42,8 @@ defmodule Rescord.PolicySweepTest do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation, Token, User}
   alias Rescord.Lists
+  alias Rescord.Comments.Follow
+  alias Rescord.Notifications.{Notification, NtfyTopic, Preference, PushSubscription}
   alias Rescord.Ruby.{Conversation, Message}
   alias Rescord.Transfers.{Partnership, RefugeKey, RemotePartner, Transfer}
 
@@ -65,6 +67,11 @@ defmodule Rescord.PolicySweepTest do
     base_list =
       "Each user who is signed in reads the base lists, which all refuges share (ADR 0016)."
 
+    own_device =
+      "A device and a topic of ntfy are of one person, in no refuge (ADR 0106): the read is " <>
+        "filtered to the actor, and the create sets the actor as the person. " <>
+        "Rescord.NotificationsTest holds that a person reads and changes no device of another."
+
     [
       {User, :read, :signed_in, own_record},
       {User, :get_by_subject, :signed_in, own_record},
@@ -72,7 +79,11 @@ defmodule Rescord.PolicySweepTest do
       {User, :roots, :signed_in, own_record},
       {Partnership, :read, :signed_in, own_refuges},
       {Transfer, :read, :signed_in, own_refuges},
-      {RemotePartner, :read, :signed_in, own_refuges}
+      {RemotePartner, :read, :signed_in, own_refuges},
+      {PushSubscription, :read, :signed_in, own_device},
+      {PushSubscription, :subscribe, :signed_in, own_device},
+      {NtfyTopic, :read, :signed_in, own_device},
+      {NtfyTopic, :start, :signed_in, own_device}
     ] ++
       for {key, _name} <- Lists.dimensions() do
         {Lists.base_list(key), :read, :signed_in, base_list}
@@ -87,8 +98,15 @@ defmodule Rescord.PolicySweepTest do
   # The resources with no bypass for a root user (ADR 0069): a conversation
   # with the assistant and its messages. A root user reaches them as a
   # member of the refuge, with the grants of the role, and in no other way.
+  # The comments that a person follows, their notifications and where they
+  # go are of one member too (ADR 0106).
   # The root user of this test is no member of Wattle Creek.
-  @members_alone [Conversation, Message]
+  @members_alone [Conversation, Message, Follow, Notification, Preference]
+
+  # The resources of one person in no refuge (ADR 0106): a root user reaches
+  # their own, as each user does, and no other. The code of Rescord runs
+  # the rest of their actions.
+  @each_person_alone [PushSubscription, NtfyTopic]
 
   # Two reads of the sign-in that return nothing without the token of a
   # link, whoever asks: AshAuthentication builds them so.
@@ -305,6 +323,7 @@ defmodule Rescord.PolicySweepTest do
         for {resource, action} = pair <- actions(),
             not closed_to_all?(resource),
             resource not in @members_alone,
+            resource not in @each_person_alone,
             {resource, action.name} not in @return_nothing,
             not open?(pair, context.root, context),
             do: pair

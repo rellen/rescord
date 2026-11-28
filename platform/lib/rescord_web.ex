@@ -43,6 +43,8 @@ defmodule RescordWeb do
       Rescord.Expenses,
       Rescord.Reports,
       Rescord.Usage,
+      Rescord.Comments,
+      Rescord.Notifications,
       Rescord.Export,
       Rescord.Attention,
       Rescord.Mail
@@ -50,7 +52,8 @@ defmodule RescordWeb do
     exports: [Endpoint, Telemetry, Usage],
     check: [aliases: true, apps: [:ash]]
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths,
+    do: ~w(assets fonts images favicon.ico robots.txt manifest.webmanifest sw.js)
 
   def router do
     quote do

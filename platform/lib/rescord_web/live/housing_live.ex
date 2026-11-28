@@ -81,6 +81,7 @@ defmodule RescordWeb.HousingLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:housing}
     >
       <.header icon={Icons.section(:housing)}>

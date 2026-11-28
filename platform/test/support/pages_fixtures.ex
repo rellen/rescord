@@ -20,7 +20,7 @@ defmodule RescordWeb.PagesFixtures do
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
 
-  alias Rescord.{Accounts, Expenses, Inventory, Journal, Locations, Residents, Tasks}
+  alias Rescord.{Accounts, Comments, Expenses, Inventory, Journal, Locations, Residents, Tasks}
 
   @doc """
   Makes the refuge in the directory `tmp_dir`, with an administrator who
@@ -105,17 +105,18 @@ defmodule RescordWeb.PagesFixtures do
         "#{Date.to_iso8601(Accounts.today(organisation))}T23:30"
       )
 
-    Tasks.plan_task!(
-      %{
-        title: "Give Sir Reginald his evening medication",
-        due_at: due_at,
-        kind_id: lists.task_kind.medicate,
-        resident_ids: [resident.id],
-        assignee_ids: [user.id],
-        note: "With food"
-      },
-      options
-    )
+    task =
+      Tasks.plan_task!(
+        %{
+          title: "Give Sir Reginald his evening medication",
+          due_at: due_at,
+          kind_id: lists.task_kind.medicate,
+          resident_ids: [resident.id],
+          assignee_ids: [user.id],
+          note: "With food"
+        },
+        options
+      )
 
     # An expense that waits, with a photo and a PDF, and one to pay back.
     expense =
@@ -163,21 +164,52 @@ defmodule RescordWeb.PagesFixtures do
     Expenses.approve_expense!(owed, options)
 
     # Ruby is on, and the administrator has a conversation with an answer of
-    # a list and a table, from the scripted model (ADR 0069).
+    # a list and a table, a step and the card of a record that it links to,
+    # from the scripted model (ADR 0069).
     as_user = [actor: user, tenant: organisation]
     Rescord.RubyFixtures.ruby_on!(root, as_user)
     conversation = Rescord.Ruby.start_conversation!(%{}, as_user)
     Rescord.Ruby.say!(conversation.id, "Who is on medication today?", as_user)
 
     Rescord.Ruby.ScriptedModel.script([
+      {:tool, "find_residents", %{}},
       {:text,
        "Two residents are on **medication** today:\n\n" <>
-         "- Sir Reginald Fluffington the Third, a sample antibiotic, 0.3 mL by mouth\n" <>
+         "- [Sir Reginald Fluffington the Third](resident:#{resident.id}), a sample antibiotic, 0.3 mL by mouth\n" <>
          "- Clover, a cream\n\n" <>
          "| Resident | Last weight |\n| --- | --- |\n| Clover | 985 g |\n"}
     ])
 
     Oban.drain_queue(queue: :ruby, with_safety: false)
+    # Comments with each part of their Markdown, a person told, and so a
+    # notification of the administrator (issue 29).
+    {:ok, _} =
+      Comments.write(
+        {:resident, resident.id},
+        %{
+          body:
+            "**Weighed** at 8. She ate *all* of it:\n\n- pellets\n- hay\n\n" <>
+              "The plan is at https://vet.example.org/plans/sir-reginald-fluffington-the-third"
+        },
+        actor: user,
+        tenant: organisation
+      )
+
+    {:ok, _} =
+      Comments.write(
+        {:task, task.id},
+        %{body: "The tablets are in the fridge.", told_ids: [user.id]},
+        actor: root,
+        tenant: organisation
+      )
+
+    {:ok, _} =
+      Comments.write({:expense, expense.id}, %{body: "Approved after the call."},
+        actor: root,
+        tenant: organisation
+      )
+
+    Oban.drain_queue(queue: :default, with_recursion: true, with_safety: false)
 
     home = "/o/#{organisation.short_name}"
 
@@ -197,7 +229,7 @@ defmodule RescordWeb.PagesFixtures do
               reports lists members roles partners transfers settings settings/ruby export ruby
               ruby/#{conversation.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
-              expenses/#{owed.id}),
+              expenses/#{owed.id} tasks/#{task.id} notifications),
             &"#{home}/#{&1}"
           )
     }

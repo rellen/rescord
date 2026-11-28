@@ -4,12 +4,13 @@ defmodule Rescord.Ruby.Events do
   messages on the topic of the conversation, on `Rescord.PubSub`.
 
       {:ruby, :text, reply_id, text}     # the whole text of the reply so far
+      {:ruby, :step, reply_id, step}     # a call of a tool, when it starts and when it ends
       {:ruby, :reply, reply_id, state}   # :streaming, then how it ended
 
-  A message holds the words of the reply and its state, and nothing of a
-  tool result: those hold raw records. The text is the whole text so far,
-  so a page that joins late, or that missed a message, is right at the
-  next one.
+  A message holds the words of the reply, a step or the state, and
+  nothing of a tool result: those hold raw records. The text is the whole
+  text so far, so a page that joins late, or that missed a message, is
+  right at the next one.
 
   Only `Rescord.Ruby.subscribe/2` puts a page on a topic, and it asks
   first whether the conversation is one of the person. The id of a
@@ -26,6 +27,15 @@ defmodule Rescord.Ruby.Events do
   @spec text(map, String.t()) :: :ok
   def text(%{id: id, conversation_id: conversation_id}, text) when is_binary(text),
     do: broadcast(conversation_id, {:ruby, :text, id, text})
+
+  @doc """
+  Tells the pages of the conversation a step of a reply, as
+  `Rescord.Ruby.Steps` made it: what code made of a call of a tool, and
+  never its result.
+  """
+  @spec step(map, map) :: :ok
+  def step(%{id: id, conversation_id: conversation_id}, %{"call_id" => _} = step),
+    do: broadcast(conversation_id, {:ruby, :step, id, step})
 
   @doc "Tells the pages of the conversation the state of a reply."
   @spec reply(map, atom) :: :ok

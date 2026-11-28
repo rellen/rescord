@@ -187,7 +187,7 @@ defmodule Rescord.Transfers.Transfer do
 
       argument :failure, :atom,
         allow_nil?: false,
-        constraints: [one_of: [:file_missing, :store_refused]]
+        constraints: [one_of: [:file_missing, :store_refused, :interrupted]]
 
       change filter(expr(state == :sending))
       change set_attribute(:state, :failed)
@@ -322,7 +322,7 @@ defmodule Rescord.Transfers.Transfer do
     attribute :failure, :atom do
       public? true
       writable? false
-      constraints one_of: [:file_missing, :store_refused]
+      constraints one_of: [:file_missing, :store_refused, :interrupted]
       description "Why a transfer that failed did not arrive"
     end
 

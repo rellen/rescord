@@ -53,8 +53,11 @@ cannot take the queue of the emails.
 
 - A source that the store of the sender does not have: the transfer is
   `failed` at once, with the failure `file_missing`. Another try cannot
-  help. The page says so, and offers "Withdraw": the person sends the
-  resident again, with a new copy.
+  help until the file is back. The page says so, and offers "Send again"
+  and "Withdraw", as for each transfer that failed: the person puts the
+  file back and sends it again, or withdraws it and sends the resident
+  again, with a new copy. The maintainer chose both buttons for this
+  case too (28 November 2026).
 - Any other fault of the store: the job writes the count and returns the
   error, so Oban tries again later, from the count. The tenth try that
   fails makes the transfer `failed`, with `store_refused`. Oban waits
@@ -80,9 +83,17 @@ the same keys, and the first one that ends wins.
 The lifeline of Oban stays at 2 hours: a job that a stopped server left
 `executing` runs again after that, from the count. Until then the page
 shows the count where it stopped. When the server stopped during the
-last try, Oban discards that job, and the transfer stays `sending`: the
-person withdraws it and sends the resident again. Both are rare, and the
-maintainer chose to keep 2 hours.
+last try, Oban discards that job. A check each hour
+(`Rescord.Transfers.StoppedCopies`, run by
+`Rescord.Transfers.Workers.FailStoppedCopies`) finds each transfer that
+is `sending` with no job of `:transfer_started` that is available,
+scheduled, executing or retryable, and makes it `failed`, with
+`interrupted`, so the person sees "Send again" and "Withdraw". The send
+and "Send again" write the job in their own transaction, so a transfer
+that is `sending` has a job until that job ends; a job that the
+lifeline has not reached yet is still `executing`, and its transfer
+waits. The maintainer chose this check, and to keep 2 hours (28
+November 2026).
 
 ## Decision 3: states, and who sees what
 
@@ -133,6 +144,7 @@ before going back.
 - A fault of the store in the middle no longer rolls back the send, and
   the next try copies only what is left.
 - The sender reads a copy while it is `sending` or `failed`, with no link
-  to its photos and files, as some of them are not there yet.
+  to its photos and files, as some of them are not there yet. The
+  maintainer confirmed this (28 November 2026).
 - An export to a partner on another server (ADR 0043) is unchanged: it
   reads the files into one archive in its request.

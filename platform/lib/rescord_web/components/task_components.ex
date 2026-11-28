@@ -72,6 +72,11 @@ defmodule RescordWeb.TaskComponents do
   attr :organisation, :map, required: true
   attr :members, :list, required: true
   attr :kinds, :list, required: true, doc: "each kind of task, as the choices of the filter"
+
+  attr :people, :map,
+    default: %{},
+    doc: "the labels of `Rescord.Accounts.labels/1`, for a member who left"
+
   attr :for_person, :any, required: true, doc: "the function of the filter \"Who\""
   attr :user, :map, required: true
   attr :role, :atom, required: true
@@ -115,7 +120,9 @@ defmodule RescordWeb.TaskComponents do
         <:col :let={task} field="title" label="Task" search>
           <%!-- The place of a link from the first page or a calendar:
                `tasks#task-<id>`. Cinder writes the row, with no id. --%>
-          <span id={"task-#{task.id}"}>{task.title}</span>
+          <.link id={"task-#{task.id}"} navigate={~p"/o/#{@organisation.short_name}/tasks/#{task.id}"}>
+            {task.title}
+          </.link>
           <small :if={task.kind}>{task.kind.label}</small>
           <small :if={task.routine_id}>From a routine</small>
           <small :if={task.note}>{task.note}</small>
@@ -128,7 +135,7 @@ defmodule RescordWeb.TaskComponents do
           <span data-label="For">{for_words(task)}</span>
         </:col>
         <:col :let={task} field="assignee_ids" label="Who">
-          <span data-label="Who">{who(task, @members, @user)}</span>
+          <span data-label="Who">{who(task, @members, @user, @people)}</span>
         </:col>
         <:col
           :let={task}
@@ -228,14 +235,20 @@ defmodule RescordWeb.TaskComponents do
     end
   end
 
-  def who(%{assignee_ids: []}, _members, _user), do: "Anybody"
+  def who(task, members, user, people \\ %{})
+  def who(%{assignee_ids: []}, _members, _user, _people), do: "Anybody"
 
   # A root user is not a member, and reads a task that they took as their own.
-  def who(%{assignee_ids: ids}, members, user) do
+  # A former member is in `people` (ADR 0105).
+  def who(%{assignee_ids: ids}, members, user, people) do
     ids
     |> Enum.map(fn id ->
       Enum.find_value(members, fn {email, user_id} -> if user_id == id, do: email end) ||
-        if(id == user.id, do: to_string(user.email), else: "A person who is not a member now")
+        cond do
+          id == user.id -> to_string(user.email)
+          Map.has_key?(people, id) -> people[id]
+          true -> "A person who is not a member now"
+        end
     end)
     |> Enum.join(", ")
   end

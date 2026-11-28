@@ -11,6 +11,7 @@ defmodule RescordWeb.MeasurementPagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles, only: [has?: 2, main: 0, alert: 1]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -489,16 +490,15 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       # A unit that the kind does not accept: the browser offers only grams,
       # so this is a request that a person wrote by hand.
-      html =
-        render_submit(view, "record", %{
-          "measurement" => %{
-            "measure_kind_id" => lists.measure_kind.weight,
-            "value" => "12",
-            "unit_id" => lists.unit.bag
-          }
-        })
+      render_submit(view, "record", %{
+        "measurement" => %{
+          "measure_kind_id" => lists.measure_kind.weight,
+          "value" => "12",
+          "unit_id" => lists.unit.bag
+        }
+      })
 
-      assert html =~ ~s(role="alert")
+      assert has?(view, main() |> alert())
       assert has_element?(view, "#measurement input[name='measurement[value]'][value='12']")
       assert {:ok, []} = Journal.entries(context.biscuit.id, context.options)
 

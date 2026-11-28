@@ -34,6 +34,8 @@ defmodule Rescord.Accounts do
     exports [
       Rescord.Accounts.Grants,
       Rescord.Accounts.Checks.Granted,
+      # Tasks and calendars hear the removal of a member (ADR 0105).
+      Rescord.Accounts.Signals,
       # A change and a validation that each domain uses (ADR 0086).
       Rescord.Accounts.Changes.SetAuthor,
       Rescord.Accounts.Validations.NotAfterToday
@@ -83,6 +85,7 @@ defmodule Rescord.Accounts do
 
     resource Rescord.Accounts.Member do
       define :members, action: :read
+      define :members_with_former, action: :with_former
       define :member, action: :read, get_by: [:id], not_found_error?: false
       define :member_of_user, action: :read, get_by: [:user_id], not_found_error?: false
       define :invite_member, action: :invite_member, args: [:email]
@@ -152,6 +155,38 @@ defmodule Rescord.Accounts do
   end
 
   def user_for_job(_other), do: nil
+
+  @doc """
+  Whether a user is a member of the organisation `tenant` now, for a job
+  that has no person: a notification goes only to a member (issue 29).
+  """
+  @spec member_for_job(Ecto.UUID.t(), Ash.Resource.record() | String.t()) :: boolean
+  def member_for_job(user_id, tenant) when is_binary(user_id) do
+    Member
+    |> Ash.Query.filter(user_id == ^user_id)
+    |> Ash.exists?(tenant: tenant, authorize?: false)
+  end
+
+  def member_for_job(_user_id, _tenant), do: false
+
+  @doc """
+  The email addresses of these users, as `%{user_id => email}`, read with no
+  person. It is for the words of a record that names a person who is no
+  member now, such as the writer of a comment (issue 29): the caller gives
+  only ids that a record of the organisation names, and that the person of
+  the page read. A user who is gone is not in the map.
+  """
+  @spec emails_of_users([Ecto.UUID.t()]) :: %{Ecto.UUID.t() => String.t()}
+  def emails_of_users([]), do: %{}
+
+  def emails_of_users(user_ids) when is_list(user_ids) do
+    # A user with no email (one erased, issue 31) is left out, as one that
+    # is gone: a page then names "a former member".
+    for user <- User |> Ash.Query.filter(id in ^user_ids) |> Ash.read!(authorize?: false),
+        user.email != nil,
+        into: %{},
+        do: {user.id, to_string(user.email)}
+  end
 
   @doc """
   The organisation of a tenant: the organisation itself, or the name of its
@@ -542,6 +577,68 @@ defmodule Rescord.Accounts do
 
     Ash.Query.filter(query, user_id in ^user_ids)
   end
+
+  @doc """
+  The name of each person that the records of an organisation can name, by
+  user id (ADR 0105). `options` hold the tenant and the actor, as for
+  `members/1`. Each value is `%{label: text, state: state}`:
+
+    * `:member` - a member now: the label is the email address;
+    * `:former` - a member who was removed: "email (former member)";
+    * `:operator` - a root user who is not a member: "Rescord operator",
+      and the email address when the actor is that root user.
+
+  A person who is a member again is a member. An id that is in no record of
+  the organisation's members, and is not a root user, is not in the map.
+  """
+  @spec people(keyword) :: %{Ecto.UUID.t() => %{label: String.t(), state: atom}}
+  def people(options) do
+    {:ok, members} = members_with_former([load: [:email]] ++ options)
+
+    {current, former} = Enum.split_with(members, &is_nil(&1.archived_at))
+
+    named =
+      Map.new(former, &{&1.user_id, %{label: "#{&1.email} (former member)", state: :former}})
+      |> Map.merge(Map.new(current, &{&1.user_id, %{label: to_string(&1.email), state: :member}}))
+
+    actor = Keyword.get(options, :actor)
+
+    User
+    |> Ash.Query.for_read(:roots)
+    |> Ash.Query.select([:id, :email])
+    |> Ash.read!(authorize?: false)
+    |> Enum.reject(&Map.has_key?(named, &1.id))
+    |> Map.new(fn root ->
+      label =
+        if is_struct(actor, User) and actor.id == root.id,
+          do: to_string(root.email),
+          else: "Rescord operator"
+
+      {root.id, %{label: label, state: :operator}}
+    end)
+    |> Map.merge(named)
+  end
+
+  @doc """
+  The members who were removed from the organisation and are not members
+  again, the last to leave first (ADR 0105). `options` hold the tenant and
+  the actor. Each has its `email`.
+  """
+  @spec former_members(keyword) :: [Ash.Resource.record()]
+  def former_members(options) do
+    {:ok, members} = members_with_former([load: [:email]] ++ options)
+    {current, former} = Enum.split_with(members, &is_nil(&1.archived_at))
+    here = MapSet.new(current, & &1.user_id)
+
+    former
+    |> Enum.reject(&MapSet.member?(here, &1.user_id))
+    |> Enum.sort_by(& &1.archived_at, {:desc, DateTime})
+    |> Enum.uniq_by(& &1.user_id)
+  end
+
+  @doc "The label of each person of `people/1`, by user id."
+  @spec labels(keyword) :: %{Ecto.UUID.t() => String.t()}
+  def labels(options), do: Map.new(people(options), fn {id, person} -> {id, person.label} end)
 
   @doc "The date in an organisation now."
   @spec today(Ash.Resource.record() | String.t()) :: Date.t()

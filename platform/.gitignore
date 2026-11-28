@@ -39,3 +39,5 @@ npm-debug.log
 # The inflection data that `mix localize.download_locales` fetches beside the
 # locales. Rescord does not use it (ADR 0075).
 /priv/localize/inflection/
+# The service worker, which esbuild writes from assets/js/sw.ts (issue 29).
+/priv/static/sw.js

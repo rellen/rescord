@@ -32,7 +32,6 @@ defmodule RescordWeb.ExpensesLive do
     options = options(socket)
     role = socket.assigns.role
     {:ok, figures} = Expenses.figures(options)
-    {:ok, members} = Accounts.members([load: [:email]] ++ options)
     {:ok, categories} = Lists.values(:expense_category, options)
 
     {:ok,
@@ -43,7 +42,7 @@ defmodule RescordWeb.ExpensesLive do
        can_manage?: Expenses.role_can?(role, :expense, :approve),
        can_record?: Expenses.role_can?(role, :expense, :submit),
        figures: figures,
-       people: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+       people: Accounts.labels(options),
        categories: for(value <- categories, do: {to_string(value.label), value.id}),
        resident: nil,
        limits: %{},
@@ -123,6 +122,7 @@ defmodule RescordWeb.ExpensesLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:expenses}
     >
       <.header icon={Icons.section(:expenses)}>

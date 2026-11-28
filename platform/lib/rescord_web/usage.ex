@@ -41,6 +41,8 @@ defmodule RescordWeb.Usage do
     RescordWeb.TimelineLive => :timeline,
     RescordWeb.PhotosLive => :photos,
     RescordWeb.TasksLive => :tasks,
+    RescordWeb.TaskLive => :tasks,
+    RescordWeb.NotificationsLive => :notifications,
     RescordWeb.RoutinesLive => :routines,
     RescordWeb.CalendarLive => :calendar,
     RescordWeb.InventoryLive => :inventory,
@@ -56,13 +58,15 @@ defmodule RescordWeb.Usage do
     RescordWeb.ToolsLive => :tools,
     RescordWeb.DoseLive => :tools,
     RescordWeb.RubySettingsLive => :assistant,
+    RescordWeb.RubyLive => :assistant,
     RescordWeb.ListsLive => :lists,
     RescordWeb.MembersLive => :members,
     RescordWeb.RolesLive => :members,
     RescordWeb.SettingsLive => :settings,
     RescordWeb.RootLive => :server,
     RescordWeb.RootRubyLive => :server,
-    RescordWeb.RootUsageLive => :server
+    RescordWeb.RootUsageLive => :server,
+    RescordWeb.RootPushLive => :server
   }
 
   # The feature and the item of each file, by the controller and its action.

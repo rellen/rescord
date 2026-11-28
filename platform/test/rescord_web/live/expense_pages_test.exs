@@ -12,6 +12,7 @@ defmodule RescordWeb.ExpensePagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles, only: [has?: 2, main: 0, alert: 1]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -249,7 +250,9 @@ defmodule RescordWeb.ExpensePagesTest do
         )
         |> render_submit()
 
-      assert html =~ "role=\"alert\""
+      # The layout always holds a hidden alert, so a search of the HTML for
+      # the role finds one on each page: look in main, for one that shows.
+      assert has?(view, main() |> alert())
       assert html =~ "Creekside Fuel"
       assert {:ok, []} = Expenses.report(%{}, context.options)
     end

@@ -52,11 +52,15 @@ defmodule RescordWeb.Layouts do
   attr :current_user, :map, default: nil, doc: "the user who is signed in, if any"
   attr :organisation, :map, default: nil, doc: "the organisation of the page, if it has one"
 
+  attr :inbox, :integer,
+    default: nil,
+    doc: "the number of new notifications of the person, from `RescordWeb.Inbox`"
+
   attr :section, :atom,
     default: nil,
     values:
       [nil, :home, :tasks, :residents, :groups, :housing, :inventory, :expenses, :tools, :reports] ++
-        [:lists, :members, :settings, :ruby, :root],
+        [:lists, :members, :settings, :ruby, :notifications, :root],
     doc: "the part of the site that the page is in, which the site nav marks"
 
   attr :rest, :global, doc: "the attributes of `<main>`, such as the `data-` attribute of a page"
@@ -71,6 +75,12 @@ defmodule RescordWeb.Layouts do
       <nav aria-label={gettext("Site")}>
         <a href={~p"/"}><.icon name="mark" /> Rescord</a>
         <a :if={!@current_user} href={~p"/sign-in"}><.icon name="door-in" /> {gettext("Sign in")}</a>
+        <.inbox_link
+          :if={@current_user && @organisation}
+          organisation={@organisation}
+          count={@inbox || 0}
+          current={@section == :notifications}
+        />
         <button :if={@current_user} type="button" popovertarget="site-menu">
           <.icon name="bars" /> {gettext("Menu")}
         </button>
@@ -258,6 +268,30 @@ defmodule RescordWeb.Layouts do
       </nav>
       <p :if={@version}>Rescord {@version}</p>
     </footer>
+    """
+  end
+
+  @doc """
+  The link of the site bar to the notifications of the person (issue 29),
+  with the number of new ones. It is in the bar on each screen, so a phone
+  shows it without the menu; there the words are for a screen reader only.
+  The number is a shape and a number, never a colour alone.
+  """
+  attr :organisation, :map, required: true
+  attr :count, :integer, required: true
+  attr :current, :boolean, default: false
+
+  def inbox_link(assigns) do
+    ~H"""
+    <.link
+      navigate={~p"/o/#{@organisation.short_name}/notifications"}
+      data-inbox
+      title={gettext("Notifications")}
+      aria-current={@current && "true"}
+    >
+      <.icon name="bell" /><span>{gettext("Notifications")}</span>
+      <data :if={@count > 0} value={@count}>{@count}<span>{gettext("new")}</span></data>
+    </.link>
     """
   end
 

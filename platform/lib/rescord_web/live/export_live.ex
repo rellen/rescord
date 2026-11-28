@@ -39,6 +39,7 @@ defmodule RescordWeb.ExportLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:settings}
     >
       <.header icon={Icons.section(:export)}>

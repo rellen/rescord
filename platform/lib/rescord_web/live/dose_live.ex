@@ -374,6 +374,7 @@ defmodule RescordWeb.DoseLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:tools}
     >
       <nav aria-label="Breadcrumb">

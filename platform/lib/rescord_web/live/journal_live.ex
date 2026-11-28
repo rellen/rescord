@@ -40,6 +40,7 @@ defmodule RescordWeb.JournalLive do
 
   alias Rescord.{Accounts, Journal, Lists, Residents, Tasks}
   alias RescordWeb.JournalWords
+  alias RescordWeb.Widgets.Comments
 
   @lists [:condition, :measure_kind, :procedure_kind, :unit]
 
@@ -49,15 +50,13 @@ defmodule RescordWeb.JournalLive do
 
     with true <- is_binary(id),
          {:ok, %{} = resident} <- Residents.resident(id, [load: [:name]] ++ options) do
-      {:ok, members} = Accounts.members([load: [:email]] ++ options)
-
       {:ok,
        socket
        |> assign(
          resident: resident,
          page_title: "Journal of #{name(resident)}",
          problems: [],
-         authors: Map.new(members, &{&1.user_id, to_string(&1.email)}),
+         authors: Accounts.labels(options),
          lists: lists(options),
          measurement_units: RescordWeb.MeasurementUnits.read(options),
          can_write?: Journal.role_can_write?(socket.assigns.role),
@@ -111,7 +110,16 @@ defmodule RescordWeb.JournalLive do
        query: query_of(uri),
        open_form?: params["new"] == "diagnosis"
      )
-     |> assign_form(%{"kind" => kind, "episode_id" => (episode && episode.id) || ""})}
+     |> assign_form(%{"kind" => kind, "episode_id" => (episode && episode.id) || ""})
+     |> comments_of()}
+  end
+
+  # The one entry has its comments (ADR 0106).
+  defp comments_of(socket) do
+    case socket.assigns.entry do
+      %{id: id} -> Comments.assign_widget(socket, :comments, {:journal_entry, id})
+      nil -> socket
+    end
   end
 
   # The one entry that the address names, when it is an entry of this
@@ -444,6 +452,7 @@ defmodule RescordWeb.JournalLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">
@@ -556,10 +565,13 @@ defmodule RescordWeb.JournalLive do
               attachments={entry.attachments}
               conditions={@conditions}
               can_track?={@can_track?}
+              comments_link?={is_nil(@entry)}
             />
           </:item>
         </Cinder.collection>
       </section>
+
+      <Comments.render :if={@entry} state={@comments} record="this entry" />
     </Layouts.app>
     """
   end

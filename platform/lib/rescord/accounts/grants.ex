@@ -74,14 +74,25 @@ defmodule Rescord.Accounts.Grants do
     :calendar,
     :ruby,
     :expenses,
-    :manage_expenses
+    :manage_expenses,
+    :comments,
+    :moderate_comments
   ]
 
   # The powers of a member of ADR 0021, the calendar feed of ADR 0074, and
-  # the power to record an expense (ADR 0082).
-  @member_powers [:residents, :placements, :journal, :tasks, :stock, :calendar, :expenses]
+  # the power to record an expense (ADR 0082), and to comment (issue 29).
+  @member_powers [
+    :residents,
+    :placements,
+    :journal,
+    :tasks,
+    :stock,
+    :calendar,
+    :expenses,
+    :comments
+  ]
 
-  @reads [{Member, :read, :all}, {Role, :read, :all}]
+  @reads [{Member, :read, :all}, {Member, :with_former, :all}, {Role, :read, :all}]
 
   @powers %{
     members: [

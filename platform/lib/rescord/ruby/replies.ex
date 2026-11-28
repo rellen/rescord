@@ -49,10 +49,9 @@ defmodule Rescord.Ruby.Replies do
   defp taken?(%Ash.Error.Changes.InvalidAttribute{field: :response_to_id}), do: true
   defp taken?(_other), do: false
 
-  @doc "Saves the words and the parts of a reply so far."
-  @spec save(Message.t(), String.t(), [map], term) :: :ok | :gone
-  def save(%Message{} = reply, text, parts, tenant),
-    do: write(reply, :grow, %{text: text, parts: parts}, tenant)
+  @doc "Saves the words, the parts and the steps of a reply so far."
+  @spec save(Message.t(), map, term) :: :ok | :gone
+  def save(%Message{} = reply, values, tenant), do: write(reply, :grow, values, tenant)
 
   @doc "Writes the end of a reply."
   @spec close(Message.t(), map, term) :: :ok | :gone

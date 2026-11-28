@@ -81,6 +81,7 @@ defmodule RescordWeb.ResidentsLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:residents}
     >
       <.header icon={Icons.section(:residents)}>
@@ -151,7 +152,6 @@ defmodule RescordWeb.ResidentsLive do
           label="Sex"
           filter={[type: :select, prompt: "Any sex", options: ResidentWords.options(:sex)]}
         >
-          <.icon :if={Icons.sex(resident.sex)} name={Icons.sex(resident.sex)} />
           {ResidentWords.sex(resident.sex)}
         </:col>
         <:col

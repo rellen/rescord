@@ -42,12 +42,14 @@ import {listen as listenForNewPages, restore as restoreFocus, watch as watchFocu
 import {listen as listenForCopies} from "./copy"
 // The form of the message to Ruby: Enter sends, and a send goes to the newest message (ADR 0069).
 import {listen as listenToRuby} from "./ruby"
+// The notifications of this device with Web Push (issue 29).
+import {Push} from "./push"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...cinderHooks},
+  hooks: {...colocatedHooks, ...cinderHooks, Push},
   // LiveView patches a table from markup that has none of our attributes.
   dom: {
     onBeforeElUpdated: (from, to) => {

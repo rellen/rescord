@@ -36,6 +36,7 @@ defmodule RescordWeb.TransfersLive do
 
   alias Rescord.{Accounts, Residents, Transfers}
   alias RescordWeb.TransferWords
+  alias RescordWeb.Widgets.Comments
 
   @impl true
   def mount(_params, _session, socket) do
@@ -77,10 +78,12 @@ defmodule RescordWeb.TransfersLive do
              actor: socket.assigns.current_user
            ) do
       {:noreply,
-       assign(socket,
+       socket
+       |> assign(
          page_title: "Transfer of #{transfer.resident_name || "a resident"}",
          transfer: transfer
-       )}
+       )
+       |> Comments.assign_widget(:comments, {:transfer, transfer.id})}
     else
       _no_transfer -> {:noreply, push_navigate(socket, to: path(socket))}
     end
@@ -250,18 +253,29 @@ defmodule RescordWeb.TransfersLive do
   @impl true
   def render(%{transfer: %{}} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      inbox={@inbox}
+    >
       <nav aria-label="Breadcrumb">
         <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</.link>
       </nav>
       <.copy transfer={@transfer} organisation={@organisation} />
+      <Comments.render state={@comments} record="this transfer" partner? />
     </Layouts.app>
     """
   end
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      inbox={@inbox}
+    >
       <.header icon={Icons.section(:transfers)}>
         Transfers
         <:subtitle>The residents that {@organisation.name} sent and received</:subtitle>

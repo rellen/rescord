@@ -162,6 +162,7 @@ defmodule RescordWeb.LocationLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:housing}
     >
       <nav aria-label="Breadcrumb">

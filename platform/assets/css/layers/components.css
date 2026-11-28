@@ -2165,6 +2165,24 @@ li[data-step="failed"] > svg {
   color: var(--alert);
 }
 
+/* Once Ruby writes, the steps fold into one line that opens: "What Ruby
+   read: 2 steps". */
+section[data-log] article > details > summary {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+section[data-log] article > details > ul[data-steps] {
+  margin-block-start: 0.5rem;
+}
+
+/* The kind of a record is below its name. */
+section[data-log] ul[data-links] a small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* The foot of an answer: the records that it comes from, each a card that
    goes to the page of the record. */
 section[data-log] article > footer {
@@ -2252,6 +2270,34 @@ section[data-log] [data-rate] {
 }
 
 section[data-log] [data-rate] > span {
+/* -------------------------------------------------------------- comments */
+
+/* The comments of a record (issue 29): a list of cards, oldest first. */
+ol[data-comments] {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+ol[data-comments] > li > article {
+  margin: 0;
+}
+
+ol[data-comments] > li > article > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+  align-items: baseline;
+  margin-block-end: 0.375rem;
+}
+
+ol[data-comments] > li > article > header > strong {
+  overflow-wrap: anywhere;
+}
+
+ol[data-comments] > li > article > header > :is(time, small) {
   font-size: 0.875rem;
   color: var(--muted);
 }
@@ -2686,4 +2732,155 @@ aside[data-ruby-panel] {
    message in the list when it is whole. */
 section[data-log] > article[data-from] {
   margin-block-end: 1.5rem;
+ol[data-comments] > li > article > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-block-start: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+ol[data-comments] > li > article > footer > p {
+  margin: 0;
+  margin-inline-end: auto;
+  overflow-wrap: anywhere;
+}
+
+/* The comment of the reader has a line of the lead colour at its start. */
+ol[data-comments] > li[data-own] > article {
+  border-inline-start: 4px solid var(--accent);
+}
+
+/* The words of a comment, from its Markdown (`RescordWeb.Markdown`): a long
+   word or address breaks, and the first and last block touch the edges. */
+div[data-markdown] {
+  overflow-wrap: anywhere;
+}
+
+div[data-markdown] > :is(p, ul, ol) {
+  margin-block: 0 0.5rem;
+}
+
+div[data-markdown] > :last-child {
+  margin-block-end: 0;
+}
+
+div[data-markdown] :is(ul, ol) {
+  padding-inline-start: 1.5rem;
+}
+
+/* The boxes of "Tell someone" are a column of addresses. */
+form[data-comment] fieldset label {
+  overflow-wrap: anywhere;
+}
+
+form[data-comment] > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* The line about following: words, and the button that changes it. */
+p[data-follow] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------- notifications */
+
+/* The notifications of a person, the newest first. */
+ul[data-notifications] {
+  display: grid;
+  gap: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+ul[data-notifications] > li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+}
+
+ul[data-notifications] > li + li {
+  border-block-start: 1px solid var(--border);
+}
+
+ul[data-notifications] > li > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+ul[data-notifications] > li > p:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+}
+
+ul[data-notifications] > li > blockquote {
+  margin: 0;
+  padding-inline-start: 0.75rem;
+  color: var(--muted);
+  border-inline-start: 3px solid var(--border);
+}
+
+ul[data-notifications] > li > small {
+  color: var(--muted);
+}
+
+/* A new one is bold, beside its state "New". */
+ul[data-notifications] > li[data-new] > p:first-child a {
+  font-weight: 700;
+}
+
+/*
+ * The part "This device": the hook `Push` sets `data-push` to what the
+ * browser can do, and only the part of that state shows. Before the script
+ * runs, none shows.
+ */
+article[data-device] > [data-when] {
+  display: none;
+}
+
+article[data-device][data-push="ask"] > [data-when="ask"],
+article[data-device][data-push="on"] > [data-when="on"],
+article[data-device][data-push="home-screen"] > [data-when="home-screen"],
+article[data-device][data-push="denied"] > [data-when="denied"],
+article[data-device][data-push="none"] > [data-when="none"] {
+  display: block;
+}
+
+article[data-device] [data-when] > p:last-child {
+  margin-block-end: 0;
+}
+
+article[data-device] ol {
+  margin-block: 0.5rem;
+  padding-inline-start: 1.5rem;
+}
+
+/* The devices of a person: a row each, with its button. */
+ul[data-devices] > li > span {
+  display: grid;
+  margin-inline-end: auto;
+}
+
+ul[data-devices] > li > span > small {
+  color: var(--muted);
+}
+
+/* The address of a topic of ntfy breaks anywhere: it is one long word. */
+output[data-address] {
+  overflow-wrap: anywhere;
 }

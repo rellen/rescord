@@ -7,6 +7,9 @@ config :rescord, Oban, testing: :manual
 config :rescord, Rescord.Usage.Counter, auto?: false
 # A send of the usage counts goes to a stub of `Req.Test`.
 config :rescord, Rescord.Usage.Sender, req_options: [plug: {Req.Test, Rescord.Usage.Sender}]
+# A message of a channel of the notifications goes to a stub too (ADR 0106).
+config :rescord, Rescord.Notifications.Channel,
+  req_options: [plug: {Req.Test, Rescord.Notifications.Channel}]
 
 config :ash,
   policies: [show_policy_breakdowns?: true],

@@ -794,6 +794,25 @@ hand (ADR 0073). Read it before you write a migration. In short:
 - **Tests.** A test that needs Postgres uses `Rescord.DataCase` or
   `RescordWeb.ConnCase`, which carry the `:postgres` tag. Any other test uses
   `ExUnit.Case` (ADR 0006).
+  - **A page test finds what a person finds** (ADR 0107). It uses
+    PhoenixTest with `use RescordWeb.Roles` (`browser: true` in a browser
+    test), and finds by landmark, role and name:
+    `click(region("Lots") |> button("Take off B-1"))`,
+    `fill_in("Quantity", ...)`, `assert_has(main() |> heading(level: 1),
+    text: "Meadow hay")`. It does not send the event of a button that it
+    could press, match `=~` on the whole page for words that are in a
+    region, find a thing that has a name with `:first-child`,
+    `:nth-child` or `>`, or read words with a script in `evaluate`.
+  - An id, a `data-` attribute or a raw event stays only where it is what
+    the test holds: an id of an address or of `focus.ts`, records that only
+    an id tells apart, the controls that Cinder writes, `data-state` and
+    `data-label`, the state of the connection, and an event that the page
+    does not offer (sent with `unwrap/2`, to test a refusal).
+  - A component test reads its HTML with the queries of
+    `RescordWeb.Roles` (`has?/2`, `text/2`, `names/2`). A response that is
+    no page (ICS, CSV, PDF, JSON) stays on `Phoenix.ConnTest`.
+  - The tests of an area move to this one area at a time (issue 33). A
+    test that you change moves with it.
   - A test that keeps a file tags itself `:tmp_dir` and calls
     `Rescord.StorageFixtures.disk_store!/1`, so each test has a directory of
     its own. No test reaches a real store.
@@ -857,9 +876,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   what an action refused. Draw it in the form that the person sent when
   that form is far down the page, and below the header in each other case.
   In a page test, look for the alert of
-  the page with `has_element?(view, "main p[role=alert]")`: the layout
-  always holds a hidden element with `role="alert"`, so a search of the
-  text for that role finds one on each page.
+  the page with `assert_has(session, main() |> alert())` of
+  `RescordWeb.Roles`: the layout always holds a hidden element with
+  `role="alert"`, so a search of the text for that role finds one on each
+  page.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
@@ -1024,8 +1044,32 @@ hand (ADR 0073). Read it before you write a migration. In short:
     that the day of the page shows. Never act on a task by the id alone.
   - The parameter `day` is of the page. Each other parameter is of Cinder:
     the links to another day give them back, without `page`.
-  - A link from another page to one task is `tasks?day=<date>#task-<id>`.
-    The id is on the title of the task, because Cinder writes the row.
+  - A link from another page to one task in its day is
+    `tasks?day=<date>#task-<id>`. The id is on the title of the task,
+    because Cinder writes the row. The title links to the page of the task,
+    `tasks/<id>` (ADR 0106), which has its comments.
+- **Comments and notifications** (ADR 0106).
+  - A page shows the comments of its record with the live widget
+    `RescordWeb.Widgets.Comments` (`assign_widget/3` in `mount/3`, the
+    component in the render). It takes the subject `{kind, id}` of a record
+    that the page read as the person. A new kind of record is a column of
+    `Rescord.Comments.Subject`, a migration with the check of one column,
+    and a read in `readable?/2`.
+  - The words of a comment go to the page only through
+    `RescordWeb.Markdown.markdown/1`. Never `raw/1` them, and never give
+    the Markdown a node that it does not render itself.
+  - What leaves the server is `Rescord.Notifications.Message`: the
+    organisation, the sentence of the kind, the address of the page of
+    notifications. Never put a record, a person or a word of a comment in
+    a push or a topic of ntfy, and never log a subscription or a topic.
+  - A new channel is a module of `Rescord.Notifications.Channel`, with its
+    settings in `Rescord.Notifications.Settings` (AshCloak for a secret,
+    the page `/root/push`), never in the environment.
+  - A new kind of notification is an atom of `Notification.kind`, its
+    sentence in `Message.sentence/1` and `RescordWeb.CommentWords`, and a
+    row of the preferences.
+  - The service worker is `assets/js/sw.ts`, built to `priv/static/sw.js`
+    (not in git). It has no handler of `fetch`; add one only with an ADR.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through
@@ -1143,6 +1187,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt, the job that writes a reply, and the evaluation set under `ruby/eval/` (ADR 0069) |
 | `platform/lib/mix/tasks/rescord.ruby.eval.ex` | the task that runs the evaluation set of Ruby against a real model. Only a person starts it |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
+| `platform/lib/rescord/comments.ex`, `comments/` | the comments of a record, the follows, the two powers, and the signal of a new comment (ADR 0106) |
+| `platform/lib/rescord/notifications.ex`, `notifications/` | the notifications, the preferences, the channels (Web Push with its encryption, and ntfy), the subscriptions, the topics and the settings of the server (ADR 0106) |
+| `platform/lib/rescord_web/markdown.ex` | the Markdown subset of a comment, rendered to safe HTML (ADR 0106) |
+| `platform/assets/js/sw.ts`, `platform/assets/js/push.ts`, `platform/priv/static/manifest.webmanifest` | the service worker, the hook that turns notifications on for a device, and the manifest of the installable app (ADR 0106) |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
