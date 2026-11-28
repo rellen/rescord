@@ -1,0 +1,409 @@
+defmodule RescordWeb.Roles do
+  @moduledoc """
+  Finds the parts of a page as a person with a screen reader does: by
+  landmark, heading, role and accessible name, not by DOM id or CSS path.
+
+  A locator says what to find:
+
+      main() |> heading(level: 1)
+      region("Lots") |> button("Take off B-1")
+      navigation("Breadcrumb") |> link("Residents")
+      field("Weight")
+      alert()
+
+  A query reads it from a LiveView, a controller's HTML or a component's
+  HTML:
+
+      assert text(view, main() |> heading(level: 1)) == "Meadow hay"
+      assert has?(view, region("Lots") |> button("Take off B-1"))
+      assert names(view, main() |> heading()) == ["Meadow hay", "Lots"]
+
+  And `locate/2`, `click/2` and `fill/3` hand a locator to `Phoenix.LiveViewTest`:
+
+      click(view, button("Mark the task Feed the hens as done"))
+      view |> fill(region("New lot"), %{"Quantity" => "4"}) |> render_submit()
+
+  The accessible name is a short form of the W3C computation: the text of
+  `aria-labelledby`, else `aria-label`, else the `<label>` of a field, else
+  the `<caption>` of a table or `<legend>` of a fieldset, else (for a role
+  named by its content) the text of the element, leaving out what is
+  `aria-hidden`. Spaces are folded, so an icon before a word does not
+  count. A name is matched whole, or by a regex.
+
+  An element that is `hidden`, or inside one, is not on the page, as in a
+  browser. A closed `<details>` is still read: a LiveView test cannot open
+  one, and its form is there in the HTML.
+  """
+
+  # A test support module may use any boundary, and any test may use it (ADR 0009).
+  use Boundary, top_level?: true, check: [in: false, out: false]
+
+  defstruct role: nil, name: nil, level: nil, scope: []
+
+  @type name :: String.t() | Regex.t() | nil
+  @type t :: %__MODULE__{role: atom, name: name, level: 1..6 | nil, scope: [t]}
+  @type source :: Phoenix.LiveViewTest.View.t() | LazyHTML.t() | String.t()
+
+  # The elements of each role, before the landmark and name tests.
+  @css %{
+    main: "main",
+    # A header or footer inside these is not a landmark (HTML-AAM).
+    banner: "header:not(article *, aside *, main *, nav *, section *)",
+    contentinfo: "footer:not(article *, aside *, main *, nav *, section *)",
+    navigation: "nav, [role=navigation]",
+    region: "section, [role=region]",
+    complementary: "aside",
+    article: "article",
+    heading: "h1, h2, h3, h4, h5, h6",
+    button: "button, [role=button], input[type=submit], input[type=button]",
+    link: "a[href]",
+    field: "input:not([type=hidden]), select, textarea",
+    table: "table",
+    row: "tr",
+    alert: "[role=alert]",
+    status: "[role=status], output"
+  }
+
+  # The roles named by their own words; the rest only by a label.
+  @named_by_content [:button, :link, :heading, :row]
+
+  ## Locators
+
+  @doc "The main landmark."
+  def main(scope \\ nil), do: locate(scope, :main, nil)
+
+  @doc "The banner: the site's header, not a header inside main or an article."
+  def banner(scope \\ nil), do: locate(scope, :banner, nil)
+
+  @doc "The contentinfo: the site's footer."
+  def contentinfo(scope \\ nil), do: locate(scope, :contentinfo, nil)
+
+  @doc "A navigation landmark, by its name."
+  def navigation(scope \\ nil, name), do: locate(scope, :navigation, name)
+
+  @doc "A region: a section with a name, mostly from its heading."
+  def region(scope \\ nil, name), do: locate(scope, :region, name)
+
+  @doc "A complementary landmark (an aside)."
+  def complementary(scope \\ nil, name), do: locate(scope, :complementary, name)
+
+  @doc "An article, by its name."
+  def article(scope \\ nil, name), do: locate(scope, :article, name)
+
+  @doc "A table, by its name."
+  def table(scope \\ nil, name), do: locate(scope, :table, name)
+
+  @doc "A row of a table, by its words: give a regex, such as `row(~r/^Meadow hay/)`."
+  def row(scope \\ nil, name), do: locate(scope, :row, name)
+
+  @doc "A button, by its name."
+  def button(scope \\ nil, name), do: locate(scope, :button, name)
+
+  @doc "A link, by its name."
+  def link(scope \\ nil, name), do: locate(scope, :link, name)
+
+  @doc "A form field, by its label."
+  def field(scope \\ nil, label), do: locate(scope, :field, label)
+
+  @doc "An alert (`role=alert`) that shows, with any words."
+  def alert(scope \\ nil), do: locate(scope, :alert, nil)
+
+  @doc "A status message (`role=status` or `output`) that shows."
+  def status(scope \\ nil), do: locate(scope, :status, nil)
+
+  @doc """
+  A heading. Give its name, its level, both or neither:
+
+      heading("Lots")
+      heading(level: 1)
+      main() |> heading("Lots", level: 2)
+  """
+  def heading(), do: heading(nil, nil, [])
+  def heading(%__MODULE__{} = scope), do: heading(scope, nil, [])
+  def heading(opts) when is_list(opts), do: heading(nil, nil, opts)
+  def heading(name), do: heading(nil, name, [])
+  def heading(%__MODULE__{} = scope, opts) when is_list(opts), do: heading(scope, nil, opts)
+  def heading(%__MODULE__{} = scope, name), do: heading(scope, name, [])
+  def heading(name, opts) when is_list(opts), do: heading(nil, name, opts)
+
+  def heading(scope, name, opts) do
+    %{locate(scope, :heading, name) | level: Keyword.get(opts, :level)}
+  end
+
+  defp locate(nil, role, name), do: %__MODULE__{role: role, name: name}
+
+  defp locate(%__MODULE__{} = scope, role, name),
+    do: %__MODULE__{role: role, name: name, scope: scope.scope ++ [scope]}
+
+  ## Queries
+
+  @doc "Each element that the locator finds."
+  @spec all(source, t) :: [LazyHTML.t()]
+  def all(source, %__MODULE__{} = locator) do
+    root = document(source)
+    Enum.reduce(locator.scope ++ [locator], [root], &find_in(&2, &1, root))
+  end
+
+  @doc "Whether the locator finds any element."
+  @spec has?(source, t) :: boolean
+  def has?(source, locator), do: all(source, locator) != []
+
+  @doc "The one element that the locator finds. Raises on none or more."
+  @spec one(source, t) :: LazyHTML.t()
+  def one(source, locator) do
+    case all(source, locator) do
+      [node] -> node
+      nodes -> raise ArgumentError, "#{describe(locator)} found #{length(nodes)} elements"
+    end
+  end
+
+  @doc "The words of the one element, with spaces folded and icons left out."
+  @spec text(source, t) :: String.t()
+  def text(source, locator), do: source |> one(locator) |> visible_text()
+
+  @doc "The accessible names of each element, in the order of the page."
+  @spec names(source, t) :: [String.t()]
+  def names(source, %__MODULE__{} = locator) do
+    root = document(source)
+    Enum.map(all(root, locator), &accessible_name(&1, locator.role, root))
+  end
+
+  ## Phoenix.LiveViewTest
+
+  @doc """
+  The `Phoenix.LiveViewTest.Element` of the one element that the locator
+  finds, for `render_click/1` and the like.
+  """
+  def locate(view, %__MODULE__{} = locator) do
+    root = document(view)
+    {selector, text} = selector(one(root, locator), locator, root)
+    Phoenix.LiveViewTest.element(view, selector, text)
+  end
+
+  @doc "Presses the one element that the locator finds, as `render_click/1`."
+  def click(view, %__MODULE__{} = locator),
+    do: view |> locate(locator) |> Phoenix.LiveViewTest.render_click()
+
+  @doc """
+  The one form inside `scope`, filled in by the labels of its fields:
+
+      fill(view, region("New lot"), %{"Quantity" => "4", "Where" => "Feed shed"})
+
+  A label becomes the field's `name`, so the data is the nested map that
+  `Phoenix.LiveViewTest.form/3` wants. A label that is not on the form
+  raises: a field without a label fails the test.
+  """
+  def fill(view, %__MODULE__{} = scope, fields) when is_map(fields) do
+    root = document(view)
+    form = one_form!(root, scope)
+
+    selector =
+      case attribute(form, "id") do
+        nil -> raise ArgumentError, "the form of #{describe(scope)} has no id"
+        id -> "#" <> css_escape(id)
+      end
+
+    data =
+      Enum.map_join(fields, "&", fn {label, value} ->
+        node = one(form, field(label))
+
+        URI.encode_www_form(LazyHTML.attribute(node, "name") |> List.first()) <>
+          "=" <> URI.encode_www_form(to_string(value))
+      end)
+      |> Plug.Conn.Query.decode()
+
+    Phoenix.LiveViewTest.form(view, selector, data)
+  end
+
+  defp one_form!(root, scope) do
+    case root |> all(scope) |> Enum.flat_map(&Enum.to_list(LazyHTML.query(&1, "form"))) do
+      [form] -> form
+      forms -> raise ArgumentError, "#{describe(scope)} holds #{length(forms)} forms"
+    end
+  end
+
+  ## Finding
+
+  defp document(%Phoenix.LiveViewTest.View{} = view),
+    do: view |> Phoenix.LiveViewTest.render() |> LazyHTML.from_fragment()
+
+  defp document(%LazyHTML{} = html), do: html
+
+  defp document(html) when is_binary(html) do
+    if html =~ ~r/^\s*<!doctype/i,
+      do: LazyHTML.from_document(html),
+      else: LazyHTML.from_fragment(html)
+  end
+
+  defp find_in(scopes, %__MODULE__{} = locator, root) do
+    Enum.flat_map(scopes, fn scope ->
+      scope
+      |> candidates(locator)
+      |> Enum.filter(&level?(&1, locator.level))
+      |> Enum.filter(&named?(&1, locator, root))
+    end)
+  end
+
+  # What is `hidden`, or inside it, is not on the page, as in a browser.
+  @shown ":not([hidden], [hidden] *, [aria-hidden=true], [aria-hidden=true] *)"
+
+  # `LazyHTML.query/2` finds the node itself too, and the top nodes of a
+  # fragment.
+  defp candidates(scope, %{role: role}) do
+    selector =
+      @css[role]
+      |> String.split(~r/,(?![^(]*\))/)
+      |> Enum.map_join(", ", &(String.trim(&1) <> @shown))
+
+    scope |> LazyHTML.query(selector) |> Enum.to_list()
+  end
+
+  defp level?(_node, nil), do: true
+  defp level?(node, level), do: LazyHTML.tag(node) == ["h#{level}"]
+
+  defp named?(_node, %{name: nil, role: role}, _root) when role != :region, do: true
+
+  defp named?(node, %{name: nil, role: :region}, root),
+    do: accessible_name(node, :region, root) != ""
+
+  defp named?(node, %{name: %Regex{} = name, role: role}, root),
+    do: accessible_name(node, role, root) =~ name
+
+  defp named?(node, %{name: name, role: role}, root),
+    do: accessible_name(node, role, root) == name
+
+  ## Names
+
+  @doc false
+  def accessible_name(node, role, root) do
+    cond do
+      (ids = attribute(node, "aria-labelledby")) != nil ->
+        ids
+        |> String.split()
+        |> Enum.map_join(" ", &(root |> LazyHTML.query_by_id(&1) |> visible_text()))
+        |> fold()
+
+      (label = attribute(node, "aria-label")) != nil ->
+        fold(label)
+
+      role == :field ->
+        field_label(node, root)
+
+      role == :table ->
+        node |> LazyHTML.query("caption") |> visible_text()
+
+      role in @named_by_content ->
+        visible_text(node) |> fallback(attribute(node, "value") || attribute(node, "title"))
+
+      true ->
+        ""
+    end
+  end
+
+  defp fallback("", other), do: fold(other || "")
+  defp fallback(text, _other), do: text
+
+  defp field_label(node, root) do
+    id = attribute(node, "id")
+
+    by_for = if id, do: root |> LazyHTML.query(~s(label[for="#{id}"])) |> visible_text(), else: ""
+
+    if by_for != "" do
+      by_for
+    else
+      html = LazyHTML.to_html(node)
+
+      root
+      |> LazyHTML.query("label")
+      |> Enum.find(fn label ->
+        label
+        |> LazyHTML.query("input, select, textarea")
+        |> Enum.any?(&(LazyHTML.to_html(&1) == html))
+      end)
+      |> case do
+        nil -> ""
+        label -> visible_text(label)
+      end
+    end
+  end
+
+  @doc false
+  def visible_text(%LazyHTML{} = node) do
+    node |> LazyHTML.to_tree() |> tree_text() |> fold()
+  end
+
+  defp tree_text(nodes) when is_list(nodes), do: Enum.map_join(nodes, " ", &tree_text/1)
+  defp tree_text(text) when is_binary(text), do: text
+  defp tree_text({:comment, _}), do: ""
+
+  defp tree_text({_tag, attributes, children}) do
+    if {"aria-hidden", "true"} in attributes or List.keymember?(attributes, "hidden", 0),
+      do: "",
+      else: tree_text(children)
+  end
+
+  defp fold(text), do: text |> String.split() |> Enum.join(" ")
+
+  defp attribute(node, name), do: node |> LazyHTML.attribute(name) |> List.first()
+
+  ## Selectors for Phoenix.LiveViewTest
+
+  # A CSS selector and text filter that find this one node. An id is best; a
+  # name in an attribute is next; else the tag, inside its scope, and the
+  # element's own words. LiveViewTest raises if that is not one element.
+  defp selector(node, locator, root) do
+    tag = node |> LazyHTML.tag() |> List.first()
+
+    cond do
+      id = attribute(node, "id") ->
+        {"##{css_escape(id)}", nil}
+
+      label = attribute(node, "aria-label") ->
+        {scope_css(locator, root) <> ~s(#{tag}[aria-label="#{quote_css(label)}"]), nil}
+
+      ids = attribute(node, "aria-labelledby") ->
+        {scope_css(locator, root) <> ~s(#{tag}[aria-labelledby="#{quote_css(ids)}"]), nil}
+
+      name = attribute(node, "name") ->
+        {scope_css(locator, root) <> ~s(#{tag}[name="#{quote_css(name)}"]), nil}
+
+      true ->
+        words = node |> visible_text() |> String.split() |> Enum.map_join("\\s+", &Regex.escape/1)
+        {scope_css(locator, root) <> tag, Regex.compile!("^\\s*#{words}\\s*$")}
+    end
+  end
+
+  defp quote_css(value), do: String.replace(value, ~S("), ~S(\"))
+
+  defp scope_css(%{scope: []}, _root), do: ""
+
+  defp scope_css(%{scope: scope}, root) do
+    scope
+    |> Enum.with_index(1)
+    |> Enum.map_join(" ", fn {_locator, n} ->
+      chain = Enum.take(scope, n)
+      inner = List.last(chain)
+      node = one(root, %{inner | scope: Enum.drop(chain, -1)})
+
+      case selector(node, %{inner | scope: []}, root) do
+        {css, nil} ->
+          css
+
+        {css, _text} ->
+          raise ArgumentError, "#{describe(inner)} has no selector of its own (#{css})"
+      end
+    end)
+    |> Kernel.<>(" ")
+  end
+
+  defp css_escape(id), do: String.replace(id, ~r/([^\w-])/, "\\\\\\1")
+
+  defp describe(%__MODULE__{} = locator) do
+    (locator.scope ++ [locator])
+    |> Enum.map_join(" > ", fn l ->
+      name = if l.name, do: "(#{inspect(l.name)})", else: ""
+      level = if l.level, do: "[level #{l.level}]", else: ""
+      "#{l.role}#{name}#{level}"
+    end)
+  end
+end

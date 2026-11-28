@@ -12,6 +12,7 @@ defmodule RescordWeb.ExpensePagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -236,21 +237,18 @@ defmodule RescordWeb.ExpensePagesTest do
     test "says what is wrong, and keeps what the person typed", context do
       {view, _html} = open(context.conn, context.path <> "/new")
 
-      html =
-        view
-        |> form("#expense",
-          expense: %{
-            amount: "12,50",
-            incurred_on: Date.to_iso8601(context.today),
-            payee: "Creekside Fuel",
-            description: "Fuel",
-            category_id: context.lists.expense_category.transport
-          }
-        )
-        |> render_submit()
+      view
+      |> fill(main(), %{
+        ~r/^Amount/ => "12,50",
+        "Date of the payment" => Date.to_iso8601(context.today),
+        "Paid to" => "Creekside Fuel",
+        "What it was for" => "Fuel",
+        "Category" => context.lists.expense_category.transport
+      })
+      |> render_submit()
 
-      assert html =~ "role=\"alert\""
-      assert html =~ "Creekside Fuel"
+      assert has?(view, main() |> alert())
+      assert has_element?(view, "#expense input[value='Creekside Fuel']")
       assert {:ok, []} = Expenses.report(%{}, context.options)
     end
 
@@ -376,8 +374,7 @@ defmodule RescordWeb.ExpensePagesTest do
 
       {:ok, _view, html} =
         view
-        |> element("#reopen-details button")
-        |> render_click()
+        |> click(button("Open the decision again"))
         |> follow_redirect(context.admin_conn)
 
       assert html =~ "The expense waits for a decision again."
@@ -443,8 +440,7 @@ defmodule RescordWeb.ExpensePagesTest do
 
       {:ok, view, html} =
         view
-        |> element("#receipt-#{receipt.id} button")
-        |> render_click()
+        |> click(button("Take off #{receipt.name}"))
         |> follow_redirect(context.conn)
 
       assert html =~ "The receipt is taken off."

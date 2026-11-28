@@ -10,6 +10,7 @@ defmodule RescordWeb.InventoryPagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -99,13 +100,11 @@ defmodule RescordWeb.InventoryPagesTest do
 
       {view, _html} = open(context.conn, context.path)
 
-      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
-      assert has_element?(view, hay <> " a", "Meadow hay")
-      assert has_element?(view, hay <> " td", "Food")
-      assert has_element?(view, hay <> " td", "10 bag")
-      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
-      assert has_element?(view, "tbody tr:first-child td", "Aspen bedding")
-      assert has_element?(view, "tbody tr:first-child [data-state=alert]", "Order more")
+      items = region("The items")
+      assert names(view, items |> link(~r/./)) == ["Aspen bedding", "Meadow hay"]
+
+      assert text(view, items |> row(~r/^Meadow hay/)) =~ "Food 10 bag In stock"
+      assert text(view, items |> row(~r/^Aspen bedding/)) =~ "Order more"
       # A member adds no item.
       refute has_element?(view, "#new-item")
     end

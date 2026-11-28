@@ -11,6 +11,7 @@ defmodule RescordWeb.RubySettingsPagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles
   import Rescord.AccountsFixtures
   import Rescord.RubyFixtures
 
@@ -121,9 +122,9 @@ defmodule RescordWeb.RubySettingsPagesTest do
       refute has_element?(view, "#ruby-enabled")
 
       {view, _html} = open(context.conn, context.settings_path)
-      assert has_element?(view, "#ruby-heading")
-      assert has_element?(view, "#ruby-not-set-up")
-      refute has_element?(view, "#ruby-settings-link")
+      ruby = region("Ruby, the assistant")
+      assert text(view, ruby) =~ "Ruby is not set up on this server"
+      refute has?(view, ruby |> link("The settings of Ruby"))
     end
   end
 

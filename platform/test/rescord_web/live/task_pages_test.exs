@@ -11,6 +11,7 @@ defmodule RescordWeb.TaskPagesTest do
   use RescordWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import RescordWeb.Roles
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -268,17 +269,19 @@ defmodule RescordWeb.TaskPagesTest do
 
     test "is taken, done, and opened again", context do
       {view, _html} = open(context.conn, context.day_path)
+      tasks = region("Tasks of the day")
+      title = context.task.title
 
-      {view, _html} = press(view, "take", context.task.id)
-      assert has_element?(view, "tbody td", to_string(context.member.email))
+      click(view, tasks |> button("Take the task #{title}"))
+      assert text(view, tasks) =~ to_string(context.member.email)
       # The member has it, so the page does not offer it to them again.
-      refute has_element?(view, "button[phx-click=take]")
+      refute has?(view, tasks |> button("Take the task #{title}"))
 
-      {view, _html} = press(view, "complete", context.task.id)
+      click(view, tasks |> button("Mark the task #{title} as done"))
       assert has_element?(view, "[data-state=ok]", "Done")
-      refute has_element?(view, "button[phx-click=complete]")
+      refute has?(view, tasks |> button("Mark the task #{title} as done"))
 
-      {view, _html} = press(view, "reopen", context.task.id)
+      click(view, tasks |> button("Open again the task #{title}"))
       assert has_element?(view, "[data-state=info]", "Due")
     end
 
