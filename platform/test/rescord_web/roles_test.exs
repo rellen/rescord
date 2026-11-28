@@ -43,6 +43,7 @@ defmodule RescordWeb.RolesTest do
     assert [_] = all(@page, contentinfo())
     assert names(@page, banner() |> link(~r/./)) == ["Rescord", "Tasks"]
     assert has?(@page, contentinfo() |> navigation("About Rescord") |> link("Colophon"))
+    assert href(@page, contentinfo() |> link("Colophon")) == "/colophon"
   end
 
   test "a name leaves out what is aria-hidden, and folds the spaces" do
@@ -54,6 +55,7 @@ defmodule RescordWeb.RolesTest do
     assert names(@page, region(~r/./)) == ["Lots"]
     assert has?(@page, region("Lots") |> button("Take off B-2"))
     refute has?(@page, region("Lots") |> button("Take off B-3"))
+    refute has?(@page, region("Lots") |> region(~r/./))
     assert has?(@page, article("A note") |> status())
   end
 
@@ -67,6 +69,12 @@ defmodule RescordWeb.RolesTest do
     assert [_] = all(@page, alert())
     assert text(@page, alert()) == "The quantity is not a number."
     refute has?(@page, contentinfo() |> alert())
+  end
+
+  test "an item of a list is found by its words" do
+    assert [_, _] = all(@page, region("Lots") |> item(~r/./))
+    assert has?(@page, item(~r/^B-2\b/) |> button("Take off B-2"))
+    refute has?(@page, item(~r/^B-2\b/) |> button("Take off B-1"))
   end
 
   test "one raises for none or for more than one" do
@@ -83,5 +91,8 @@ defmodule RescordWeb.RolesTest do
 
     assert playwright(field("Weight")) == ~s(internal:label="Weight"s)
     assert playwright(row(~r/^Meadow hay/)) == "internal:role=row[name=/^Meadow hay/]"
+
+    assert playwright(item(~r/^B-1/)) ==
+             "internal:role=listitem >> internal:has-text=/^B-1/ >> nth=0"
   end
 end

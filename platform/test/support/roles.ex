@@ -62,12 +62,13 @@ defmodule RescordWeb.Roles do
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
     row: "tr",
+    item: "li",
     alert: "[role=alert]",
     status: "[role=status], output"
   }
 
   # The roles named by their own words; the rest only by a label.
-  @named_by_content [:button, :link, :heading, :row]
+  @named_by_content [:button, :link, :heading, :row, :item]
 
   ## Locators
 
@@ -97,6 +98,12 @@ defmodule RescordWeb.Roles do
 
   @doc "A row of a table, by its words: give a regex, such as `row(~r/^Meadow hay/)`."
   def row(scope \\ nil, name), do: locate(scope, :row, name)
+
+  @doc """
+  An item of a list, by its words: give a regex, such as `item(~r/^Biscuit/)`.
+  ARIA gives an item no name, so a browser test finds it by its text.
+  """
+  def item(scope \\ nil, name), do: locate(scope, :item, name)
 
   @doc "A button, by its name."
   def button(scope \\ nil, name), do: locate(scope, :button, name)
@@ -162,6 +169,12 @@ defmodule RescordWeb.Roles do
   @doc "The words of the one element, with spaces folded and icons left out."
   @spec text(source, t) :: String.t()
   def text(source, locator), do: source |> one(locator) |> visible_text()
+
+  @doc "Where the one link that the locator finds leads."
+  @spec href(source, t) :: String.t() | nil
+  def href(source, locator) do
+    source |> one(locator) |> LazyHTML.attribute("href") |> List.first()
+  end
 
   @doc "The accessible names of each element, in the order of the page."
   @spec names(source, t) :: [String.t()]
@@ -368,6 +381,11 @@ defmodule RescordWeb.Roles do
 
   defp playwright_one(%{role: :field, name: name}), do: "internal:label=#{pw_name(name)}"
 
+  defp playwright_one(%{role: :item, name: nil}), do: "internal:role=listitem"
+
+  defp playwright_one(%{role: :item, name: name}),
+    do: "internal:role=listitem >> internal:has-text=#{pw_text(name)} >> nth=0"
+
   defp playwright_one(%{role: role, name: name, level: level}) do
     attributes =
       [name && "[name=#{pw_name(name)}]", level && "[level=#{level}]"]
@@ -380,7 +398,11 @@ defmodule RescordWeb.Roles do
   defp pw_role(role), do: Atom.to_string(role)
 
   defp pw_name(%Regex{source: source}), do: "/#{source}/"
+
   defp pw_name(name), do: JSON.encode!(name) <> "s"
+
+  defp pw_text(%Regex{source: source}), do: "/#{source}/"
+  defp pw_text(text), do: JSON.encode!(text)
 
   ## Finding
 
@@ -404,6 +426,7 @@ defmodule RescordWeb.Roles do
   defp find_in(scopes, %__MODULE__{} = locator, root) do
     Enum.flat_map(scopes, fn scope ->
       scope
+      |> inside(root)
       |> candidates(locator)
       |> Enum.filter(&level?(&1, locator.level))
       |> Enum.filter(&named?(&1, locator, root))
@@ -414,7 +437,11 @@ defmodule RescordWeb.Roles do
   @shown ":not([hidden], [hidden] *, [aria-hidden=true], [aria-hidden=true] *)"
 
   # `LazyHTML.query/2` finds the node itself too, and the top nodes of a
-  # fragment.
+  # fragment. The page is searched whole; a part of it only inside, so that
+  # a region in a region is not the region itself.
+  defp inside(root, root), do: root
+  defp inside(scope, _root), do: LazyHTML.child_nodes(scope)
+
   defp candidates(scope, %{role: role}) do
     selector =
       @css[role]
