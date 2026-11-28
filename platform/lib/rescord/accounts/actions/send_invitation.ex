@@ -34,8 +34,7 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
 
   # The log names the kind of the fault, and never the address.
   defp fault(reason) do
-    kind = if is_exception(reason), do: inspect(reason.__struct__), else: "the mail server"
-    Logger.warning("The email of an invitation failed: #{kind}")
+    Logger.warning("The email of an invitation failed: #{Rescord.Log.reason(reason)}")
     {:error, "the email of an invitation was not sent"}
   end
 

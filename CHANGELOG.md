@@ -73,6 +73,13 @@ release (ADR 0047).
   has exactly the forms of the earlier versions. The exports do not
   change. A build of Rescord from its source needs no network for this:
   the data of each language and region is in the repository.
+- A line of the log has more fields than before, between the time and the
+  level: the id of the user and of the organisation, and the id, the
+  worker, the queue and the try of a background job. A background job
+  that fails now writes a line, which is a warning while Rescord tries it
+  again and an error after the last try. A tool that reads the log of
+  Rescord may need its pattern changed. One new setting is optional:
+  `RESCORD_LOG_LEVEL`.
 
 ### Added
 
@@ -163,6 +170,14 @@ release (ADR 0047).
   A person who can invite and remove members sees who has a feed, and
   when a calendar app last read it, and can revoke it. The notes that
   people wrote are in a feed only when the member asks for them.
+- `RESCORD_LOG_LEVEL` sets how much the log holds: `debug`, `info` (the
+  default), `warning` or `error`. `debug` also writes what people type,
+  so it is for a short look at a fault.
+- Each line of the log now says whose it is: the id of the user and of
+  the organisation of a request or a page, and the id, the worker and
+  the try of a background job. A background job that fails writes a
+  line. `docs/self-hosting.md`, "The log", says what a line holds and
+  what it never holds.
 
 ### Changed
 
@@ -212,6 +227,16 @@ release (ADR 0047).
   the role of the person, and that stays so. No page read the versions
   another way: this closes the gap before a page or an interface could use
   it. No step is needed at the upgrade.
+- The log no longer holds what a person typed when a page stops with a
+  fault. Before, the line of such a fault held the last message of the
+  page: the fields of the form that the person had sent, or a record
+  that the page was told about. Now it holds the shape of that message,
+  and still the function and the line of the fault. Two lines of the log
+  about the routines, and the page of the export, could show the message
+  of an error, which can name a value of a record. They now name the
+  kind of the error. A log from before this version can hold such lines:
+  keep it as private as the database, or delete it. No step is needed at
+  the upgrade.
 
 ## [0.2.0] - 2026-11-28
 

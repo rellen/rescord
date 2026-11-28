@@ -36,6 +36,8 @@ defmodule Rescord.Export do
       Rescord.Inventory
     ]
 
+  require Logger
+
   alias Rescord.Accounts
   alias Rescord.Accounts.{Member, Organisation, Role}
   alias Rescord.Export.CSV
@@ -161,8 +163,13 @@ defmodule Rescord.Export do
           {:cont, {:ok, [{file(resource), resource, header, rows} | tables]}}
 
         {:error, error} ->
-          {:halt,
-           {:error, "The export could not read #{file(resource)}: #{Exception.message(error)}"}}
+          # The message of an error can hold a value of a record, so the page
+          # gets the name of the file, and the log gets the kind of the error.
+          Logger.error(
+            "The export could not read #{file(resource)}: #{Rescord.Log.reason(error)}"
+          )
+
+          {:halt, {:error, "The export could not read #{file(resource)}."}}
       end
     end)
     |> case do

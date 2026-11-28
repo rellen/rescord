@@ -15,6 +15,10 @@ defmodule Rescord.Application do
     # authors do not trust with such a file (ADR 0055).
     :ok = Rescord.Images.block_untrusted()
 
+    # The crash reports hold no message of a process, and a job that fails
+    # writes a line (ADR 0077).
+    :ok = Rescord.Log.attach()
+
     children = [
       RescordWeb.Telemetry,
       Rescord.Repo,

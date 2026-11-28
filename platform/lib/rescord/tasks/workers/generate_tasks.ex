@@ -30,7 +30,7 @@ defmodule Rescord.Tasks.Workers.GenerateTasks do
     error ->
       Logger.error(
         "The routines of the organisation #{organisation.id} got no tasks: " <>
-          Exception.message(error)
+          Rescord.Log.reason(error)
       )
   end
 end

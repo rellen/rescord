@@ -165,6 +165,8 @@ defmodule Rescord.Accounts do
            organisation_by_short_name!(short_name, authorize?: false),
          member = member_of(user, organisation),
          true <- user.root? or not is_nil(member) do
+      # Each line of the log of this request or page names the organisation.
+      Rescord.Log.context(organisation: organisation.id)
       {:ok, organisation, member}
     else
       _no -> :error
@@ -517,13 +519,13 @@ defmodule Rescord.Accounts do
   defp send_sign_in_link(_address), do: :ok
 
   # The message of an error can hold the address, a token or a link, so the
-  # log names only the kind of the error.
+  # log names only the kind of the error (`Rescord.Log.reason/1`).
   defp log_fault(%Ash.Error.Forbidden{errors: [%AshRateLimiter.LimitExceeded{} | _]}) do
     Logger.info("A request for a sign-in link was over the limit of its address")
   end
 
   defp log_fault(error) do
-    Logger.warning("A request for a sign-in link failed: #{inspect(error.__struct__)}")
+    Logger.warning("A request for a sign-in link failed: #{Rescord.Log.reason(error)}")
   end
 
   @doc """

@@ -155,7 +155,10 @@ defmodule RescordWeb.Locale do
   end
 
   defp plain(text, reason) do
-    Logger.warning("no form of the locale #{current()} for #{text}: #{inspect(reason)}")
+    Logger.warning(
+      "no form of the locale #{current()} for #{text}: #{Rescord.Log.reason(reason)}"
+    )
+
     text
   end
 end

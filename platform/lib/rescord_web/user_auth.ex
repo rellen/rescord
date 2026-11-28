@@ -26,7 +26,7 @@ defmodule RescordWeb.UserAuth do
   @doc "Assigns `:current_user` from the session."
   def fetch_current_user(conn, _opts) do
     conn = Helpers.retrieve_from_session(conn, :rescord)
-    assign(conn, :current_user, conn.assigns[:current_user])
+    assign(conn, :current_user, named(conn.assigns[:current_user]))
   end
 
   @doc """
@@ -74,10 +74,19 @@ defmodule RescordWeb.UserAuth do
 
   defp user_of(session) do
     case Helpers.authenticate_resource_from_session(Accounts.User, session, :rescord, []) do
-      {:ok, user} -> user
+      {:ok, user} -> named(user)
       :error -> nil
     end
   end
+
+  # Each line of the log of this request or page names the user, by id
+  # (ADR 0077).
+  defp named(%{id: id} = user) do
+    Rescord.Log.context(user: id)
+    user
+  end
+
+  defp named(nobody), do: nobody
 
   @doc "Starts a new session for `user`, who has just signed in."
   def sign_in(conn, user) do

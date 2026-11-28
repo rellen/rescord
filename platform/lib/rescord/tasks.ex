@@ -248,7 +248,7 @@ defmodule Rescord.Tasks do
           true
 
         {:error, error} ->
-          Logger.error("The routine #{routine.id} got no tasks: #{Exception.message(error)}")
+          Logger.error("The routine #{routine.id} got no tasks: #{Rescord.Log.reason(error)}")
           false
       end
     end)

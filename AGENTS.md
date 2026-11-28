@@ -510,6 +510,33 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `archive?: false`.
   - **A new tool** takes a line in the catalogue, words in
     `RescordWeb.RubyWords`, and a question in the evaluation set.
+- **The log** (ADR 0077).
+  - A line holds no name and no address of a person, no text that a person
+    typed, no token, no link, no key, no file, and no argument of a job.
+    It holds ids, counts, and the names of modules.
+  - Never write the message of an error or an inspected value: the
+    arguments of a call of `Logger` use no `inspect` and no function of
+    `Exception`. Write `Rescord.Log.reason(error)` for a failure, and
+    `Rescord.Log.shape(value)` for any other value.
+    `Rescord.LogRulesTest` fails for the opposite.
+  - `error` is for work that Rescord lost, or a thing that needs the
+    operator. `warning` is for a thing that failed while Rescord goes on
+    or tries again. `info` is for what an operator wants on a normal day.
+  - Code that starts work for a person or an organisation outside a
+    request, a page or a job calls `Rescord.Log.context/1` with their
+    ids. A request, a page and a job have their fields already.
+  - Do not attach `Oban.Telemetry.attach_default_logger/1`, which writes
+    the arguments of each job. `Rescord.Log.Jobs` writes the lines of the
+    jobs.
+  - Do not take `Rescord.Log.attach/0` out of the start of the
+    application: without it, a page that stops with a fault writes the
+    form of the person.
+- **Errors** (ADR 0077). A new failure of our own that can reach a person
+  is a module with `use Splode.Error, fields: [...], class: :invalid` (or
+  `:forbidden`), in the domain that returns it. Do not return a sentence
+  from a change or an action: Ash makes it `Ash.Error.Unknown`. Do not
+  make a Splode root of our own. An atom, such as `{:error, :busy}`, is
+  for a result that the caller matches and that no person sees.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the
   server sends to it with zod when its shape matters; zod is not a dependency
   yet, so ask before the first use (`docs/architecture.md`, "Code in the
@@ -753,6 +780,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/reports.ex`, `reports/` | the reports as PDF: the actions, the facts of each report, and the render (ADR 0076) |
 | `platform/lib/rescord_web/report_words.ex`, `report_words/` | the words of each report |
 | `platform/priv/typst/` | the Typst templates of the reports, their shared look, and the fonts with their licence |
+| `platform/lib/rescord/log.ex`, `log/` | what the log holds and keeps out: the fields of a line, the safe text of a failure, the crash reports, the lines of the jobs (ADR 0077) |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |

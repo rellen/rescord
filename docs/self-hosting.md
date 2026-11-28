@@ -277,6 +277,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_S3_ACCESS_KEY_ID` | with `s3` | | The key of a user that may read and write the bucket. |
 | `RESCORD_S3_SECRET_ACCESS_KEY` | with `s3` | | Its secret. |
 | `RESCORD_PHOTO_SLOTS` | no | `2` | The number of photos that Rescord works on at the same time (ADR 0056). A photo of a phone takes about 150 MB while Rescord turns it and removes its metadata, and the largest photo about 300 MB. More photos wait for their turn. Give a server with more memory a larger number. |
+| `RESCORD_LOG_LEVEL` | no | `info` | How much the log holds: `debug`, `info`, `warning` or `error` (see "The log"). `debug` also writes what people type, so use it for a short time. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |
 | `RESCORD_BACKUP_KEEP_DAYS` | no | `14` | The number of days that a backup keeps a dump of the database (see "Back up"). |
 | `ECTO_IPV6` | no | `false` | `true` to reach the database over IPv6. |
@@ -286,6 +287,46 @@ Docker image and the Compose file use it.
 
 The assistant has no setting here, and no other setting of this list is
 for it (see "The assistant, Ruby").
+
+## The log
+
+Rescord writes its log to the standard output, one event on a line.
+`journalctl -u rescord`, `docker compose logs rescord` or the log of your
+host shows it. A line has the time, the fields that say whose it is, the
+level, and the words:
+
+```text
+09:14:02.118 request_id=GHx1 user=6f0c… organisation=1b7e… [info] Sent 200 in 31ms
+09:15:40.006 organisation=1b7e… job=412 worker=AshOban.Signals.Worker queue=default attempt=3 [warning] The job 412 of AshOban.Signals.Worker failed on try 3 of 16, and runs again later: Oban.PerformError(reason: {:error, binary})
+```
+
+- **The fields.** `request_id` is one request. `user` and `organisation`
+  are ids, and never a name or an address: the page of a root user shows
+  the organisations, and the members page of an organisation its people.
+  `job`, `worker`, `queue` and `attempt` are a background job. To follow
+  one person or one job, search the log for its id.
+- **The levels.** `error`: Rescord lost work, or needs you. `warning`: a
+  thing failed, and Rescord went on or tries again. `info`: the requests
+  and the events of a normal day. `RESCORD_LOG_LEVEL` sets the lowest level
+  that Rescord writes.
+- **A job that fails** writes a warning each time that Rescord tries it
+  again, and an error after the last try.
+- **What a line does not hold.** Rescord writes no name and no address of
+  a person, no text that a person typed, no token, no key, and no content
+  of a file. An error is in the log as its kind, and not as its message.
+  When a page stops with a fault, the line names the function and the
+  line of the code, and the shape of the message that stopped it, such as
+  `{:record, map(2)}`.
+- **What a line can hold.** The path of a request has the short name of
+  an organisation and the id of a record. The message of an unexpected
+  fault of a library can name a value. So keep the log as private as the
+  database, and keep it only as long as you need it.
+- **`debug`** is for a fault that you cannot find. At that level the
+  libraries write the parameters of each query and of each event of a
+  page, which is the data of the rescue. Set it, look, and set `info`
+  again.
+
+Rescord sends its log and its errors to no other service.
 
 ## Back up
 

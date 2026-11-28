@@ -243,10 +243,12 @@ config :rescord, :mail_from, {"Rescord", "rescord@localhost"}
 # `api_key`.
 config :phoenix, :filter_parameters, ["password", "token", "api_key"]
 
-# Configure Elixir's Logger
+# Configure Elixir's Logger. The fields say whose a line is (ADR 0077):
+# `Rescord.Log.fields/0` names the same list, and a test holds the two
+# together.
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id]
+  metadata: [:request_id, :user, :organisation, :job, :worker, :queue, :attempt]
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason

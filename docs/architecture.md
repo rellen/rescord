@@ -664,6 +664,36 @@ code does not have yet is what its phase lands.
   archive. Both are exceptions that ADR 0069 states.
 - No test calls a provider: a scripted model answers.
 
+## The log and the errors
+
+**The log says whose a line is, and holds nothing of a person** (ADR 0077).
+
+- `Rescord.Log.context/1` sets the fields of a line for the process:
+  the id of the user and of the organisation, which a request and a page
+  set, and the id, the worker, the queue and the try of a job. The
+  formatter writes them with `request_id`.
+- A line holds no name, no address, no text of a person, no token and no
+  file, and never the message of an error: the message of an Ash error
+  holds the value that Ash refused. `Rescord.Log.reason/1` gives the safe
+  text of a failure, which is the class and the modules of a Splode error
+  with the fields that are atoms. `Rescord.LogRulesTest` fails for a call
+  of `Logger` that uses `inspect` or a function of `Exception`.
+- `Rescord.Log.Translator` stands in front of the translator of Elixir. A
+  process that stops with a fault writes the shape of its last message,
+  and not the message, which for a page is the form of the person.
+- `Rescord.Log.Jobs` writes a line for a job of Oban that fails. Oban
+  writes none, and its own logger writes the arguments of the job.
+- The operator sets the level with `RESCORD_LOG_LEVEL`. The format is
+  text.
+
+**An error of our own is a Splode error in a class of Ash** (ADR 0077).
+Each action answers with the classes of Ash, and Rescord has no second
+tree. A new failure that can reach a person is a module with
+`use Splode.Error` and the class `:invalid` or `:forbidden`, in the domain
+that returns it, and not a sentence: Ash reads a sentence as a fault of
+the code. An atom is for a result that only the caller sees. The sentences
+that some functions still return change with the localisation.
+
 ## Releases
 
 **A rescue runs Rescord on a server of its own** (ADR 0044). One `mix

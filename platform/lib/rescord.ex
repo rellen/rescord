@@ -21,6 +21,7 @@ defmodule Rescord do
       History,
       Images,
       Images.Limit,
+      Log,
       Mailer,
       RateLimit,
       Repo,

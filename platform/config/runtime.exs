@@ -66,6 +66,12 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
+  # How much the log holds (ADR 0077). `debug` also writes what people type:
+  # the parameters of each query and of each event of a page.
+  config :logger,
+    level:
+      Shoddy.Env.one_of("RESCORD_LOG_LEVEL", [:debug, :info, :warning, :error], default: :info)
+
   # A required text: `Shoddy.Env.string/2` refuses a variable that is absent
   # or blank. For example: ecto://USER:PASS@HOST/DATABASE
   database_url = Shoddy.Env.string("DATABASE_URL")
