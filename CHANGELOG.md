@@ -738,6 +738,15 @@ release (ADR 0047).
   a JPEG first. The forms of the photos, the journal and the receipts say
   so for a file that the browser refuses, and Rescord for a file whose
   first bytes are those of HEIF (issue 34).
+- The browser of a person keeps a photo, its thumbnail, its display file,
+  a journal file and a receipt for a week, in its own cache and no shared
+  one, so a page with the same photos opens faster on a slow line. Before,
+  it kept none. A journal photo of Rescord 0.1.0 that the job has not
+  cleaned yet, the files of a transfer, the reports and the exports are
+  still kept nowhere. A sign-out asks the browser to clear what it kept
+  (`Clear-Site-Data`), so a shared computer does not keep the photos of
+  the last person; a browser that does not know the header keeps them
+  until the week is over (issue 34, ADR 0112).
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is
@@ -981,7 +990,6 @@ release (ADR 0047).
   server too. See the upgrade notes for what the job cannot reach
   (issue 34).
 - The history of a record is closed to each request that asks for it by
-
   itself. Rescord keeps each change of a record as a version, and the
   versions had no rule of their own about who reads them. A page shows the
   history of a resident only after the resident has passed the rules of

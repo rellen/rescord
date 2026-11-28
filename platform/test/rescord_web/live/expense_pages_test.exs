@@ -491,7 +491,7 @@ defmodule RescordWeb.ExpensePagesTest do
         conn = get(conn, "#{base}/#{paper.id}")
         assert response(conn, 200) == pdf()
         assert get_resp_header(conn, "content-type") == ["application/pdf"]
-        assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+        assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
         assert [policy] = get_resp_header(conn, "content-security-policy")
         assert policy =~ "sandbox"
         assert [disposition] = get_resp_header(conn, "content-disposition")

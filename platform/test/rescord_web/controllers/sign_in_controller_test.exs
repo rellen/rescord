@@ -247,6 +247,8 @@ defmodule RescordWeb.SignInControllerTest do
       signed_out = delete(recycle(signed_in), ~p"/sign-out")
       assert_receive %Phoenix.Socket.Broadcast{event: "disconnect", topic: ^socket_id}
       assert redirected_to(signed_out) == ~p"/sign-in"
+      # The browser drops the photos that it kept (issue 34).
+      assert get_resp_header(signed_out, "clear-site-data") == [~s("cache")]
       refute signed_in?(recycle(signed_out))
 
       # A copy of the cookie from before the sign-out.

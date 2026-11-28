@@ -13,12 +13,15 @@ defmodule RescordWeb.PhotoController do
   so the policy decides who gets the file, as for an attachment
   (ADR 0041). A file that the person cannot read, and one that is not there,
   get the same answer: no such page. The answer names the type that Rescord
-  found, puts the page in a sandbox, and keeps no copy in a cache.
+  found, and puts the page in a sandbox. The browser of the person keeps
+  the file for a week (`RescordWeb.FileCache`), but a journal photo of
+  0.1.0 that the job has not cleaned.
   """
 
   use RescordWeb, :controller
 
   alias Rescord.{Accounts, Journal, Photos}
+  alias RescordWeb.FileCache
 
   def show(conn, params), do: send_photo(conn, params, :photo)
 
@@ -36,7 +39,9 @@ defmodule RescordWeb.PhotoController do
        when is_binary(id) do
     with {:ok, options} <- options(conn, short_name, id),
          {:ok, _attachment, bytes} <- read.(id, options) do
-      send_file_bytes(conn, "image/webp", name, bytes)
+      conn
+      |> FileCache.put(true)
+      |> send_file_bytes("image/webp", name, bytes)
     else
       _no_file -> not_found(conn)
     end
@@ -48,6 +53,10 @@ defmodule RescordWeb.PhotoController do
        when is_binary(id) do
     with {:ok, options} <- options(conn, short_name, id),
          {:ok, photo, bytes} <- Photos.photo_file(id, which, options) do
+      # A thumbnail and a display file never change. A photo does not,
+      # but for a journal photo of 0.1.0 that the job has not cleaned.
+      conn = FileCache.put(conn, which != :photo or FileCache.stable?(photo))
+
       case which do
         :photo -> send_file_bytes(conn, photo.content_type, name(photo), bytes)
         :thumbnail -> send_file_bytes(conn, "image/webp", "thumbnail.webp", bytes)
@@ -90,7 +99,6 @@ defmodule RescordWeb.PhotoController do
     conn
     |> put_resp_content_type(type, nil)
     |> put_resp_header("content-security-policy", "sandbox; default-src 'none'; img-src 'self'")
-    |> put_resp_header("cache-control", "private, no-store")
     |> put_resp_header("content-disposition", ~s(inline; filename="#{name}"))
     |> send_resp(200, bytes)
   end

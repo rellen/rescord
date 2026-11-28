@@ -318,7 +318,8 @@ defmodule RescordWeb.PhotoPagesTest do
     assert response(conn, 200) == stored
     assert get_resp_header(conn, "content-type") == ["image/jpeg"]
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
-    assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+    # Its bytes never change, so the browser keeps it (issue 34).
+    assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
     assert [policy] = get_resp_header(conn, "content-security-policy")
     assert policy =~ "sandbox"
 
@@ -328,6 +329,7 @@ defmodule RescordWeb.PhotoPagesTest do
 
     conn = get(context.conn, ~p"/o/#{short}/photos/#{photo.id}/thumbnail")
     assert get_resp_header(conn, "content-type") == ["image/webp"]
+    assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
     assert Rescord.Images.type_of(response(conn, 200)) == "image/webp"
 
     # The display file, which a page opens (issue 34).
@@ -335,6 +337,7 @@ defmodule RescordWeb.PhotoPagesTest do
     assert {:ok, display} = Rescord.Storage.get(photo.display_key)
     assert response(conn, 200) == display
     assert get_resp_header(conn, "content-type") == ["image/webp"]
+    assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
 
     assert get_resp_header(conn, "content-disposition") == [
              ~s(inline; filename="photo-2026-11-03.webp")

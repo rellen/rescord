@@ -15,6 +15,8 @@ defmodule RescordWeb.AttachmentPagesTest do
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
 
+  require Ecto.Query
+
   alias Rescord.Journal
 
   @moduletag :tmp_dir
@@ -89,6 +91,7 @@ defmodule RescordWeb.AttachmentPagesTest do
     assert response(conn, 200) == stored_jpeg()
     assert get_resp_header(conn, "content-type") == ["image/jpeg"]
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+    assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
     assert [policy] = get_resp_header(conn, "content-security-policy")
     assert policy =~ "sandbox"
 
@@ -161,6 +164,47 @@ defmodule RescordWeb.AttachmentPagesTest do
              get(context.conn, "/o/#{context.organisation.short_name}/attachments/not-an-id"),
              404
            )
+  end
+
+  test "the browser keeps a file, but a journal photo that the job has not cleaned (issue 34)",
+       context do
+    entry =
+      Journal.write_entry!(
+        %{resident_id: context.biscuit.id, kind: :general, note: "x"},
+        context.options
+      )
+
+    attach = fn name, content ->
+      {:ok, attachment} =
+        Journal.attach_file(%{entry_id: entry.id, name: name, content: content}, context.options)
+
+      attachment
+    end
+
+    report = attach.("a.pdf", pdf())
+    old = attach.("old.jpg", jpeg())
+    {:ok, photo} = Rescord.Photos.adopt(old.id, context.options)
+
+    # As Rescord 0.1.0 kept it: no thumbnail, which the job of the images
+    # writes when it cleans the photo (ADR 0109).
+    prefix = "org_" <> context.organisation.id
+
+    for {table, column} <- [{"journal_attachments", :id}, {"photos", :attachment_id}] do
+      Ecto.Query.from(row in table, where: field(row, ^column) == type(^old.id, Ecto.UUID))
+      |> Rescord.Repo.update_all([set: [thumbnail_key: nil, display_key: nil]], prefix: prefix)
+    end
+
+    short = context.organisation.short_name
+
+    cache_of = fn path ->
+      conn = get(context.conn, path)
+      assert response(conn, 200)
+      get_resp_header(conn, "cache-control")
+    end
+
+    assert cache_of.(~p"/o/#{short}/attachments/#{report.id}") == [RescordWeb.FileCache.kept()]
+    assert cache_of.(~p"/o/#{short}/attachments/#{old.id}") == [RescordWeb.FileCache.none()]
+    assert cache_of.(~p"/o/#{short}/photos/#{photo.id}") == [RescordWeb.FileCache.none()]
   end
 
   test "a member takes off their own file, and has no button for another", context do
