@@ -642,9 +642,12 @@ checks an attachment of the journal. An amount is an
 `money_with_currency` of the schema `public`. A new expense is in the
 currency of its organisation, an attribute that an administrator sets, and
 no action takes a currency. Rescord converts no amount, so a sum is a list
-with one amount for each currency (`Rescord.Expenses.sum/1`). A member
-reads their own expenses, and the power `manage_expenses` reads and
-decides each one. `RescordWeb.Locale.money/1` writes an amount for a
+with one amount for each currency (`Rescord.Expenses.sum/1`). An expense
+can hold the tax that is in its amount (ADR 0089): money in the currency
+of the amount, which `Changes.SetTax` makes from a number, only while the
+organisation names a tax in its attribute `tax_name`. Rescord knows no
+rate. A member reads their own expenses, and the power `manage_expenses`
+reads and decides each one. `RescordWeb.Locale.money/1` writes an amount for a
 person. The list of the page goes out as a CSV file
 (`RescordWeb.ExpenseFileController`), with the filters of the address.
 

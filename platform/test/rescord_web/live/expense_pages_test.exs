@@ -521,7 +521,7 @@ defmodule RescordWeb.ExpensePagesTest do
       assert row =~ "'=SUM(A1) consult"
 
       assert row =~
-               ",Northside Vet Clinic,Veterinary,Biscuit,member,sam@example.org,186.00,AUD,To pay back,"
+               ",Northside Vet Clinic,Veterinary,Biscuit,member,sam@example.org,186.00,,AUD,To pay back,"
 
       assert row =~ "robin@example.org"
       assert String.ends_with?(row, ",1")
@@ -543,6 +543,143 @@ defmodule RescordWeb.ExpensePagesTest do
 
       assert get(sign_in(build_conn(), outsider), context.path <> ".csv").status == 404
       assert get(build_conn(), context.path <> ".csv").status in [302, 404]
+    end
+  end
+
+  describe "the tax in the amount" do
+    defp name_the_tax!(context, name \\ "GST") do
+      Accounts.set_organisation_tax_name!(context.organisation, name,
+        actor: context.administrator
+      )
+    end
+
+    test "an administrator names the tax on the settings page, and a member only reads it",
+         context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+
+      {view, html} = open(context.conn, path)
+      assert html =~ "The expenses record no tax."
+      refute has_element?(view, "#tax-name")
+
+      {view, _html} = open(context.admin_conn, path)
+
+      {:ok, view, html} =
+        view
+        |> form("#tax-name", tax: %{name: " GST "})
+        |> render_submit()
+        |> follow_redirect(context.admin_conn)
+
+      assert html =~ "An expense can hold its GST now."
+      assert has_element?(view, "#tax-name-text[value=GST]")
+
+      # A name that is too long stays out, and the page says why.
+      html =
+        render_submit(view, "save_tax_name", %{"tax" => %{"name" => "Goods and services tax"}})
+
+      assert html =~ "12"
+      assert Accounts.tax_name_of("org_#{context.organisation.id}") == "GST"
+
+      {:ok, _view, html} =
+        view
+        |> form("#tax-name", tax: %{name: ""})
+        |> render_submit()
+        |> follow_redirect(context.admin_conn)
+
+      assert html =~ "The expenses record no tax now."
+    end
+
+    test "the form has the field only while the organisation names a tax", context do
+      {view, html} = open(context.conn, context.path <> "/new")
+      refute html =~ "in the amount (optional)"
+      refute has_element?(view, "#expense input[name='expense[tax]']")
+
+      name_the_tax!(context)
+      {view, html} = open(context.conn, context.path <> "/new")
+      assert html =~ "GST in the amount (optional)"
+
+      fields = %{
+        paid_by: "member",
+        amount: "58.25",
+        tax: "60",
+        incurred_on: Date.to_iso8601(context.today),
+        payee: "Creekside Fuel",
+        description: "Fuel for the transfer of Pip",
+        category_id: context.lists.expense_category.transport
+      }
+
+      html = view |> form("#expense", expense: fields) |> render_submit()
+      assert html =~ "must not be more than the amount"
+      assert html =~ ~s(value="60")
+
+      {:ok, view, _html} =
+        view
+        |> form("#expense", expense: %{fields | tax: "5.30"})
+        |> render_submit()
+        |> follow_redirect(context.conn)
+
+      html = render(view)
+      assert html =~ "GST in the amount"
+      assert html =~ "$5.30"
+      # A member does not correct the tax of a decided expense.
+      refute has_element?(view, "#tax")
+
+      {:ok, [expense]} = Expenses.report(%{}, context.options)
+      assert Money.equal?(expense.tax, Money.new(:AUD, "5.30"))
+
+      # The form of a change holds the tax, and an empty field clears it.
+      {view, html} = open(context.conn, context.path <> "/#{expense.id}/edit")
+      assert html =~ ~s(value="5.30")
+
+      {:ok, _view, _html} =
+        view
+        |> form("#expense", expense: %{tax: ""})
+        |> render_submit()
+        |> follow_redirect(context.conn)
+
+      assert read!(context, expense).tax == nil
+    end
+
+    test "a person who manages corrects the tax of a decided expense", context do
+      expense = expense!(context)
+      Expenses.approve_expense!(expense, context.admin)
+      path = context.path <> "/#{expense.id}"
+
+      # With no name of a tax, the page has no tax.
+      {view, html} = open(context.admin_conn, path)
+      refute has_element?(view, "#tax")
+      refute html =~ "in the amount"
+
+      name_the_tax!(context)
+      {view, _html} = open(context.admin_conn, path)
+      assert has_element?(view, "#tax-details summary", "Correct the GST")
+
+      html = view |> form("#tax", tax: %{amount: "200"}) |> render_submit()
+      assert html =~ "must not be more than the amount"
+
+      {:ok, view, html} =
+        view
+        |> form("#tax", tax: %{amount: "16.91"})
+        |> render_submit()
+        |> follow_redirect(context.admin_conn)
+
+      assert html =~ "The tax in the amount is saved."
+      assert html =~ "$16.91"
+      assert html =~ "corrected the tax in the amount."
+      assert has_element?(view, "#tax-amount[value='16.91']")
+
+      expense = read!(context, expense)
+      assert Money.equal?(expense.tax, Money.new(:AUD, "16.91"))
+      assert expense.state == :approved
+
+      # The member of the expense reads the tax, and has no form for it.
+      {view, html} = open(context.conn, path)
+      assert html =~ "GST in the amount"
+      assert html =~ "$16.91"
+      refute has_element?(view, "#tax")
+
+      # The CSV file has the tax as a number, between the amount and the currency.
+      csv = response(get(context.admin_conn, context.path <> ".csv"), 200)
+      assert csv =~ ",186.00,16.91,AUD,To pay back,"
     end
   end
 

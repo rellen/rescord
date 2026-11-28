@@ -27,7 +27,7 @@ defmodule RescordWeb.ExpenseWordsTest do
   end
 
   test "each action of an expense that a person runs has words for what happened" do
-    for action <- [:submit, :record, :revise, :approve, :decline, :reimburse, :reopen] do
+    for action <- [:submit, :record, :revise, :approve, :decline, :reimburse, :reopen, :set_tax] do
       words = ExpenseWords.event(%{action: action, changes: %{}})
       assert String.ends_with?(words, "."), "#{action}: #{words}"
       refute words == "changed the expense."
@@ -60,6 +60,7 @@ defmodule RescordWeb.ExpenseWordsTest do
       paid_by: :member,
       payer_id: "sam",
       amount: Money.new(:AUD, "186"),
+      tax: Money.new(:AUD, "16.9"),
       status: :to_pay_back,
       author_id: "sam",
       decided_by_id: "robin",
@@ -80,6 +81,10 @@ defmodule RescordWeb.ExpenseWordsTest do
 
     assert length(row) == length(ExpenseWords.csv_header())
 
+    # An expense with no tax has an empty cell, not a zero.
+    assert Enum.at(ExpenseWords.csv_row(%{expense | tax: nil}, organisation, people), 9) == nil
+    assert Enum.at(ExpenseWords.csv_header(), 9) == "tax"
+
     assert row == [
              4,
              ~D[2026-11-27],
@@ -90,6 +95,7 @@ defmodule RescordWeb.ExpenseWordsTest do
              "member",
              "sam@example.org",
              Decimal.new("186.00"),
+             Decimal.new("16.90"),
              "AUD",
              "To pay back",
              "sam@example.org",

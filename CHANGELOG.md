@@ -86,6 +86,15 @@ release (ADR 0047).
     organisation: adds a column to the residents, for the markings of a
     resident. The column is empty for each resident that is there. It
     changes no row.
+  - `20261128071744_add_the_tax_name_of_an_organisation`, in the
+    database: adds a column to the organisations, for the name of the
+    tax that an expense can hold. It is empty for each organisation that
+    is there, so no organisation records a tax until an administrator
+    names one. It changes no row.
+  - `20261128071742_add_the_tax_of_an_expense`, in each organisation:
+    adds a column to the expenses, for the tax in the amount. It is
+    empty for each expense that is there: Rescord does not work a tax
+    out from an amount. It changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -339,13 +348,23 @@ release (ADR 0047).
   administrator changes on the settings page. A page writes an amount in
   the language and region of the organisation, such as `$1,234.50`.
   Rescord converts no amount: expenses in two currencies have two sums.
+- An expense can hold the tax that is in its amount, such as GST or VAT
+  (ADR 0089). An administrator gives the name of the tax on the settings
+  page, and the form of an expense then has the optional field, for
+  example "GST in the amount". A person copies the tax from the receipt:
+  Rescord knows no rate and no tax code, and the amount stays the whole
+  amount. A person who manages the expenses corrects the tax of an
+  expense in each state, also after the decision. With no name of a tax,
+  the expenses record none.
 - The list of the expenses downloads as a CSV file, with the filters of
   the page, for a spreadsheet or for the import of an accounting system.
-  The amount is a plain number with the code of its currency beside it.
+  The amount is a plain number with the code of its currency beside it,
+  and the tax in the amount has a column of its own.
 - The expenses of a period are a new report as PDF, on the page Reports
   and from a link below the list of the expenses: the sums by state and
   by category, what the organisation owes to each member, and the list.
-  It holds what the person who makes it can read.
+  It holds what the person who makes it can read. When the organisation
+  names a tax, the report has the tax of each expense and of each sum.
 - The lists page has a new list, "Expense category", and the page of the
   roles has a new area, "Expenses", with two powers. The page of a
   resident links to its expenses.

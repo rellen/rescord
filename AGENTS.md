@@ -833,6 +833,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - The list of the currencies is `Rescord.Accounts.currencies/0`. The
     data of Localize marks each code as tender, so that function names
     the codes that are no money.
+  - **The tax of an expense is a number from the receipt** (ADR 0089).
+    Add no rate, no tax code and no code that works a tax out from an
+    amount, or an amount from a tax. The argument `tax` is a decimal, and
+    `Rescord.Expenses.Changes.SetTax` makes the money in the currency of
+    the amount. No tax (`nil`) is not a tax of zero. A page has the field
+    and the form of the correction only while the organisation names a
+    tax (`tax_name`), and writes that name with
+    `RescordWeb.ExpenseWords.tax_name/1`. A sum of the tax is
+    `Rescord.Expenses.tax_sum/1`.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through

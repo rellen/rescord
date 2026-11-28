@@ -21,6 +21,16 @@ defmodule Rescord.Expenses.Expense do
   the argument `amount`: more than zero, with no more decimal places than
   the currency has.
 
+  ## The tax
+
+  An expense can hold the tax in its amount, such as GST: the attribute
+  `tax`, money in the currency of the amount, or none (ADR 0089). It is a
+  part of the amount, and not an amount on top of it. A person copies it
+  from the receipt: Rescord knows no rate. `Rescord.Expenses.Changes.SetTax`
+  makes it from the number of the argument `tax`, only while the
+  organisation names a tax in its settings. `set_tax` corrects it in each
+  state, for a person who manages the expenses.
+
   ## States
 
       submitted --approve--> approved --reimburse--> reimbursed
@@ -97,6 +107,7 @@ defmodule Rescord.Expenses.Expense do
       description "What each new expense gets: its author, its amount and the person who paid"
       change Rescord.Accounts.Changes.SetAuthor
       change Changes.SetAmount
+      change Changes.SetTax
       change Changes.SetPayer
     end
 
@@ -115,6 +126,7 @@ defmodule Rescord.Expenses.Expense do
       description "Records an expense that the actor or the organisation paid. It waits for a decision"
       accept [:paid_by, :incurred_on, :payee, :description, :category_id, :resident_id, :note]
       argument :amount, :decimal, allow_nil?: false
+      argument :tax, :decimal
       pipe_through [:new_expense, :checked_facts]
     end
 
@@ -123,6 +135,7 @@ defmodule Rescord.Expenses.Expense do
 
       accept [:paid_by, :incurred_on, :payee, :description, :category_id, :resident_id, :note]
       argument :amount, :decimal, allow_nil?: false
+      argument :tax, :decimal
       argument :payer_id, :uuid
       pipe_through [:new_expense]
       change Changes.ApproveWhatTheOrganisationPaid
@@ -134,12 +147,22 @@ defmodule Rescord.Expenses.Expense do
       description "Changes an expense that waits for a decision or that was declined. It waits for a decision again"
       accept [:incurred_on, :payee, :description, :category_id, :resident_id, :note]
       argument :amount, :decimal
+      argument :tax, :decimal
       require_atomic? false
       change filter(expr(state in [:submitted, :declined]))
       change transition_state(:submitted)
       change Changes.SetAmount
+      change Changes.SetTax
       change Changes.ClearDecision
       pipe_through [:checked_facts]
+    end
+
+    update :set_tax do
+      description "Corrects the tax in the amount of an expense, in each state. The amount, the state and the decision stay"
+      accept []
+      argument :tax, :decimal
+      require_atomic? false
+      change Changes.SetTax
     end
 
     update :approve do
@@ -224,6 +247,13 @@ defmodule Rescord.Expenses.Expense do
       writable? false
 
       description "The whole amount, with its tax, in the currency of the organisation at the time of the record"
+    end
+
+    attribute :tax, AshMoney.Types.Money do
+      public? true
+      writable? false
+
+      description "The part of the amount that is tax, such as GST, as the receipt shows it, or none (ADR 0089)"
     end
 
     attribute :incurred_on, :date do

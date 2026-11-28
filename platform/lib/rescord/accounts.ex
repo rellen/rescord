@@ -69,6 +69,7 @@ defmodule Rescord.Accounts do
         args: [:transfer_parts]
 
       define :set_organisation_currency, action: :set_currency, args: [:currency]
+      define :set_organisation_tax_name, action: :set_tax_name, args: [:tax_name]
 
       define :authorize_export, action: :export, args: [:organisation_id]
 
@@ -374,6 +375,16 @@ defmodule Rescord.Accounts do
   @spec currency_of(Ash.Resource.record() | String.t()) :: String.t()
   def currency_of(%Organisation{currency: currency}), do: currency
   def currency_of("org_" <> _id = schema), do: organisation_of(schema).currency
+
+  @doc """
+  The name of the tax that the expenses of an organisation can hold, for
+  example `"GST"`, or `nil` for an organisation that records no tax
+  (ADR 0089). `tenant` is the organisation, or the name of its schema, as an
+  action has it.
+  """
+  @spec tax_name_of(Ash.Resource.record() | String.t()) :: String.t() | nil
+  def tax_name_of(%Organisation{tax_name: name}), do: name
+  def tax_name_of("org_" <> _id = schema), do: organisation_of(schema).tax_name
 
   @doc """
   The time zone of an organisation. `tenant` is the organisation, or the

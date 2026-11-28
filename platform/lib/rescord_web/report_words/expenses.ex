@@ -3,6 +3,11 @@ defmodule RescordWeb.ReportWords.Expenses do
   The words of the expenses of a period (`Rescord.Reports.Facts.Expenses`,
   ADR 0082). A sum is one amount for each currency, as on the page of the
   expenses: Rescord adds no two currencies.
+
+  The report holds the tax of the expenses (ADR 0089) when the organisation
+  names a tax, or when an expense of the report has one: `tax` is then the
+  name of the tax, and each sum and each expense has its tax as text. With
+  neither, `tax` is `nil`, and the template has no column for it.
   """
 
   import RescordWeb.ReportWords
@@ -15,6 +20,7 @@ defmodule RescordWeb.ReportWords.Expenses do
   def data(facts) do
     currency = facts.organisation.currency
     accepted = Enum.filter(facts.expenses, &(&1.status in @accepted))
+    tax? = is_binary(facts.organisation.tax_name) or Enum.any?(facts.expenses, & &1.tax)
 
     %{
       frame:
@@ -24,15 +30,28 @@ defmodule RescordWeb.ReportWords.Expenses do
           "From #{ResidentWords.date(facts.from)} to #{ResidentWords.date(facts.to)}"
         ),
       scope: scope(facts),
-      summary: [
-        %{label: "Expenses in these days", value: amount(length(facts.expenses))},
-        %{label: "Approved or paid back", value: sum(accepted, currency)},
-        %{
-          label: "Wait for a decision",
-          value: sum(Enum.filter(facts.expenses, &(&1.status == :submitted)), currency)
-        },
-        %{label: "To pay back now", value: sum(facts.owed, currency)}
-      ],
+      tax: if(tax?, do: ExpenseWords.tax_name(facts.organisation)),
+      summary:
+        [
+          %{label: "Expenses in these days", value: amount(length(facts.expenses))},
+          %{label: "Approved or paid back", value: sum(accepted, currency)}
+        ] ++
+          if(tax?,
+            do: [
+              %{
+                label: "#{ExpenseWords.tax_name(facts.organisation)} in approved or paid back",
+                value: tax_sum(accepted, currency)
+              }
+            ],
+            else: []
+          ) ++
+          [
+            %{
+              label: "Wait for a decision",
+              value: sum(Enum.filter(facts.expenses, &(&1.status == :submitted)), currency)
+            },
+            %{label: "To pay back now", value: sum(facts.owed, currency)}
+          ],
       by_state:
         for {words, value} <- ExpenseWords.status_options(),
             of_state = Enum.filter(facts.expenses, &(Atom.to_string(&1.status) == value)),
@@ -64,17 +83,27 @@ defmodule RescordWeb.ReportWords.Expenses do
       paid_by: ExpenseWords.paid_by(expense, facts.organisation, facts.people),
       state: ExpenseWords.status(expense.status),
       receipts: amount(expense.receipt_count),
-      amount: ExpenseWords.money(expense.amount)
+      amount: ExpenseWords.money(expense.amount),
+      tax: expense.tax && ExpenseWords.money(expense.tax)
     }
   end
 
-  # A row of a sum: its label, how many expenses, and their amount.
+  # A row of a sum: its label, how many expenses, their amount, and the tax
+  # in it.
   defp tally(label, expenses, currency) do
-    %{label: label, count: amount(length(expenses)), amount: sum(expenses, currency)}
+    %{
+      label: label,
+      count: amount(length(expenses)),
+      amount: sum(expenses, currency),
+      tax: tax_sum(expenses, currency)
+    }
   end
 
   defp sum(expenses, currency),
     do: expenses |> Rescord.Expenses.sum() |> ExpenseWords.amounts(currency)
+
+  defp tax_sum(expenses, currency),
+    do: expenses |> Rescord.Expenses.tax_sum() |> ExpenseWords.amounts(currency)
 
   defp scope(%{all?: true}),
     do: "Each expense of the organisation with a payment in these days."

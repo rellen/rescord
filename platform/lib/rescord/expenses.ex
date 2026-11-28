@@ -43,6 +43,7 @@ defmodule Rescord.Expenses do
       define :submit_expense, action: :submit
       define :record_expense, action: :record
       define :revise_expense, action: :revise
+      define :set_expense_tax, action: :set_tax, args: [:tax]
       define :approve_expense, action: :approve
       define :decline_expense, action: :decline, args: [:decline_reason]
       define :reimburse_expense, action: :reimburse
@@ -174,6 +175,21 @@ defmodule Rescord.Expenses do
     %{count: length(expenses), amounts: amounts}
   end
 
+  @doc """
+  The sum of the tax of a list of expenses: how many of them have a tax,
+  and one amount for each currency (ADR 0089). An expense with no tax adds
+  nothing.
+
+  ## Examples
+
+      iex> Rescord.Expenses.tax_sum([%{tax: Money.new(:AUD, "1.50")}, %{tax: nil}, %{tax: Money.new(:AUD, 2)}])
+      %{count: 2, amounts: [Money.new(:AUD, "3.50")]}
+  """
+  @spec tax_sum([%{tax: Money.t() | nil}]) :: sum
+  def tax_sum(expenses) do
+    sum(for %{tax: %Money{} = tax} <- expenses, do: %{amount: tax})
+  end
+
   @typedoc """
   What limits the expenses of `report/2`. Each key is optional:
 
@@ -269,7 +285,7 @@ defmodule Rescord.Expenses do
     * `at` - the instant;
     * `user_id` - the user who did it, or `nil`;
     * `action` - the action of the expense (`:submit`, `:record`, `:revise`,
-      `:approve`, `:decline`, `:reimburse`, `:reopen`), or `:attach` and
+      `:set_tax`, `:approve`, `:decline`, `:reimburse`, `:reopen`), or `:attach` and
       `:take_off` for a receipt;
     * `changes` - what the action changed, by the name of the attribute as
       text. For a receipt it holds `"name"`.
@@ -416,6 +432,7 @@ defmodule Rescord.Expenses do
     do: expense.state == :approved and expense.paid_by == :member
 
   defp state_lets?(%{state: state}, :reopen), do: state in [:approved, :declined, :reimbursed]
+  defp state_lets?(_expense, :set_tax), do: true
   defp state_lets?(_expense, _action), do: false
 
   defp in_scope?(:root, _user, _expense, _action), do: true

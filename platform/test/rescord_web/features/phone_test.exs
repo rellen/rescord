@@ -44,6 +44,11 @@ defmodule RescordWeb.Features.PhoneTest do
     root = root!()
     organisation = organisation!(root, "Wattle Creek Small Animal Refuge")
     {_member, user} = member!(organisation, :administrator, root, @address)
+
+    # The organisation names its tax, so the pages of the expenses have the
+    # field of the tax and the form that corrects it (ADR 0089).
+    organisation = Accounts.set_organisation_tax_name!(organisation, "GST", actor: user)
+
     lists = lists!(organisation, root)
     options = [actor: root, tenant: organisation]
 
@@ -130,6 +135,7 @@ defmodule RescordWeb.Features.PhoneTest do
         %{
           paid_by: :member,
           amount: "1186.00",
+          tax: "107.82",
           incurred_on: Accounts.today(organisation),
           payee: "Northside Veterinary Clinic and Animal Hospital",
           description: "Consult after hours for Sir Reginald Fluffington the Third",
@@ -156,6 +162,7 @@ defmodule RescordWeb.Features.PhoneTest do
         %{
           paid_by: :member,
           amount: "58.25",
+          tax: "5.30",
           incurred_on: Accounts.today(organisation),
           payee: "Creekside Fuel",
           description: "Fuel",
