@@ -55,6 +55,8 @@ defmodule Rescord.Usage.Features do
     locations: :housing,
     notifications: :notifications,
     photos: :photos,
+    # The requests to erase data are a part of the members (ADR 0105).
+    privacy: :members,
     reports: :reports,
     residents: :residents,
     ruby: :assistant,
@@ -69,6 +71,7 @@ defmodule Rescord.Usage.Features do
     {:accounts, :token} => nil,
     {:journal, :episode} => :conditions,
     {:notifications, :settings} => :server,
+    {:privacy, :instance_settings} => :server,
     {:journal, :diagnosis} => :conditions,
     {:journal, :measurement} => :measurements,
     {:residents, :family} => :groups,

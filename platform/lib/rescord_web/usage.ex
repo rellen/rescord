@@ -62,11 +62,14 @@ defmodule RescordWeb.Usage do
     RescordWeb.ListsLive => :lists,
     RescordWeb.MembersLive => :members,
     RescordWeb.RolesLive => :members,
+    RescordWeb.PrivacyLive => :members,
+    RescordWeb.PrivacyRequestLive => :members,
     RescordWeb.SettingsLive => :settings,
     RescordWeb.RootLive => :server,
     RescordWeb.RootRubyLive => :server,
     RescordWeb.RootUsageLive => :server,
-    RescordWeb.RootPushLive => :server
+    RescordWeb.RootPushLive => :server,
+    RescordWeb.RootPrivacyLive => :server
   }
 
   # The feature and the item of each file, by the controller and its action.
@@ -90,6 +93,7 @@ defmodule RescordWeb.Usage do
   @not_counted %{
     RescordWeb.HealthController => "the health check of the server",
     RescordWeb.PageController => "the first page and the colophon, before a sign-in",
+    RescordWeb.PrivacyNoticeController => "the privacy notices, read with no sign-in",
     RescordWeb.SignInController => "the sign-in: it says who works, and when",
     RescordWeb.AttachmentController => "a file of a record: the page that links it counts",
     RescordWeb.PhotoController => "the pictures of a page",
