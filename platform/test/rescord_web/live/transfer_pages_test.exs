@@ -4,15 +4,16 @@ defmodule RescordWeb.TransferPagesTest do
   to a refuge and its answer, a resident sent with the parts of the form,
   the answer of the refuge that receives it, the copy that its members
   read, the default parts of the settings, and the forms that a member
-  does not get.
+  does not get. The tests find what a person finds (ADR 0107).
 
   Each test creates organisations, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest, only: [render_click: 3, render_submit: 3]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -61,18 +62,12 @@ defmodule RescordWeb.TransferPagesTest do
      biscuit: biscuit}
   end
 
-  defp open(user, path) do
-    conn = build_conn() |> sign_in(user)
-    {:ok, view, _html} = live(conn, path)
-    {conn, view, render_async(view)}
-  end
+  defp visit_as(user, path), do: build_conn() |> sign_in(user) |> visit(path)
 
-  defp submit(view, conn, selector, fields) do
-    {:ok, view, _html} =
-      view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
-
-    {view, render_async(view)}
-  end
+  defp partnerships, do: main() |> region("Partnerships")
+  defp received, do: main() |> region("Received")
+  defp sent, do: main() |> region("Sent")
+  defp biscuit(part), do: part |> row(~r/^Biscuit\b/)
 
   defp partners!(context) do
     {:ok, asked} =
@@ -84,50 +79,40 @@ defmodule RescordWeb.TransferPagesTest do
   end
 
   test "an administrator asks a refuge, and the other one accepts", context do
-    {conn, view, _html} = open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/partners")
-    assert has_element?(view, "p", "There is no partner refuge yet.")
+    context.wattle_admin
+    |> visit_as(~p"/o/#{context.wattle.short_name}/partners")
+    |> assert_has(partnerships(), text: "There is no partner refuge yet.")
+    |> fill_in("Short name of the refuge", with: context.banksia.short_name)
+    |> click(button("Ask the refuge"))
+    |> assert_has(partnerships() |> row(~r/^Banksia Rise\b/), state: "info", text: "Asked")
+    |> refute_has(partnerships() |> button("Accept Banksia Rise as a partner"))
 
-    {view, _html} =
-      submit(view, conn, "#ask", partner: %{short_name: context.banksia.short_name})
-
-    assert has_element?(view, "tbody td", "Banksia Rise")
-    assert has_element?(view, "[data-state=info]", "Asked")
-    refute has_element?(view, "button", "Accept")
-
-    {conn, view, _html} =
-      open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/partners")
-
-    [partnership] = Transfers.partnerships!(actor: context.banksia_admin)
-
-    {:ok, view, _html} =
-      view |> render_click("accept", %{"id" => partnership.id}) |> follow_redirect(conn)
-
-    assert has_element?(view, "tbody td", "Wattle Creek")
-    assert has_element?(view, "[data-state=ok]", "Accepted")
+    context.banksia_admin
+    |> visit_as(~p"/o/#{context.banksia.short_name}/partners")
+    |> click(partnerships() |> button("Accept Wattle Creek as a partner"))
+    |> assert_has(partnerships() |> row(~r/^Wattle Creek\b/), state: "ok", text: "Accepted")
   end
 
   test "a refuge that does not exist gets an answer in words", context do
-    {_conn, view, _html} =
-      open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/partners")
-
-    view |> form("#ask", partner: %{short_name: "no-such-refuge"}) |> render_submit()
-    assert has_element?(view, "main p[role=alert]", "Short name names no other refuge")
+    context.wattle_admin
+    |> visit_as(~p"/o/#{context.wattle.short_name}/partners")
+    |> fill_in("Short name of the refuge", with: "no-such-refuge")
+    |> click(button("Ask the refuge"))
+    |> assert_has(main() |> alert(), text: "Short name names no other refuge")
   end
 
   test "a member reads the partners, and has no form and no button", context do
     partners!(context)
-
-    {_conn, view, _html} =
-      open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/partners")
-
-    assert has_element?(view, "tbody td", "Banksia Rise")
-    refute has_element?(view, "#ask")
-    refute has_element?(view, "tbody button")
-
-    # An event that the page did not offer is refused.
     [partnership] = Transfers.partnerships!(actor: context.wattle_member)
-    render_click(view, "end", %{"id" => partnership.id})
-    assert has_element?(view, "main p[role=alert]")
+
+    context.wattle_member
+    |> visit_as(~p"/o/#{context.wattle.short_name}/partners")
+    |> assert_has(partnerships() |> row(~r/^Banksia Rise\b/))
+    |> refute_has(main() |> region("Ask a refuge"))
+    |> refute_has(partnerships() |> button(~r/./))
+    # An event that the page did not offer is refused.
+    |> unwrap(&render_click(&1, "end", %{"id" => partnership.id}))
+    |> assert_has(main() |> alert())
   end
 
   test "a resident goes with the parts of the form, and the other refuge accepts it", context do
@@ -137,64 +122,56 @@ defmodule RescordWeb.TransferPagesTest do
       actor: context.wattle_admin
     )
 
-    {conn, view, _html} =
-      open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+    send = main() |> region("Send a resident")
+    stay = "The stay: the arrival, an absence and the departure"
 
     # The setting ticks the parts at first.
-    assert has_element?(view, "#send input[value=stay][checked]")
-    refute has_element?(view, "#send input[value=journal][checked]")
+    session = visit_as(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+    assert checked?(session, send |> field(stay))
+    refute checked?(session, send |> field("The other journal entries"))
 
-    {view, _html} =
-      submit(view, conn, "#send",
-        transfer: %{
-          resident_id: context.biscuit.id,
-          partner_id: context.banksia.id,
-          parts: ["stay", "relations"],
-          note: "Shy at first, loves hay."
-        }
-      )
-
-    assert has_element?(view, "#sent tbody td", "Biscuit")
-    assert has_element?(view, "#sent [data-state=info]", "Waits for an answer")
+    session
+    |> within(send, fn form ->
+      form
+      |> select("Resident", option: "Biscuit")
+      |> select("Partner refuge", option: "Banksia Rise")
+      |> check("The families, the groups, the parents and the young")
+      |> fill_in("Note to the refuge", with: "Shy at first, loves hay.")
+      |> click(button("Send the copy"))
+    end)
+    |> assert_has(biscuit(sent()), state: "info", text: "Waits for an answer")
 
     [transfer] = Transfers.transfers!(actor: context.wattle_admin)
     assert transfer.parts == [:stay, :relations]
 
     # The member of the other refuge sees nothing yet.
-    {_conn, view, _html} =
-      open(context.banksia_member, ~p"/o/#{context.banksia.short_name}/transfers")
+    context.banksia_member
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers")
+    |> assert_has(received(), text: "No partner refuge has sent you a resident yet.")
 
-    assert has_element?(view, "#received p", "No partner refuge has sent you a resident yet.")
-
-    {conn, view, _html} =
-      open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
-
-    assert has_element?(view, "#received tbody td span", "Biscuit")
-
-    {:ok, _view, _html} =
-      view |> render_click("accept", %{"id" => transfer.id}) |> follow_redirect(conn)
+    # The refuge that receives it reads the name, and no copy yet.
+    context.banksia_admin
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers")
+    |> assert_has(biscuit(received()))
+    |> refute_has(biscuit(received()) |> link("Biscuit"))
+    |> click(biscuit(received()) |> button("Accept the transfer of Biscuit"))
+    |> assert_has(biscuit(received()) |> link("Biscuit"))
 
     # Each member there reads the copy now.
-    {_conn, view, _html} =
-      open(context.banksia_member, ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+    conditions = main() |> region("Conditions") |> item(~r/^Respiratory infection\b/)
 
-    assert has_element?(view, "h1", "Biscuit")
-    assert has_element?(view, "p", "A copy from Wattle Creek")
-    assert has_element?(view, "#copy-medical ~ article p", "Vaccine: A sample vaccine")
-    assert has_element?(view, "#copy-conditions ~ ul li strong", "Respiratory infection")
-    assert has_element?(view, "#copy-conditions ~ ul li", "Chronic")
-    assert has_element?(view, "#copy-conditions ~ ul li small", "Since ")
-
-    assert has_element?(
-             view,
-             "#copy-medical ~ article p[data-about]",
-             "About Respiratory infection"
-           )
-
-    assert has_element?(view, "h2", "Stay at Wattle Creek")
-    assert has_element?(view, "h2", "Families and groups")
-    refute has_element?(view, "h2", "Placements at Wattle Creek")
-    assert has_element?(view, "p", "Shy at first, loves hay.")
+    context.banksia_member
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+    |> assert_has(main() |> heading(level: 1), text: "Biscuit")
+    |> assert_has(main(), text: "A copy from Wattle Creek")
+    |> assert_has(main() |> region("Medical history"), text: "Vaccine: A sample vaccine")
+    |> assert_has(main() |> region("Medical history"), text: "About Respiratory infection")
+    |> assert_has(conditions, text: "Chronic")
+    |> assert_has(conditions, text: "Since ")
+    |> assert_has(main() |> region("Stay at Wattle Creek"))
+    |> assert_has(main() |> region("Families and groups"))
+    |> refute_has(main() |> region("Placements at Wattle Creek"))
+    |> assert_has(main(), text: "Shy at first, loves hay.")
   end
 
   test "a copy of another refuge does not open", context do
@@ -212,86 +189,90 @@ defmodule RescordWeb.TransferPagesTest do
 
     third = organisation!(context.root, "Third")
     {_, outsider} = member!(third, :administrator, context.root)
-    conn = build_conn() |> sign_in(outsider)
 
-    assert {:error, {:live_redirect, %{to: "/o/" <> _}}} =
-             live(conn, ~p"/o/#{third.short_name}/transfers/#{transfer.id}")
+    outsider
+    |> visit_as(~p"/o/#{third.short_name}/transfers/#{transfer.id}")
+    |> assert_path(~p"/o/#{third.short_name}/transfers")
 
     # Nor at the refuge that receives it, before it accepts it.
-    conn = build_conn() |> sign_in(context.banksia_member)
-
-    assert {:error, {:live_redirect, _}} =
-             live(conn, ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+    context.banksia_member
+    |> visit_as(~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
+    |> assert_path(~p"/o/#{context.banksia.short_name}/transfers")
   end
 
   test "a member reads the transfers, and has no form", context do
     partners!(context)
 
-    {_conn, view, _html} =
-      open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/transfers")
+    context.wattle_member
+    |> visit_as(~p"/o/#{context.wattle.short_name}/transfers")
+    |> refute_has(main() |> region("Send a resident"))
+    |> unwrap(
+      &render_submit(&1, "send", %{
+        "transfer" => %{"resident_id" => context.biscuit.id, "partner_id" => context.banksia.id}
+      })
+    )
+    |> assert_has(main() |> alert())
 
-    refute has_element?(view, "#send")
-
-    render_submit(view, "send", %{
-      "transfer" => %{"resident_id" => context.biscuit.id, "partner_id" => context.banksia.id}
-    })
-
-    assert has_element?(view, "main p[role=alert]")
     assert {:ok, []} = Transfers.transfers(actor: context.wattle_admin)
   end
 
   test "the settings give the parts of a copy, which a member reads", context do
-    {conn, view, _html} =
-      open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/settings")
+    settings = ~p"/o/#{context.wattle.short_name}/settings"
+    parts = main() |> region("Transfers")
 
-    assert has_element?(view, "p", "No other part: only the facts and the medical history.")
-
-    {_view, html} = submit(view, conn, "#parts", parts: %{keys: ["journal", "placements"]})
-    assert html =~ "The other journal entries"
+    context.wattle_admin
+    |> visit_as(settings)
+    |> assert_has(parts, text: "No other part: only the facts and the medical history.")
+    |> within(parts, fn form ->
+      form
+      |> check("The other journal entries")
+      |> check("The placements")
+      |> click(button("Save the parts"))
+    end)
+    |> assert_has(parts |> item("The other journal entries"))
 
     assert %{transfer_parts: [:journal, :placements]} =
              Accounts.organisation_by_short_name!(context.wattle.short_name, authorize?: false)
 
-    {_conn, view, _html} =
-      open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/settings")
-
-    assert has_element?(view, "li", "The placements")
-    refute has_element?(view, "#parts")
+    context.wattle_member
+    |> visit_as(settings)
+    |> assert_has(parts |> item("The placements"))
+    |> refute_has(parts |> button("Save the parts"))
   end
 
   describe "what the other refuge does (ADR 0096)" do
     test "shows at once on the page of the partners", context do
-      {_conn, view, _html} =
-        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/partners")
-
-      assert has_element?(view, "p", "There is no partner refuge yet.")
+      session =
+        context.banksia_admin
+        |> visit_as(~p"/o/#{context.banksia.short_name}/partners")
+        |> assert_has(partnerships(), text: "There is no partner refuge yet.")
 
       {:ok, asked} =
         Transfers.ask_partner(context.wattle, context.banksia.short_name,
           actor: context.wattle_admin
         )
 
-      assert has_element?(view, "tbody td", "Wattle Creek")
-      assert has_element?(view, "button", "Accept")
+      session
+      |> assert_has(partnerships() |> row(~r/^Wattle Creek\b/))
+      |> assert_has(partnerships() |> button("Accept Wattle Creek as a partner"))
 
       # A refuge with no part in it hears nothing, and reads nothing new.
       other = organisation!(context.root, "Ironbark Flat")
       {_, stranger} = member!(other, :administrator, context.root)
-      {_conn, outside, _html} = open(stranger, ~p"/o/#{other.short_name}/partners")
+      outside = visit_as(stranger, ~p"/o/#{other.short_name}/partners")
       Transfers.accept_partner!(asked, actor: context.banksia_admin)
-      assert has_element?(outside, "p", "There is no partner refuge yet.")
+      assert_has(outside, partnerships(), text: "There is no partner refuge yet.")
     end
 
     test "shows a transfer that arrives, and its answer at the refuge that sent it", context do
       partners!(context)
 
-      {_conn, there, _html} =
-        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
+      there =
+        context.banksia_admin
+        |> visit_as(~p"/o/#{context.banksia.short_name}/transfers")
+        |> refute_has(biscuit(received()))
 
-      {_conn, here, _html} =
-        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
-
-      refute render(there) =~ "Biscuit"
+      here = visit_as(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
 
       transfer =
         Transfers.send_transfer!(
@@ -303,12 +284,11 @@ defmodule RescordWeb.TransferPagesTest do
           actor: context.wattle_admin
         )
 
-      assert render(there) =~ "Biscuit"
-      assert has_element?(there, "button", "Accept")
-      assert has_element?(here, "[data-state=info]", "Waits for an answer")
+      assert_has(there, biscuit(received()) |> button("Accept the transfer of Biscuit"))
+      assert_has(here, biscuit(sent()), state: "info", text: "Waits for an answer")
 
       Transfers.accept_transfer!(transfer, actor: context.banksia_admin)
-      assert has_element?(here, "[data-state=ok]", "Accepted")
+      assert_has(here, biscuit(sent()), state: "ok", text: "Accepted")
     end
   end
 
@@ -341,55 +321,54 @@ defmodule RescordWeb.TransferPagesTest do
     end
 
     test "show the count while it sends, and the other refuge after", context do
-      {_conn, here, _html} =
-        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
-
-      {_conn, there, _html} =
-        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
+      here = visit_as(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+      there = visit_as(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
 
       send_photos!(context)
 
-      assert has_element?(here, "#sent [data-state=info]", "Sending")
-      assert has_element?(here, "#sent td small", "0 of 2 files")
-      assert has_element?(here, "#sent button", "Withdraw")
-      refute render(there) =~ "Biscuit"
+      here
+      |> assert_has(biscuit(sent()), state: "info", text: "Sending")
+      |> assert_has(biscuit(sent()), text: "0 of 2 files")
+      |> assert_has(biscuit(sent()) |> details("Withdraw the transfer of Biscuit"))
+
+      refute_has(there, biscuit(received()))
 
       assert %{success: 1} = Oban.drain_queue(queue: :transfers)
 
-      assert has_element?(here, "#sent [data-state=info]", "Waits for an answer")
-      refute has_element?(here, "#sent td small")
-      assert render(there) =~ "Biscuit"
-      assert has_element?(there, "button", "Accept")
+      here
+      |> assert_has(biscuit(sent()), state: "info", text: "Waits for an answer")
+      |> refute_has(biscuit(sent()), text: "files")
+
+      assert_has(there, biscuit(received()) |> button("Accept the transfer of Biscuit"))
     end
 
     test "that did not arrive say why, and go again with one click", context do
       Shoddy.Tests.put_app_env(:rescord, :storage, __MODULE__.Refusing)
-      transfer = send_photos!(context)
+      send_photos!(context)
 
       ExUnit.CaptureLog.capture_log(fn ->
         for _try <- 1..10, do: Oban.drain_queue(queue: :transfers, with_scheduled: true)
       end)
 
-      {conn, view, _html} =
-        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
-
-      assert has_element?(view, "#sent [data-state=alert]", "Not sent")
-      assert has_element?(view, "#sent td small", "could not reach the files")
+      session =
+        context.wattle_admin
+        |> visit_as(~p"/o/#{context.wattle.short_name}/transfers")
+        |> assert_has(biscuit(sent()), state: "alert", text: "Not sent")
+        |> assert_has(biscuit(sent()), text: "could not reach the files")
 
       # A member reads it, and has no button.
-      {_conn, member_view, _html} =
-        open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/transfers")
-
-      assert has_element?(member_view, "#sent [data-state=alert]", "Not sent")
-      refute has_element?(member_view, "#sent button")
+      context.wattle_member
+      |> visit_as(~p"/o/#{context.wattle.short_name}/transfers")
+      |> assert_has(biscuit(sent()), state: "alert", text: "Not sent")
+      |> refute_has(biscuit(sent()) |> button(~r/./))
+      |> refute_has(biscuit(sent()) |> details(~r/./))
 
       Shoddy.Tests.put_app_env(:rescord, :storage, Rescord.Storage.Disk)
 
-      {:ok, view, _html} =
-        view |> render_click("send_again", %{"id" => transfer.id}) |> follow_redirect(conn)
-
-      assert has_element?(view, "#sent [data-state=info]", "Sending")
-      refute has_element?(view, "#sent button", "Send again")
+      session
+      |> click(biscuit(sent()) |> button("Send the transfer of Biscuit again"))
+      |> assert_has(biscuit(sent()), state: "info", text: "Sending")
+      |> refute_has(biscuit(sent()) |> button("Send the transfer of Biscuit again"))
     end
   end
 
