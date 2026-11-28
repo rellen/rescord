@@ -9,6 +9,19 @@ import Config
 
 config :ash_oban, pro?: false
 
+# The library that reaches the provider of the assistant (ADR 0069). These
+# are code and no settings: no operator sets them (ADR 0068).
+config :req_llm,
+  # A root user names the model of a provider. ReqLLM warns at each request
+  # for a model that its catalogue does not have.
+  warn_unverified_models: false,
+  # ReqLLM reads a file `.env` of the working directory when Mix is there.
+  # The key of a provider comes from its row, and from nowhere else.
+  load_dotenv: false,
+  # A request that fails holds the conversation in its struct. This keeps
+  # it out of what `inspect/1` shows.
+  redact_context: true
+
 # The change that `emit` adds to an action does not say that it is temporal
 # safe (Ash 3.38.1), so Ash refuses a signal of a temporal resource. The
 # change only reads the record and runs the listeners through Ash, as of the

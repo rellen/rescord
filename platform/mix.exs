@@ -85,6 +85,14 @@ defmodule Rescord.MixProject do
       # The time zone rules, for the time zone of an organisation (ADR 0026).
       {:tz, "~> 0.28"},
       {:ash_rate_limiter, "~> 2.0"},
+      # The assistant, Ruby (ADR 0069): the tools and the loop of a model, and
+      # the requests to a provider.
+      {:ash_ai, "~> 1.5"},
+      {:req_llm, "~> 1.31"},
+      # The secrets of a settings resource (ADR 0068). The vault is
+      # `Rescord.Vault`, and not the package `cloak`.
+      {:ash_cloak, "~> 0.5"},
+      {:mdex, "~> 0.14"},
       {:hammer, "~> 7.5"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:usage_rules, "~> 1.3", only: [:dev]},

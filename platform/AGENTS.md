@@ -217,6 +217,12 @@ _A declarative, extensible framework for building Elixir applications._
 ## ash:testing usage
 [ash:testing usage rules](deps/ash/usage-rules/testing.md)
 <!-- ash:testing-end -->
+<!-- ash_ai-start -->
+## ash_ai usage
+_Integrated LLM features for your Ash application._
+
+[ash_ai usage rules](deps/ash_ai/usage-rules.md)
+<!-- ash_ai-end -->
 <!-- ash_authentication-start -->
 ## ash_authentication usage
 _Authentication extension for the Ash Framework._
@@ -366,6 +372,12 @@ _A code generation and project patching framework_
 
 [igniter usage rules](deps/igniter/usage-rules.md)
 <!-- igniter-end -->
+<!-- mdex-start -->
+## mdex usage
+_Fast and extensible Markdown for Elixir_
+
+[mdex usage rules](deps/mdex/usage-rules.md)
+<!-- mdex-end -->
 <!-- phoenix:ecto-start -->
 ## phoenix:ecto usage
 [phoenix:ecto usage rules](deps/phoenix/usage-rules/ecto.md)
@@ -386,6 +398,12 @@ _A code generation and project patching framework_
 ## phoenix:phoenix usage
 [phoenix:phoenix usage rules](deps/phoenix/usage-rules/phoenix.md)
 <!-- phoenix:phoenix-end -->
+<!-- req_llm-start -->
+## req_llm usage
+_req_llm_
+
+[req_llm usage rules](deps/req_llm/usage-rules.md)
+<!-- req_llm-end -->
 <!-- shoddy-start -->
 ## shoddy usage
 _Small functions for tasks that occur frequently in Elixir code._

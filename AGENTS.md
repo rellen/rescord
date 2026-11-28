@@ -49,7 +49,9 @@ scripts/upgrade-test.sh OLD_IMAGE NEW_IMAGE  # an upgrade with its data, as the 
 ```
 
 After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
-`nix/package.nix` again: `nix build` prints the new one.
+`nix/package.nix` again: `nix build` prints the new one. When the version
+of `mdex_native` changes there, set `mdexNative` in the same file too: its
+version, and the two hashes of its native library.
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
 ADR 0047).
