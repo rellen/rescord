@@ -2,10 +2,10 @@ defmodule RescordWeb.ResidentsLive do
   @moduledoc """
   The residents of an organisation, at `/o/<short name>/residents`.
 
-  Each member sees the list, with a search by name, a filter by species, by
-  sex and by status, a sort, and a choice of how many residents a page
-  shows. Rescord calculates the status of each resident at the instant of
-  the read.
+  Each member sees the list, with a search by name or by markings, a filter
+  by species, by sex and by status, a sort, and a choice of how many
+  residents a page shows. Rescord calculates the status of each resident at
+  the instant of the read.
 
   The address holds the search, the filters, the sort and the page
   (ADR 0084), so a member who opens a resident and goes back finds the list
@@ -63,6 +63,11 @@ defmodule RescordWeb.ResidentsLive do
     end
   end
 
+  # The search of the list: the text is in the name or in the markings of a
+  # resident. The markings have no column, so Cinder cannot search them by
+  # itself.
+  defp search(query, _columns, text), do: Residents.with_text(query, text)
+
   @impl true
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
@@ -118,6 +123,7 @@ defmodule RescordWeb.ResidentsLive do
         tenant={@organisation}
         url_state={@url_state}
         page_size={[default: 25, options: [25, 50, 100]]}
+        search={[placeholder: "Name or markings", fn: &search/3]}
       >
         <:filter
           field="species_id"

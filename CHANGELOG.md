@@ -82,6 +82,10 @@ release (ADR 0047).
     a column to the journal entries, for the condition that an entry is
     about. The table is empty and the column is empty for each entry
     that is there. It changes no row.
+  - `20261128065227_add_the_markings_of_a_resident`, in each
+    organisation: adds a column to the residents, for the markings of a
+    resident. The column is empty for each resident that is there. It
+    changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -350,6 +354,15 @@ release (ADR 0047).
   is two columns, the number and the code of its currency. A person who
   cannot manage the expenses exports only their own. The files of the
   receipts are not in the ZIP.
+- A resident can have markings: free text, at most 300 characters, for
+  what tells it apart and is in no list, such as a torn ear or a white
+  blaze on the nose (ADR 0085). It is for the many residents that carry no
+  microchip and no ear tag. The form of a resident has the field, and no
+  resident needs it. The page of a resident, the cage card, the record of
+  a resident and the copy of a transfer show the markings when a resident
+  has them, and have no row for them when it has none. The search of the
+  residents page finds a resident by its name or by its markings.
+  `residents.csv` of the export has the new column `markings`.
 
 ### Changed
 

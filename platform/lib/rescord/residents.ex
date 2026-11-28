@@ -152,6 +152,17 @@ defmodule Rescord.Residents do
   def summary, do: [:name, :species_label, :status, :arrived_on]
 
   @doc """
+  Narrows a query of residents to those with the text in the name or in the
+  markings, in any case of the letters. It is the search of a list of
+  residents: many residents carry no identifier, and a person then knows
+  one by its name or by a mark.
+  """
+  def with_text(query, text) when is_binary(text) do
+    text = Ash.CiString.new(text)
+    Ash.Query.filter(query, contains(name, ^text) or contains(markings, ^text))
+  end
+
+  @doc """
   One resident with each of its facts, or `nil` when the actor can read no
   such resident.
   """

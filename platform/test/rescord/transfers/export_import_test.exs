@@ -528,6 +528,7 @@ defmodule Rescord.Transfers.ExportImportTest do
                    "born_on" => "not a date",
                    "arrived_on" => "2026-01-02",
                    "breeds" => ["Sheltie", 3, %{}],
+                   "markings" => "Torn left ear",
                    "secret" => "dropped"
                  },
                  "medical" => [
@@ -547,7 +548,16 @@ defmodule Rescord.Transfers.ExportImportTest do
       assert clean["facts"]["born_on"] == nil
       assert clean["facts"]["arrived_on"] == "2026-01-02"
       assert clean["facts"]["breeds"] == ["Sheltie"]
+      assert clean["facts"]["markings"] == "Torn left ear"
       refute Map.has_key?(clean["facts"], "secret")
+
+      # A copy from a version with no markings, or with markings that are
+      # not text, has none.
+      assert {:ok, %{"facts" => %{"markings" => nil}}} =
+               Snapshot.clean(%{"facts" => %{"name" => "Biscuit"}, "medical" => []})
+
+      assert {:ok, %{"facts" => %{"markings" => nil}}} =
+               Snapshot.clean(%{"facts" => %{"markings" => ["a list"]}, "medical" => []})
 
       assert [%{"kind" => "diagnosis", "at" => nil, "facts" => %{"condition" => "Cold"}}] =
                clean["medical"]

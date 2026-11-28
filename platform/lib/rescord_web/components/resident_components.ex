@@ -10,7 +10,10 @@ defmodule RescordWeb.ResidentComponents do
   alias Rescord.Residents
   alias RescordWeb.ResidentWords
 
-  @doc "The facts of a resident."
+  @doc """
+  The facts of a resident. The markings are free text that a resident can
+  be without, so their row is there only when the resident has them.
+  """
   attr :resident, :any, required: true
   attr :today, :any, required: true
 
@@ -27,6 +30,7 @@ defmodule RescordWeb.ResidentComponents do
         <:item title="Colour">{labels(@resident.resident_colours, :colour)}</:item>
         <:item title="Size class">{label(@resident.size_class)}</:item>
         <:item title="Coat">{label(@resident.coat)}</:item>
+        <:item :if={@resident.markings} title="Markings">{@resident.markings}</:item>
         <:item title="Temperament">
           {labels(@resident.resident_temperaments, :temperament)}
         </:item>
@@ -596,6 +600,14 @@ defmodule RescordWeb.ResidentComponents do
         label="Coat"
         prompt="Not recorded"
         options={@lists.coat}
+      />
+      <.input
+        field={@form[:markings]}
+        type="textarea"
+        label="Markings"
+        hint="What tells this resident apart and is in no list, such as a torn ear."
+        maxlength="300"
+        rows="2"
       />
     </fieldset>
     """

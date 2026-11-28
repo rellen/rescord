@@ -224,6 +224,7 @@ dimensions:
 | temperament | shy, reactive to dogs, needs an experienced handler | zero or more |
 | desex status | entire, desexed, not known | one, with a history |
 | identifier kind | microchip, ear tag, leg band, tattoo | one for each identifier |
+| markings | "torn left ear", "white blaze on the nose" | zero or one, as free text |
 
 - Rescord keeps a history of the name, the status, and the desex status of a
   resident. The name and the desex status are each a temporal resource in
@@ -232,6 +233,9 @@ dimensions:
 - The species, the breed, the colour, the size class, the coat, the
   temperament and the identifier kind are lists that an organisation can
   extend. The sex and the desex status are fixed lists.
+- A resident needs no identifier: many species carry no microchip and no
+  ear tag. The markings are free text for what tells a resident apart and
+  is in no list (ADR 0085). A resident needs none.
 - The weight is a measurement in the journal, so it has a history already.
 - An arrival records how and when a resident came to the organisation. A
   departure records how and when a resident left.
@@ -261,7 +265,8 @@ time zone of the organisation.
 
 Rescord has these parts of this section (ADR 0025): the resident and each of
 its dimensions, the name and the desex status with their history, the
-identifiers, the arrival, the departure and the absence, and pages for them.
+identifiers, the markings, the arrival, the departure and the absence, and
+pages for them.
 
 ### 5.3 Families of residents
 

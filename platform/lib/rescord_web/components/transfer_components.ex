@@ -472,6 +472,7 @@ defmodule RescordWeb.TransferComponents do
         <.fact term="Colours" value={join(@facts["colours"])} />
         <.fact term="Size" value={@facts["size_class"]} />
         <.fact term="Coat" value={@facts["coat"]} />
+        <.fact term="Markings" value={@facts["markings"]} />
         <.fact term="Temperament" value={join(@facts["temperaments"])} />
         <.fact
           :for={identifier <- @facts["identifiers"] || []}

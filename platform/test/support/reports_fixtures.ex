@@ -113,6 +113,7 @@ defmodule Rescord.ReportsFixtures do
         born_on_estimated: true,
         size_class_id: lists.size_class.small,
         coat_id: lists.coat.rough,
+        markings: "Torn left ear",
         breed_ids: [lists.breed.abyssinian],
         colour_ids: [lists.colour.tan, lists.colour.white],
         temperament_ids: [lists.temperament.shy],

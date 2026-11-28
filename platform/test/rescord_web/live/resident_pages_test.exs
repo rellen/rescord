@@ -409,6 +409,26 @@ defmodule RescordWeb.ResidentPagesTest do
       assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.rabbit}"]))
       assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.guinea_pig}"]))
     end
+
+    test "finds a resident by its name or by its markings", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options, %{name: "Biscuit", markings: "Torn left ear"})
+      resident!(lists, context.options, %{name: "Pepper"})
+      residents = context.base <> "/residents"
+
+      {_view, html} = open(context.conn, residents)
+      assert html =~ ~s(placeholder="Name or markings")
+      assert rows(html) =~ "Biscuit"
+      assert rows(html) =~ "Pepper"
+
+      for {text, shown, hidden} <- [{"TORN", "Biscuit", "Pepper"}, {"pep", "Pepper", "Biscuit"}] do
+        {_view, html} = open(context.conn, residents <> "?search=#{text}")
+        rows = rows(html)
+
+        assert rows =~ shown
+        refute rows =~ hidden
+      end
+    end
   end
 
   # The rows of the table of a collection, without its filters, which name
@@ -519,6 +539,50 @@ defmodule RescordWeb.ResidentPagesTest do
       refute html =~ "Rex"
       assert html =~ "Names"
       assert html =~ "Biscuit, from"
+    end
+
+    test "takes the markings, and the page has their row only when there are some", context do
+      lists = lists!(context.organisation, context.root)
+      resident = resident!(lists, context.options)
+      path = context.base <> "/residents/#{resident.id}"
+
+      {view, html} = open(context.conn, path)
+      refute has_element?(view, "dt", "Markings")
+      refute html =~ "Markings"
+
+      {view, _html} = open(context.conn, path <> "/edit")
+      assert has_element?(view, ~s(textarea#resident_markings[maxlength="300"]))
+      assert has_element?(view, ~s(label[for="resident_markings"]), "Markings")
+
+      {view, html} =
+        submit(view, context.conn, "#resident", resident: %{markings: " Torn left ear "})
+
+      assert has_element?(view, "dt", "Markings")
+      assert has_element?(view, "dd", "Torn left ear")
+      # No other fact changed.
+      assert html =~ "Biscuit"
+
+      # The form has the markings, and a form with none takes them away.
+      {view, _html} = open(context.conn, path <> "/edit")
+      assert has_element?(view, "textarea#resident_markings", "Torn left ear")
+      {view, _html} = submit(view, context.conn, "#resident", resident: %{markings: ""})
+      refute has_element?(view, "dt", "Markings")
+    end
+
+    test "of a new resident takes the markings too", context do
+      lists = lists!(context.organisation, context.root)
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+
+      {view, _html} =
+        submit(view, context.conn, "#resident",
+          resident: %{
+            name: "Pepper",
+            species_id: lists.species.guinea_pig,
+            markings: "White blaze on the nose"
+          }
+        )
+
+      assert has_element?(view, "dd", "White blaze on the nose")
     end
 
     test "does not open for a resident that is not there", context do
