@@ -252,7 +252,9 @@ release (ADR 0047).
   300 files", while its files go to the partner. When a file does not
   arrive, it shows "Not sent" and why, with the new button "Send again"
   beside "Withdraw". A transfer that is sending or not sent can be
-  withdrawn too (ADR 0100).
+  withdrawn too. A transfer whose copy stopped when the server stopped,
+  and did not start again, is "Not sent" within an hour after the
+  2 hours that Oban waits for such a job (ADR 0100).
 - For a person who changes Rescord: mutation testing with muex (ADR 0104).
   `mix test.mutation` and the new workflow "Mutation testing" make copies
   of the code with one small change each, and report each change that no

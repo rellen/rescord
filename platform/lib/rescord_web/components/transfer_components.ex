@@ -371,10 +371,7 @@ defmodule RescordWeb.TransferComponents do
                   <.icon name="x-circle" /> Decline
                 </.button>
                 <.button
-                  :if={
-                    @can_send_again? and transfer.state == :failed and
-                      transfer.failure != :file_missing
-                  }
+                  :if={@can_send_again? and transfer.state == :failed}
                   phx-click="send_again"
                   phx-value-id={transfer.id}
                   aria-label={"Send the transfer of #{transfer.resident_name} again"}

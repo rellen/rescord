@@ -288,6 +288,13 @@ defmodule Rescord.Transfers do
   end
 
   @doc """
+  Makes each transfer that is `sending` with no job left `failed` (ADR 0100,
+  `Rescord.Transfers.StoppedCopies`). A job runs it each hour.
+  """
+  @spec fail_stopped_copies() :: {:ok, non_neg_integer} | {:error, term}
+  defdelegate fail_stopped_copies(), to: Rescord.Transfers.StoppedCopies, as: :run
+
+  @doc """
   Each key of the store that a transfer to the organisation names: each
   file of the copy of each transfer that the organisation received, in
   any state (`Rescord.Storage.Named`, ADR 0091). It reads the table with

@@ -52,7 +52,9 @@ config :rescord, Oban,
       {"7 * * * *", Rescord.Tasks.Workers.GenerateTasks},
       # The usage counts: the old ones go, and in the mode `send` the full
       # days leave for the address of the operator (ADR 0098).
-      {"23 * * * *", Rescord.Usage.Workers.Send}
+      {"23 * * * *", Rescord.Usage.Workers.Send},
+      # A transfer whose job is gone after the lifeline is `failed` (ADR 0100).
+      {"41 * * * *", Rescord.Transfers.Workers.FailStoppedCopies}
     ]
   ]
 
