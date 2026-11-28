@@ -545,6 +545,15 @@ of one store into the other while the server works, for a server that
 changes its store: it lists the old store, puts each file that the new
 store does not have, reads it back, and compares it. It deletes nothing.
 
+Rescord writes a record before it puts the file, in one transaction, so a
+fault after the put leaves a file that no record names. `bin/check-files`
+(`Rescord.Storage.Compare`, ADR 0091) finds those leftovers and says how
+much space they take, and it finds a file that a record names and the
+store lost. It lists the store with the size of each file
+(`Rescord.Storage.files/0`), and each domain that keeps files gives the
+keys of its records with `file_keys/1`, read from each row of the table
+with no actor (`Rescord.Storage.Named`). It changes nothing.
+
 A photo goes through `Rescord.Images` before it reaches the store
 (ADR 0055): libvips turns it as its EXIF says, writes it again with no
 metadata, so no GPS position stays, and makes a thumbnail. A photo of the

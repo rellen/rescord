@@ -496,7 +496,13 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A key gets its bytes one time: never put other bytes under a key that
     has a file. `bin/move-storage` copies the files of a server that
     works, and relies on it (ADR 0059). A new store implements each
-    callback of `Rescord.Storage`, `list/0` too.
+    callback of `Rescord.Storage`, `list/0` and `files/0` too.
+  - A resource that keeps a file holds the key in the attribute `key`,
+    and the key of a thumbnail in `thumbnail_key`. Its domain has
+    `file_keys/1` (`Rescord.Storage.Named.keys/3`) and is in
+    `Rescord.Release.Files.domains/0`, or `bin/check-files` calls each of
+    its files a leftover (ADR 0091). `Rescord.Release.FilesTest` names a
+    resource that is left out. No code deletes a file of the store.
   - A test of the store of S3 with more than one request uses
     `Rescord.StorageFixtures.s3_store!/1`, which starts `Rescord.FakeS3`,
     a service in the memory of the test.
@@ -989,6 +995,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/log.ex`, `log/` | what the log holds and keeps out: the fields of a line, the safe text of a failure, the crash reports, the lines of the jobs (ADR 0077) |
 | `platform/lib/rescord/metrics.ex`, `platform/lib/rescord_web/telemetry.ex` | the metrics, and the endpoint that a collector reads (ADR 0077) |
 | `platform/lib/rescord/expenses.ex`, `expenses/` | the expenses, their receipts, their states and their grants (ADR 0082) |
+| `platform/lib/rescord/storage/compare.ex`, `storage/named.ex`, `release/files.ex` | the comparison of the store with the records, for `bin/check-files`: the groups and the report, the keys that a resource names, and the read of both (ADR 0091) |
 | `platform/lib/rescord/storage/upload.ex` | the check of a file that a person sends: its type from its bytes, its size, and a photo made safe (ADR 0041, ADR 0082) |
 | `platform/lib/rescord_web/expense_words.ex` | the words of the expenses: the states, the amounts, the rows of the CSV file |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
@@ -1011,7 +1018,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, with the rehearsal of an upgrade in `release/rehearsal.ex` (ADR 0081), and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage` and `rotate-vault` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, with the rehearsal of an upgrade in `release/rehearsal.ex` (ADR 0081), and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage`, `rotate-vault` and `check-files` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068, ADR 0091) |
 | `platform/lib/rescord/storage.ex`, `storage/` | the stores of the files, a directory and a bucket of S3, and the move from one into the other (ADR 0038, ADR 0059) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |

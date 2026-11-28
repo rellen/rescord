@@ -545,6 +545,21 @@ defmodule Rescord.Journal do
   end
 
   @doc """
+  Each key of the store that an attachment of the organisation names: the
+  file and the thumbnail of each attachment, the removed ones too
+  (`Rescord.Storage.Named`, ADR 0091). It reads the table with no actor,
+  for `bin/check-files`, and no page calls it.
+  """
+  @spec file_keys(String.t()) :: [Rescord.Storage.Named.entry()]
+  def file_keys(organisation_id),
+    do:
+      Rescord.Storage.Named.keys(
+        Rescord.Journal.Attachment,
+        "journal attachment",
+        organisation_id
+      )
+
+  @doc """
   Whether a role can take a file off an entry: each file with the power
   `:correct_journal`, and the files that the person attached with the power
   `:journal`. A page asks this to decide what to show.

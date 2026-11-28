@@ -1,0 +1,38 @@
+#!/bin/sh
+# Compares the files of the store with the records of the database
+# (ADR 0091), and prints a report:
+#   bin/check-files          # names the first 20 files of each group
+#   bin/check-files --all    # names each file
+#
+# A leftover is a file of the store that no record names: an upload or a
+# transfer put it there before it failed. The report says how many there
+# are, and how much space they take. A missing file is one that a record
+# names and that the store does not have.
+#
+# It changes nothing: it deletes no file, and it writes no record. It
+# reads the store that RESCORD_STORAGE names, and it runs beside a server
+# that works.
+#
+# It exits with 0 when the store has each file that a record names, with
+# leftovers or with none, with 1 when a file is missing, and with 2 when
+# it could not compare the two.
+set -eu
+
+case "$#:${1:-}" in
+  0:) all=false ;;
+  1:--all) all=true ;;
+  *)
+    echo "bin/check-files takes no argument, or --all to name each file." >&2
+    exit 2
+    ;;
+esac
+
+cd -P -- "$(dirname -- "$0")"
+RESCORD_CHECK_FILES_ALL="$all" exec ./rescord eval '
+  all? = System.fetch_env!("RESCORD_CHECK_FILES_ALL") == "true"
+
+  case Rescord.Release.check_files(all: all?) do
+    :ok -> :ok
+    :missing -> System.halt(1)
+    :error -> System.halt(2)
+  end'

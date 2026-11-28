@@ -7,7 +7,9 @@ defmodule Rescord.Transfers.Files do
   removes one, and on another server.
   """
 
-  alias Rescord.Storage
+  import Ecto.Query, only: [from: 2]
+
+  alias Rescord.{Repo, Storage}
   alias Rescord.Transfers.Snapshot
 
   @doc "The key of a file of a transfer, in the store of the refuge that receives it."
@@ -60,6 +62,33 @@ defmodule Rescord.Transfers.Files do
         :ok -> {:cont, :ok}
         {:error, error} -> {:halt, {:error, error}}
       end
+    end)
+  end
+
+  @doc """
+  The key of each file that the copy of a transfer to the organisation
+  names, as `Rescord.Storage.Named` gives the keys of a resource. A
+  transfer keeps its files in each state: the refuge that receives it has
+  them from the send or the import on. An export keeps no file on this
+  server, and names no organisation that receives it.
+
+  It reads the table itself, with no actor.
+  """
+  @spec keys_of(String.t()) :: [Storage.Named.entry()]
+  def keys_of(organisation_id) when is_binary(organisation_id) do
+    from(transfer in "transfers",
+      where: transfer.to_organisation_id == type(^organisation_id, Ecto.UUID),
+      select: {transfer.id, transfer.snapshot}
+    )
+    |> Repo.all(timeout: :timer.minutes(5))
+    |> Enum.flat_map(fn {id, copy} ->
+      transfer_id = Ecto.UUID.load!(id)
+
+      # `key/3` raises for an id that can be no part of a key, and a file
+      # with such an id was never put in the store.
+      for %{"id" => file_id} <- Snapshot.files(copy || %{}),
+          Storage.segment?(file_id),
+          do: {key(organisation_id, transfer_id, file_id), "transfer", transfer_id}
     end)
   end
 

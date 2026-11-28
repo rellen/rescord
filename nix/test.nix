@@ -64,6 +64,15 @@ self:
     machine.fail("rescord-migrate --other")
 
     machine.succeed("echo 'a file of the store' > /var/lib/rescord/files/probe.txt")
+
+    # The comparison of the store with the database (ADR 0091): no record
+    # names a file yet, and the file that Rescord did not put there is
+    # counted apart. An option that it does not know is refused.
+    compared = machine.succeed("rescord-check-files")
+    for line in ["other     1 that Rescord did not put there: probe.txt", "The store has each file that a record names.", "Nothing was changed."]:
+        assert line in compared, f"{line!r} is not in the report:\n{compared}"
+    machine.fail("rescord-check-files --other")
+
     machine.succeed("systemctl start rescord-backup.service")
     machine.succeed("ls /var/lib/rescord-backup/database/rescord-*.dump")
     machine.succeed("test -f /var/lib/rescord-backup/files/probe.txt")

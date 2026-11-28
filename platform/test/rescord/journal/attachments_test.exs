@@ -187,5 +187,7 @@ defmodule Rescord.Journal.AttachmentsTest do
     def delete(_key), do: {:error, :down}
     @impl true
     def list, do: {:error, :down}
+    @impl true
+    def files, do: {:error, :down}
   end
 end

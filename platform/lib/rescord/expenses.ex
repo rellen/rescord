@@ -387,6 +387,16 @@ defmodule Rescord.Expenses do
   end
 
   @doc """
+  Each key of the store that a receipt of the organisation names: the
+  file and the thumbnail of each receipt, the removed ones too
+  (`Rescord.Storage.Named`, ADR 0091). It reads the table with no actor,
+  for `bin/check-files`, and no page calls it.
+  """
+  @spec file_keys(String.t()) :: [Rescord.Storage.Named.entry()]
+  def file_keys(organisation_id),
+    do: Rescord.Storage.Named.keys(Receipt, "receipt of an expense", organisation_id)
+
+  @doc """
   Whether the error of an action says that the expense changed after the
   caller read it: another person decided it a moment before.
   """

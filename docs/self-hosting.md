@@ -122,6 +122,7 @@ The module installs `rescord-check`, which checks the server (see "Check
 the server" below), and `rescord-bootstrap-root`, which makes the first
 root user. It also installs `rescord-restore` (see "Restore"),
 `rescord-move-storage` (see "Move the files to another store"),
+`rescord-check-files` (see "Check the files"),
 `rescord-rotate-vault` (see "Change the secret of the keys") and
 `rescord-migrate` (see "The rehearsal of an upgrade"). Each runs
 with the environment of the service. Run them as root:
@@ -498,7 +499,9 @@ the same in both stores.
    file does not show it. To have no such time, stop Rescord before step 3
    and start it at step 4: the command needs the two stores, and not the
    server or the database.
-6. Run `bin/check`, and open a photo and a PDF in Rescord.
+6. Run `bin/check`, and open a photo and a PDF in Rescord. `bin/check-files`
+   then says whether the new store has each file that a record names (see
+   "Check the files").
 
 Keep the old store until the new one has served for a time, and then
 delete it yourself. After a move to S3, the backup of each day no longer
@@ -509,6 +512,72 @@ A name in the old store that Rescord did not make, such as the
 `lost+found` of a volume, stays there, and the report names it. The
 command does not move the files of one bucket into another bucket: move
 them through a directory.
+
+## Check the files
+
+`bin/check-files` compares the files of the store with the records of the
+database (ADR 0091). It changes nothing: it deletes no file, and it writes
+no record. Run it while Rescord runs, in the way of your install:
+
+```sh
+docker compose exec rescord bin/check-files     # Docker Compose
+rescord-check-files                             # NixOS, as root
+rescord check-files                             # the tarball, with the `rescord` function of the install steps
+```
+
+It lists each file of the store that `RESCORD_STORAGE` names, reads the
+tables that name a file in each organisation, and prints a report:
+
+```text
+The directory /var/lib/rescord/files has 1207 files (2.31 GB), and Rescord has 3 organisations.
+
+named     1204 files (2.31 GB) that a record names
+leftover  2 files (3.4 MB) that no record names
+  5b0c9d0e-8a57-4c58-9a57-1f0e3f1f6f0a/photos/0d8f2c36-5f0c-4d55-a8a4-0d8b7a1f2c11  3.4 MB
+  5b0c9d0e-8a57-4c58-9a57-1f0e3f1f6f0a/thumbnails/0d8f2c36-5f0c-4d55-a8a4-0d8b7a1f2c11  9.2 kB
+other     1 that Rescord did not put there: lost+found
+
+A leftover is a file that an upload or a transfer put in the store before it failed.
+A file of an upload that runs now can be in this list too. Run the command
+again: a leftover is in both runs.
+The store has each file that a record names.
+Nothing was changed.
+```
+
+- **named**: the files that a record names: a photo, a file of a journal
+  entry, a receipt of an expense, or a file of a transfer that a refuge
+  received. A removed record and an old version of a record count, because
+  the history still shows their files.
+- **leftover**: a file of an organisation that no record names. Rescord
+  puts a file in the store a moment before it saves the record. When that
+  save fails, the person sees an error, and the file stays in the store.
+  No page shows it, and it does no harm: it takes space. Rescord deletes
+  no leftover. To have the space back, delete the keys of the report with
+  the tools of the store, after a second run named them again.
+- **unknown**: a file under a first segment that is no organisation of
+  this server, such as the test file of a `bin/check` that stopped, or
+  the files of another server in the same bucket.
+- **other**: a name that is no key of Rescord, such as the `lost+found`
+  of a volume.
+- **FAIL**: a file that a record names, and that the store does not have.
+  The page that shows it gives an error. The line names the key, the kind
+  of the record, its id and the id of its organisation. Look for the key
+  in a backup of the store, and put the file back under the same key.
+
+The report names the first 20 files of a group, and
+`bin/check-files --all` names each one. It prints ids, keys and sizes,
+and nothing that a person typed.
+
+The command exits with 0 when the store has each file that a record
+names, with leftovers or with none, with 1 when a file is missing, and
+with 2 when it could not compare the two: the store did not list its
+files, the database did not answer, or a migration of this version has
+not run.
+
+It reads no file, so it does not find a file with the wrong bytes. With a
+bucket it sends one request for each 1000 files. Good times to run it:
+after a restore, after `bin/move-storage`, and when the store grows more
+than the records explain.
 
 ## Change the secret of the keys
 

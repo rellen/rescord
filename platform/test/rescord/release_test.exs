@@ -7,6 +7,10 @@ defmodule Rescord.ReleaseTest do
   `move_storage/2` copies the files of one store into the other, and
   prints the report (ADR 0059). `Rescord.Storage.MoveTest` holds the move
   itself.
+
+  `check_files/1` compares the store with the database, and prints the
+  report (ADR 0091). `Rescord.Release.FilesTest` and
+  `Rescord.Storage.CompareTest` hold the comparison itself.
   """
 
   use Rescord.DataCase, async: false
@@ -133,6 +137,85 @@ defmodule Rescord.ReleaseTest do
         output = capture_io(fn -> assert :error = Release.move_storage(from, to) end)
         assert output =~ "disk s3, or s3 disk"
       end
+    end
+  end
+
+  describe "the comparison of the store with the database" do
+    import Rescord.AccountsFixtures
+    import Rescord.ResidentsFixtures
+    import Rescord.StorageFixtures
+
+    alias Rescord.{FakeS3, Photos, Storage}
+
+    setup do
+      s3 = s3_store!()
+      Application.put_env(:rescord, :storage, Storage.S3)
+      on_exit(fn -> Application.put_env(:rescord, :storage, Storage.Disk) end)
+
+      root = root!()
+      organisation = organisation!(root, "Wattle Creek")
+      {_, administrator} = member!(organisation, :administrator, root)
+      options = [actor: administrator, tenant: organisation]
+      biscuit = resident!(lists!(organisation, root), options)
+
+      photo =
+        Photos.add_photo!(
+          %{resident_id: biscuit.id, content: photo(), caption: "Biscuit on the sofa"},
+          options
+        )
+
+      %{s3: s3, organisation: organisation, photo: photo}
+    end
+
+    test "says the leftovers with their size, changes nothing, and is no failure",
+         %{s3: s3, organisation: organisation, photo: photo} do
+      leftover = Storage.key(organisation.id, ["photos", "0a1b2c3d"])
+      FakeS3.put_object(s3, leftover, String.duplicate("p", 2_500))
+      before = FakeS3.objects(s3)
+
+      output = capture_io(fn -> assert :ok = Release.check_files() end)
+
+      assert output =~ "The bucket rescord at http://s3.test:3900 has 3 files"
+      assert output =~ "and Rescord has 1 organisation."
+      assert output =~ "named     2 files"
+      assert output =~ "leftover  1 file (2.5 kB) that no record names\n  #{leftover}  2.5 kB\n"
+      assert output =~ "Run the command\nagain: a leftover is in both runs."
+      assert output =~ "The store has each file that a record names.\nNothing was changed."
+      refute output =~ "FAIL"
+
+      # Ids, keys and sizes, and nothing that a person typed.
+      refute output =~ "Biscuit"
+      refute output =~ photo.id
+
+      assert FakeS3.objects(s3) == before
+      assert FakeS3.requests(s3, "PUT") |> length() == 2
+      assert FakeS3.requests(s3, "DELETE") == []
+    end
+
+    test "fails for a file that a record names and the bucket does not have",
+         %{organisation: organisation, photo: photo} do
+      :ok = Storage.delete(photo.key)
+
+      output = capture_io(fn -> assert :missing = Release.check_files(all: true) end)
+
+      assert output =~ "FAIL      1 file that a record names, and that the store does not have\n"
+
+      assert output =~
+               "  #{photo.key}: photo #{photo.id}, of the organisation #{organisation.id}\n"
+
+      assert output =~ "look for each FAIL in\na backup of the store"
+      refute output =~ "leftover"
+      refute output =~ "Biscuit"
+    end
+
+    test "says so when the bucket does not list its files, and compares nothing", %{s3: s3} do
+      FakeS3.fault(s3, :list, 403)
+
+      output = capture_io(fn -> assert :error = Release.check_files() end)
+
+      assert output ==
+               "Rescord cannot list the files of the bucket rescord at http://s3.test:3900: " <>
+                 "the service answered 403.\nNothing was compared.\n"
     end
   end
 end

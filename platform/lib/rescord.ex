@@ -32,7 +32,9 @@ defmodule Rescord do
       # checks such a name too (ADR 0066).
       Resource.VersionPolicies,
       Storage,
+      Storage.Compare,
       Storage.Move,
+      Storage.Named,
       Storage.Upload,
       Units,
       Units.Quantity,

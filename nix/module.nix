@@ -60,9 +60,10 @@ let
   # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050),
   # `rescord-move-storage disk s3` copies the files into the other store
   # (ADR 0059), `rescord-rotate-vault` encrypts again what the previous
-  # secret of the server encrypted (ADR 0068), and
+  # secret of the server encrypted (ADR 0068),
   # `rescord-migrate --rehearse` rehearses an upgrade and changes nothing
-  # (ADR 0081).
+  # (ADR 0081), and `rescord-check-files` compares the files of the store
+  # with the records of the database (ADR 0091).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
@@ -93,6 +94,7 @@ let
   moveStorage = releaseCommand "rescord-move-storage" "move-storage";
   rotateVault = releaseCommand "rescord-rotate-vault" "rotate-vault";
   migrate = releaseCommand "rescord-migrate" "migrate";
+  checkFiles = releaseCommand "rescord-check-files" "check-files";
 in
 {
   options.services.rescord = {
@@ -214,6 +216,7 @@ in
       moveStorage
       rotateVault
       migrate
+      checkFiles
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {

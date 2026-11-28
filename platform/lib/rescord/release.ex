@@ -32,6 +32,10 @@ defmodule Rescord.Release do
   server that changes its store (`Rescord.Storage.Move`, ADR 0059).
   `bin/move-storage` runs it.
 
+  `check_files/1` compares the files of the store with the records of the
+  database, and changes nothing (`Rescord.Storage.Compare`, ADR 0091).
+  `bin/check-files` runs it.
+
   `rotate_vault/0` encrypts again, with the secret of today, what the
   previous secret of the server encrypted (ADR 0068). `bin/rotate-vault`
   runs it.
@@ -42,14 +46,17 @@ defmodule Rescord.Release do
     deps: [
       Rescord,
       Rescord.Accounts,
+      Rescord.Expenses,
+      Rescord.Journal,
       Rescord.Mail,
+      Rescord.Photos,
       Rescord.Ruby,
       Rescord.Transfers,
       Rescord.Vault
     ]
 
   alias Rescord.Release.Rehearsal
-  alias Rescord.Storage.Move
+  alias Rescord.Storage.{Compare, Move}
 
   @app :rescord
 
@@ -201,6 +208,36 @@ defmodule Rescord.Release do
 
       _refused ->
         IO.puts("Give the store of the files and the store to copy them to: disk s3, or s3 disk.")
+        :error
+    end
+  end
+
+  @doc """
+  Compares the files of the store with the records of the database, and
+  prints the report (ADR 0091): the files that a record names, the
+  leftovers that no record names, with their size, and each file that a
+  record names and that the store does not have. `all: true` prints each
+  file of a group, and not the first 20.
+
+  It changes nothing in the store and nothing in the database. The result
+  is `:ok` when the store has each file that a record names, with
+  leftovers or with none, `:missing` when it does not, and `:error` when
+  the comparison could not be made.
+  """
+  @spec check_files(keyword) :: :ok | :missing | :error
+  def check_files(opts \\ []) do
+    load_app()
+    {:ok, _apps} = Application.ensure_all_started(:req)
+    start_repo()
+    store = Rescord.Storage.store()
+
+    case Rescord.Release.Files.compare() do
+      {:ok, report} ->
+        IO.puts(Compare.format(report, store, opts))
+        if Compare.complete?(report), do: :ok, else: :missing
+
+      {:error, fault} ->
+        IO.puts(Compare.format_fault(fault, store))
         :error
     end
   end

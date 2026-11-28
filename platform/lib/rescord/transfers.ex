@@ -286,6 +286,15 @@ defmodule Rescord.Transfers do
     end
   end
 
+  @doc """
+  Each key of the store that a transfer to the organisation names: each
+  file of the copy of each transfer that the organisation received, in
+  any state (`Rescord.Storage.Named`, ADR 0091). It reads the table with
+  no actor, for `bin/check-files`, and no page calls it.
+  """
+  @spec file_keys(String.t()) :: [Rescord.Storage.Named.entry()]
+  defdelegate file_keys(organisation_id), to: Rescord.Transfers.Files, as: :keys_of
+
   @doc "The largest transfer file that an import takes, in bytes."
   defdelegate max_file_size(), to: Archive, as: :max_size
 

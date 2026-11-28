@@ -177,6 +177,17 @@ release (ADR 0047).
   is now a page of Rescord: it has the look of the site, a heading, words
   that say what to do, and a link to the first page. Before, it was the
   two words "Not Found" (ADR 0090).
+- The new command `bin/check-files` (`rescord-check-files` on NixOS)
+  compares the files of the store with the records of the database
+  (ADR 0091). An upload or a transfer that fails after it put a file in
+  the store leaves that file there, and no record names it. Until now
+  nothing counted those leftovers. The command says how many files a
+  record names, how many are leftovers and how much space they take, and
+  it names each file that a record names and that the store does not
+  have, with the kind of the record, its id and its organisation. It
+  changes nothing: it deletes no file. It exits with 1 when a file is
+  missing, and with 0 for leftovers alone. `docs/self-hosting.md` has
+  the section "Check the files".
 - Rescord now records the conditions that a resident has, such as
   bumblefoot or a respiratory infection, each with its first day, its last
   day when it is over, a mark for a chronic condition and a note

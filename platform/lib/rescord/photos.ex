@@ -355,6 +355,16 @@ defmodule Rescord.Photos do
     end
   end
 
+  @doc """
+  Each key of the store that a photo of the organisation names: the photo
+  and its thumbnail, of each photo, the removed ones too
+  (`Rescord.Storage.Named`, ADR 0091). A photo of a journal entry names
+  the keys of its attachment. It reads the table with no actor, for
+  `bin/check-files`, and no page calls it.
+  """
+  @spec file_keys(String.t()) :: [Storage.Named.entry()]
+  def file_keys(organisation_id), do: Storage.Named.keys(Photo, "photo", organisation_id)
+
   @doc "The largest photo that a person can send, in bytes."
   defdelegate max_photo_size(), to: Rescord.Photos.Changes.StorePhoto, as: :max_size
 
