@@ -1020,3 +1020,400 @@ ol[data-working] > li {
   padding-block: 0.25rem;
   overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------- charts */
+
+/*
+ * A chart is SVG that the server writes (ADR 0080), with no script. The
+ * `<svg>` has no `viewBox`: a place is a percentage, so a dot stays round
+ * and a word keeps its size at each width. Only the line is in a nested
+ * `<svg>` that stretches, and its stroke does not stretch with it.
+ *
+ *   <figure data-chart>
+ *     <div data-plot>
+ *       <ol data-ticks>…</ol>          the numbers of the value axis
+ *       <svg role="img">…</svg>        the grid, the line, the dots, the points
+ *       <p data-span>…</p>             the first and the last date
+ *     </div>
+ *     <figcaption>…</figcaption>       what the chart shows, in words
+ *   </figure>
+ *
+ * A chart has one colour: the lead colour is the series, a grey is the
+ * series of the others behind it, and the rule colour is the grid. It
+ * never uses the colour of a state.
+ */
+figure[data-chart] {
+  margin-inline: 0;
+}
+
+/* The numbers take the width that they need, and the plot takes the rest.
+   The room above the plot is for the words of a point. */
+[data-plot] {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.375rem 0.5rem;
+  padding-block-start: 1.5rem;
+  padding-inline-end: 0.375rem;
+}
+
+/* A number has no height, so its middle is on its line of the grid: the
+   first on the top line, the last on the bottom line. */
+ol[data-ticks] {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  list-style: none;
+}
+
+ol[data-ticks] > li {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  block-size: 0;
+  white-space: nowrap;
+}
+
+/* A dot on the edge of the plot is drawn past the edge. */
+[data-plot] > svg {
+  inline-size: 100%;
+  block-size: 11rem;
+  overflow: visible;
+}
+
+[data-plot] svg svg,
+svg[data-spark] > svg {
+  overflow: visible;
+}
+
+[data-grid] line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+path[data-line],
+path[data-context] {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+path[data-line] {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+/* The series of the others, behind the one that the chart is about. */
+path[data-context] {
+  stroke: var(--field);
+  stroke-width: 1.5;
+  opacity: 0.4;
+}
+
+/* A dot has a ring of the ground, so it is apart from the line and from
+   the dot beside it. */
+[data-dots] circle,
+circle[data-newest] {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/*
+ * A point that answers: the band of the plot that is nearest to it takes
+ * the press and the pointer. A rule, a ring and the words of the point
+ * show for the point that the person chose, and for the one below a
+ * pointer that hovers.
+ */
+[data-points] rect {
+  fill: transparent;
+  pointer-events: all;
+}
+
+[data-points] line {
+  stroke: var(--field);
+  stroke-width: 1;
+}
+
+[data-points] circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+[data-points] text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+[data-points] > g > :is(line, circle, text) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+[data-points] > g[data-selected] > :is(line, circle, text) {
+  visibility: visible;
+}
+
+@media (hover: hover) {
+  [data-points] > g:hover > :is(line, circle, text) {
+    visibility: visible;
+  }
+
+  /* One point has its words at a time: the one below the pointer. */
+  [data-points]:has(> g:hover) > g[data-selected]:not(:hover) > text {
+    visibility: hidden;
+  }
+}
+
+/* The first and the last date, below the two ends of the plot. */
+p[data-span] {
+  display: flex;
+  grid-column: 2;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+figure[data-chart] > figcaption {
+  margin-block-start: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* A sparkline: the line alone, beside a value that the page writes. */
+svg[data-spark] {
+  flex: none;
+  inline-size: 4.5rem;
+  block-size: 1.5rem;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+svg[data-spark] > circle {
+  fill: var(--accent);
+}
+
+/* ---------------------------------------------------------- measurements */
+
+/*
+ * The measurements of a resident over time (ADR 0080): a card for each
+ * kind, with the newest value, its change, the chart and the table.
+ *
+ *   <nav data-choice>…</nav>            the time range
+ *   <div data-charts>
+ *     <article data-measure>…</article>
+ *   </div>
+ */
+
+/* A choice of one of a few: the parts of one control, side by side. */
+nav[data-choice] {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  max-inline-size: 26rem;
+  margin-block: 0 1rem;
+  background: var(--surface);
+  border: 1px solid var(--field);
+  border-radius: var(--pill);
+}
+
+nav[data-choice] > a {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--tap);
+  padding: 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--pill);
+}
+
+/* The chosen part has a ground, an edge and a heavier line below its
+   words: the colour is not the one sign. */
+nav[data-choice] > a[aria-current] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+  background: var(--selected);
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+nav[data-choice] > a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  nav[data-choice] > a:hover {
+    background: var(--tint);
+  }
+
+  nav[data-choice] > a[aria-current]:hover {
+    background: var(--selected);
+  }
+}
+
+/* The cards take as many columns as fit: one on a phone. */
+div[data-charts] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin-block-end: 1rem;
+}
+
+div[data-charts] > article {
+  margin: 0;
+}
+
+/* The newest value is the largest thing in the card. */
+p[data-figure] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  align-items: baseline;
+}
+
+p[data-figure] > strong {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+p[data-figure] > span {
+  color: var(--muted);
+}
+
+/* A change is a shape and words. More is not good and less is not bad: a
+   pup that gains is well, and so is a heavy dog that loses. So a change has
+   no colour of a state. */
+[data-change] {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+p[data-change] {
+  display: flex;
+}
+
+/* The point that the person chose in the chart, in words. */
+p[data-picked] {
+  padding: 0.5rem 0.75rem;
+  background: var(--selected);
+  border-radius: calc(var(--radius) / 2);
+}
+
+/* The table of a card is in the card, and not a box in a box. */
+article[data-measure] > details[open] {
+  --pad: 0rem;
+
+  border: 0;
+}
+
+article[data-measure] tbody tr {
+  padding-inline: 0;
+}
+
+article[data-measure] tr[aria-current] {
+  background: var(--selected);
+}
+
+/* The newest value of each kind on the page of a resident: the value, a
+   sparkline and the change, side by side. */
+dl[data-measures] dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+}
+
+/*
+ * The members of a group with one kind of measurement: a tile for each
+ * member, each with the same scale, so the eye compares two tiles. The
+ * line of the member is in front of the lines of the others.
+ *
+ *   <ul data-multiples>
+ *     <li><a href="…">Biscuit</a> <strong>1,095 g</strong> <small>…</small> <svg data-spark>…</svg></li>
+ *   </ul>
+ */
+ul[data-multiples] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+ul[data-multiples] > li {
+  position: relative;
+  display: grid;
+  gap: 0.125rem;
+  align-content: start;
+  min-inline-size: 0;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+ul[data-multiples] a {
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+/* A finger presses the whole tile. */
+ul[data-multiples] a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+ul[data-multiples] a:focus-visible {
+  outline: none;
+}
+
+ul[data-multiples] > li:has(a:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+ul[data-multiples] strong {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+ul[data-multiples] small {
+  color: var(--muted);
+}
+
+ul[data-multiples] svg[data-spark] {
+  inline-size: 100%;
+  block-size: 4.5rem;
+  margin-block: 0.75rem 0.25rem;
+}
+
+@media (hover: hover) {
+  ul[data-multiples] > li:hover {
+    border-color: var(--accent);
+  }
+}

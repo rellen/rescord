@@ -91,10 +91,11 @@ defmodule RescordWeb.ResidentLive do
     photo
   end
 
-  # The newest measurement of each kind, for example the weight.
+  # The measurements of each kind over time, for example the weight: the
+  # page shows the newest of each, with a sparkline.
   defp measurements(resident_id, options) do
-    {:ok, latest} = Journal.latest_measurements(resident_id, options)
-    latest
+    {:ok, series} = Journal.series(resident_id, options)
+    series
   end
 
   defp homes(resident_id, options) do

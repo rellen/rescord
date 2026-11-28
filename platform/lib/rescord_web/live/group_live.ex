@@ -162,6 +162,14 @@ defmodule RescordWeb.GroupLive do
       <.header>
         {Residents.group_name(@group)}
         <:subtitle>{Residents.words(@group) || "No relation is recorded"}</:subtitle>
+        <:actions :if={@group.members != []}>
+          <.link
+            navigate={~p"/o/#{@organisation.short_name}/groups/#{@group.id}/measurements"}
+            data-variant="secondary"
+          >
+            Measurements
+          </.link>
+        </:actions>
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>

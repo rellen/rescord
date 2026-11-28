@@ -27,7 +27,7 @@ defmodule RescordWeb.Features.PhoneTest do
 
   import Rescord.ResidentsFixtures
 
-  alias Rescord.{Accounts, Inventory, Locations, Tasks}
+  alias Rescord.{Accounts, Inventory, Journal, Locations, Residents, Tasks}
 
   @address "an.administrator.with.a.long.address@wattle-creek-refuge.example.org"
 
@@ -43,7 +43,34 @@ defmodule RescordWeb.Features.PhoneTest do
     options = [actor: root, tenant: organisation]
 
     resident = resident!(lists, options, %{name: "Sir Reginald Fluffington the Third"})
-    resident!(lists, options, %{name: "Clover", sex: :female})
+    clover = resident!(lists, options, %{name: "Clover", sex: :female})
+
+    # The charts of the measurements (ADR 0080): a weight with a large
+    # number, a companion that is weighed in another unit, and a group.
+    for {resident, values, unit} <- [
+          {resident, ~w(690 672 760 870 915 1095), lists.unit.g},
+          {clover, ~w(0.61 0.64 0.7 0.82 0.9 0.985), lists.unit.kg}
+        ],
+        {value, days} <- Enum.zip(values, [30, 23, 19, 14, 7, 1]) do
+      Journal.write_entry!(
+        %{
+          resident_id: resident.id,
+          kind: :measurement,
+          measure_kind_id: lists.measure_kind.weight,
+          value: value,
+          unit_id: unit,
+          note: "Before breakfast",
+          happened_at: DateTime.add(DateTime.utc_now(), -days, :day)
+        },
+        options
+      )
+    end
+
+    group =
+      Residents.form_group!(
+        %{name: "The companions of the long hutch", resident_ids: [resident.id, clover.id]},
+        options
+      )
 
     shed = Locations.add_location!(%{name: "Feed shed"}, options)
     hay = Inventory.add_item!(%{name: "Meadow hay", unit_id: lists.unit.bag}, options)
@@ -83,7 +110,8 @@ defmodule RescordWeb.Features.PhoneTest do
          Enum.map(
            ~w(tasks routines residents residents/new residents/#{resident.id}
               residents/#{resident.id}/edit residents/#{resident.id}/journal
-              residents/#{resident.id}/photos residents/#{resident.id}/timeline groups housing
+              residents/#{resident.id}/photos residents/#{resident.id}/timeline
+              residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
               reports lists members roles partners transfers settings export calendar),
            &"#{home}/#{&1}"

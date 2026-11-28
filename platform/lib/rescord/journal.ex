@@ -19,12 +19,14 @@ defmodule Rescord.Journal do
 
   require Ash.Query
 
-  alias Rescord.Journal.{EntryKind, JournalEntry}
+  alias Rescord.Journal.{EntryKind, JournalEntry, Series}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
+    # A page reads a series of measurements, which is no resource.
+    exports [Rescord.Journal.Series, Rescord.Journal.Series.Point]
   end
 
   paper_trail do
@@ -140,6 +142,44 @@ defmodule Rescord.Journal do
        |> Enum.filter(& &1.measurement)
        |> Enum.uniq_by(& &1.measurement.measure_kind_id)
        |> Enum.sort_by(&to_string(&1.measurement.measure_kind.label))}
+    end
+  end
+
+  @doc """
+  The measurements of a resident over time: a series for each measure kind
+  that the resident has a measurement of, in the order of the names of the
+  kinds (ADR 0080). A chart of the weight draws one of them.
+  """
+  @spec series(String.t(), keyword) :: {:ok, [Series.t()]} | {:error, term}
+  def series(resident_id, opts \\ []) do
+    with {:ok, of_each} <- series_of([resident_id], opts) do
+      {:ok, Map.get(of_each, resident_id, [])}
+    end
+  end
+
+  @doc """
+  The series of several residents, as a map from the id of each resident to
+  its series: the members of a group, for example. A resident with no
+  measurement is not a key. This reads the measurements alone, and not the
+  rest of the journal.
+  """
+  @spec series_of([String.t()], keyword) :: {:ok, %{String.t() => [Series.t()]}} | {:error, term}
+  def series_of(resident_ids, opts \\ []) do
+    JournalEntry
+    |> Ash.Query.filter(resident_id in ^resident_ids and kind == :measurement)
+    |> Ash.Query.load(measurement: [measure_kind: [:label], unit: [:label]])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, entries} ->
+        {:ok,
+         entries
+         |> Enum.group_by(& &1.resident_id)
+         |> Map.new(fn {resident_id, of_resident} ->
+           {resident_id, Series.from_entries(of_resident)}
+         end)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

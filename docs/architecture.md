@@ -409,6 +409,40 @@ dependency.
   that the person wrote.
 - **A page writes a quantity** with `RescordWeb.UnitWords.quantity/1`.
 
+### Measurements and charts
+
+**The measurements of a resident over time are series, and a chart is SVG
+that the server writes** (ADR 0080). There is no chart library and no
+script of ours.
+
+- **A series** is `%Rescord.Journal.Series{}`: the measurements of one
+  kind for one resident, in the order of time, in one unit, which is the
+  unit of the newest measurement. A measurement in another unit is a point
+  when `Rescord.Units` converts it, and is in `others` when it does not.
+  Each point has its change from the point before.
+  `Rescord.Journal.series/2` gives the series of a resident and
+  `series_of/2` those of several, with the read action of the journal, as
+  the person.
+- **`RescordWeb.Chart` is the geometry**, with `Decimal` and no word:
+  round ticks, the place of a point as a percentage, the band of a point,
+  the path of a line.
+- **`RescordWeb.ChartComponents`** has `line_chart/1` and `sparkline/1`.
+  The `<svg>` has no `viewBox` and each place is a percentage, so a dot
+  and a word keep their size at each width. Only the line is in a nested
+  `<svg>` that stretches. The numbers of the axis and the two dates are
+  HTML. The look is the section "charts" of `components.css`, from the
+  tokens.
+- **A chart is one image**, with a name, and the caption of its figure as
+  its description. Its values are a table in the same card, and no part of
+  the chart takes the keyboard focus. A press on a point is the LiveView
+  event `pick`.
+- **The pages** are `RescordWeb.MeasurementsLive` (a resident: a card for
+  each kind, a time range in the address, and a form that writes a journal
+  entry) and `RescordWeb.GroupMeasurementsLive` (a group: one kind for
+  each member, as small charts on one scale). The page of a resident has a
+  sparkline beside each newest value. `RescordWeb.MeasurementWords` writes
+  a value, a change and the caption of a chart.
+
 ### History
 
 **History comes from temporal resources, AshPaperTrail and AshArchival**

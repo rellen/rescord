@@ -653,6 +653,27 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A new unit takes a line in the catalogue of `Rescord.Units`, words for
     a new dimension in `RescordWeb.UnitWords`, and a line with its factor
     in `Rescord.UnitsTest`.
+- **Charts** (ADR 0080). A chart is SVG that the server writes, with
+  `line_chart/1` or `sparkline/1` of `RescordWeb.ChartComponents`, and
+  the geometry of `RescordWeb.Chart`. Do not add a chart library, and do
+  not write a script for a chart.
+  - A place in a chart is a percentage, and the `<svg>` has no `viewBox`.
+    Only a line is in a nested `<svg>` that stretches. A label is HTML
+    beside the `<svg>`, or SVG text at a percentage.
+  - A number of a chart is a `Decimal`, and the label of a tick comes from
+    `Chart.ticks/3`. Never use a float for a value.
+  - A `line_chart` gets a `title`, which is the name of the image, and a
+    `summary`, which is its description and the caption that each reader
+    sees. Give each chart its values as a table on the same page: a chart
+    never holds a value that the page says nowhere else. No part of a
+    chart takes the keyboard focus.
+  - A chart has one series in `--accent`, and lines for a context in
+    `--field`. It never uses the colour of a state, and a change has no
+    colour of good or bad. A chart with a colour for each series needs new
+    tokens and a decision of the maintainer.
+  - The measurements of a resident are series:
+    `Rescord.Journal.series/2`, which chooses the unit and converts. A
+    page writes a value and a change with `RescordWeb.MeasurementWords`.
 - **Tools** (ADR 0072). A tool is a page below `/o/:organisation/tools`
   that helps with a piece of work and stores nothing: a card in
   `RescordWeb.ToolComponents.tools/1`, a route, and a LiveView with
@@ -779,6 +800,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/residents/` | the residents and the facts about them, their families and groups |
 | `platform/lib/rescord/locations/` | the locations, the tie that puts one inside another, and the placements |
 | `platform/lib/rescord/journal/` | the journal entries and the facts of each medical kind |
+| `platform/lib/rescord/journal/series.ex` | the measurements of one kind over time, in one unit, for a chart (ADR 0080) |
 | `platform/lib/rescord/photos/` | the photos of the residents, their albums and the profile pictures (ADR 0055) |
 | `platform/lib/rescord/images.ex` | a photo made safe to keep, and its thumbnail, with libvips (ADR 0055) |
 | `platform/lib/rescord/history.ex` | reads the versions of a temporal resource as changes, for the timeline |
@@ -803,6 +825,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
+| `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |

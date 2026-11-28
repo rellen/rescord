@@ -83,6 +83,22 @@ release (ADR 0047).
 
 ### Added
 
+- A resident has a page "Measurements", which shows each kind of
+  measurement over time: the newest value, its change from the one
+  before, a chart, and each value in a table. A member chooses the last
+  30 days, 90 days, a year, or each measurement, presses a point of a
+  chart to read it, and records a new measurement on the same page. A
+  measurement in another unit that Rescord knows, such as kg beside g, is
+  in the same chart. The page says how many measurements are not in a
+  chart because their unit does not convert (ADR 0080).
+- A group has a page "Measurements", with one kind of measurement for
+  each member, such as the weights of a litter: a small chart for each
+  member, on one scale, with the others behind it.
+- The page of a resident shows a small chart and the change beside the
+  newest value of each kind of measurement.
+- The charts are drawn by the server, with no script and no service of
+  another host. Each chart has a description for a screen reader, and its
+  values as a table.
 - The groundwork of an assistant with the code name Ruby (ADR 0069). No
   member can use it yet: this version has only the page where a root user
   says which service would answer. Rescord sends nothing to any service

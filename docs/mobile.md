@@ -138,6 +138,9 @@ Each point below is fixed unless it says otherwise.
   the focus of a field (the page must not get larger), the date and time
   fields, and the file control of the photos, which should offer the
   camera.
+  Look also at the charts of the measurements (ADR 0080): the line is in
+  a nested `<svg>` that stretches, with `vector-effect:
+  non-scaling-stroke`.
 - **The address bar of the browser has no colour of Rescord.** That takes
   a `theme-color` meta, which would write a colour outside `tokens.css`
   (ADR 0015).

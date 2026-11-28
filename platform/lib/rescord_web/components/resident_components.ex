@@ -199,8 +199,12 @@ defmodule RescordWeb.ResidentComponents do
     """
   end
 
-  @doc "The newest measurements of a resident, and the links to its journal and timeline."
-  attr :measurements, :any, required: true
+  @doc """
+  The newest measurement of each kind of a resident, and the links to its
+  measurements over time, its journal and its timeline. `measurements` is
+  the series of `Rescord.Journal.series/2`.
+  """
+  attr :measurements, :list, required: true
   attr :organisation, :any, required: true
   attr :resident, :any, required: true
 
@@ -209,12 +213,19 @@ defmodule RescordWeb.ResidentComponents do
     <section aria-labelledby="journal-heading">
       <h2 id="journal-heading">Journal</h2>
       <p :if={@measurements == []}>No measurement is recorded.</p>
-      <.list :if={@measurements != []}>
-        <:item :for={entry <- @measurements} title={to_string(entry.measurement.measure_kind.label)}>
-          {measurement_words(entry, @organisation)}
-        </:item>
-      </.list>
+      <RescordWeb.MeasurementComponents.newest_values
+        :if={@measurements != []}
+        series={@measurements}
+        organisation={@organisation}
+      />
       <p>
+        <.link
+          :if={@measurements != []}
+          navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/measurements"}
+          data-variant="secondary"
+        >
+          Measurements
+        </.link>
         <.link
           navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal"}
           data-variant="secondary"
@@ -541,15 +552,6 @@ defmodule RescordWeb.ResidentComponents do
   def location_path(organisation, id), do: ~p"/o/#{organisation.short_name}/housing/#{id}"
 
   def name(resident), do: resident.name || "No name yet"
-
-  # `1,095 g, 16 November 2026`.
-  def measurement_words(entry, organisation) do
-    measurement = entry.measurement
-    unit = if measurement.unit, do: " #{measurement.unit.label}", else: ""
-    date = Rescord.Accounts.local_date(organisation, entry.happened_at)
-
-    "#{RescordWeb.JournalWords.number(measurement.value)}#{unit}, #{ResidentWords.date(date)}"
-  end
 
   @doc "The fields of the facts of a resident that have one value each."
   attr :form, :any, required: true

@@ -111,11 +111,13 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/housing/:id", LocationLive
       live "/o/:organisation/groups", GroupsLive
       live "/o/:organisation/groups/:id", GroupLive
+      live "/o/:organisation/groups/:id/measurements", GroupMeasurementsLive
       live "/o/:organisation/residents", ResidentsLive
       live "/o/:organisation/residents/new", ResidentFormLive, :new
       live "/o/:organisation/residents/:id", ResidentLive
       live "/o/:organisation/residents/:id/edit", ResidentFormLive, :edit
       live "/o/:organisation/residents/:id/journal", JournalLive
+      live "/o/:organisation/residents/:id/measurements", MeasurementsLive
       live "/o/:organisation/residents/:id/photos", PhotosLive
       live "/o/:organisation/residents/:id/timeline", TimelineLive
     end

@@ -498,7 +498,8 @@ defmodule RescordWeb.CoreComponents do
   attr :name, :string,
     required: true,
     values:
-      ~w(arrow-path bars check clock exclamation-circle exclamation-triangle information-circle mark x-mark)
+      ~w(arrow-down arrow-path arrow-up bars check clock equals exclamation-circle exclamation-triangle
+         information-circle mark x-mark)
 
   attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
   attr :rest, :global
@@ -507,6 +508,32 @@ defmodule RescordWeb.CoreComponents do
     ~H"""
     <.svg spin={@spin} {@rest}>
       <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" />
+    </.svg>
+    """
+  end
+
+  # A value that is more, less, or the same as the one before it: the shape
+  # beside the words of a change (ADR 0080).
+  def icon(%{name: "arrow-up"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "arrow-down"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M12 5v14M6 13l6 6 6-6" />
+    </.svg>
+    """
+  end
+
+  def icon(%{name: "equals"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M6 9h12M6 15h12" />
     </.svg>
     """
   end
