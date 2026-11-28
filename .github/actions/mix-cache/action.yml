@@ -14,7 +14,7 @@ outputs:
     value: ${{ steps.key.outputs.key }}
   hit:
     description: Whether the build of this very commit was restored.
-    value: ${{ steps.restore.outputs.cache-hit }}
+    value: ${{ steps.restore.outputs.cache-hit == 'true' || steps.retry.outputs.cache-hit == 'true' }}
 runs:
   using: composite
   steps:
@@ -42,6 +42,25 @@ runs:
           ${{ steps.key.outputs.lock }}
           ${{ steps.key.outputs.toolchain }}
 
+    # The cache answers 429 when the repository asks it too often, and the
+    # restore then finds nothing and fails no step. So one more try, after a
+    # pause.
+    - if: steps.restore.outputs.cache-matched-key == ''
+      shell: bash
+      run: sleep 20
+
+    - id: retry
+      if: steps.restore.outputs.cache-matched-key == ''
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          platform/deps
+          platform/_build/test
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: |
+          ${{ steps.key.outputs.lock }}
+          ${{ steps.key.outputs.toolchain }}
+
     # A checkout gives each file the time of now, which is newer than the
     # build, and mix then compiles the whole app again: 500 files, about 30
     # seconds in each job. With the build of this very commit, the files are
@@ -49,7 +68,7 @@ runs:
     # is older than the build, and mix compiles nothing. Mix still finds a
     # file whose content changed by its digest. After a fallback the files
     # keep the time of now, so mix checks everything, as it would anyway.
-    - if: steps.restore.outputs.cache-hit == 'true'
+    - if: steps.restore.outputs.cache-hit == 'true' || steps.retry.outputs.cache-hit == 'true'
       shell: bash
       run: |
         at=$(git log -1 --format=%ct)

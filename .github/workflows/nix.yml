@@ -6,9 +6,9 @@
 #
 # The toolchain of the package is newer than the binary cache of nixpkgs has
 # (ADR 0053): with no cache of its own, each run built Erlang, Elixir and
-# rebar3, 13 of its 18 minutes. The Magic Nix Cache keeps each path that a
-# run builds in the cache of GitHub Actions, and the next run takes it from
-# there.
+# rebar3, 13 of its 18 minutes. It still does: the Magic Nix Cache, which
+# keeps each path in the cache of GitHub Actions, hit the rate limit of that
+# cache and starved the cache of mix of the other jobs (ADR 0103).
 name: Nix
 
 on:
@@ -38,13 +38,6 @@ jobs:
         with:
           extra_nix_config: |
             system-features = nixos-test benchmark big-parallel kvm
-
-      - uses: DeterminateSystems/magic-nix-cache-action@v15
-        with:
-          # Nothing is sent to a service of Determinate Systems.
-          diagnostic-endpoint: ""
-          use-flakehub: false
-          use-gha-cache: true
 
       - name: Check the flake
         run: nix flake check -L
