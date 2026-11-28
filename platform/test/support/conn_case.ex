@@ -51,6 +51,10 @@ defmodule RescordWeb.ConnCase do
   the read.
   """
   @spec render_changes(Phoenix.LiveViewTest.View.t()) :: String.t()
+  @spec render_changes(%PhoenixTest.Live{}) :: %PhoenixTest.Live{}
+  def render_changes(%PhoenixTest.Live{} = session),
+    do: PhoenixTest.unwrap(session, &render_changes/1)
+
   def render_changes(view) do
     _html = Phoenix.LiveViewTest.render(view)
     Phoenix.LiveViewTest.render_async(view)

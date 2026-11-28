@@ -533,6 +533,10 @@ defmodule RescordWeb.Roles do
       name = attribute(node, "name") ->
         {scope_css(locator, root) <> ~s(#{tag}[name="#{quote_css(name)}"]), nil}
 
+      # A row of Cinder has no id, but its title has one (ADR 0097).
+      inner = node |> LazyHTML.query("[id]") |> Enum.find(&(&1 |> LazyHTML.tag() != [tag])) ->
+        {"#{tag}:has(##{css_escape(attribute(inner, "id"))})", nil}
+
       true ->
         words = node |> visible_text() |> String.split() |> Enum.map_join("\\s+", &Regex.escape/1)
         {scope_css(locator, root) <> tag, Regex.compile!("^\\s*#{words}\\s*$")}
