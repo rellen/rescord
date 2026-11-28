@@ -113,7 +113,7 @@ defmodule RescordWeb.RoutineComponents do
                   phx-value-id={routine.id}
                   aria-label={"Pause the routine #{routine.title}"}
                 >
-                  Pause
+                  <.icon name="pause" /> Pause
                 </.button>
                 <.button
                   :if={@can_revise? and routine.paused}
@@ -121,10 +121,10 @@ defmodule RescordWeb.RoutineComponents do
                   phx-value-id={routine.id}
                   aria-label={"Start again the routine #{routine.title}"}
                 >
-                  Start again
+                  <.icon name="play" /> Start again
                 </.button>
                 <details :if={@can_remove?} id={"end-details-#{routine.id}"}>
-                  <summary>End</summary>
+                  <summary><.icon name="no-symbol" /> End</summary>
                   <form id={"end-#{routine.id}"} phx-submit="remove">
                     <input type="hidden" name="routine_id" value={routine.id} />
                     <p>
@@ -160,7 +160,7 @@ defmodule RescordWeb.RoutineComponents do
   def new_routine(assigns) do
     ~H"""
     <details id="new-routine" open={@prescription != nil}>
-      <summary>New routine</summary>
+      <summary><.icon name="plus" /> New routine</summary>
       <.routine_form
         button="Start the routine"
         form={@form}

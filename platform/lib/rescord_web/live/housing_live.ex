@@ -83,7 +83,7 @@ defmodule RescordWeb.HousingLive do
       organisation={@organisation}
       section={:housing}
     >
-      <.header>
+      <.header icon={Icons.section(:housing)}>
         Housing
         <:subtitle>Where the residents of {@organisation.name} live</:subtitle>
         <:actions>

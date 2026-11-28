@@ -176,7 +176,7 @@ defmodule RescordWeb.RubySettingsLive do
         <.link navigate={~p"/o/#{@organisation.short_name}/settings"}>Settings</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:ruby)}>
         Ruby
         <:subtitle>
           The assistant of {@organisation.name}. {RubyWords.standing(@status)}

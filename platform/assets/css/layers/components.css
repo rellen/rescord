@@ -463,7 +463,7 @@ figure[data-profile] img {
   color: var(--muted);
 }
 
-[data-photos] figcaption > span[data-state] {
+[data-photos] figcaption > strong {
   justify-self: start;
 }
 
@@ -616,7 +616,7 @@ ul[data-links] a {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  justify-content: space-between;
+  justify-content: start;
   min-block-size: 3.25rem;
   padding: 0.5rem 1rem;
   font-weight: 600;
@@ -629,6 +629,7 @@ ul[data-links] a {
 
 /* The arrow says that the card goes to a page. It is no word. */
 ul[data-links] a::after {
+  margin-inline-start: auto;
   color: var(--accent);
   content: "\203A";
   content: "\203A" / "";

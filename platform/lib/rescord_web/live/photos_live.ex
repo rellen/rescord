@@ -330,7 +330,7 @@ defmodule RescordWeb.PhotosLive do
         </.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:photos)}>
         {@page_title}
         <:subtitle>
           {length(@items)} {if length(@items) == 1, do: "photo", else: "photos"}

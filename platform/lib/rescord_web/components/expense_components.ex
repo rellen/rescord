@@ -25,12 +25,12 @@ defmodule RescordWeb.ExpenseComponents do
     ~H"""
     <dl data-figures aria-label="Sums">
       <div>
-        <dt>Wait for a decision</dt>
+        <dt><.icon name="clock" /> Wait for a decision</dt>
         <dd data-money>{ExpenseWords.amounts(@figures.waiting, @currency)}</dd>
         <dd>{ExpenseWords.count(@figures.waiting.count, "expense")}</dd>
       </div>
       <div :if={@manage?}>
-        <dt>To pay back</dt>
+        <dt><.icon name="banknotes" /> To pay back</dt>
         <dd data-money>{ExpenseWords.amounts(@figures.to_pay_back, @currency)}</dd>
         <dd>
           {ExpenseWords.count(@figures.to_pay_back.count, "expense")} of {ExpenseWords.count(
@@ -40,17 +40,17 @@ defmodule RescordWeb.ExpenseComponents do
         </dd>
       </div>
       <div :if={@manage?}>
-        <dt>Spent in {ExpenseWords.month(@figures.month)}</dt>
+        <dt><.icon name="calendar" /> Spent in {ExpenseWords.month(@figures.month)}</dt>
         <dd data-money>{ExpenseWords.amounts(@figures.spent, @currency)}</dd>
         <dd>{ExpenseWords.count(@figures.spent.count, "expense")}, approved or paid back</dd>
       </div>
       <div :if={!@manage?}>
-        <dt>To be paid back to you</dt>
+        <dt><.icon name="banknotes" /> To be paid back to you</dt>
         <dd data-money>{ExpenseWords.amounts(@figures.owed, @currency)}</dd>
         <dd>{ExpenseWords.count(@figures.owed.count, "expense")}</dd>
       </div>
       <div :if={!@manage?}>
-        <dt>Paid back to you in {ExpenseWords.month(@figures.month)}</dt>
+        <dt><.icon name="check" /> Paid back to you in {ExpenseWords.month(@figures.month)}</dt>
         <dd data-money>{ExpenseWords.amounts(@figures.paid_back, @currency)}</dd>
         <dd>{ExpenseWords.count(@figures.paid_back.count, "expense")}</dd>
       </div>
@@ -201,7 +201,7 @@ defmodule RescordWeb.ExpenseComponents do
             phx-value-ref={entry.ref}
             aria-label={"Take out #{entry.client_name}"}
           >
-            Take out
+            <.icon name="x-mark" /> Take out
           </.button>
         </li>
       </ul>
@@ -283,10 +283,10 @@ defmodule RescordWeb.ExpenseComponents do
     <section :if={@can.approve? or @can.decline?} aria-labelledby="decision-heading">
       <h2 id="decision-heading">Decision</h2>
       <p :if={@can.approve?}>
-        <.button type="button" variant="primary" phx-click="approve">Approve</.button>
+        <.button type="button" variant="primary" phx-click="approve"><.icon name="check" /> Approve</.button>
       </p>
       <details :if={@can.decline?} id="decline-details">
-        <summary>Decline</summary>
+        <summary><.icon name="x-circle" /> Decline</summary>
         <form id="decline" phx-submit="decline">
           <.input
             id="decline-reason"
@@ -318,7 +318,7 @@ defmodule RescordWeb.ExpenseComponents do
   def tax_correction(assigns) do
     ~H"""
     <details :if={@can.set_tax? and @organisation.tax_name} id="tax-details">
-      <summary>Correct the {@organisation.tax_name}</summary>
+      <summary><.icon name="pencil" /> Correct the {@organisation.tax_name}</summary>
       <form id="tax" phx-submit="set_tax">
         <.input
           id="tax-amount"
@@ -348,7 +348,11 @@ defmodule RescordWeb.ExpenseComponents do
   def payment(assigns) do
     ~H"""
     <section :if={@can.reimburse? or @can.reopen?} aria-labelledby="payment-heading">
-      <h2 id="payment-heading">{if @can.reimburse?, do: "Payment", else: "Decision"}</h2>
+      <h2 id="payment-heading">
+        <.icon :if={@can.reimburse?} name="banknotes" /> {if @can.reimburse?,
+          do: "Payment",
+          else: "Decision"}
+      </h2>
       <p :if={@can.reimburse?}>
         {@organisation.name} owes {ExpenseWords.person(@people, @expense.payer_id)}
         <span data-money>{ExpenseWords.money(@expense.amount)}</span>. Rescord sends no money: record the payment here after you make it.
@@ -374,7 +378,7 @@ defmodule RescordWeb.ExpenseComponents do
         <footer><.button type="submit">Record the payment</.button></footer>
       </form>
       <details :if={@can.reopen?} id="reopen-details">
-        <summary>Open the decision again</summary>
+        <summary><.icon name="arrow-uturn-left" /> Open the decision again</summary>
         <p>
           The expense then waits for a decision again, with no decision and no payment. What
           happened stays in the list below.
@@ -400,7 +404,7 @@ defmodule RescordWeb.ExpenseComponents do
   def receipts(assigns) do
     ~H"""
     <section aria-labelledby="receipts-heading">
-      <h2 id="receipts-heading">Receipts</h2>
+      <h2 id="receipts-heading"><.icon name="paper-clip" /> Receipts</h2>
       <p :if={@receipts == []}>The expense has no receipt.</p>
       <ul :if={@receipts != []} data-receipts>
         <li :for={receipt <- @receipts} id={"receipt-#{receipt.id}"}>
@@ -417,7 +421,9 @@ defmodule RescordWeb.ExpenseComponents do
               width="320"
               height="320"
             />
-            <span :if={!receipt.thumbnail_key} data-file>{file_word(receipt)}</span>
+            <span :if={!receipt.thumbnail_key} data-file><.icon name="document-text" /> {file_word(
+              receipt
+            )}</span>
           </a>
           <small>{receipt.name} · {ExpenseWords.size(receipt.size)}</small>
           <.button
@@ -428,12 +434,12 @@ defmodule RescordWeb.ExpenseComponents do
             data-confirm={"Take #{receipt.name} off the expense?"}
             aria-label={"Take off #{receipt.name}"}
           >
-            Take off
+            <.icon name="x-mark" /> Take off
           </.button>
         </li>
       </ul>
       <details :if={@upload} id="add-receipt-details" open={@problems != []}>
-        <summary>Add a receipt</summary>
+        <summary><.icon name="arrow-up-tray" /> Add a receipt</summary>
         <form id="add-receipt" phx-submit="attach" phx-change="choose">
           <.problems list={@problems} />
           <.receipt_files upload={@upload} />
@@ -478,7 +484,7 @@ defmodule RescordWeb.ExpenseComponents do
   def tax_setting(assigns) do
     ~H"""
     <section aria-labelledby="tax-heading">
-      <h2 id="tax-heading">Tax</h2>
+      <h2 id="tax-heading"><.icon name="banknotes" /> Tax</h2>
       <p :if={@organisation.tax_name}>
         An expense can hold the <strong>{@organisation.tax_name}</strong>
         in its amount, as the receipt shows it. Rescord knows no rate.
@@ -510,7 +516,7 @@ defmodule RescordWeb.ExpenseComponents do
   def currency_setting(assigns) do
     ~H"""
     <section aria-labelledby="currency-heading">
-      <h2 id="currency-heading">Currency</h2>
+      <h2 id="currency-heading"><.icon name="banknotes" /> Currency</h2>
       <p>
         The currency of the amounts is <strong>{ExpenseWords.currency_name(@organisation.currency)} ({@organisation.currency})</strong>. An amount looks like this: <span data-money>{ExpenseWords.money(Money.new(@organisation.currency, "1234.5"))}</span>.
       </p>

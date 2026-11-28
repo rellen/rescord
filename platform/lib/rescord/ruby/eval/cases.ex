@@ -1,9 +1,9 @@
 defmodule Rescord.Ruby.Eval.Cases do
   @moduledoc """
   The questions of the evaluation set of Ruby, for the rescue that
-  `Rescord.Ruby.Eval.Seed` plants: 27 cases, for the tools that Ruby has
-  (the residents, one resident with its journal, the tasks of a day, one
-  task, and the housing).
+  `Rescord.Ruby.Eval.Seed` plants: 30 cases, for the tools that Ruby has
+  (the residents, one resident with its journal, the tasks of a day, the
+  late tasks, one task, the housing and the stock).
 
   `must_call` names a tool only where one tool alone can answer: a
   question that two tools answer names none, and the words decide.
@@ -129,6 +129,32 @@ defmodule Rescord.Ruby.Eval.Cases do
         say: "What has been written about Clover this week?",
         must_call: ["resident_timeline"],
         must_say: [~r/780\s?g/i, ~r/chatty|eating well/i]
+      },
+      %Case{
+        id: "lookup-overdue",
+        group: :lookup,
+        say: "Is anything overdue?",
+        must_call: ["overdue_tasks"],
+        must_say: [~r/fence/i]
+      },
+      %Case{
+        id: "lookup-what-to-order",
+        group: :lookup,
+        say: "What do we need to order?",
+        must_call: ["stock_levels"],
+        must_say: [~r/hay/i],
+        # A right answer can say that the pellets are fine. A wrong one
+        # tells the member to order them.
+        must_not_say: [
+          ~r/(order|buy|low|short)[^.]{0,40}pellets|pellets[^.]{0,40}(low|short|below)/i
+        ]
+      },
+      %Case{
+        id: "lookup-meloxicam-stock",
+        group: :lookup,
+        say: "How much meloxicam is left, and when does it expire?",
+        must_call: ["stock_levels"],
+        must_say: [~r/\b30\s?ml/i]
       }
     ]
   end
@@ -163,9 +189,10 @@ defmodule Rescord.Ruby.Eval.Cases do
       %Case{
         id: "none-no-tool",
         group: :none,
-        say: "How many bags of hay are in the store?",
+        # Ruby reads the stock since R1.2, and no tool reads the expenses.
+        say: "How much have we spent on vet bills this month?",
         must_say: [~r/\b(no|not|cannot|unable)\b|n't\b/i],
-        must_not_say: [~r/\b\d+\s+(bags?|bales?)\b/i]
+        must_not_say: [~r/[$€£]\s?\d|\b\d+(\.\d+)?\s?(dollars|AUD)\b/i]
       }
     ]
   end

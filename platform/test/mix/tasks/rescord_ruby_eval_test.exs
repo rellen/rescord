@@ -53,7 +53,7 @@ defmodule Mix.Tasks.Rescord.Ruby.EvalTest do
       {:tool, "tasks_for_day", %{}},
       {:text, "Nothing is planned for that day."},
       {:text, "The records hold no weight for Pepper."},
-      {:text, "I cannot read the stock: the records that I read hold nothing about it."}
+      {:text, "I cannot read the expenses: no tool of mine reads them."}
     ]
   end
 

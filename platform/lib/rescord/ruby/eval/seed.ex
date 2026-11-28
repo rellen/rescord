@@ -28,6 +28,10 @@ defmodule Rescord.Ruby.Eval.Seed do
   a kennel. The journal has two weights of Biscuit, one of Clover, the
   prescriptions of the two goats as a vet wrote them, and a few notes.
 
+  One task of yesterday is still due, so it is late. The inventory has
+  meloxicam that expires soon, hay below its reorder level, and pellets
+  with enough stock and no fault.
+
   The members are made with `Ash.Seed`, and not with an invitation: an
   invitation sends an email. The records are made as the administrator,
   through the actions of the pages.
@@ -40,6 +44,7 @@ defmodule Rescord.Ruby.Eval.Seed do
     top_level?: true,
     deps: [
       Rescord.Accounts,
+      Rescord.Inventory,
       Rescord.Journal,
       Rescord.Lists,
       Rescord.Locations,
@@ -47,7 +52,7 @@ defmodule Rescord.Ruby.Eval.Seed do
       Rescord.Tasks
     ]
 
-  alias Rescord.{Accounts, Journal, Lists, Locations, Residents, Tasks}
+  alias Rescord.{Accounts, Inventory, Journal, Lists, Locations, Residents, Tasks}
   alias Rescord.Accounts.{Member, User}
 
   @zone "Australia/Brisbane"
@@ -86,6 +91,7 @@ defmodule Rescord.Ruby.Eval.Seed do
   # Each task: the key, the day from today, the time, the title, the kind,
   # the residents it is about, the note.
   @tasks [
+    {:check_fence, -1, ~T[15:00:00], "Check the paddock fence", "Clean", [], nil},
     {:feed_goats, 0, ~T[07:00:00], "Feed the goats", "Feed", ["Biscuit", "Juniper"], nil},
     {:meloxicam_biscuit, 0, ~T[08:00:00], "Give Biscuit her meloxicam", "Medicate", ["Biscuit"],
      "0.5 ml by mouth, with food."},
@@ -178,8 +184,9 @@ defmodule Rescord.Ruby.Eval.Seed do
     # something to leave out.
     done = Tasks.complete_task!(tasks.feed_goats, %{}, admin)
 
-    house!(residents, admin)
+    places = house!(residents, admin)
     journal!(residents, today, admin)
+    stock!(places, today, admin)
 
     %{
       organisation: organisation,
@@ -207,6 +214,37 @@ defmodule Rescord.Ruby.Eval.Seed do
           {"Maple", kennel}
         ] do
       Locations.place!(%{location_id: place.id, resident_id: residents[name].id}, admin)
+    end
+
+    %{barn: barn, room: room}
+  end
+
+  # The items of the inventory, each with one lot.
+  defp stock!(places, today, admin) do
+    categories = values!(:item_category, ["Medication", "Feed"], admin)
+    units = values!(:unit, ["mL", "bale", "bag"], admin)
+
+    for {name, category, unit, reorder, quantity, expires_on, place} <- [
+          {"Meloxicam oral suspension", "Medication", "mL", nil, 30, Date.add(today, 10),
+           places.room},
+          {"Lucerne hay", "Feed", "bale", 10, 4, nil, places.barn},
+          {"Rabbit pellets", "Feed", "bag", 2, 5, Date.add(today, 200), places.room}
+        ] do
+      item =
+        Inventory.add_item!(
+          %{
+            name: name,
+            category_id: categories[category],
+            unit_id: units[unit],
+            reorder_level: reorder
+          },
+          admin
+        )
+
+      Inventory.receive_lot!(
+        %{item_id: item.id, quantity: quantity, expires_on: expires_on, location_id: place.id},
+        admin
+      )
     end
 
     :ok

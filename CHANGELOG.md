@@ -538,6 +538,18 @@ release (ADR 0047).
   fault of the store no longer takes back the whole send: the job tries
   again from where it stopped, 10 times in about 20 minutes, and then the
   transfer is "Not sent" (ADR 0100, issue 16).
+- The pages have icons of our own beside the words: each part of the
+  site has one shape in the menu, on the page of the organisation, in
+  the parts that need attention, in the reports and on the heading of
+  its page, and each kind of journal entry has one in the journal, the
+  timeline and the copy of a transfer. "Profile picture" is a label with
+  a star, and no longer a state with a clock. The common actions (add,
+  change, remove, end, undo, download, upload), the figures of the
+  expenses, the history of the stock and the headings of the settings
+  have icons too, and the arrows of the tables are line chevrons in
+  place of solid triangles. The site bar of a wide screen is a little
+  wider. Words still say what each icon means, and a screen reader does
+  not read the icons (ADR 0102).
 - A failure of Rescord itself, such as a time after now in a form, a
   file that is not a photo or an email of an invitation that the mail
   server refused, is now an error with a name and a reason, and no

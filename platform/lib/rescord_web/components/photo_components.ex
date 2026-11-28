@@ -90,7 +90,7 @@ defmodule RescordWeb.PhotoComponents do
       <p :if={@albums == []}>No albums yet.</p>
 
       <details :if={@can_make?} id="make-album-details">
-        <summary>Make an album</summary>
+        <summary><.icon name="plus" /> Make an album</summary>
         <form id="make-album" phx-submit="make_album">
           <.input id="album-name" name="album[name]" label="Name of the album" value="" required />
           <footer><.button type="submit">Make the album</.button></footer>
@@ -109,7 +109,7 @@ defmodule RescordWeb.PhotoComponents do
     ~H"""
     <div data-album-actions>
       <details :if={@can_rename?} id="rename-album-details">
-        <summary>Rename the album</summary>
+        <summary><.icon name="pencil" /> Rename the album</summary>
         <form id="rename-album" phx-submit="rename_album">
           <.input
             id="album-new-name"
@@ -127,7 +127,7 @@ defmodule RescordWeb.PhotoComponents do
         phx-click="remove_album"
         data-confirm={"Remove the album #{@album.name}? Its photos stay."}
       >
-        Remove the album
+        <.icon name="trash" /> Remove the album
       </.button>
     </div>
     """
@@ -147,7 +147,7 @@ defmodule RescordWeb.PhotoComponents do
   def add_form(assigns) do
     ~H"""
     <details id="add-photos-details">
-      <summary>Add photos</summary>
+      <summary><.icon name="arrow-up-tray" /> Add photos</summary>
       <form id="add-photos" phx-submit="add" phx-change="choose">
         <.problems list={@problems} />
         <fieldset id="add-photos-files">
@@ -170,7 +170,7 @@ defmodule RescordWeb.PhotoComponents do
                 phx-value-ref={entry.ref}
                 aria-label={"Take out #{entry.client_name}"}
               >
-                Take out
+                <.icon name="x-mark" /> Take out
               </.button>
             </li>
           </ul>
@@ -270,7 +270,7 @@ defmodule RescordWeb.PhotoComponents do
               {ResidentWords.date(@item.taken_on)}
             </time>
           </small>
-          <.state :if={@profile?} kind="info">Profile picture</.state>
+          <strong :if={@profile?}><.icon name="star" /> Profile picture</strong>
           <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
           <.link
             :if={@item.entry_id}
@@ -284,7 +284,7 @@ defmodule RescordWeb.PhotoComponents do
       </figure>
 
       <details :if={@can.keep?} id={"change-#{@ref}"}>
-        <summary>Change</summary>
+        <summary><.icon name="pencil" /> Change</summary>
         <form id={"keep-#{@ref}"} phx-submit="keep">
           <.problems list={@problems} />
           <input type="hidden" name="photo[ref]" value={@ref} />
@@ -318,7 +318,7 @@ defmodule RescordWeb.PhotoComponents do
 
       <footer :if={@make_profile? or @remove?}>
         <.button :if={@make_profile?} type="button" phx-click="make_profile" phx-value-ref={@ref}>
-          Make it the profile picture
+          <.icon name="star" /> Make it the profile picture
         </.button>
         <.button
           :if={@remove?}

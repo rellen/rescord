@@ -41,7 +41,7 @@ defmodule RescordWeb.ExportLive do
       organisation={@organisation}
       section={:settings}
     >
-      <.header>
+      <.header icon={Icons.section(:export)}>
         Export the data
         <:subtitle>A copy of the data of {@organisation.name}, as files of CSV.</:subtitle>
       </.header>
@@ -80,7 +80,7 @@ defmodule RescordWeb.ExportLive do
             max={@today}
             required
           />
-          <button type="submit">Download the export</button>
+          <button type="submit"><.icon name="arrow-down-tray" /> Download the export</button>
         </.form>
       </section>
 

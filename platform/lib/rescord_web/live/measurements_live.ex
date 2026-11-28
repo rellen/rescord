@@ -206,7 +206,7 @@ defmodule RescordWeb.MeasurementsLive do
         )}</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:measurements)}>
         Measurements of {name(@resident)}
         <:subtitle>Each kind of measurement over time</:subtitle>
         <:actions>
@@ -214,7 +214,7 @@ defmodule RescordWeb.MeasurementsLive do
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal"}
             data-variant="secondary"
           >
-            Journal
+            <.icon name="book-open" /> Journal
           </.link>
         </:actions>
       </.header>

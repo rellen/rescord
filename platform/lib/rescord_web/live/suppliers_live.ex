@@ -93,12 +93,12 @@ defmodule RescordWeb.SuppliersLive do
       organisation={@organisation}
       section={:inventory}
     >
-      <.header>
+      <.header icon={Icons.section(:suppliers)}>
         Suppliers
         <:subtitle>Where {@organisation.name} gets its supplies</:subtitle>
         <:actions>
           <.link navigate={~p"/o/#{@organisation.short_name}/inventory"} data-variant="secondary">
-            The inventory
+            <.icon name="archive-box" /> The inventory
           </.link>
         </:actions>
       </.header>

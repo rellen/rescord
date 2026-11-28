@@ -155,13 +155,13 @@ defmodule RescordWeb.ConditionComponents do
           navigate={journal_path(@organisation, @resident.id, new: "diagnosis")}
           data-variant="secondary"
         >
-          Record a diagnosis
+          <.icon name="plus" /> Record a diagnosis
         </.link>
         <.link
           navigate={~p"/o/#{@organisation.short_name}/residents/conditions"}
           data-variant="secondary"
         >
-          Conditions of each resident
+          <.icon name="pulse" /> Conditions of each resident
         </.link>
       </p>
     </section>
@@ -194,7 +194,7 @@ defmodule RescordWeb.ConditionComponents do
       </.list>
 
       <details :if={@can.resolve and is_nil(@episode.ended_on)} id="resolve-details">
-        <summary>Mark as resolved</summary>
+        <summary><.icon name="check" /> Mark as resolved</summary>
         <form id="resolve" phx-submit="resolve_episode">
           <.input
             id="resolve-ended-on"
@@ -211,14 +211,14 @@ defmodule RescordWeb.ConditionComponents do
       </details>
 
       <details :if={@can.reopen and @episode.ended_on} id="reopen-details">
-        <summary>Open again</summary>
+        <summary><.icon name="arrow-uturn-left" /> Open again</summary>
         <p>Open a condition again when it was not over. A condition that came back is a new one:
           record a diagnosis.</p>
         <.button phx-click="reopen_episode">Open the condition again</.button>
       </details>
 
       <details :if={@can.revise} id="revise-details">
-        <summary>Change this condition</summary>
+        <summary><.icon name="pencil" /> Change this condition</summary>
         <form id="revise" phx-submit="revise_episode">
           <.input
             id="revise-started-on"
@@ -259,7 +259,7 @@ defmodule RescordWeb.ConditionComponents do
       </details>
 
       <details :if={@can.remove} id="remove-condition-details">
-        <summary>Remove this condition</summary>
+        <summary><.icon name="trash" /> Remove this condition</summary>
         <p>
           Remove a condition only when somebody recorded it by mistake. Its entries stay in the
           journal, about no condition. For a condition that is over, mark it as resolved.

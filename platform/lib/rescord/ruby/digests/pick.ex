@@ -18,7 +18,7 @@ defmodule Rescord.Ruby.Digests.Pick do
   Each read runs as the member, with the policy of the page.
   """
 
-  alias Rescord.{Locations, Residents}
+  alias Rescord.{Inventory, Locations, Residents}
   alias Rescord.Ruby.Digests.Shape
 
   @typedoc "A record, the choices of a name that more than one record has, or words for the model."
@@ -59,6 +59,17 @@ defmodule Rescord.Ruby.Digests.Pick do
           detail: detail([label(location.kind)])
         }
       end
+    )
+  end
+
+  @doc "The item of the inventory of an argument, as `options` (the actor and the tenant) may read it."
+  @spec item(term, keyword) :: picked
+  def item(value, options) do
+    pick(value, "item", options,
+      get: &Inventory.item(&1, options),
+      all: fn -> Inventory.items(options) end,
+      name: & &1.name,
+      choice: fn item -> %{ref: Shape.ref("item", item.id), label: item.name} end
     )
   end
 

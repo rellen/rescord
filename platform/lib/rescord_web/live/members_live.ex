@@ -129,12 +129,12 @@ defmodule RescordWeb.MembersLive do
       organisation={@organisation}
       section={:members}
     >
-      <.header>
+      <.header icon={Icons.section(:members)}>
         Members
         <:subtitle>The people of {@organisation.name}</:subtitle>
         <:actions>
           <.link navigate={~p"/o/#{@organisation.short_name}/roles"} data-variant="secondary">
-            The roles
+            <.icon name="key" /> The roles
           </.link>
         </:actions>
       </.header>

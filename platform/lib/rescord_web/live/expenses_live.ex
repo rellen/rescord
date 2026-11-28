@@ -125,7 +125,7 @@ defmodule RescordWeb.ExpensesLive do
       organisation={@organisation}
       section={:expenses}
     >
-      <.header>
+      <.header icon={Icons.section(:expenses)}>
         Expenses
         <:subtitle :if={@can_manage?}>What {@organisation.name} and its members paid</:subtitle>
         <:subtitle :if={!@can_manage?}>
@@ -137,7 +137,7 @@ defmodule RescordWeb.ExpensesLive do
             navigate={~p"/o/#{@organisation.short_name}/expenses/new"}
             data-variant="primary"
           >
-            Record an expense
+            <.icon name="plus" /> Record an expense
           </.link>
         </:actions>
       </.header>
@@ -220,7 +220,7 @@ defmodule RescordWeb.ExpensesLive do
           data-variant="secondary"
           download
         >
-          These expenses as CSV
+          <.icon name="arrow-down-tray" /> These expenses as CSV
         </a>
         <a
           id="expenses-pdf"
@@ -229,7 +229,7 @@ defmodule RescordWeb.ExpensesLive do
           }
           data-variant="secondary"
         >
-          Report of {ResidentWords.date(elem(@period, 0))} to {ResidentWords.date(elem(@period, 1))} as PDF
+          <.icon name="document-chart" /> Report of {ResidentWords.date(elem(@period, 0))} to {ResidentWords.date(elem(@period, 1))} as PDF
         </a>
       </p>
     </Layouts.app>

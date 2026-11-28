@@ -176,7 +176,7 @@ defmodule RescordWeb.GroupMeasurementsLive do
         )}</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:measurements)}>
         Measurements of {Residents.group_name(@group)}
         <:subtitle>Each member, with the others behind it</:subtitle>
       </.header>

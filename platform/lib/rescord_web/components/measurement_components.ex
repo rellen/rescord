@@ -246,7 +246,7 @@ defmodule RescordWeb.MeasurementComponents do
   def record_form(assigns) do
     ~H"""
     <details id="record">
-      <summary>Record a measurement</summary>
+      <summary><.icon name="plus" /> Record a measurement</summary>
       <.form for={@form} id="measurement" phx-change="choose" phx-submit="record">
         <.input
           field={@form[:measure_kind_id]}

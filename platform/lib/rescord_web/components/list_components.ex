@@ -24,7 +24,7 @@ defmodule RescordWeb.ListComponents do
         phx-value-id={@value.id}
         aria-label={"Retire #{@value.label} from #{String.downcase(@list.name)}"}
       >
-        Retire
+        <.icon name="no-symbol" /> Retire
       </.button>
       <.button
         :if={@can_change? and not @shared? and @value.retired?}
@@ -33,7 +33,7 @@ defmodule RescordWeb.ListComponents do
         phx-value-id={@value.id}
         aria-label={"Restore #{@value.label} to #{String.downcase(@list.name)}"}
       >
-        Restore
+        <.icon name="arrow-uturn-left" /> Restore
       </.button>
       <.value_meaning :if={@list.key == :unit} label={@value.label} />
       <.value_units
@@ -208,7 +208,7 @@ defmodule RescordWeb.ListComponents do
   def add_value(assigns) do
     ~H"""
     <details id={"add-details-#{@list.key}"}>
-      <summary>Add a value to {String.downcase(@list.name)}</summary>
+      <summary><.icon name="plus" /> Add a value to {String.downcase(@list.name)}</summary>
       <form :if={@list.unused != []} id={"use-#{@list.key}"} phx-submit="use">
         <input type="hidden" name="dimension" value={@list.key} />
         <.input

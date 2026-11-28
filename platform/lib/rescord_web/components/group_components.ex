@@ -51,7 +51,7 @@ defmodule RescordWeb.GroupComponents do
   def new_group(assigns) do
     ~H"""
     <details id="new-group">
-      <summary>New group</summary>
+      <summary><.icon name="plus" /> New group</summary>
       <.form for={@form} id="group" phx-submit="form">
         <.input field={@form[:name]} type="text" label="Name, if the group has one" maxlength="80" />
         <.input
@@ -82,7 +82,7 @@ defmodule RescordWeb.GroupComponents do
   def group_form(assigns) do
     ~H"""
     <details id="change-group">
-      <summary>Change the group</summary>
+      <summary><.icon name="pencil" /> Change the group</summary>
       <.form for={@form} id="group" phx-submit="revise">
         <.input
           field={@form[:name]}
@@ -147,7 +147,7 @@ defmodule RescordWeb.GroupComponents do
   def leave_form(assigns) do
     ~H"""
     <details id={"leave-details-#{@member.id}"}>
-      <summary>Take out</summary>
+      <summary><.icon name="minus" /> Take out</summary>
       <form id={"leave-#{@member.id}"} phx-submit="leave">
         <input type="hidden" name="member_id" value={@member.id} />
         <.input
@@ -188,7 +188,7 @@ defmodule RescordWeb.GroupComponents do
   def join_form(assigns) do
     ~H"""
     <details id="add-member">
-      <summary>Add a member</summary>
+      <summary><.icon name="plus" /> Add a member</summary>
       <.form for={@join_form} id="member" phx-submit="join">
         <.input
           field={@join_form[:resident_id]}
@@ -244,7 +244,7 @@ defmodule RescordWeb.GroupComponents do
   def close_group(assigns) do
     ~H"""
     <details id="close-group">
-      <summary>Close this group</summary>
+      <summary><.icon name="no-symbol" /> Close this group</summary>
       <p>Close a group that is no more. Its history stays.</p>
       <.button phx-click="close">Close the group</.button>
     </details>

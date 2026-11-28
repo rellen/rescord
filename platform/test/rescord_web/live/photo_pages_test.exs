@@ -215,7 +215,7 @@ defmodule RescordWeb.PhotoPagesTest do
       |> follow_redirect(context.conn)
 
     assert has_element?(view, "#profile-photo img[alt='Biscuit on the sofa']")
-    assert has_element?(view, "#item-photo-#{photo.id} [data-state]", "Profile picture")
+    assert has_element?(view, "#item-photo-#{photo.id} figcaption > strong", "Profile picture")
 
     resident_path = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}"
     {:ok, resident, _html} = live(context.conn, resident_path)

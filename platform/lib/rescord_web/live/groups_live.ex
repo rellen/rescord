@@ -74,7 +74,7 @@ defmodule RescordWeb.GroupsLive do
       organisation={@organisation}
       section={:groups}
     >
-      <.header>
+      <.header icon={Icons.section(:groups)}>
         Groups
         <:subtitle>The residents that {@organisation.name} manages together</:subtitle>
       </.header>

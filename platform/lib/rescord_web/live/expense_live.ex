@@ -264,7 +264,7 @@ defmodule RescordWeb.ExpenseLive do
             navigate={~p"/o/#{@organisation.short_name}/expenses/#{@expense.id}/edit"}
             data-variant="secondary"
           >
-            Change
+            <.icon name="pencil" /> Change
           </.link>
           <.button
             :if={@can.withdraw?}
@@ -272,7 +272,7 @@ defmodule RescordWeb.ExpenseLive do
             phx-click="withdraw"
             data-confirm="Withdraw the expense? It leaves the lists."
           >
-            Withdraw
+            <.icon name="arrow-uturn-left" /> Withdraw
           </.button>
         </:actions>
       </.header>

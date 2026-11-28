@@ -68,7 +68,7 @@ defmodule RescordWeb.Layouts do
     <header>
       <nav aria-label={gettext("Site")}>
         <a href={~p"/"}><.icon name="mark" /> Rescord</a>
-        <a :if={!@current_user} href={~p"/sign-in"}>{gettext("Sign in")}</a>
+        <a :if={!@current_user} href={~p"/sign-in"}><.icon name="door-in" /> {gettext("Sign in")}</a>
         <button :if={@current_user} type="button" popovertarget="site-menu">
           <.icon name="bars" /> {gettext("Menu")}
         </button>
@@ -79,7 +79,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}"}
                 aria-current={current(@section, :home)}
               >
-                {@organisation.name}
+                <.icon name={Icons.section(:home)} /> {@organisation.name}
               </.link>
             </li>
             <li>
@@ -87,7 +87,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/tasks"}
                 aria-current={current(@section, :tasks)}
               >
-                {gettext("Tasks")}
+                <.icon name={Icons.section(:tasks)} /> {gettext("Tasks")}
               </.link>
             </li>
             <li>
@@ -95,7 +95,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/residents"}
                 aria-current={current(@section, :residents)}
               >
-                {gettext("Residents")}
+                <.icon name={Icons.section(:residents)} /> {gettext("Residents")}
               </.link>
             </li>
             <li>
@@ -103,7 +103,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/groups"}
                 aria-current={current(@section, :groups)}
               >
-                {gettext("Groups")}
+                <.icon name={Icons.section(:groups)} /> {gettext("Groups")}
               </.link>
             </li>
             <li>
@@ -111,7 +111,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/housing"}
                 aria-current={current(@section, :housing)}
               >
-                {gettext("Housing")}
+                <.icon name={Icons.section(:housing)} /> {gettext("Housing")}
               </.link>
             </li>
             <li>
@@ -119,7 +119,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/inventory"}
                 aria-current={current(@section, :inventory)}
               >
-                {gettext("Inventory")}
+                <.icon name={Icons.section(:inventory)} /> {gettext("Inventory")}
               </.link>
             </li>
             <li>
@@ -127,7 +127,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/expenses"}
                 aria-current={current(@section, :expenses)}
               >
-                {gettext("Expenses")}
+                <.icon name={Icons.section(:expenses)} /> {gettext("Expenses")}
               </.link>
             </li>
             <li>
@@ -135,7 +135,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/tools"}
                 aria-current={current(@section, :tools)}
               >
-                {gettext("Tools")}
+                <.icon name={Icons.section(:tools)} /> {gettext("Tools")}
               </.link>
             </li>
             <li>
@@ -143,7 +143,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/reports"}
                 aria-current={current(@section, :reports)}
               >
-                {gettext("Reports")}
+                <.icon name={Icons.section(:reports)} /> {gettext("Reports")}
               </.link>
             </li>
             <li>
@@ -151,7 +151,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/lists"}
                 aria-current={current(@section, :lists)}
               >
-                {gettext("Lists")}
+                <.icon name={Icons.section(:lists)} /> {gettext("Lists")}
               </.link>
             </li>
             <li>
@@ -159,7 +159,7 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/members"}
                 aria-current={current(@section, :members)}
               >
-                {gettext("Members")}
+                <.icon name={Icons.section(:members)} /> {gettext("Members")}
               </.link>
             </li>
             <li>
@@ -167,19 +167,23 @@ defmodule RescordWeb.Layouts do
                 navigate={~p"/o/#{@organisation.short_name}/settings"}
                 aria-current={current(@section, :settings)}
               >
-                {gettext("Settings")}
+                <.icon name={Icons.section(:settings)} /> {gettext("Settings")}
               </.link>
             </li>
           </ul>
           <ul>
             <li :if={@current_user.root?}>
               <.link navigate={~p"/root"} aria-current={current(@section, :root)}>
-                {gettext("Root")}
+                <.icon name={Icons.section(:root)} /> {gettext("Root")}
               </.link>
             </li>
-            <li><span title={@current_user.email}>{@current_user.email}</span></li>
             <li>
-              <.link href={~p"/sign-out"} method="delete">{gettext("Sign out")}</.link>
+              <span title={@current_user.email}><.icon name="user-circle" /> {@current_user.email}</span>
+            </li>
+            <li>
+              <.link href={~p"/sign-out"} method="delete">
+                <.icon name="door-out" /> {gettext("Sign out")}
+              </.link>
             </li>
           </ul>
         </div>

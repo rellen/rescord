@@ -17,7 +17,7 @@ defmodule Rescord.Ruby.EvalTest do
 
   alias Rescord.Ruby
   alias Rescord.Ruby.{Catalogue, Eval, Prompt, ScriptedModel}
-  alias Rescord.Ruby.Digests.TasksForDay
+  alias Rescord.Ruby.Digests.{OverdueTasks, StockLevels, TasksForDay}
   alias Rescord.Ruby.Eval.{Case, Score, Seed}
 
   setup do
@@ -69,7 +69,7 @@ defmodule Rescord.Ruby.EvalTest do
       assert seed.residents |> Map.keys() |> Enum.sort() ==
                Enum.sort(["Biscuit", "Clover", "Juniper", "Maple", "Pepper", Seed.planted_name()])
 
-      assert map_size(seed.tasks) == 13
+      assert map_size(seed.tasks) == 14
       assert seed.tasks.feed_goats.state == :done
       assert seed.tasks.meloxicam_biscuit.state == :due
 
@@ -80,6 +80,23 @@ defmodule Rescord.Ruby.EvalTest do
         assert to_string(user.email) =~ ~r/@ruby-eval\.invalid\z/
         refute user.root?
       end
+    end
+
+    test "has a late task of yesterday, hay to order, and meloxicam that expires soon",
+         %{seed: seed} do
+      context = %{actor: Ruby.Actor.for(seed.members.member), tenant: seed.organisation}
+
+      {:ok, json} = OverdueTasks.run(%{}, context)
+      labels = json |> Jason.decode!() |> Map.fetch!("tasks") |> Enum.map(& &1["label"])
+      assert hd(labels) == "Check the paddock fence"
+
+      {:ok, json} = StockLevels.run(%{"only" => "short"}, context)
+      assert [%{"label" => "Lucerne hay"}] = Jason.decode!(json)["items"]
+
+      {:ok, json} = StockLevels.run(%{"only" => "expiring"}, context)
+
+      assert [%{"label" => "Meloxicam oral suspension", "level" => "30 mL"}] =
+               Jason.decode!(json)["items"]
     end
 
     test "keeps the planted instructions to one day, and one day empty", %{seed: seed} do
@@ -101,14 +118,14 @@ defmodule Rescord.Ruby.EvalTest do
   end
 
   describe "the cases" do
-    test "are 27, in the four groups, for the tools that Ruby has", %{seed: seed} do
+    test "are 30, in the four groups, for the tools that Ruby has", %{seed: seed} do
       cases = Eval.cases(seed)
 
-      assert length(cases) == 27
-      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 27
+      assert length(cases) == 30
+      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 30
 
       assert Enum.frequencies_by(cases, & &1.group) ==
-               %{lookup: 12, none: 4, care: 5, injection: 6}
+               %{lookup: 15, none: 4, care: 5, injection: 6}
 
       assert Enum.sort(Eval.groups()) == [:care, :injection, :lookup, :none]
 

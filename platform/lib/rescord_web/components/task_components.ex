@@ -23,7 +23,7 @@ defmodule RescordWeb.TaskComponents do
   def new_task(assigns) do
     ~H"""
     <details id="new-task">
-      <summary>New task</summary>
+      <summary><.icon name="plus" /> New task</summary>
       <.problems :if={@refused_form?} list={@problems} />
       <.form for={@form} id="task" phx-submit="plan">
         <.input field={@form[:title]} type="text" label="What to do" maxlength="120" required />
@@ -164,7 +164,7 @@ defmodule RescordWeb.TaskComponents do
       phx-value-id={@task.id}
       aria-label={"Take the task #{@task.title}"}
     >
-      Take
+      <.icon name="user" /> Take
     </.button>
     <.button
       :if={@task.state == :due and Tasks.role_can?(@role, :complete)}
@@ -172,7 +172,7 @@ defmodule RescordWeb.TaskComponents do
       phx-value-id={@task.id}
       aria-label={"Mark the task #{@task.title} as done"}
     >
-      Done
+      <.icon name="check" /> Done
     </.button>
     <.button
       :if={@task.state != :due and Tasks.role_can?(@role, :reopen)}
@@ -180,13 +180,13 @@ defmodule RescordWeb.TaskComponents do
       phx-value-id={@task.id}
       aria-label={"Open again the task #{@task.title}"}
     >
-      Open again
+      <.icon name="arrow-uturn-left" /> Open again
     </.button>
     <details
       :if={@task.state == :due and Tasks.role_can?(@role, :skip)}
       id={"skip-details-#{@task.id}"}
     >
-      <summary>Skip</summary>
+      <summary><.icon name="forward" /> Skip</summary>
       <form id={"skip-#{@task.id}"} phx-submit="skip">
         <input type="hidden" name="task_id" value={@task.id} />
         <.input

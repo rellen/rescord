@@ -255,33 +255,34 @@ defmodule RescordWeb.TasksLive do
       organisation={@organisation}
       section={:tasks}
     >
-      <.header>
+      <.header icon={Icons.section(:tasks)}>
         Tasks
         <:subtitle>
           {TaskWords.day(@day)}{if @day == @today, do: ", today"}
         </:subtitle>
         <:actions>
           <.link patch={day_path(assigns, Date.add(@day, -1))} data-variant="secondary">
-            The day before
+            <.icon name="chevron-left" /> The day before
           </.link>
           <.link
             :if={@day != @today}
             patch={day_path(assigns, @today)}
             data-variant="secondary"
           >
-            Today
+            <.icon name="calendar" /> Today
           </.link>
           <.link patch={day_path(assigns, Date.add(@day, 1))} data-variant="secondary">
-            The day after
+            The day after <.icon name="chevron-right" />
           </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/routines"} data-variant="secondary">
-            Routines
+            <.icon name={Icons.section(:routines)} /> Routines
           </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/calendar"} data-variant="secondary">
-            Calendar feeds
+            <.icon name={Icons.section(:calendar)} /> Calendar feeds
           </.link>
           <RescordWeb.ReportComponents.report_link
             id="task-sheet"
+            icon="printer"
             href={~p"/o/#{@organisation.short_name}/reports/tasks.pdf?#{[on: Date.to_iso8601(@day)]}"}
           >
             Sheet (PDF)

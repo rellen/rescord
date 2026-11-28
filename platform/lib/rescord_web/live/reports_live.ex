@@ -78,13 +78,13 @@ defmodule RescordWeb.ReportsLive do
       organisation={@organisation}
       section={:reports}
     >
-      <.header>
+      <.header icon={Icons.section(:reports)}>
         Reports
         <:subtitle>Documents of {@organisation.name} for paper, each a PDF</:subtitle>
       </.header>
 
       <section aria-labelledby="paper-heading">
-        <h2 id="paper-heading">Paper</h2>
+        <h2 id="paper-heading"><.icon name="printer" /> Paper</h2>
         <form id="paper" action={~p"/o/#{@organisation.short_name}/reports"} phx-change="paper">
           <.paper_control id="paper-size" value={@paper} />
           <noscript><button type="submit">Use this paper</button></noscript>
@@ -96,7 +96,9 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="register-heading">
-        <h2 id="register-heading">Register of residents</h2>
+        <h2 id="register-heading">
+          <.icon name={Icons.section(:residents)} /> Register of residents
+        </h2>
         <p>
           Each resident in care on one day, with its facts, its place and the identifiers that it has.
         </p>
@@ -116,7 +118,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="movements-heading">
-        <h2 id="movements-heading">Arrivals and departures</h2>
+        <h2 id="movements-heading"><.icon name="door-in" /> Arrivals and departures</h2>
         <p>
           The residents that arrived and the ones that left in a period, with the totals by
           kind and by species.
@@ -155,7 +157,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="tasks-heading">
-        <h2 id="tasks-heading">Tasks of a day</h2>
+        <h2 id="tasks-heading"><.icon name={Icons.section(:tasks)} /> Tasks of a day</h2>
         <p>The tasks that are due on one day, each with a box to tick, and the late ones.</p>
         <form id="task-sheet" action={~p"/o/#{@organisation.short_name}/reports/tasks.pdf"}>
           <.input id="task-sheet-on" name="on" type="date" label="Day" value={@today} required />
@@ -165,7 +167,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="stock-heading">
-        <h2 id="stock-heading">Stock</h2>
+        <h2 id="stock-heading"><.icon name={Icons.section(:inventory)} /> Stock</h2>
         <p>
           The stock of each item with its lots, what needs somebody first, and a column for
           a count.
@@ -181,7 +183,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="housing-heading">
-        <h2 id="housing-heading">Housing</h2>
+        <h2 id="housing-heading"><.icon name={Icons.section(:housing)} /> Housing</h2>
         <p>Each location with who lives there now, for a walk through the refuge.</p>
         <p>
           <a
@@ -194,7 +196,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="expenses-heading">
-        <h2 id="expenses-heading">Expenses</h2>
+        <h2 id="expenses-heading"><.icon name={Icons.section(:expenses)} /> Expenses</h2>
         <p>
           The expenses of a period that you can read, with their sums by state and by
           category, and what the organisation owes to each member.
@@ -225,7 +227,7 @@ defmodule RescordWeb.ReportsLive do
       </section>
 
       <section aria-labelledby="resident-heading">
-        <h2 id="resident-heading">One resident</h2>
+        <h2 id="resident-heading"><.icon name={Icons.section(:residents)} /> One resident</h2>
         <p>
           The record of a resident, with its medical history, and its cage card start from
           the page of that resident.

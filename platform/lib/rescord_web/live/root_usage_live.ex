@@ -195,7 +195,7 @@ defmodule RescordWeb.RootUsageLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <.header>
+      <.header icon={Icons.section(:usage)}>
         Usage counts
         <:subtitle>Which features the rescues on this server use, and where the counts go.</:subtitle>
       </.header>

@@ -153,11 +153,13 @@ defmodule RescordWeb do
       import Phoenix.HTML
       # Core UI components
       import RescordWeb.CoreComponents
+      import RescordWeb.Icons, only: [icon: 1]
       # Control flow in templates, for three or more branches
       import ShoddyPhoenix.ControlFlow, only: [choose: 1, switch: 1]
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
+      alias RescordWeb.Icons
       alias RescordWeb.Layouts
 
       # Routes generation with the ~p sigil

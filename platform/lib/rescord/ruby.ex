@@ -81,6 +81,7 @@ defmodule Rescord.Ruby do
     deps [
       Rescord,
       Rescord.Accounts,
+      Rescord.Inventory,
       Rescord.Journal,
       Rescord.Locations,
       Rescord.Residents,

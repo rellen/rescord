@@ -262,12 +262,12 @@ defmodule RescordWeb.TransfersLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
-      <.header>
+      <.header icon={Icons.section(:transfers)}>
         Transfers
         <:subtitle>The residents that {@organisation.name} sent and received</:subtitle>
         <:actions>
           <.link navigate={~p"/o/#{@organisation.short_name}/partners"} data-variant="secondary">
-            Partner refuges
+            <.icon name="link" /> Partner refuges
           </.link>
         </:actions>
       </.header>

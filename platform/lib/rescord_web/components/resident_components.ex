@@ -48,7 +48,7 @@ defmodule RescordWeb.ResidentComponents do
       id="arrival-details"
       open
     >
-      <summary>Record the arrival</summary>
+      <summary><.icon name="door-in" /> Record the arrival</summary>
       <.form for={@arrival_form} id="arrival" phx-submit="record_arrival">
         <.input
           field={@arrival_form[:kind]}
@@ -72,7 +72,7 @@ defmodule RescordWeb.ResidentComponents do
   def absence_form(assigns) do
     ~H"""
     <details id="absence-details">
-      <summary>Mark as away for a time</summary>
+      <summary><.icon name="map-pin" /> Mark as away for a time</summary>
       <.form for={@absence_form} id="absence" phx-submit="start_absence">
         <.input field={@absence_form[:reason]} type="text" label="Where and why" required />
         <.input field={@absence_form[:expected_back_on]} type="date" label="Expected back" />
@@ -93,7 +93,7 @@ defmodule RescordWeb.ResidentComponents do
   def departure_form(assigns) do
     ~H"""
     <details id="departure-details">
-      <summary>Record the departure</summary>
+      <summary><.icon name="door-out" /> Record the departure</summary>
       <.form for={@departure_form} id="departure" phx-submit="record_departure">
         <.input
           field={@departure_form[:kind]}
@@ -123,7 +123,7 @@ defmodule RescordWeb.ResidentComponents do
   def stay(assigns) do
     ~H"""
     <section aria-labelledby="stay-heading">
-      <h2 id="stay-heading">Stay</h2>
+      <h2 id="stay-heading"><.icon name="kennel" /> Stay</h2>
 
       <h3>Where it lives</h3>
       <p :if={@homes == []}>
@@ -170,7 +170,7 @@ defmodule RescordWeb.ResidentComponents do
             label="When it came back, if not now"
             value=""
           />
-          <.button type="submit">Mark as back</.button>
+          <.button type="submit"><.icon name="door-in" /> Mark as back</.button>
         </form>
       </div>
 
@@ -191,7 +191,8 @@ defmodule RescordWeb.ResidentComponents do
           </:item>
         </.list>
         <p :if={can?(@role, :departure, :withdraw)}>
-          <.button phx-click="withdraw_departure">Withdraw the departure</.button>
+          <.button phx-click="withdraw_departure"><.icon name="arrow-uturn-left" />
+          Withdraw the departure</.button>
         </p>
       </div>
 
@@ -228,19 +229,19 @@ defmodule RescordWeb.ResidentComponents do
           navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/measurements"}
           data-variant="secondary"
         >
-          Measurements
+          <.icon name="chart-line" /> Measurements
         </.link>
         <.link
           navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal"}
           data-variant="secondary"
         >
-          Open the journal
+          <.icon name="book-open" /> Open the journal
         </.link>
         <.link
           navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/timeline"}
           data-variant="secondary"
         >
-          Open the timeline
+          <.icon name="timeline" /> Open the timeline
         </.link>
         <%!-- The dose calculator of the tools, with the weight of this resident (ADR 0072). --%>
         <.link
@@ -248,7 +249,7 @@ defmodule RescordWeb.ResidentComponents do
           navigate={~p"/o/#{@organisation.short_name}/tools/dose?#{[resident: @resident.id]}"}
           data-variant="secondary"
         >
-          Calculate a dose
+          <.icon name="calculator" /> Calculate a dose
         </.link>
       </p>
     </section>
@@ -262,7 +263,7 @@ defmodule RescordWeb.ResidentComponents do
   def parent_form(assigns) do
     ~H"""
     <details id="parent-details">
-      <summary>Add a parent</summary>
+      <summary><.icon name="plus" /> Add a parent</summary>
       <.form for={@parent_form} id="parent" phx-submit="record_parent">
         <.input
           field={@parent_form[:parent_id]}
@@ -291,7 +292,7 @@ defmodule RescordWeb.ResidentComponents do
   def family_form(assigns) do
     ~H"""
     <details id="family-details">
-      <summary>Add to a family</summary>
+      <summary><.icon name="plus" /> Add to a family</summary>
       <.form for={@family_form} id="family" phx-submit="add_to_family">
         <.input
           :if={@other_families != []}
@@ -325,7 +326,7 @@ defmodule RescordWeb.ResidentComponents do
   def relations(assigns) do
     ~H"""
     <section aria-labelledby="relations-heading">
-      <h2 id="relations-heading">Family and groups</h2>
+      <h2 id="relations-heading"><.icon name="paws" /> Family and groups</h2>
 
       <h3>Parents</h3>
       <p :if={@relations.parents == []}>No parent is recorded.</p>
@@ -339,7 +340,7 @@ defmodule RescordWeb.ResidentComponents do
             phx-value-id={link.id}
             aria-label={"Remove the #{String.downcase(ResidentWords.kin(link.role))} #{link.parent.name}"}
           >
-            Remove
+            <.icon name="user-minus" /> Remove
           </.button>
         </li>
       </ul>
@@ -372,7 +373,7 @@ defmodule RescordWeb.ResidentComponents do
             phx-value-id={membership.id}
             aria-label={"Take out of #{membership.family.name}"}
           >
-            Take out
+            <.icon name="user-minus" /> Take out
           </.button>
         </li>
       </ul>
@@ -406,7 +407,7 @@ defmodule RescordWeb.ResidentComponents do
   def identifier_form(assigns) do
     ~H"""
     <details id="identifier-details">
-      <summary>Add an identifier</summary>
+      <summary><.icon name="identification" /> Add an identifier</summary>
       <.form for={@identifier_form} id="identifier" phx-submit="add_identifier">
         <.input
           field={@identifier_form[:kind_id]}
@@ -444,7 +445,7 @@ defmodule RescordWeb.ResidentComponents do
 
     ~H"""
     <section :if={@resident.identifiers != [] or @can_add} aria-labelledby="identifiers-heading">
-      <h2 id="identifiers-heading">Identifiers</h2>
+      <h2 id="identifiers-heading"><.icon name="identification" /> Identifiers</h2>
       <ul :if={@resident.identifiers != []}>
         <li :for={identifier <- @resident.identifiers}>
           {identifier.kind.label}: {identifier.value}
@@ -454,7 +455,7 @@ defmodule RescordWeb.ResidentComponents do
             phx-value-id={identifier.id}
             aria-label={"Remove the #{identifier.kind.label} #{identifier.value}"}
           >
-            Remove
+            <.icon name="trash" /> Remove
           </.button>
         </li>
       </ul>
@@ -512,7 +513,7 @@ defmodule RescordWeb.ResidentComponents do
     <section aria-labelledby="remove-heading">
       <h2 id="remove-heading">Remove</h2>
       <details id="remove-details">
-        <summary>Remove this resident</summary>
+        <summary><.icon name="trash" /> Remove this resident</summary>
         <p>
           Remove a resident only when somebody recorded it by mistake. For a resident that left,
           record the departure.

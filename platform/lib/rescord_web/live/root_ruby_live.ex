@@ -230,14 +230,15 @@ defmodule RescordWeb.RootRubyLive do
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
       <nav aria-label="Breadcrumb"><.link navigate={~p"/root"}>Root</.link></nav>
 
-      <.header>
+      <.header icon={Icons.section(:ruby)}>
         Ruby
         <:subtitle>
           The services that Ruby, the assistant, can think with on this server. An organisation
           chooses among the ones that are offered.
         </:subtitle>
         <:actions :if={@providers != []}>
-          <.button navigate={~p"/root/ruby/new"} variant="primary">Add a provider</.button>
+          <.button navigate={~p"/root/ruby/new"} variant="primary"><.icon name="plus" />
+          Add a provider</.button>
         </:actions>
       </.header>
 
