@@ -533,7 +533,7 @@ defmodule RescordWeb.JournalLive do
         <.link patch={here(assigns, ["entry", "page"])}>Show each entry</.link>
       </p>
 
-      <section id="entries" aria-label="Entries">
+      <section id="entries" aria-label="Entries" data-entries>
         <Cinder.collection
           id="journal"
           layout={:list}

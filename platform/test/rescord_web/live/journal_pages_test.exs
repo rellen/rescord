@@ -1,15 +1,27 @@
 defmodule RescordWeb.JournalPagesTest do
   @moduledoc """
   Holds the page of the journal of a resident: who can open it, what the
-  form of an entry does for each kind, and who can correct an entry.
+  form of an entry does for each kind, and who can correct an entry. The
+  tests find what a person finds (ADR 0107): an entry is an article, named
+  by its kind and its time.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest,
+    only: [
+      assert_patch: 1,
+      element: 2,
+      render_async: 1,
+      render_change: 2,
+      render_submit: 2,
+      render_submit: 3
+    ]
+
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -39,24 +51,27 @@ defmodule RescordWeb.JournalPagesTest do
      conn: sign_in(context.conn, member)}
   end
 
-  defp open(conn, path) do
-    {:ok, view, _html} = live(conn, path)
-    {view, render_async(view)}
-  end
+  # The page lists its entries with Cinder, which loads them after the
+  # first render.
+  defp open(conn, path), do: conn |> visit(path) |> unwrap(&render_async/1)
+  defp open_as(user, path), do: build_conn() |> sign_in(user) |> open(path)
 
-  # The cards of the entries of a page, with no control of the collection.
-  defp cards(html) do
-    html
-    |> LazyHTML.from_fragment()
-    |> LazyHTML.query("#entries article")
-    |> LazyHTML.to_html()
-  end
+  defp journal, do: main() |> region("Entries")
+  defp card(name), do: journal() |> article(name)
+  defp new_entry, do: main() |> details("New journal entry")
+  defp unit, do: new_entry() |> field("Unit")
 
-  defp submit(view, conn, selector, fields) do
-    {:ok, view, _html} =
-      view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
+  defp write(session), do: session |> click(button("Write the entry")) |> unwrap(&render_async/1)
 
-    {view, render_async(view)}
+  # A form that the page did not offer: a unit that the select had not.
+  defp forge_unit(session, measure_kind, unit) do
+    unwrap(session, fn view ->
+      view
+      |> Phoenix.LiveViewTest.form("#entry",
+        entry: %{kind: "measurement", measure_kind_id: measure_kind}
+      )
+      |> render_submit(%{entry: %{value: "2", unit_id: unit}})
+    end)
   end
 
   defp entries(context) do
@@ -68,30 +83,29 @@ defmodule RescordWeb.JournalPagesTest do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
 
-    assert {:error, {:redirect, %{to: "/"}}} =
-             build_conn() |> sign_in(outsider) |> live(context.path)
-
-    assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), context.path)
+    build_conn() |> sign_in(outsider) |> visit(context.path) |> assert_path("/")
+    build_conn() |> visit(context.path) |> assert_path("/")
 
     missing = ~p"/o/#{context.organisation.short_name}/residents/#{Ash.UUID.generate()}/journal"
-    assert {:error, {:redirect, %{to: to}}} = live(context.conn, missing)
-    assert to == ~p"/o/#{context.organisation.short_name}/residents"
+
+    context.conn
+    |> visit(missing)
+    |> assert_path(~p"/o/#{context.organisation.short_name}/residents")
   end
 
   describe "a new entry" do
     test "has words, the member who wrote it, and the time in the zone of the organisation",
          context do
-      {view, html} = open(context.conn, context.path)
-      assert html =~ "The journal has no entry yet."
-
-      {view, html} =
-        submit(view, context.conn, "#entry",
-          entry: %{kind: "behaviour", note: "Popcorning at floor time."}
-        )
-
-      assert html =~ "Behaviour"
-      assert html =~ "Popcorning at floor time."
-      assert html =~ to_string(context.member.email)
+      session =
+        context.conn
+        |> open(context.path)
+        |> assert_has(journal(), text: "The journal has no entry yet.")
+        |> within(new_entry(), fn form ->
+          form
+          |> select("Kind", option: "Behaviour")
+          |> fill_in("What happened", with: "Popcorning at floor time.")
+        end)
+        |> write()
 
       [entry] = entries(context)
 
@@ -100,23 +114,27 @@ defmodule RescordWeb.JournalPagesTest do
           Rescord.Accounts.local_time(context.organisation, entry.happened_at)
         )
 
-      assert has_element?(view, "article time", local)
+      # The kind and the time name the card.
+      session
+      |> assert_has(card("Behaviour #{local}"), text: "Popcorning at floor time.")
+      |> assert_has(card("Behaviour #{local}"), text: to_string(context.member.email))
     end
 
     test "shows the fields of the kind that the member chooses", context do
-      {view, _html} = open(context.conn, context.path)
+      session =
+        context.conn
+        |> open(context.path)
+        |> refute_has(new_entry() |> field("Value"))
+        |> within(new_entry(), &select(&1, "Kind", option: "Measurement"))
+        |> assert_has(new_entry() |> field("What was measured"))
+        |> assert_has(new_entry() |> field("Value"))
+        |> refute_has(new_entry() |> field("Medication"))
 
-      refute has_element?(view, "#entry [name='entry[value]']")
-
-      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
-      assert has_element?(view, "#entry [name='entry[measure_kind_id]']")
-      assert has_element?(view, "#entry [name='entry[value]']")
-      refute has_element?(view, "#entry [name='entry[medication]']")
-
-      view |> form("#entry", entry: %{kind: "prescription"}) |> render_change()
-      assert has_element?(view, "#entry [name='entry[medication]']")
-      assert has_element?(view, "#entry [name='entry[route]']")
-      refute has_element?(view, "#entry [name='entry[value]']")
+      session
+      |> within(new_entry(), &select(&1, "Kind", option: "Prescription"))
+      |> assert_has(new_entry() |> field("Medication"))
+      |> assert_has(new_entry() |> field("How it is given"))
+      |> refute_has(new_entry() |> field("Value"))
     end
 
     test "offers the units of the kind of measurement, or each unit", context do
@@ -127,33 +145,20 @@ defmodule RescordWeb.JournalPagesTest do
         tenant: context.organisation
       )
 
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
-
-      view
-      |> form("#entry", entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight})
-      |> render_change()
-
-      assert has_element?(view, "#entry_unit_id option", "kg")
-      refute has_element?(view, "#entry_unit_id option", "bag")
-
-      view
-      |> form("#entry",
-        entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.temperature}
-      )
-      |> render_change()
-
-      assert has_element?(view, "#entry_unit_id option", "bag")
-
+      context.conn
+      |> open(context.path)
+      |> within(new_entry(), fn form ->
+        form
+        |> select("Kind", option: "Measurement")
+        |> select("What was measured", option: "Weight")
+      end)
+      |> assert_has(unit(), text: "kg")
+      |> refute_has(unit(), text: "bag")
+      |> within(new_entry(), &select(&1, "What was measured", option: "Temperature"))
+      |> assert_has(unit(), text: "bag")
       # The kind refuses a unit that the form did not offer.
-      html =
-        view
-        |> form("#entry",
-          entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight}
-        )
-        |> render_submit(%{entry: %{value: "2", unit_id: lists.unit.bag}})
-
-      assert html =~ "Unit is not a unit of this kind of measurement"
+      |> forge_unit(lists.measure_kind.weight, lists.unit.bag)
+      |> assert_has(main(), text: "Unit is not a unit of this kind of measurement")
     end
 
     test "of a kind with a standard unit chooses that unit, and writes the entry in it",
@@ -175,96 +180,85 @@ defmodule RescordWeb.JournalPagesTest do
 
       {:ok, _} = Rescord.Lists.set_standard_unit(lists.measure_kind.weight, lists.unit.g, admin)
 
-      {view, html} = open(context.conn, context.path)
-      assert html =~ "Weight: 610 g (recorded as 0.61 kg)"
-      # A correction changes the value as it was recorded.
-      assert html =~ "Value, in kg"
+      session =
+        context.conn
+        |> open(context.path)
+        |> assert_has(card(~r/^Measurement\b/), text: "Weight: 610 g (recorded as 0.61 kg)")
+        # A correction changes the value as it was recorded.
+        |> assert_has(card(~r/^Measurement\b/) |> field("Value, in kg"))
+        |> within(new_entry(), &select(&1, "Kind", option: "Measurement"))
+        |> assert_has(unit(), text: "No unit")
+        |> within(new_entry(), &select(&1, "What was measured", option: "Weight"))
+        |> within(unit(), &assert_has(&1, "option[selected]", text: "g", exact: true))
+        |> assert_has(unit(), text: "kg")
+        |> refute_has(unit(), text: "bag")
+        |> refute_has(unit(), text: "No unit")
 
-      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
-      assert has_element?(view, "#entry_unit_id option", "No unit")
-
-      view
-      |> form("#entry", entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight})
-      |> render_change()
-
-      assert has_element?(
-               view,
-               "#entry_unit_id[required] option[selected][value='#{lists.unit.g}']"
-             )
-
-      assert has_element?(view, "#entry_unit_id option", "kg")
-      refute has_element?(view, "#entry_unit_id option", "bag")
-      refute has_element?(view, "#entry_unit_id option", "No unit")
+      assert attribute(session, unit(), "required")
 
       # The person chooses kg, and the form keeps it while they type.
-      view
-      |> form("#entry",
-        entry: %{
-          kind: "measurement",
-          measure_kind_id: lists.measure_kind.weight,
-          unit_id: lists.unit.kg,
-          value: "0.7"
-        }
-      )
-      |> render_change()
+      session =
+        within(session, new_entry(), fn form ->
+          form |> select("Unit", option: "kg") |> fill_in("Value", with: "0.7")
+        end)
 
-      assert has_element?(view, "#entry_unit_id option[selected][value='#{lists.unit.kg}']")
+      assert value(session, unit()) == "kg"
 
       # The kind refuses a unit that the form did not offer.
-      html =
-        view
-        |> form("#entry",
-          entry: %{kind: "measurement", measure_kind_id: lists.measure_kind.weight}
-        )
-        |> render_submit(%{entry: %{value: "2", unit_id: lists.unit.bag}})
-
-      assert html =~ "Unit is not a unit that Rescord converts to g, the unit of this kind"
+      session
+      |> forge_unit(lists.measure_kind.weight, lists.unit.bag)
+      |> assert_has(main(),
+        text: "Unit is not a unit that Rescord converts to g, the unit of this kind"
+      )
     end
 
     test "records a weight, and the page of the resident shows the newest one", context do
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#entry", entry: %{kind: "measurement"}) |> render_change()
-
-      {_view, html} =
-        submit(view, context.conn, "#entry",
-          entry: %{
-            kind: "measurement",
-            measure_kind_id: context.lists.measure_kind.weight,
-            value: "1095",
-            unit_id: context.lists.unit.g
-          }
-        )
-
-      assert html =~ "Weight: 1,095 g"
-
-      {_view, html} = open(context.conn, context.resident_path)
-      assert html =~ "1,095 g,"
-      refute html =~ "No weight or other measurement yet."
+      context.conn
+      |> open(context.path)
+      |> within(new_entry(), fn form ->
+        form
+        |> select("Kind", option: "Measurement")
+        |> select("What was measured", option: "Weight")
+        |> fill_in("Value", with: "1095")
+        |> select("Unit", option: "g")
+      end)
+      |> write()
+      |> assert_has(card(~r/^Measurement\b/), text: "Weight: 1,095 g")
+      |> visit(context.resident_path)
+      |> unwrap(&render_async/1)
+      |> assert_has(main(), text: "1,095 g,")
+      |> refute_has(main(), text: "No weight or other measurement yet.")
     end
 
     test "says what is wrong, and keeps what the member typed", context do
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#entry", entry: %{kind: "vaccination"}) |> render_change()
+      session =
+        context.conn
+        |> open(context.path)
+        |> within(new_entry(), fn form ->
+          form
+          |> select("Kind", option: "Vaccination")
+          |> fill_in("Vaccine", with: "")
+          |> fill_in("Note", with: "Given in the left leg.")
+        end)
+        |> click(button("Write the entry"))
+        |> assert_has(main() |> alert(), text: "Vaccine is required")
 
-      html =
-        view
-        |> form("#entry",
-          entry: %{kind: "vaccination", vaccine: "", note: "Given in the left leg."}
-        )
-        |> render_submit()
-
-      assert has_element?(view, "main p[role=alert]", "Vaccine is required")
-      assert html =~ "Given in the left leg."
+      assert value(session, new_entry() |> field("Note")) == "Given in the left leg."
       assert entries(context) == []
 
       tomorrow =
         context.organisation |> Rescord.Accounts.today() |> Date.add(1) |> Date.to_iso8601()
 
-      view
-      |> form("#entry", entry: %{kind: "general", note: "Tomorrow.", at: tomorrow <> "T08:00"})
-      |> render_submit()
+      session
+      |> within(new_entry(), fn form ->
+        form
+        |> select("Kind", option: "General")
+        |> fill_in("What happened", with: "Tomorrow.")
+        |> fill_in("When it happened, if not now", with: tomorrow <> "T08:00")
+      end)
+      |> click(button("Write the entry"))
+      |> assert_has(main() |> alert(), text: "The time cannot be after now")
 
-      assert has_element?(view, "main p[role=alert]", "The time cannot be after now")
       assert entries(context) == []
     end
   end
@@ -281,25 +275,28 @@ defmodule RescordWeb.JournalPagesTest do
         context.options
       )
 
-      {view, html} = open(context.conn, context.path)
-      assert html =~ "Ate well."
-      assert html =~ "Vaccine: A sample vaccine"
+      context.conn
+      |> open(context.path)
+      |> assert_has(journal(), text: "Ate well.")
+      |> assert_has(journal(), text: "Vaccine: A sample vaccine")
+      # The form of the filters is Cinder's own; it writes the address that
+      # the page had before (ADR 0092).
+      |> unwrap(fn view ->
+        view
+        |> element("#journal-filter-form")
+        |> render_change(%{"filters" => %{"only" => "medical"}})
 
-      # The filter writes the address that the page had before (ADR 0092).
-      view
-      |> element("#journal-filter-form")
-      |> render_change(%{"filters" => %{"only" => "medical"}})
-
-      assert assert_patch(view) =~ "only=medical"
-
-      cards = view |> render_async() |> cards()
-      refute cards =~ "Ate well."
-      assert cards =~ "Vaccine: A sample vaccine"
+        assert assert_patch(view) =~ "only=medical"
+        render_async(view)
+      end)
+      |> refute_has(journal(), text: "Ate well.")
+      |> assert_has(journal(), text: "Vaccine: A sample vaccine")
 
       # And that address opens the medical history.
-      {_view, html} = open(context.conn, context.path <> "?only=medical")
-      refute cards(html) =~ "Ate well."
-      assert cards(html) =~ "Vaccine: A sample vaccine"
+      context.conn
+      |> open(context.path <> "?only=medical")
+      |> refute_has(journal(), text: "Ate well.")
+      |> assert_has(journal(), text: "Vaccine: A sample vaccine")
     end
   end
 
@@ -348,26 +345,27 @@ defmodule RescordWeb.JournalPagesTest do
             # A value that is no choice changes nothing, and makes no fault.
             {"?only=x&kind=nothing&page=x", ["Ate well.", "A sample vaccine", "Popcorning"], []}
           ] do
-        {_view, html} = open(context.conn, context.path <> parameters)
-        cards = cards(html)
+        session = open(context.conn, context.path <> parameters)
 
-        for words <- shown, do: assert(cards =~ words, "#{parameters} hides #{words}")
-        for words <- hidden, do: refute(cards =~ words, "#{parameters} shows #{words}")
+        for words <- shown, do: assert_has(session, journal(), text: words)
+        for words <- hidden, do: refute_has(session, journal(), text: words)
       end
 
-      {_view, html} = open(context.conn, context.path <> "?search=nothing+such")
-      assert html =~ "No entry matches the search and the filters."
+      context.conn
+      |> open(context.path <> "?search=nothing+such")
+      |> assert_has(journal(), text: "No entry matches the search and the filters.")
     end
 
     test "shows one entry with what was added to it, for a link from another page", context do
-      {view, html} = open(context.conn, context.path <> "?entry=#{context.general.id}")
-      cards = cards(html)
+      session =
+        context.conn
+        |> open(context.path <> "?entry=#{context.general.id}")
+        |> assert_has(journal(), text: "Ate well.")
+        |> assert_has(journal(), text: "And drank well.")
+        |> refute_has(journal(), text: "Popcorning")
+        |> refute_has(journal(), text: "A sample vaccine")
 
-      assert cards =~ "Ate well."
-      assert cards =~ "And drank well."
-      refute cards =~ "Popcorning"
-      refute cards =~ "A sample vaccine"
-      assert has_element?(view, "#one-entry a[href='#{context.path}']", "Show each entry")
+      assert href(session, main() |> link("Show each entry")) == context.path
 
       # An id that names no entry of this journal shows the whole journal.
       clover = resident!(context.lists, context.options, %{name: "Clover"})
@@ -379,10 +377,11 @@ defmodule RescordWeb.JournalPagesTest do
         )
 
       for id <- [theirs.id, "nothing"] do
-        {view, html} = open(context.conn, context.path <> "?entry=#{id}")
-        assert cards(html) =~ "Popcorning"
-        refute html =~ "Of another resident."
-        refute has_element?(view, "#one-entry")
+        context.conn
+        |> open(context.path <> "?entry=#{id}")
+        |> assert_has(journal(), text: "Popcorning")
+        |> refute_has(main(), text: "Of another resident.")
+        |> refute_has(main() |> link("Show each entry"))
       end
     end
 
@@ -395,12 +394,14 @@ defmodule RescordWeb.JournalPagesTest do
           context.options
         )
 
-      {view, _html} = open(context.conn, context.path)
-
-      render_submit(view, "correct", %{
-        "entry_id" => theirs.id,
-        "entry" => %{"note" => "Changed from the wrong page."}
-      })
+      context.conn
+      |> open(context.path)
+      |> unwrap(
+        &render_submit(&1, "correct", %{
+          "entry_id" => theirs.id,
+          "entry" => %{"note" => "Changed from the wrong page."}
+        })
+      )
 
       assert {:ok, %{note: "Of another resident."}} = Journal.entry(theirs.id, context.options)
     end
@@ -418,19 +419,20 @@ defmodule RescordWeb.JournalPagesTest do
         )
       end
 
-      {view, html} = open(context.conn, context.path)
-      cards = cards(html)
+      # 29 entries: the newest 25 are on the first page. The buttons of the
+      # pages are Cinder's own, with a title and no name.
+      context.conn
+      |> open(context.path)
+      |> assert_has("#entries button[title='Next page']")
+      |> assert_has(journal(), text: "And drank well.")
+      |> assert_has(journal(), text: "Note 32.")
+      |> refute_has(journal(), text: "Note 33.")
+      |> refute_has(journal(), text: "Ate well.")
 
-      # 29 entries: the newest 25 are on the first page.
-      assert has_element?(view, "#entries button[title='Next page']")
-      assert cards =~ "And drank well."
-      assert cards =~ "Note 32."
-      refute cards =~ "Note 33."
-      refute cards =~ "Ate well."
-
-      {_view, html} = open(context.conn, context.path <> "?page=2")
-      assert cards(html) =~ "Ate well."
-      refute cards(html) =~ "Note 10."
+      context.conn
+      |> open(context.path <> "?page=2")
+      |> assert_has(journal(), text: "Ate well.")
+      |> refute_has(journal(), text: "Note 10.")
     end
 
     test "keeps the search and the filters in the links of the conditions", context do
@@ -444,18 +446,19 @@ defmodule RescordWeb.JournalPagesTest do
       )
 
       {:ok, [episode]} = Journal.episodes_of(context.biscuit.id, context.options)
-      {view, _html} = open(context.conn, context.path <> "?only=medical&page=1&search=a")
+      session = open(context.conn, context.path <> "?only=medical&page=1&search=a")
 
-      assert has_element?(
-               view,
-               "nav[aria-label=Conditions] a[href='#{context.path}?episode=#{episode.id}&only=medical&search=a']"
-             )
+      assert href(session, main() |> navigation("Conditions") |> link("Respiratory infection")) ==
+               "#{context.path}?episode=#{episode.id}&only=medical&search=a"
 
       # An old address of the form of a diagnosis is the filter on the kind now.
-      {view, html} = open(context.conn, context.path <> "?kind=diagnosis")
-      refute has_element?(view, "details#new-entry[open]")
-      assert cards(html) =~ "Respiratory infection"
-      refute cards(html) =~ "Popcorning"
+      session =
+        context.conn
+        |> open(context.path <> "?kind=diagnosis")
+        |> assert_has(card(~r/^Diagnosis\b/), text: "Respiratory infection")
+        |> refute_has(journal(), text: "Popcorning")
+
+      refute open?(session, new_entry())
     end
   end
 
@@ -470,49 +473,52 @@ defmodule RescordWeb.JournalPagesTest do
       {:ok, entry: entry}
     end
 
+    defp correct, do: card(~r/^Examination\b/) |> details("Correct this entry")
+
     test "has a form to correct it for its author and an administrator, and not for another member",
          context do
-      {view, _html} = open(context.conn, context.path)
-      assert has_element?(view, "#correct-#{context.entry.id}")
+      context.conn |> open(context.path) |> assert_has(correct())
 
-      conn = build_conn() |> sign_in(context.other)
-      {view, _html} = open(conn, context.path)
-      refute has_element?(view, "#correct-#{context.entry.id}")
-
+      context.other
+      |> open_as(context.path)
+      |> refute_has(correct())
       # An event that the page did not offer is refused.
-      render_submit(view, "correct", %{
-        "entry_id" => context.entry.id,
-        "entry" => %{"note" => "No."}
-      })
+      |> unwrap(
+        &render_submit(&1, "correct", %{
+          "entry_id" => context.entry.id,
+          "entry" => %{"note" => "No."}
+        })
+      )
+      |> assert_has(main() |> alert())
 
-      assert has_element?(view, "main p[role=alert]")
       assert [%{note: "Mild chest sounds."}] = entries(context)
 
-      conn = build_conn() |> sign_in(context.administrator)
-      {view, _html} = open(conn, context.path)
+      context.administrator
+      |> open_as(context.path)
+      |> within(correct(), fn form ->
+        form
+        |> fill_in("Note", with: "Mild chest sounds on the left.")
+        |> click_button("Save the correction")
+      end)
+      |> unwrap(&render_async/1)
+      |> assert_has(card(~r/^Examination\b/), text: "Mild chest sounds on the left.")
 
-      {_view, html} =
-        submit(view, conn, "#correct-#{context.entry.id}",
-          entry: %{note: "Mild chest sounds on the left."}
-        )
-
-      assert html =~ "Mild chest sounds on the left."
       assert [%{author_id: author}] = entries(context)
       assert author == context.member.id
     end
 
     test "gets an addendum from another member", context do
-      conn = build_conn() |> sign_in(context.other)
-      {view, _html} = open(conn, context.path)
-
-      {_view, html} =
-        submit(view, conn, "#add-#{context.entry.id}",
-          entry: %{note: "Clear on the second check."}
-        )
-
-      assert html =~ "Clear on the second check."
-      assert html =~ "Adds to the entry of"
-      assert html =~ to_string(context.other.email)
+      context.other
+      |> open_as(context.path)
+      |> within(card(~r/^Examination\b/) |> details("Add to this entry"), fn form ->
+        form
+        |> fill_in("What to add", with: "Clear on the second check.")
+        |> click_button("Add to the entry")
+      end)
+      |> unwrap(&render_async/1)
+      |> assert_has(card(~r/^Examination\b/), text: "Clear on the second check.")
+      |> assert_has(card(~r/^Examination\b/), text: "Adds to the entry of")
+      |> assert_has(card(~r/^Examination\b/), text: to_string(context.other.email))
 
       assert [addendum, _first] = entries(context)
       assert addendum.follows.id == context.entry.id

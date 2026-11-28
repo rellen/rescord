@@ -406,11 +406,19 @@ defmodule RescordWeb.JournalComponents do
 
   def entry_card(assigns) do
     ~H"""
-    <article id={"entry-#{@entry.id}"}>
+    <article
+      id={"entry-#{@entry.id}"}
+      aria-labelledby={"entry-#{@entry.id}-heading entry-#{@entry.id}-time"}
+    >
       <header>
-        <strong><.icon name={Icons.entry_kind(@entry.kind)} /> {JournalWords.kind(@entry.kind)}</strong>
+        <h2 id={"entry-#{@entry.id}-heading"}>
+          <.icon name={Icons.entry_kind(@entry.kind)} /> {JournalWords.kind(@entry.kind)}
+        </h2>
         <small>
-          <time datetime={DateTime.to_iso8601(@entry.happened_at)}>
+          <time
+            id={"entry-#{@entry.id}-time"}
+            datetime={DateTime.to_iso8601(@entry.happened_at)}
+          >
             {when_words(@organisation, @entry.happened_at)}
           </time>
           · {author(@authors, @entry, @current_user)}

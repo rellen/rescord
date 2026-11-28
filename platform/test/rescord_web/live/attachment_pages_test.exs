@@ -2,15 +2,20 @@ defmodule RescordWeb.AttachmentPagesTest do
   @moduledoc """
   Holds the files of the journal on the pages (ADR 0041): a new entry with
   its files, a file that the form refuses, the link of each file and what
-  it sends, who reads a file, and who takes one off.
+  it sends, who reads a file, and who takes one off. The page tests find
+  what a person finds (ADR 0107); what a file sends is a response, not a
+  page.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest,
+    only: [file_input: 4, render: 1, render_async: 1, render_click: 3, render_upload: 2]
+
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -43,9 +48,43 @@ defmodule RescordWeb.AttachmentPagesTest do
      conn: sign_in(conn, member)}
   end
 
-  defp open(conn, path) do
-    {:ok, view, _html} = live(conn, path)
-    {view, render_async(view)}
+  # The page lists its entries with Cinder, which loads them after the
+  # first render.
+  defp open(conn, path), do: conn |> visit(path) |> unwrap(&render_async/1)
+
+  defp new_entry, do: main() |> details("New journal entry")
+  defp chosen, do: new_entry() |> group(~r/^Files:/)
+
+  defp files_of(kind),
+    do: main() |> region("Entries") |> article(kind) |> region("Files of the entry")
+
+  # A file on the disk, for an upload of the page.
+  defp file!(context, name, content) do
+    path = Path.join(context.tmp_dir, name)
+    File.write!(path, content)
+    path
+  end
+
+  # A general entry with the files that the session chose.
+  defp write_general(session, note) do
+    session
+    |> within(new_entry(), fn form ->
+      form
+      |> select("Kind", option: "General")
+      |> fill_in("What happened", with: note)
+    end)
+    |> click(button("Write the entry"))
+    |> unwrap(&render_async/1)
+  end
+
+  # A file that the form refuses by its name. PhoenixTest raises for it, so
+  # the test sends it as the browser does, and reads the page after.
+  defp choose_refused(session, name, content, type) do
+    unwrap(session, fn view ->
+      upload = file_input(view, "#entry", :files, [%{name: name, content: content, type: type}])
+      assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, name)
+      render(view)
+    end)
   end
 
   defp entries(context) do
@@ -53,40 +92,25 @@ defmodule RescordWeb.AttachmentPagesTest do
     entries
   end
 
-  defp files(view, files) do
-    file_input(
-      view,
-      "#entry",
-      :files,
-      for({name, content, type} <- files, do: %{name: name, content: content, type: type})
-    )
-  end
-
   test "a new entry has the files of its form, and each file opens from its link", context do
-    {view, _html} = open(context.conn, context.path)
-
-    upload =
-      files(view, [
-        {"biscuit.jpg", jpeg(), "image/jpeg"},
-        {"report.pdf", pdf(), "application/pdf"}
-      ])
-
-    assert render_upload(upload, "biscuit.jpg") =~ "biscuit.jpg"
-    assert render_upload(upload, "report.pdf") =~ "report.pdf"
-
-    {:ok, view, _html} =
-      view
-      |> form("#entry", entry: %{kind: "general", note: "Weighed, with a photo."})
-      |> render_submit()
-      |> follow_redirect(context.conn)
+    session =
+      context.conn
+      |> open(context.path)
+      |> upload("Choose files", file!(context, "biscuit.jpg", jpeg()))
+      |> upload("Choose files", file!(context, "report.pdf", pdf()))
+      |> assert_has(chosen() |> item(~r/^biscuit\.jpg\b/))
+      |> assert_has(chosen() |> item(~r/^report\.pdf\b/))
+      |> write_general("Weighed, with a photo.")
 
     [entry] = entries(context)
     {:ok, %{} = by_entry} = Journal.attachments_of([entry.id], context.options)
     photo = Enum.find(by_entry[entry.id], &(&1.name == "biscuit.jpg"))
     report = Enum.find(by_entry[entry.id], &(&1.name == "report.pdf"))
 
-    assert has_element?(view, "#attachment-#{photo.id} a", "biscuit.jpg")
-    assert has_element?(view, "#attachment-#{report.id} a", "report.pdf")
+    assert has?(session, files_of(~r/^General\b/) |> link("biscuit.jpg"))
+
+    assert href(session, files_of(~r/^General\b/) |> link("report.pdf")) ==
+             ~p"/o/#{context.organisation.short_name}/attachments/#{report.id}"
 
     conn = get(context.conn, ~p"/o/#{context.organisation.short_name}/attachments/#{photo.id}")
     assert response(conn, 200) == stored_jpeg()
@@ -102,31 +126,23 @@ defmodule RescordWeb.AttachmentPagesTest do
   end
 
   test "a file of another type writes no entry, and says why", context do
-    {view, _html} = open(context.conn, context.path)
-
     # The name says PDF, and the first bytes say otherwise.
-    upload = files(view, [{"report.pdf", "<html>not a pdf</html>", "application/pdf"}])
-    render_upload(upload, "report.pdf")
+    context.conn
+    |> open(context.path)
+    |> upload("Choose files", file!(context, "report.pdf", "<html>not a pdf</html>"))
+    |> write_general("With a file.")
+    |> assert_has(main() |> alert(), text: "is not a photo or a PDF")
 
-    html =
-      view
-      |> form("#entry", entry: %{kind: "general", note: "With a file."})
-      |> render_submit()
-
-    assert html =~ "is not a photo or a PDF"
     assert entries(context) == []
   end
 
   test "with the virus scan on, a PDF that clamd finds or cannot scan writes no entry (issue 37)",
        context do
     send_pdf = fn ->
-      {view, _html} = open(context.conn, context.path)
-      upload = files(view, [{"report.pdf", pdf(), "application/pdf"}])
-      render_upload(upload, "report.pdf")
-
-      view
-      |> form("#entry", entry: %{kind: "general", note: "With a file."})
-      |> render_submit()
+      context.conn
+      |> open(context.path)
+      |> upload("Choose files", file!(context, "report.pdf", pdf()))
+      |> write_general("With a file.")
     end
 
     root = root!()
@@ -134,31 +150,39 @@ defmodule RescordWeb.AttachmentPagesTest do
     {:ok, _settings} = Scan.save_settings(%{scan_on: true, address: address}, actor: root)
 
     ExUnit.CaptureLog.capture_log(fn ->
-      assert send_pdf.() =~ "holds something that the virus scan found harmful"
+      assert_has(send_pdf.(), main() |> alert(),
+        text: "holds something that the virus scan found harmful"
+      )
+
       assert_received {:clamd_scanned, _bytes}
 
       {:ok, _settings} =
         Scan.save_settings(%{address: Rescord.FakeClamd.nobody()}, actor: root)
 
-      assert send_pdf.() =~ "could not be checked for viruses. Try again later"
+      assert_has(send_pdf.(), main() |> alert(),
+        text: "could not be checked for viruses. Try again later"
+      )
     end)
 
     assert entries(context) == []
   end
 
   test "the form refuses a file that is not a photo or a PDF by its name", context do
-    {view, _html} = open(context.conn, context.path)
-    upload = files(view, [{"notes.html", "<html></html>", "text/html"}])
-
-    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "notes.html")
+    context.conn
+    |> open(context.path)
+    |> choose_refused("notes.html", "<html></html>", "text/html")
+    |> assert_has(chosen() |> item(~r/^notes\.html\b/) |> alert(),
+      text: "Rescord takes a photo or a PDF"
+    )
   end
 
   test "the form says what to do with a HEIC photo that it refuses (issue 34)", context do
-    {view, _html} = open(context.conn, context.path)
-    upload = files(view, [{"IMG_0042.HEIC", "not read", "image/heic"}])
-
-    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "IMG_0042.HEIC")
-    assert render(view) =~ "Rescord cannot read HEIC or AVIF photos"
+    context.conn
+    |> open(context.path)
+    |> choose_refused("IMG_0042.HEIC", "not read", "image/heic")
+    |> assert_has(chosen() |> item(~r/^IMG_0042\.HEIC\b/) |> alert(),
+      text: "Rescord cannot read HEIC or AVIF photos"
+    )
   end
 
   test "a file opens for each member, and for nobody outside the organisation", context do
@@ -244,7 +268,7 @@ defmodule RescordWeb.AttachmentPagesTest do
         context.options
       )
 
-    {:ok, own} =
+    {:ok, _own} =
       Journal.attach_file(%{entry_id: entry.id, name: "own.pdf", content: pdf()}, context.options)
 
     {:ok, theirs} =
@@ -253,20 +277,20 @@ defmodule RescordWeb.AttachmentPagesTest do
         tenant: context.organisation
       )
 
-    {view, _html} = open(context.conn, context.path)
-    assert has_element?(view, "#attachment-#{own.id} button", "Take off")
-    refute has_element?(view, "#attachment-#{theirs.id} button")
+    own = files_of(~r/^General\b/) |> item(~r/^own\.pdf\b/)
+    other = files_of(~r/^General\b/) |> item(~r/^theirs\.pdf\b/)
 
+    context.conn
+    |> open(context.path)
+    |> assert_has(own |> details("Take off own.pdf"))
+    |> refute_has(other |> details(~r/^Take off/))
+    |> refute_has(other |> button(~r/^Take off/))
     # An event that the page did not offer is refused.
-    render_click(view, "remove_attachment", %{"id" => theirs.id})
-    assert has_element?(view, "main p[role=alert]")
-
-    {:ok, view, _html} =
-      view
-      |> render_click("remove_attachment", %{"id" => own.id})
-      |> follow_redirect(context.conn)
-
-    refute has_element?(view, "#attachment-#{own.id}")
-    assert has_element?(view, "#attachment-#{theirs.id}")
+    |> unwrap(&render_click(&1, "remove_attachment", %{"id" => theirs.id}))
+    |> assert_has(main() |> alert())
+    |> click(own |> button("Take off the file own.pdf"))
+    |> unwrap(&render_async/1)
+    |> refute_has(own)
+    |> assert_has(other)
   end
 end

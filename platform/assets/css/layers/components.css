@@ -256,6 +256,26 @@ article[data-place] > span[data-state] {
 /* --------------------------------------------------------------- journal */
 
 /*
+ * The head of a journal entry: its kind is a heading, which names the card
+ * with its time for a screen reader, and reads as one line with the time
+ * and the author.
+ */
+section[data-entries] article > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.5rem;
+  align-items: baseline;
+}
+
+section[data-entries] article > header > h2 {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  margin: 0;
+  font-size: 1rem;
+}
+
+/*
  * A card can offer an action that is closed at first, for example the
  * correction of a journal entry. While it is closed it is one quiet line,
  * and not a box in a box.
