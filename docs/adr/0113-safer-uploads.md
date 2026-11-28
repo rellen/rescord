@@ -1,8 +1,9 @@
 # ADR 0113: Safer uploads: a watch on libvips, a virus scan of PDFs, clean photos in a transfer
 
 Status: accepted. The maintainer chose the nine calls of issue 37 on
-28 November 2026. The watch on libvips and the scan of PDFs are
-built; the transfers follow, and this record grows with them.
+28 November 2026. The watch on libvips, the scan of PDFs and the
+check of the files of an import are built. The domain of its own for the
+files waits.
 
 ## Context
 
@@ -85,11 +86,32 @@ The domain is `Rescord.Storage.Scan`, and not a module of the core: a
 resource needs a domain, and the core has none. The changes of the journal
 and of the expenses call it, so those two domains depend on it.
 
-### The photos of an imported transfer (to follow)
+### The photos of an imported transfer
 
-A job writes each photo of a copy again with no metadata after the
-import, and the files of the copy are held until it ends
-(`files_checked_at`). The transfers that are there count as checked.
+1. **The import stores the files as before, and a job checks them** after
+   the commit (`:transfer_imported`, queue `transfers`, 10 tries, as
+   ADR 0100): each photo and thumbnail of the copy is written again with
+   `Rescord.Images.clean/1` (what `prepare/1` writes: turned, no metadata,
+   nothing after the image), under its key, with its new size in the copy.
+   With the scan on, each PDF of the copy goes to clamd too.
+2. **The files of an import stay closed until the job ends**
+   (`files_checked_at`, `Rescord.Transfers.files_open?/1`): the controller
+   sends none, the copy has no link to them, and the page says "Rescord
+   checks the files of the copy". A copy with no file is checked at once.
+3. **A file that fails keeps each file of the copy closed**, with the
+   reason in `files_check_failure`: `:unreadable` (libvips cannot read a
+   photo), `:infected` (clamd found something), or `:unscanned` (clamd did
+   not answer in the 10 tries). The receiver can decline the transfer, as
+   before. For `:unscanned` alone, the receiver can check the files again
+   (`check_again`, the power `:transfers`): the file is what it was, and
+   the fault was of clamd.
+4. **The imports that are there count as checked**: a data migration sets
+   their `files_checked_at`, since their files have been open already.
+
+A new try of the job writes again the photos of the first try. A JPEG
+loses a little at each write, so a fault of the store costs a little
+quality; a column with the count of the files that the job checked would
+avoid it, and was left out for one more column to keep right.
 
 ### A domain of its own for the files (later)
 

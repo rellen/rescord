@@ -372,6 +372,7 @@ defmodule RescordWeb.TransferComponents do
                 <.badge state={transfer.state} />
                 <small :if={transfer.state == :sending}>{TransferWords.files_copied(transfer)}</small>
                 <small :if={transfer.state == :failed}>{TransferWords.failure(transfer.failure)}</small>
+                <small :if={TransferWords.files_check(transfer)}>{TransferWords.files_check(transfer)}</small>
               </td>
               <td>
                 <.button
@@ -389,6 +390,14 @@ defmodule RescordWeb.TransferComponents do
                   aria-label={"Decline the transfer of #{transfer.resident_name}"}
                 >
                   <.icon name="x-circle" /> Decline
+                </.button>
+                <.button
+                  :if={@can_answer? and transfer.files_check_failure == :unscanned}
+                  phx-click="check_again"
+                  phx-value-id={transfer.id}
+                  aria-label={"Check the files of the transfer of #{transfer.resident_name} again"}
+                >
+                  Check the files again
                 </.button>
                 <.button
                   :if={@can_send_again? and transfer.state == :failed}
@@ -505,6 +514,9 @@ defmodule RescordWeb.TransferComponents do
     </.header>
 
     <p :if={@transfer.note}>Note: {@transfer.note}</p>
+    <p :if={TransferWords.files_check(@transfer)} role="status" id="copy-files-check">
+      {TransferWords.files_check(@transfer)}
+    </p>
 
     <section aria-labelledby="copy-facts">
       <h2 id="copy-facts">Facts</h2>
@@ -778,8 +790,11 @@ defmodule RescordWeb.TransferComponents do
   defp file_path(%{to_organisation_id: nil}, _organisation), do: nil
   defp file_path(%{sources: [_ | _]}, _organisation), do: nil
 
-  defp file_path(transfer, organisation),
-    do: &~p"/o/#{organisation.short_name}/transfers/#{transfer.id}/files/#{&1}"
+  # The files of an import open after their check (issue 37).
+  defp file_path(transfer, organisation) do
+    if Transfers.files_open?(transfer),
+      do: &~p"/o/#{organisation.short_name}/transfers/#{transfer.id}/files/#{&1}"
+  end
 
   defp join(nil), do: nil
   defp join([]), do: nil

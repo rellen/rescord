@@ -210,6 +210,15 @@ release (ADR 0047).
     history (issue 37). Both stay empty until a root user saves the
     settings at `/root/scan`, so no PDF is scanned and nothing changes
     after the upgrade. It changes no row.
+  - `20261128140645_add_the_check_of_imported_files`, in the database:
+    adds two empty columns to the transfers, for the check of the files of
+    an import (issue 37). It changes no row.
+  - `20261128140700_count_the_imported_files_as_checked`, in the
+    database: sets the new `files_checked_at` to the time of the upgrade
+    for each transfer that this server imported from a transfer file, so
+    their files open as before. Only a new import waits for the check.
+    It writes no version of the history of a transfer, and changes no
+    other row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -1100,6 +1109,14 @@ release (ADR 0047).
 
 ### Security
 
+- The photos of a transfer file from another server are written again
+  from their pixels after the import, with no metadata and nothing after
+  the image, as each photo that a person sends already is, and its PDFs
+  go to the virus scan when it is on. Until that check ends, its files do
+  not open, and the page says so. A file that fails keeps each file of
+  the copy closed, with the reason; the receiver can decline the
+  transfer, or check the files again after the scan did not answer
+  (issue 37, ADR 0113).
 - A journal photo that Rescord 0.1.0 kept as it was sent, with its EXIF
   block and the GPS position where it was taken, is cleaned after the
   upgrade by a job, as each photo has been since 0.2.0: the file is

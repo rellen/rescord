@@ -165,6 +165,18 @@ defmodule Rescord.Images do
   end
 
   @doc """
+  A photo written again from its pixels, as `prepare/1` writes it: turned
+  as its EXIF says, with no metadata and nothing after the image, and at
+  most `max_side/0` pixels on a side. The job of an imported transfer
+  calls it for each photo of the copy, which another server sent
+  (issue 37). It goes through the slots of `Rescord.Images.Limit`.
+  """
+  @spec clean(binary) :: {:ok, binary} | {:error, RefusedFile.t()}
+  def clean(bytes) when is_binary(bytes) do
+    with {:ok, prepared} <- prepare(bytes), do: {:ok, prepared.bytes}
+  end
+
+  @doc """
   The display file of a photo that Rescord keeps already, or `nil` for a
   GIF, which has none (issue 34). `Rescord.Images.Workers.Complete` makes
   it for a photo from before the display files. It goes through the slots

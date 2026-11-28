@@ -8,7 +8,9 @@ defmodule Rescord.Transfers.Grants do
   declines or withdraws a transfer, and sends one whose files did not
   arrive again (ADR 0100). With a partner on another server, it
   records the partner card, ends the partnership, and exports and imports
-  a transfer file (ADR 0043). The administrators have it at first.
+  a transfer file (ADR 0043), and checks the files of an import again when
+  the virus scan did not answer (issue 37). The administrators have it at
+  first.
 
   The reads are not here: a partnership and a transfer are outside the
   schemas, and `Rescord.Transfers.Checks.MemberOf` decides what a person
@@ -28,7 +30,16 @@ defmodule Rescord.Transfers.Grants do
       transfers:
         for(action <- [:ask, :accept, :decline, :end], do: {Partnership, action, :all}) ++
           for(
-            action <- [:send, :send_again, :accept, :decline, :withdraw, :export, :import],
+            action <- [
+              :send,
+              :send_again,
+              :accept,
+              :decline,
+              :withdraw,
+              :export,
+              :import,
+              :check_again
+            ],
             do: {Transfer, action, :all}
           ) ++
           for(action <- [:record, :end], do: {RemotePartner, action, :all})

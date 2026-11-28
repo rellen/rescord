@@ -209,13 +209,15 @@ defmodule RescordWeb.TransfersLive do
   end
 
   def handle_event(event, %{"id" => id}, socket)
-      when event in ["accept", "decline", "withdraw", "send_again"] and is_binary(id) do
+      when event in ["accept", "decline", "withdraw", "send_again", "check_again"] and
+             is_binary(id) do
     action =
       case event do
         "accept" -> &Transfers.accept_transfer/2
         "decline" -> &Transfers.decline_transfer/2
         "withdraw" -> &Transfers.withdraw_transfer/2
         "send_again" -> &Transfers.send_transfer_again/2
+        "check_again" -> &Transfers.check_transfer_again/2
       end
 
     with %{} = transfer <-
