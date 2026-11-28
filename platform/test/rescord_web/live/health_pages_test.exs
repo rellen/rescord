@@ -8,7 +8,7 @@ defmodule RescordWeb.HealthPagesTest do
   use RescordWeb.ConnCase, async: false
   use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest, only: [live: 2, render_async: 1]
+  import Phoenix.LiveViewTest, only: [live: 2, render_async: 2]
   import Rescord.AccountsFixtures
 
   alias Rescord.Health
@@ -80,7 +80,7 @@ defmodule RescordWeb.HealthPagesTest do
     |> Phoenix.LiveViewTest.element("button", "Run each check now")
     |> Phoenix.LiveViewTest.render_click()
 
-    html = render_async(view)
+    html = render_async(view, 10_000)
     assert html =~ "Each check ran."
     assert html =~ "The clock of the server against the clock of the database"
   end

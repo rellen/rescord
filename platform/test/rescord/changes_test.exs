@@ -208,7 +208,10 @@ defmodule Rescord.ChangesTest do
           # changes, and which a notice reads at each request (ADR 0105).
           Rescord.Privacy.InstanceSettings,
           # The private keys of a refuge. No page waits for one.
-          Rescord.Transfers.RefugeKey
+          Rescord.Transfers.RefugeKey,
+          # What the sanity checks found, which only the root page of the
+          # checks shows, and which it reads again after a run (ADR 0114).
+          Rescord.Health.Result
         ]
     end
 
