@@ -18,7 +18,7 @@ defmodule RescordWeb.SettingsLive do
   use RescordWeb, :live_view
 
   import RescordWeb.AccountComponents
-  import RescordWeb.ExpenseComponents, only: [currency_setting: 1]
+  import RescordWeb.ExpenseComponents, only: [currency_setting: 1, tax_setting: 1]
   import RescordWeb.RubyComponents, only: [settings_line: 1]
 
   alias Rescord.{Accounts, Ruby, Tasks}
@@ -104,6 +104,28 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          socket
          |> put_flash(:info, "A new expense is in #{organisation.currency} now.")
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+    end
+  end
+
+  def handle_event("save_tax_name", %{"tax" => %{"name" => name}}, socket) when is_binary(name) do
+    organisation = socket.assigns.organisation
+
+    case Accounts.set_organisation_tax_name(organisation, name,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, organisation} ->
+        words =
+          if organisation.tax_name,
+            do: "An expense can hold its #{organisation.tax_name} now.",
+            else: "The expenses record no tax now."
+
+        {:noreply,
+         socket
+         |> put_flash(:info, words)
          |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
 
       {:error, error} ->
@@ -203,6 +225,8 @@ defmodule RescordWeb.SettingsLive do
         can_change?={@can_change?}
         currencies={@currencies}
       />
+
+      <.tax_setting organisation={@organisation} can_change?={@can_change?} />
 
       <.days_ahead_setting
         organisation={@organisation}

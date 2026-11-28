@@ -1,7 +1,8 @@
 defmodule Rescord.Metrics do
   @moduledoc """
   The metrics of the core (ADR 0077): the queries, the jobs, the actions of
-  Ash, the emails, the photos and the VM. `RescordWeb.Telemetry` adds those
+  Ash, the emails, the replies of the assistant, the photos and the VM.
+  `RescordWeb.Telemetry` adds those
   of the requests and of the pages, and gives the whole list to a reporter
   when the operator names a port.
 
@@ -66,6 +67,41 @@ defmodule Rescord.Metrics do
       counter("rescord.mail.exception.count",
         event_name: [:swoosh, :deliver, :exception],
         description: "The emails whose delivery raised an error"
+      ),
+      counter("rescord.ruby.reply.count",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        tags: [:state, :reason],
+        description: "The replies of the assistant, by how each ended and why one failed"
+      ),
+      sum("rescord.ruby.reply.requests.total",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :requests,
+        description: "The requests that the assistant sent to a provider"
+      ),
+      sum("rescord.ruby.reply.input.tokens",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :input_tokens,
+        description: "The new tokens of the prompts of the assistant"
+      ),
+      sum("rescord.ruby.reply.cache_read.tokens",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :cache_read_tokens,
+        description: "The tokens of the prompts of the assistant that came from the cache"
+      ),
+      sum("rescord.ruby.reply.cache_write.tokens",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :cache_write_tokens,
+        description: "The tokens of the prompts of the assistant that went to the cache"
+      ),
+      sum("rescord.ruby.reply.output.tokens",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :output_tokens,
+        description: "The tokens of the answers of the assistant"
+      ),
+      sum("rescord.ruby.reply.cost.microdollars",
+        event_name: [:rescord, :ruby, :reply, :stop],
+        measurement: :cost_microdollars,
+        description: "About what the replies of the assistant cost, in millionths of a US dollar"
       ),
       counter("rescord.photo.refused.count",
         event_name: [:rescord, :photos, :refused],

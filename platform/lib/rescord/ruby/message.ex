@@ -24,6 +24,13 @@ defmodule Rescord.Ruby.Message do
   trigger takes a message of a member that has none. So a job that runs a
   second time writes nothing.
 
+  ## What `say` refuses
+
+  Where Ruby is off for the person; while Ruby still answers in the
+  conversation; past the allowance of the month; in a conversation that
+  is full; and more than 6 messages of one person in a minute, or 120 in
+  a day. `Rescord.Ruby.refusal/1` gives the reason of a refusal.
+
   `respond`, `open_reply`, `grow` and `close` are in no grant: the job and
   `Rescord.Ruby.Replies` run them. The bypass of the policy holds only
   inside a call that AshOban makes.
@@ -36,7 +43,7 @@ defmodule Rescord.Ruby.Message do
     temporal?: false,
     paper_trail?: false,
     archive?: false,
-    extensions: [AshOban],
+    extensions: [AshOban, AshRateLimiter],
     authorizers: [Ash.Policy.Authorizer]
 
   alias Rescord.Ruby.{Changes, Rating, Reason, ReplyState, Source, Validations}
@@ -80,6 +87,14 @@ defmodule Rescord.Ruby.Message do
     end
   end
 
+  # How many messages one person says (ADR 0020): 6 a minute here, and 120
+  # a day in the action itself, because the section takes one limit for an
+  # action. The count is of this node, and a restart forgets it.
+  rate_limit do
+    backend Rescord.RateLimit
+    action :say, limit: 6, per: :timer.minutes(1), key: &__MODULE__.minute_key/2
+  end
+
   actions do
     defaults [:read]
 
@@ -98,6 +113,10 @@ defmodule Rescord.Ruby.Message do
       validate Validations.RubyOn
       change Changes.SetOwner
       change Changes.Say
+
+      change {AshRateLimiter.Change,
+              limit: 120, per: :timer.hours(24), key: &__MODULE__.day_key/2}
+
       change run_oban_trigger(:respond)
     end
 
@@ -137,6 +156,7 @@ defmodule Rescord.Ruby.Message do
         :model,
         :usage,
         :cost_microdollars,
+        :prompt_tokens,
         :prompt_fingerprint
       ]
     end
@@ -252,6 +272,12 @@ defmodule Rescord.Ruby.Message do
       description "For a reply: the price of its tokens, in millionths of a US dollar"
     end
 
+    attribute :prompt_tokens, :integer do
+      constraints min: 0
+
+      description "For a reply: the tokens that the conversation holds after it, the prompt of its last request and what came after. The next request starts from them"
+    end
+
     attribute :rating, Rating do
       public? true
     end
@@ -290,4 +316,16 @@ defmodule Rescord.Ruby.Message do
     # A message has one reply at most, so a second job makes no second one.
     identity :one_reply, [:response_to_id]
   end
+
+  @doc false
+  def minute_key(_changeset, context), do: person_key("minute", context)
+
+  @doc false
+  def day_key(_changeset, context), do: person_key("day", context)
+
+  # One count for each person, in each organisation where they ask.
+  defp person_key(span, %{actor: %{id: id}}) when is_binary(id),
+    do: "ruby/say/#{span}/#{id}"
+
+  defp person_key(span, _context), do: "ruby/say/#{span}/nobody"
 end

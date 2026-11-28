@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Rescord" phx-no-format>{assigns[:page_title]}</.live_title>
+    <.live_title default="Rescord" suffix=" · Rescord" phx-no-format>{title(assigns)}</.live_title>
     <%!-- The mark of the site bar as the icon of the tab (ADR 0058). The ICO is
     a file at the root that a browser asks for by that name, so its link has
     no digest. --%>

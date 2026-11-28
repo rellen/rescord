@@ -186,9 +186,12 @@ config :rescord,
 config :rescord, RescordWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
+  # The page of an error is inside the root layout, so it has a language, a
+  # title and the stylesheet as each other page (ADR 0090).
   render_errors: [
     formats: [html: RescordWeb.ErrorHTML, json: RescordWeb.ErrorJSON],
-    layout: false
+    layout: false,
+    root_layout: [html: {RescordWeb.Layouts, :root}]
   ],
   pubsub_server: Rescord.PubSub,
   live_view: [signing_salt: "ZuGQITIW"]

@@ -1,0 +1,149 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Colophon
+    <:subtitle>
+      What Rescord is, what it is built with, and how well each person can use it.
+    </:subtitle>
+  </.header>
+
+  <section aria-labelledby="about-heading">
+    <h2 id="about-heading">Rescord</h2>
+    <p>
+      Rescord is a management system for an animal rescue or an animal refuge. An
+      organisation records its residents, the care that they get, and its supplies. A
+      rescue runs Rescord on a server of its own.
+    </p>
+    <p>
+      Rescord is free software under the MIT licence. Its <a href="https://github.com/rellen/rescord">source code</a>, its
+      <a href="https://github.com/rellen/rescord/blob/main/CHANGELOG.md">changelog</a>
+      and the
+      <a href="https://github.com/rellen/rescord/tree/main/docs/adr">record of its decisions</a>
+      are public.
+    </p>
+  </section>
+
+  <section aria-labelledby="built-heading">
+    <h2 id="built-heading">What Rescord is built with</h2>
+    <.list>
+      <:item title="The language">
+        <a href="https://elixir-lang.org">Elixir</a>, on <a href="https://www.erlang.org">Erlang/OTP</a>.
+      </:item>
+      <:item title="The pages">
+        <a href="https://www.phoenixframework.org">Phoenix</a>
+        with Phoenix LiveView. The server writes each page as HTML.
+      </:item>
+      <:item title="The records and their rules">
+        <a href="https://ash-hq.org">Ash</a>, which also keeps the history of each record and
+        decides who can read and change it.
+      </:item>
+      <:item title="The database">
+        <a href="https://www.postgresql.org">PostgreSQL</a>, with a schema for each organisation.
+      </:item>
+      <:item title="The lists with filters">
+        <a href="https://hex.pm/packages/cinder">Cinder</a>.
+      </:item>
+      <:item title="The reports">
+        <a href="https://typst.app">Typst</a>, which writes each report as a tagged PDF.
+      </:item>
+      <:item title="The emails">
+        <a href="https://mjml.io">MJML</a>, with a part in plain text.
+      </:item>
+      <:item title="The photos">
+        <a href="https://www.libvips.org">libvips</a>, which removes the position and the
+        other metadata of a photo before Rescord stores it.
+      </:item>
+      <:item title="The dates and the numbers">
+        <a href="https://hex.pm/packages/localize">Localize</a>, with the data of Unicode CLDR.
+      </:item>
+    </.list>
+  </section>
+
+  <section aria-labelledby="pages-heading">
+    <h2 id="pages-heading">How the pages are made</h2>
+    <ul>
+      <li>
+        The markup is semantic HTML with no <code>class</code>
+        attribute. One stylesheet of
+        our own, in cascade layers, gives the elements, their ARIA states and a few
+        <code>data-</code>
+        attributes their look. Rescord uses no CSS framework.
+      </li>
+      <li>
+        The typeface is <a href="https://www.brailleinstitute.org/freefont/">Atkinson Hyperlegible</a>, which
+        the Braille Institute of America made for readers with low vision. Its licence is
+        the SIL Open Font License 1.1. The reports use it too.
+      </li>
+      <li>
+        The icons and the charts are SVG that Rescord draws itself. Rescord uses no icon
+        library and no chart library.
+      </li>
+      <li>Each page is written for a phone first, and then for a wide screen.</li>
+      <li>The colours follow the light or the dark scheme of your device.</li>
+      <li>
+        A page loads nothing from another server: no font, no script, no stylesheet and
+        no tracker.
+      </li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="accessibility">
+    <h2 id="accessibility">Accessibility</h2>
+    <p>
+      Rescord aims to meet the
+      <a href="https://www.w3.org/TR/WCAG22/">Web Content Accessibility Guidelines (WCAG) 2.2</a>
+      at level AA.
+    </p>
+
+    <h3>What Rescord does</h3>
+    <ul>
+      <li>
+        Each page has landmarks, one main heading, headings in order, and a link that
+        skips to the content.
+      </li>
+      <li>Each control has a label, works from the keyboard, and shows where the focus is.</li>
+      <li>
+        Each pair of a text colour and its ground meets the contrast of level AA, in the
+        light and in the dark scheme. A state is a shape and a word, never a colour alone.
+      </li>
+      <li>
+        What a finger presses is 44 pixels high or more. A page fits a screen that is 320
+        pixels wide, and does not scroll sideways.
+      </li>
+      <li>Nothing moves when your device asks for less motion.</li>
+      <li>A chart has a description in words and a table of its values.</li>
+      <li>
+        A report is a tagged PDF: it has a language, a title, headings, and tables with
+        header cells.
+      </li>
+    </ul>
+
+    <h3>How it is tested</h3>
+    <p>
+      Automated tests open each kind of page in a browser, on the screen of a phone and
+      on a wide screen, in the light and in the dark scheme. They check the page against
+      the rules of <a href="https://github.com/dequelabs/axe-core">axe-core</a>
+      for WCAG 2.2 at level AA, and they check the landmarks, the headings, the size of each
+      control and the focus of the keyboard.
+    </p>
+
+    <h3>What is not right yet</h3>
+    <ul>
+      <li>
+        No person has tested Rescord with a screen reader yet. Automated tests find only
+        a part of the problems.
+      </li>
+      <li>The tests use one browser, Chromium. Nobody has checked Safari or Firefox yet.</li>
+      <li>A point of a chart answers a pointer and not the keyboard. The table below the
+        chart has each value.</li>
+      <li>A report does not state that it conforms to PDF/UA.</li>
+      <li>Nobody has checked the emails in each mail program yet.</li>
+    </ul>
+
+    <h3>Tell us</h3>
+    <p>
+      If a part of Rescord is hard for you to use, tell an administrator of your
+      organisation, or <a href="https://github.com/rellen/rescord/issues">write an issue</a>. Say which page, and what
+      you use to read it.
+    </p>
+  </section>
+</Layouts.app>

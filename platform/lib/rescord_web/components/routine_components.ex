@@ -111,7 +111,7 @@ defmodule RescordWeb.RoutineComponents do
                   :if={@can_revise? and not routine.paused}
                   phx-click="pause"
                   phx-value-id={routine.id}
-                  aria-label={"Stop the routine #{routine.title} for a time"}
+                  aria-label={"Pause the routine #{routine.title}"}
                 >
                   Pause
                 </.button>
@@ -119,7 +119,7 @@ defmodule RescordWeb.RoutineComponents do
                   :if={@can_revise? and routine.paused}
                   phx-click="resume"
                   phx-value-id={routine.id}
-                  aria-label={"Start the routine #{routine.title} again"}
+                  aria-label={"Start again the routine #{routine.title}"}
                 >
                   Start again
                 </.button>

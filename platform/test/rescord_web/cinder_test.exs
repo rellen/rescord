@@ -193,7 +193,8 @@ defmodule RescordWeb.CinderTest do
       assert code =~ "onBeforeElUpdated: (from, to) => {"
       assert code =~ "keepCinderTables(from, to)"
       assert code =~ "keepDetailsOpen(from, to)"
-      assert code =~ "onPatchEnd: () => enhanceCinderTables()"
+      # The focus module puts the focus back after the same patch (ADR 0090).
+      assert code =~ ~r/onPatchEnd: \(\) => \{\s+enhanceCinderTables\(\)/
       assert code =~ "listenToCinderTables()"
     end
   end

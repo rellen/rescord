@@ -635,6 +635,13 @@ which an administrator sets, and a new expense is in that currency. An
 expense keeps its currency when the setting changes. A sum is of one
 currency: expenses in two currencies have two sums.
 
+An expense can hold the tax that is in its amount (ADR 0089), such as GST
+or VAT. An organisation gives the name of its tax in its settings, and
+with no name its expenses record no tax. A person copies the tax from the
+receipt: Rescord knows no rate. The amount stays the whole amount, with
+the tax in it. An expense with no tax says nothing about its tax, and a
+tax of zero says that the receipt shows none.
+
 A new expense waits for a decision. A person who manages the expenses
 approves it, or declines it with a reason. After a refusal, the member
 can change the expense and send it again. When a member paid an approved
@@ -645,13 +652,13 @@ expenses, is approved at once.
 
 The power `expenses` records an expense, and changes or withdraws an own
 one while it waits or after a refusal. The power `manage_expenses` reads
-each expense, decides, records a payment back, and opens a decision
-again. A member reads their own expenses: those that they recorded, and
+each expense, decides, records a payment back, opens a decision
+again, and corrects the tax of an expense in each state. A member reads their own expenses: those that they recorded, and
 those that name them as the person who paid. A member does not read what
 another member spent.
 
 The list of the expenses downloads as a CSV file. The report of the
-expenses of a period is a PDF (section 5.13).
+expenses of a period is a PDF (section 5.13). Both hold the tax.
 
 ## 6. Design rules
 

@@ -282,7 +282,36 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - Prefer HTML and CSS to a script: `popover`, `<details>`, `:has()`.
   - Wrap a `:hover` rule in `@media (hover: hover)`.
   - `RescordWeb.Features.PhoneTest` visits each kind of page with the
-    screen of a phone. Add a new page to it.
+    screen of a phone. Add a new page to `RescordWeb.PagesFixtures`, which
+    names the pages for it.
+- **Each page keeps WCAG 2.2 AA** (ADR 0090). The markup rules above do
+  most of it. These are the rest:
+  - `RescordWeb.Features.AccessibilityTest` runs axe-core on each page of
+    `RescordWeb.PagesFixtures`, in a browser. A new page goes there, and a
+    new kind of control still needs a person who uses it with the
+    keyboard.
+  - A page has one `main`, one `h1`, and no level of heading skipped.
+    `Layouts.app` writes the skip link, the site header and the site
+    footer. A page with no menu, such as an error, uses `Layouts.plain`.
+  - Each page has a title of its own: assign `page_title` in a LiveView,
+    and pass it to `render` in a controller. The root layout adds
+    " · Rescord".
+  - The name of a control starts with the words that show on it. Write
+    `aria-label={"Take off #{receipt.name}"}` on a button that says "Take
+    off", never "Take invoice.pdf off": a person who speaks to the device
+    says the words that show (WCAG 2.5.3).
+  - A link or a button that shows only a picture, a sign or a file type
+    has an `aria-label`.
+  - A row, a card or a list item that holds a button has an `id` that
+    stays the same from one render to the next. `assets/js/focus.ts` puts
+    the focus of the keyboard back in that place when the button goes,
+    and on the `h1` of a new live page. Do not move the focus yourself.
+  - Nothing moves for a person who asks for less motion: the base layer
+    stops each animation and transition of CSS. Do not animate with a
+    script.
+  - A change to what a page can or cannot do for a person with a
+    disability changes the accessibility statement of the colophon
+    (`controllers/page_html/colophon.html.heex`) too.
 - **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
   a list or a grid with filters, a sort, a search and pages. Do not write
   those by hand.
@@ -304,9 +333,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
     one for `found.filtered?`, and one for a collection with nothing yet.
   - What a row shows is a load of the query, or a thing that the page reads
     once for the organisation: the page does not see the rows of Cinder.
+    Give the loads in the option `query` (`query: [load: [...]]`): the
+    option `load` of a `query_to_` function does nothing to the query.
     A field that Elixir calculates takes no sort and no filter of Cinder.
     For a search on one, the domain narrows the query, as
-    `Rescord.Accounts.members_with_email/2` does.
+    `Rescord.Accounts.members_with_email/2` does. For a filter on one, a
+    `<:filter>` slot takes a function in `fn`, and the domain narrows
+    the query, as `Rescord.Inventory.with_fault/3` does (ADR 0088). Make
+    that function once, in `mount`, and find the value of the address
+    in a fixed list: never make an atom from it.
   - When the query needs a filter that the web layer cannot write, the
     domain has a function that returns the query, as
     `Rescord.Inventory.query_to_history/2` does.
@@ -573,6 +608,18 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `Rescord.Ruby.Fault`, which has the shape of an error and none of its
     words, because Oban keeps the error of a job in its row. Keep
     `log_errors? false` on the trigger.
+  - **The use of Ruby is counted in `Rescord.Ruby.Usage`**, one row for a
+    member, a day of UTC and a model, with counts and no word. Never sum
+    the replies for a cost: a conversation is deleted for real, and its
+    use stays. `Rescord.Ruby.Allowance` sums a month against the
+    allowance of the settings. `say` asks it, and `available?/2` does
+    not: a member past the allowance still reads their conversations.
+    The run after a member confirms a proposal is never refused for the
+    allowance. A refusal of `say` for the allowance, for a full
+    conversation or for the rate has a reason, which
+    `Rescord.Ruby.refusal/1` gives. The event of telemetry of a reply has
+    its state and its reason as tags, and no organisation, member or
+    model.
   - **The header of a message is stored, and sent again as it was.**
     `Rescord.Ruby.Changes.Say` makes it with `Rescord.Ruby.Prompt`, from
     the rescue, the role, the day and the time zone. It is never an input,
@@ -827,6 +874,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - The list of the currencies is `Rescord.Accounts.currencies/0`. The
     data of Localize marks each code as tender, so that function names
     the codes that are no money.
+  - **The tax of an expense is a number from the receipt** (ADR 0089).
+    Add no rate, no tax code and no code that works a tax out from an
+    amount, or an amount from a tax. The argument `tax` is a decimal, and
+    `Rescord.Expenses.Changes.SetTax` makes the money in the currency of
+    the amount. No tax (`nil`) is not a tax of zero. A page has the field
+    and the form of the correction only while the organisation names a
+    tax (`tax_name`), and writes that name with
+    `RescordWeb.ExpenseWords.tax_name/1`. A sum of the tax is
+    `Rescord.Expenses.tax_sum/1`.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through

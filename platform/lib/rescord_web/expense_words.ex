@@ -67,6 +67,21 @@ defmodule RescordWeb.ExpenseWords do
   def amounts(%{amounts: amounts}, _currency), do: Enum.map_join(amounts, " and ", &money/1)
 
   @doc """
+  The name of the tax of an organisation for a label, such as `GST`, or
+  `Tax` for an organisation that names none now: an expense keeps its tax
+  when the name goes.
+
+      iex> RescordWeb.ExpenseWords.tax_name(%{tax_name: "GST"})
+      "GST"
+
+      iex> RescordWeb.ExpenseWords.tax_name(%{tax_name: nil})
+      "Tax"
+  """
+  @spec tax_name(map) :: String.t()
+  def tax_name(%{tax_name: name}) when is_binary(name), do: name
+  def tax_name(_organisation), do: "Tax"
+
+  @doc """
   The number of an amount as plain text, with the decimal places of its
   currency: what a form shows, and what a CSV file holds.
 
@@ -141,6 +156,7 @@ defmodule RescordWeb.ExpenseWords do
   # sentence. The paper trail names an attribute as text.
   @facts [
     {"amount", "the amount"},
+    {"tax", "the tax"},
     {"incurred_on", "the date"},
     {"payee", "who was paid"},
     {"description", "what it was for"},
@@ -189,6 +205,8 @@ defmodule RescordWeb.ExpenseWords do
     end
   end
 
+  def event(%{action: :set_tax}), do: "corrected the tax in the amount."
+
   def event(%{action: :attach, changes: changes}), do: "added the receipt #{changes["name"]}."
 
   def event(%{action: :take_off, changes: changes}),
@@ -209,6 +227,7 @@ defmodule RescordWeb.ExpenseWords do
       "paid by",
       "member",
       "amount",
+      "tax",
       "currency",
       "state",
       "recorded by",
@@ -224,7 +243,8 @@ defmodule RescordWeb.ExpenseWords do
   @doc """
   The row of an expense in the CSV file, in the order of `csv_header/0`.
   The amount is a number, so that a spreadsheet can add the column, and the
-  code of the currency is beside it.
+  code of the currency is beside it. The tax is the part of the amount that
+  is tax, as a number, or empty for an expense with none.
   """
   @spec csv_row(map, map, map) :: [term]
   def csv_row(expense, organisation, people) do
@@ -238,6 +258,8 @@ defmodule RescordWeb.ExpenseWords do
       if(expense.paid_by == :member, do: "member", else: "organisation"),
       expense.payer_id && person(people, expense.payer_id),
       Decimal.round(expense.amount.amount, Accounts.currency_digits(expense.amount.currency)),
+      expense.tax &&
+        Decimal.round(expense.tax.amount, Accounts.currency_digits(expense.tax.currency)),
       Atom.to_string(expense.amount.currency),
       status(expense.status),
       person(people, expense.author_id),

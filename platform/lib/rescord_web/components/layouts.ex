@@ -4,12 +4,34 @@ defmodule RescordWeb.Layouts do
 
   `root.html.heex` holds the HTML skeleton. `app/1` holds the landmarks
   that every page shares: a skip link, the site header with its nav, the
-  main content and the flash messages. The markup is classless (ADR 0004).
+  main content, the site footer and the flash messages. `plain/1` holds
+  the same landmarks for a page that knows no person, such as the page of
+  an error. The markup is classless (ADR 0004).
   """
   use RescordWeb, :html
 
   # Embed all files in layouts/* within this module.
   embed_templates "layouts/*"
+
+  # The version of Rescord, which the footer shows to a person who is
+  # signed in.
+  @version Mix.Project.config()[:version]
+
+  @doc """
+  The title of a document: the title of the page, or the words of an error
+  page (ADR 0090). The root layout adds the name of the site after it.
+  """
+  def title(assigns) do
+    assigns[:page_title] || error_title(assigns[:status] || status_of(assigns[:conn]))
+  end
+
+  defp status_of(%Plug.Conn{status: status}), do: status
+  defp status_of(_other), do: nil
+
+  defp error_title(status) when is_integer(status) and status >= 400,
+    do: RescordWeb.ErrorHTML.words(status).title
+
+  defp error_title(_status), do: nil
 
   @doc """
   Renders the app layout around the content of a page.
@@ -163,9 +185,73 @@ defmodule RescordWeb.Layouts do
       {render_slot(@inner_block)}
     </main>
 
+    <.site_footer version={@current_user && version()} />
+
     <.flash_group flash={@flash} />
     """
   end
+
+  @doc """
+  Renders the landmarks around a page that knows no person: the skip link,
+  the site header with the name of the site alone, the main content and
+  the site footer. The page of an error uses it, because an error can come
+  before Rescord knows who asks, and must not depend on what failed.
+
+  ## Examples
+
+      <Layouts.plain>
+        <h1>Rescord has no page at this address</h1>
+      </Layouts.plain>
+
+  """
+  slot :inner_block, required: true
+
+  def plain(assigns) do
+    ~H"""
+    <a href="#main">{gettext("Skip to content")}</a>
+
+    <header>
+      <nav aria-label={gettext("Site")}>
+        <a href={~p"/"}><.icon name="mark" /> Rescord</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      {render_slot(@inner_block)}
+    </main>
+
+    <.site_footer />
+    """
+  end
+
+  @doc """
+  Renders the site footer: the landmark `contentinfo` of each page, with
+  the links to what Rescord is and how it is built (ADR 0090).
+
+  A person who is signed in also sees the version. A visitor does not: the
+  version of a server is of use to a person who looks for a known fault.
+  """
+  attr :version, :string,
+    default: nil,
+    doc: "the version of Rescord, for a person who is signed in"
+
+  def site_footer(assigns) do
+    ~H"""
+    <footer>
+      <nav aria-label={gettext("About Rescord")}>
+        <ul>
+          <li><a href={~p"/colophon"}>{gettext("Colophon")}</a></li>
+          <li><a href={~p"/colophon#accessibility"}>{gettext("Accessibility")}</a></li>
+          <li><a href="https://github.com/rellen/rescord">{gettext("Source code")}</a></li>
+        </ul>
+      </nav>
+      <p :if={@version}>Rescord {@version}</p>
+    </footer>
+    """
+  end
+
+  @doc "The version of Rescord that runs."
+  def version, do: @version
 
   # The link of the part that the page is in says so (ADR 0061). The page
   # can be a page below that link, so the value is `true` and not `page`.

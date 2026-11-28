@@ -334,7 +334,8 @@ Rescord sends its log and its errors to no other service.
 
 Rescord can give numbers about itself to a collector such as Prometheus:
 how long the requests, the pages, the queries and the actions take, the
-jobs that fail, the emails, and the memory. It is off until you set
+jobs that fail, the emails, the replies of the assistant, and the memory.
+It is off until you set
 `RESCORD_METRICS_PORT`, for example to `9568`. Rescord then answers
 `GET /metrics` on that port, on the address of `RESCORD_LISTEN_ADDRESS`,
 in the text format of Prometheus. Each other path there answers 404.
@@ -354,6 +355,11 @@ scrape_configs:
 - The name of each metric starts with `rescord_`, and each time is in
   milliseconds. No label holds the id of a person or the name of an
   organisation: a label is a route, a module, a worker, or a status.
+- The metrics `rescord_ruby_reply_*` count the replies of the assistant,
+  by how each ended and why one failed, with the requests, the tokens and
+  about what they cost, in millionths of a US dollar, for the whole
+  server. The use of one organisation is in its own records, and the bill
+  of the provider is the truth.
 - The numbers start at zero when Rescord starts.
 - The numbers of a rescue (the residents, the tasks) are on its pages, and
   not here.

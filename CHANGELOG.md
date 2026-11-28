@@ -86,6 +86,20 @@ release (ADR 0047).
     organisation: adds a column to the residents, for the markings of a
     resident. The column is empty for each resident that is there. It
     changes no row.
+  - `20261128071744_add_the_tax_name_of_an_organisation`, in the
+    database: adds a column to the organisations, for the name of the
+    tax that an expense can hold. It is empty for each organisation that
+    is there, so no organisation records a tax until an administrator
+    names one. It changes no row.
+  - `20261128071742_add_the_tax_of_an_expense`, in each organisation:
+    adds a column to the expenses, for the tax in the amount. It is
+    empty for each expense that is there: Rescord does not work a tax
+    out from an amount. It changes no row.
+  - `20261128074014_add_ruby_usage`, in each organisation: adds the table
+    of the use of the assistant, which holds counts of tokens and their
+    price and no word of a conversation, and a column to the messages of
+    the conversations. Both are empty after the upgrade, because no
+    member can ask the assistant yet. It changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -153,6 +167,16 @@ release (ADR 0047).
 
 ### Added
 
+- Rescord now has a colophon, at `/colophon`: what Rescord is, its
+  licence, what it is built with, how its pages are made, and an
+  accessibility statement that says what is tested and what is not right
+  yet. Each page now ends with a footer that links to the colophon, to
+  the accessibility statement and to the source code. A person who is
+  signed in also reads the version of Rescord there (ADR 0090).
+- The page of an error, such as an address that Rescord does not have,
+  is now a page of Rescord: it has the look of the site, a heading, words
+  that say what to do, and a link to the first page. Before, it was the
+  two words "Not Found" (ADR 0090).
 - Rescord now records the conditions that a resident has, such as
   bumblefoot or a respiratory infection, each with its first day, its last
   day when it is over, a mark for a chronic condition and a note
@@ -304,8 +328,9 @@ release (ADR 0047).
   people wrote are in a feed only when the member asks for them.
 - Rescord can give metrics about itself to a collector such as
   Prometheus: how long the requests, the pages, the queries and the
-  actions take, the background jobs that fail, the emails, and the
-  memory. It is off until `RESCORD_METRICS_PORT` names a port. Rescord
+  actions take, the background jobs that fail, the emails, the replies
+  of the assistant with their tokens, and the memory. It is off until
+  `RESCORD_METRICS_PORT` names a port. Rescord
   then answers `GET /metrics` on that port, which is not the port of the
   pages and has no sign-in, so keep it inside the network of the server.
   No label holds the id of a person or the name of an organisation.
@@ -339,13 +364,23 @@ release (ADR 0047).
   administrator changes on the settings page. A page writes an amount in
   the language and region of the organisation, such as `$1,234.50`.
   Rescord converts no amount: expenses in two currencies have two sums.
+- An expense can hold the tax that is in its amount, such as GST or VAT
+  (ADR 0089). An administrator gives the name of the tax on the settings
+  page, and the form of an expense then has the optional field, for
+  example "GST in the amount". A person copies the tax from the receipt:
+  Rescord knows no rate and no tax code, and the amount stays the whole
+  amount. A person who manages the expenses corrects the tax of an
+  expense in each state, also after the decision. With no name of a tax,
+  the expenses record none.
 - The list of the expenses downloads as a CSV file, with the filters of
   the page, for a spreadsheet or for the import of an accounting system.
-  The amount is a plain number with the code of its currency beside it.
+  The amount is a plain number with the code of its currency beside it,
+  and the tax in the amount has a column of its own.
 - The expenses of a period are a new report as PDF, on the page Reports
   and from a link below the list of the expenses: the sums by state and
   by category, what the organisation owes to each member, and the list.
-  It holds what the person who makes it can read.
+  It holds what the person who makes it can read. When the organisation
+  names a tax, the report has the tax of each expense and of each sum.
 - The lists page has a new list, "Expense category", and the page of the
   roles has a new area, "Expenses", with two powers. The page of a
   resident links to its expenses.
@@ -366,6 +401,13 @@ release (ADR 0047).
 
 ### Changed
 
+- The title of each page, which the tab of the browser shows, now has
+  the name of the page first and the name of the site after it:
+  "Residents · Rescord". The sign-in pages, which all had the title
+  "Rescord", now have a title each (ADR 0090).
+- The bar that shows that a page loads is now drawn by the stylesheet,
+  and it does not move for a person whose device asks for less motion
+  (ADR 0090).
 - When a member records that a resident left, Rescord now ends the
   placement of the resident, and takes it out of each routine and of each
   task that is due. A task that named only that resident is skipped, with
@@ -427,9 +469,31 @@ release (ADR 0047).
   kind of movement and on the lot, and a sort on the time. Before, it
   showed the newest 100 movements and had no way to the older ones
   (ADR 0084).
+- The inventory page now has a search on the name of an item, a filter
+  on the category, and a filter on the state of the stock: each item
+  that needs attention, or only the items below a reorder level, with
+  stock past its expiry date, with stock that expires soon, or below
+  zero. The items are in pages of 25, 50 or 100, and the address holds
+  the search and the filters, so the address that ends in `?state=short`
+  is the list of what to order. The page also reads less: the stock
+  movements of the items that it shows, and not of each item
+  (ADR 0088).
 
 ### Fixed
 
+- The focus of the keyboard now stays where a person works. After a
+  press on a button that then goes, such as Done of a task, the focus
+  stays in the same row. After a link to another page, the focus goes to
+  the heading of the new page, which a screen reader then reads. Before,
+  the focus went to the top of the page each time (ADR 0090).
+- A receipt that is a file, and not a picture, is now a link with a name
+  for a screen reader: the name of the file and its kind. Before, the
+  link had no name (ADR 0090).
+- The name that a screen reader and voice control get for a button now
+  starts with the words that show on the button, so a person who says
+  "Take off" or "Pause" to the device reaches it. This is so for the
+  buttons of the receipts, the attachments, the photos, the routines,
+  the tasks, the families and the root users (ADR 0090).
 - An administrator who removes a resident that was recorded by mistake
   now ends its placement too, and takes the resident out of each task and
   each routine that named it. Before, those records still named a resident

@@ -111,4 +111,30 @@ defmodule RescordWeb.InventoryWords do
 
   @doc "The faults that have words, for the test that holds them."
   def faults, do: Keyword.keys(@faults)
+
+  # The filter on the state of the items: the words of a choice, and the
+  # value that the address holds.
+  @fault_choices [
+    any: {"Needs attention", "attention"},
+    short: {"Below a reorder level", "short"},
+    expired: {"Past its expiry date", "expired"},
+    soon: {"Expires soon", "soon"},
+    below_zero: {"Below zero", "below-zero"}
+  ]
+
+  @doc "The faults of the stock as the choices of a filter: the words, then the value."
+  def fault_options, do: for({_fault, choice} <- @fault_choices, do: choice)
+
+  @doc """
+  The fault that a value of the filter names, or `nil`. The value comes
+  from the browser, and this makes no atom from it.
+  """
+  def fault_of(value) do
+    Enum.find_value(@fault_choices, fn {fault, {_words, known}} ->
+      if known == value, do: fault
+    end)
+  end
+
+  @doc "The faults that the filter has a choice for, for the test that holds them."
+  def fault_choices, do: Keyword.keys(@fault_choices)
 end

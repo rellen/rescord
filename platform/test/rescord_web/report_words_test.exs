@@ -200,15 +200,22 @@ defmodule RescordWeb.ReportWordsTest do
     assert sheet.frame.title == "Tasks of the day"
     assert [%{title: "Trim the nails of Biscuit", done: false}] = sheet.late
 
-    assert Enum.map(sheet.tasks, & &1.title) == [
+    # The routine makes its tasks from now on, so the sheet of today has
+    # two, one or none of them: the time of the test decides. The tasks that
+    # the refuge planned are there at each time of the day.
+    {fed, planned} = Enum.split_with(sheet.tasks, &(&1.title == "Feed hay and pellets"))
+
+    assert Enum.map(planned, & &1.title) == [
              "Check the water bottles",
-             "Feed hay and pellets",
              "Give Doxycycline",
              "Collect Juniper from the vet",
              "Lock the shed"
            ]
 
-    assert %{done: true, state: "Done", kind: "Clean"} = hd(sheet.tasks)
+    assert length(fed) <= 2
+    assert Enum.all?(fed, &(&1[:for] == "Biscuit and Pepper" and &1.kind == "Feed"))
+
+    assert %{done: true, state: "Done", kind: "Clean"} = hd(planned)
     dose = Enum.find(sheet.tasks, &(&1.title == "Give Doxycycline"))
     assert dose.who == "mel@example.org"
     assert dose[:for] == "Biscuit"
@@ -277,23 +284,26 @@ defmodule RescordWeb.ReportWordsTest do
 
     assert value(expenses.summary, "Expenses in these days") == "5"
     assert value(expenses.summary, "Approved or paid back") == "$312.20"
+    assert value(expenses.summary, "GST in approved or paid back") == "$25.55"
     assert value(expenses.summary, "Wait for a decision") == "$42.50"
     assert value(expenses.summary, "To pay back now") == "$186.00"
 
     assert expenses.by_state == [
-             %{label: "Waits for a decision", count: "1", amount: "$42.50"},
-             %{label: "To pay back", count: "1", amount: "$186.00"},
-             %{label: "Approved", count: "1", amount: "$95.00"},
-             %{label: "Paid back", count: "1", amount: "$31.20"},
-             %{label: "Declined", count: "1", amount: "$60.00"}
+             %{label: "Waits for a decision", count: "1", amount: "$42.50", tax: "$0.00"},
+             %{label: "To pay back", count: "1", amount: "$186.00", tax: "$16.91"},
+             %{label: "Approved", count: "1", amount: "$95.00", tax: "$8.64"},
+             %{label: "Paid back", count: "1", amount: "$31.20", tax: "$0.00"},
+             %{label: "Declined", count: "1", amount: "$60.00", tax: "$0.00"}
            ]
 
     assert expenses.by_category == [
-             %{label: "Feed", count: "2", amount: "$126.20"},
-             %{label: "Veterinary", count: "1", amount: "$186.00"}
+             %{label: "Feed", count: "2", amount: "$126.20", tax: "$8.64"},
+             %{label: "Veterinary", count: "1", amount: "$186.00", tax: "$16.91"}
            ]
 
-    assert expenses.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+    assert expenses.owed == [
+             %{label: "mel@example.org", count: "1", amount: "$186.00", tax: "$16.91"}
+           ]
 
     # The newest payment is first.
     assert Enum.map(expenses.expenses, & &1.description) == [
@@ -314,13 +324,20 @@ defmodule RescordWeb.ReportWordsTest do
              paid_by: "mel@example.org",
              state: "To pay back",
              receipts: "1",
-             amount: "$186.00"
+             amount: "$186.00",
+             tax: "$16.91"
            } == Map.delete(vet, :description) |> Map.delete(:number)
 
     assert vet.number =~ ~r/^\d+$/
 
     hay = Enum.find(expenses.expenses, &(&1.description == "Meadow hay, 10 bags"))
     assert %{paid_by: "Wattle Creek", state: "Approved", resident: nil, receipts: "0"} = hay
+    assert hay.tax == "$8.64"
+
+    # The name of the tax is the head of its column. An expense with no tax
+    # has no text there.
+    assert expenses.tax == "GST"
+    assert Enum.find(expenses.expenses, &(&1.description == "Guinea pig pellets")).tax == nil
   end
 
   test "the expenses of a period hold only what the person reads", context do
@@ -336,7 +353,9 @@ defmodule RescordWeb.ReportWordsTest do
              "Vet consult for Biscuit"
            ]
 
-    assert expenses.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+    assert expenses.owed == [
+             %{label: "mel@example.org", count: "1", amount: "$186.00", tax: "$16.91"}
+           ]
 
     # A period with no expense, and what the organisation owes now is still there.
     old = %{from: Date.add(context.today, -60), to: Date.add(context.today, -40)}
@@ -344,6 +363,38 @@ defmodule RescordWeb.ReportWordsTest do
     assert none.expenses == []
     assert none.by_state == []
     assert value(none.summary, "Approved or paid back") == "$0.00"
-    assert none.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+
+    assert none.owed == [
+             %{label: "mel@example.org", count: "1", amount: "$186.00", tax: "$16.91"}
+           ]
+  end
+
+  test "the expenses of a period have the tax while an expense holds one", context do
+    period = %{from: Date.add(context.today, -30), to: context.today}
+
+    organisation =
+      Rescord.Accounts.set_organisation_tax_name!(context.organisation, nil,
+        actor: context.administrator
+      )
+
+    admin = [actor: context.administrator, tenant: organisation]
+    context = %{context | organisation: organisation, options: admin}
+
+    # The organisation names no tax now. An old expense keeps its tax, and
+    # the report names it with a general word.
+    kept = data(context, :expenses, period)
+    assert kept.tax == "Tax"
+    assert value(kept.summary, "Tax in approved or paid back") == "$25.55"
+
+    for expense <- Rescord.Expenses.expenses!(admin), expense.tax do
+      Rescord.Expenses.set_expense_tax!(expense, nil, admin)
+    end
+
+    # With no name and no tax on an expense, the report has no tax.
+    none = data(context, :expenses, period)
+    assert none.tax == nil
+    refute Enum.any?(none.summary, &(&1.label =~ "Tax"))
+    assert Enum.all?(none.expenses, &is_nil(&1.tax))
+    assert value(none.summary, "Approved or paid back") == "$312.20"
   end
 end

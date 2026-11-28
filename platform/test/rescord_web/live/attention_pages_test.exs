@@ -361,5 +361,17 @@ defmodule RescordWeb.AttentionPagesTest do
     # Each fault that the inventory knows has words.
     stock = %{below_zero: [:a], short: [:a], expired: Decimal.new(1), soon: Decimal.new(1)}
     assert Inventory.faults(stock) == InventoryWords.faults()
+
+    # The filter of the inventory page has a choice for each fault, and one
+    # for each item with a fault (ADR 0088). A value names its fault.
+    assert Enum.sort(InventoryWords.fault_choices()) ==
+             Enum.sort([:any | InventoryWords.faults()])
+
+    for {_words, value} <- InventoryWords.fault_options() do
+      assert InventoryWords.fault_of(value) in InventoryWords.fault_choices()
+    end
+
+    assert InventoryWords.fault_of("nothing") == nil
+    assert InventoryWords.fault_of(nil) == nil
   end
 end

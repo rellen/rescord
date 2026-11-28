@@ -604,6 +604,100 @@ defmodule Rescord.InventoryTest do
     end
   end
 
+  describe "the stock of the items of a read (ADR 0088)" do
+    setup context do
+      # Hay has stock, a part of it past its expiry date. The bedding has
+      # none and wants two. The bowls have no lot.
+      lot!(context)
+      lot!(context, %{code: "B-0", quantity: 4, expires_on: Date.add(context.today, -1)})
+
+      bedding = Inventory.add_item!(%{name: "Aspen bedding", reorder_level: 2}, context.admin)
+      bowls = Inventory.add_item!(%{name: "Bowls"}, context.admin)
+
+      {:ok, bedding: bedding, bowls: bowls}
+    end
+
+    # What a page shows of the stock of an item.
+    defp shown(stock) do
+      %{
+        name: stock.item.name,
+        level: number(stock.level),
+        expired: number(stock.expired),
+        faults: Inventory.faults(stock),
+        lots: Enum.map(stock.lots, &{&1.lot.code, number(&1.level), &1.expiry}),
+        short: Enum.map(stock.short, &{&1.location_id, number(&1.wanted), number(&1.level)})
+      }
+    end
+
+    test "is a calculation of an item, the same as the stock of the organisation", context do
+      {:ok, all} = Inventory.stock(context.options)
+      {:ok, items} = Inventory.items([query: [load: [:stock]]] ++ context.options)
+
+      assert Enum.map(all, &shown/1) ==
+               items |> Enum.sort_by(& &1.name) |> Enum.map(&shown(&1.stock))
+
+      hay = Enum.find(items, &(&1.id == context.hay.id))
+      assert number(hay.stock.level) == "14"
+      assert Inventory.faults(hay.stock) == [:expired]
+      # The stock has the item with its category and its unit.
+      assert to_string(hay.stock.item.unit.label) == "bag"
+    end
+
+    test "reads the lots and the movements of the items that it is asked for", context do
+      {:ok, [bedding]} =
+        Inventory.items(
+          [query: [filter: [id: context.bedding.id], load: [:stock]]] ++ context.options
+        )
+
+      assert %{level: "0", lots: [], faults: [:short]} = shown(bedding.stock)
+
+      # The stock of some items, in the order that they come in.
+      load = [load: [category: [:label], unit: [:label]]] ++ context.options
+      items = for id <- [context.bowls.id, context.hay.id], do: Inventory.item!(id, load)
+
+      {:ok, [bowls, hay]} = Inventory.stock_of(items, context.options)
+
+      assert {bowls.item.name, hay.item.name} == {"Bowls", "Meadow hay"}
+      assert number(hay.level) == "14"
+      assert {:ok, []} = Inventory.stock_of([], context.options)
+    end
+
+    test "is nothing for a person who can read no stock", context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for actor <- [outsider, nil] do
+        options = [actor: actor, tenant: context.organisation]
+        assert {:ok, []} = Inventory.items([query: [load: [:stock]]] ++ options)
+
+        # With an item in hand, the calculation reads as the actor: no lot.
+        assert {:ok, %{stock: stock}} = Ash.load(context.hay, :stock, options)
+        assert %{level: "0", lots: []} = shown(stock)
+      end
+    end
+
+    test "narrows a query to the items with a fault", context do
+      names = fn fault, options ->
+        Rescord.Inventory.Item
+        |> Ash.Query.for_read(:read, %{}, options)
+        |> Inventory.with_fault(fault, options)
+        |> Ash.read!()
+        |> Enum.map(& &1.name)
+        |> Enum.sort()
+      end
+
+      assert names.(:any, context.options) == ["Aspen bedding", "Meadow hay"]
+      assert names.(:short, context.options) == ["Aspen bedding"]
+      assert names.(:expired, context.options) == ["Meadow hay"]
+      assert names.(:soon, context.options) == []
+      assert names.(:below_zero, context.options) == []
+
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+      assert names.(:any, actor: outsider, tenant: context.organisation) == []
+    end
+  end
+
   describe "who can work with the inventory" do
     test "each member and a root user, and not a user of another organisation or nobody",
          context do

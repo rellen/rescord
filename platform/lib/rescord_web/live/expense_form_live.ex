@@ -128,6 +128,7 @@ defmodule RescordWeb.ExpenseFormLive do
   defp fields_of(expense) do
     %{
       "amount" => ExpenseWords.plain(expense.amount),
+      "tax" => if(expense.tax, do: ExpenseWords.plain(expense.tax), else: ""),
       "incurred_on" => Date.to_iso8601(expense.incurred_on),
       "payee" => expense.payee,
       "description" => expense.description,
@@ -176,7 +177,7 @@ defmodule RescordWeb.ExpenseFormLive do
   # expense of another member, and one of the organisation from a person
   # who manages the expenses, is `record`.
   defp save(%{assigns: %{expense: nil}} = socket, fields) do
-    facts = facts(fields)
+    facts = facts(fields, socket.assigns.organisation)
     can_record? = Expenses.role_can?(socket.assigns.role, :expense, :record)
 
     case fields["paid_by"] do
@@ -197,7 +198,19 @@ defmodule RescordWeb.ExpenseFormLive do
   end
 
   defp save(%{assigns: %{expense: expense}} = socket, fields),
-    do: Expenses.revise_expense(expense, facts(fields), options(socket))
+    do:
+      Expenses.revise_expense(
+        expense,
+        facts(fields, socket.assigns.organisation),
+        options(socket)
+      )
+
+  # The form has the field of the tax only while the organisation names a
+  # tax. With no field, an expense keeps the tax that it has.
+  defp facts(fields, %{tax_name: name}) when is_binary(name),
+    do: Map.put(facts(fields), :tax, amount(fields["tax"]))
+
+  defp facts(fields, _organisation), do: facts(fields)
 
   defp facts(fields) do
     %{
@@ -301,6 +314,7 @@ defmodule RescordWeb.ExpenseFormLive do
           currency={
             if @expense, do: to_string(@expense.amount.currency), else: @organisation.currency
           }
+          tax_name={@organisation.tax_name}
           payers={@payers}
           categories={@categories}
           residents={@residents}

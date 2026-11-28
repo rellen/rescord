@@ -40,7 +40,16 @@ defmodule Rescord.Expenses.Grants do
       manage_expenses:
         [{Expense, :read, :all}, {Receipt, :read, :all}] ++
           for(
-            action <- [:record, :revise, :approve, :decline, :reimburse, :reopen, :withdraw],
+            action <- [
+              :record,
+              :revise,
+              :set_tax,
+              :approve,
+              :decline,
+              :reimburse,
+              :reopen,
+              :withdraw
+            ],
             do: {Expense, action, :all}
           ) ++
           [{Receipt, :attach, :all}, {Receipt, :remove, :all}, {Receipt, :discard, :all}]

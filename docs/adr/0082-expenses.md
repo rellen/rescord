@@ -113,7 +113,8 @@ a committee, as a PDF.
   (`Rescord.Expenses.sum/1`): with two currencies the page shows two
   sums.
 - **The amount is the whole amount, with its tax.** There is no field for
-  GST or VAT.
+  GST or VAT. ADR 0089 changed this later: the amount is still the whole
+  amount, and an expense can also hold the tax that is in it.
 - **A page writes an amount in the locale of the organisation**, with
   `RescordWeb.Locale.money/1`: `$1,234.50` for Australian dollars in
   English (Australia). A form takes a plain number. A CSV file has a plain

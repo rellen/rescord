@@ -17,7 +17,7 @@ defmodule RescordWeb.SignInController do
   @client_period :timer.minutes(15)
 
   def new(conn, _params) do
-    render(conn, :new)
+    render(conn, :new, page_title: "Sign in")
   end
 
   def create(conn, params) do
@@ -26,13 +26,18 @@ defmodule RescordWeb.SignInController do
          :ok <- Rescord.Accounts.request_sign_in_link(params["email"]) do
       redirect(conn, to: ~p"/sign-in/sent")
     else
-      {:deny, _wait} -> conn |> put_status(:too_many_requests) |> render(:too_many)
-      {:error, :busy} -> conn |> put_status(:service_unavailable) |> render(:busy)
+      {:deny, _wait} ->
+        conn
+        |> put_status(:too_many_requests)
+        |> render(:too_many, page_title: "Too many requests")
+
+      {:error, :busy} ->
+        conn |> put_status(:service_unavailable) |> render(:busy, page_title: "Rescord is busy")
     end
   end
 
   def sent(conn, _params) do
-    render(conn, :sent)
+    render(conn, :sent, page_title: "Look in your email")
   end
 
   # The page of the link. It does not sign the person in: a mail program can
@@ -41,7 +46,7 @@ defmodule RescordWeb.SignInController do
     conn
     # The token is in the address of this page. Keep it out of a `Referer`.
     |> put_resp_header("referrer-policy", "no-referrer")
-    |> render(:link, token: params["token"])
+    |> render(:link, token: params["token"], page_title: "Sign in to Rescord")
   end
 
   def confirm(conn, params) do
@@ -52,7 +57,9 @@ defmodule RescordWeb.SignInController do
         |> redirect(to: ~p"/")
 
       :error ->
-        conn |> put_status(:unprocessable_entity) |> render(:expired)
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:expired, page_title: "This link does not work")
     end
   end
 

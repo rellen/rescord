@@ -680,53 +680,75 @@ defmodule RescordWeb.InventoryComponents do
       "#{InventoryWords.quantity(short.wanted, item)} or more."
   end
 
-  @doc "One item in the table of the inventory, with its level and its state."
-  attr :stock, :any, required: true
-  attr :organisation, :any, required: true
+  @doc """
+  The items of the inventory, each with its level and its state: a
+  collection with a search on the name, a filter on the category and on
+  the state of the stock, a sort on the name, and pages (ADR 0088).
 
-  def item_row(assigns) do
-    ~H"""
-    <tr id={"item-#{@stock.item.id}"}>
-      <td>
-        <.link navigate={item_path(@organisation, @stock.item)}>{@stock.item.name}</.link>
-      </td>
-      <td data-label="Category">
-        {(@stock.item.category && @stock.item.category.label) || "Not recorded"}
-      </td>
-      <td data-label="In stock">{InventoryWords.quantity(@stock.level, @stock.item)}</td>
-      <td>
-        <.state :for={{words, kind} <- InventoryWords.states(@stock)} kind={kind}>
-          {words}
-        </.state>
-      </td>
-    </tr>
-    """
-  end
-
-  @doc "The items of the inventory, each with its level and its state."
-  attr :stock, :any, required: true
+  `with_fault` is the function of the filter on the state: it takes the
+  query and the filter, and gives the query of the items with that fault.
+  """
   attr :organisation, :any, required: true
+  attr :user, :any, required: true
+  attr :url_state, :any, required: true, doc: "the state that the address holds (ADR 0084)"
+  attr :categories, :list, required: true, doc: "each category, as the choices of a filter"
+  attr :with_fault, :any, required: true
 
   def items_table(assigns) do
     ~H"""
-    <section aria-labelledby="items-heading">
+    <section id="items" aria-labelledby="items-heading">
       <h2 id="items-heading">The items</h2>
-      <p :if={@stock == []}>The inventory has no item yet.</p>
-      <div :if={@stock != []} data-scroll>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Item</th>
-              <th scope="col">Category</th>
-              <th scope="col">In stock</th>
-              <th scope="col">State</th>
-            </tr>
-          </thead>
-          <tbody>
-            <.item_row :for={stock <- @stock} stock={stock} organisation={@organisation} />
-          </tbody>
-        </table>
-      </div>
+      <Cinder.collection
+        id="items"
+        query={
+          Inventory.query_to_items(%{},
+            query: [
+              load: [:stock, category: [:label], unit: [:label]],
+              sort: [name: :asc, id: :asc]
+            ],
+            actor: @user,
+            tenant: @organisation
+          )
+        }
+        actor={@user}
+        tenant={@organisation}
+        url_state={@url_state}
+        page_size={[default: 25, options: [25, 50, 100]]}
+      >
+        <:filter
+          field="state"
+          type="select"
+          label="State"
+          prompt="Any state"
+          options={InventoryWords.fault_options()}
+          fn={@with_fault}
+        />
+        <:empty :let={found}>
+          <p :if={found.filtered?}>No item matches the search and the filters.</p>
+          <p :if={not found.filtered?}>The inventory has no item yet.</p>
+        </:empty>
+        <:col :let={item} field="name" label="Item" sort search>
+          <.link navigate={item_path(@organisation, item)}>{item.name}</.link>
+        </:col>
+        <:col
+          :let={item}
+          field="category_id"
+          label="Category"
+          filter={[type: :select, prompt: "Any category", options: @categories]}
+        >
+          <span data-label="Category">
+            {(item.category && item.category.label) || "Not recorded"}
+          </span>
+        </:col>
+        <:col :let={item} label="In stock">
+          <span data-label="In stock">{InventoryWords.quantity(item.stock.level, item)}</span>
+        </:col>
+        <:col :let={item} label="State">
+          <.state :for={{words, kind} <- InventoryWords.states(item.stock)} kind={kind}>
+            {words}
+          </.state>
+        </:col>
+      </Cinder.collection>
     </section>
     """
   end

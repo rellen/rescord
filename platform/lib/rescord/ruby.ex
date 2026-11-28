@@ -19,6 +19,15 @@ defmodule Rescord.Ruby do
   `stop_reply/2` stops the reply to a message. No page waits for Ruby: the
   job answers also when the member has closed the page.
 
+  ## What it costs
+
+  Each reply adds its tokens and their price to a row of
+  `Rescord.Ruby.Usage`: one row for a member, a day and a model, with no
+  word of a conversation. The rows stay when a conversation is deleted.
+  `Rescord.Ruby.Allowance` sums a month of them against the allowance of
+  the settings, and `say/3` refuses a message past it. `refusal/1` gives
+  the reason of a refusal of `say/3`.
+
   ## The tools
 
   A tool is a line of `Rescord.Ruby.Catalogue`: an action tool that a
@@ -63,7 +72,7 @@ defmodule Rescord.Ruby do
 
   alias Rescord.Accounts.Checks.Granted
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Conversation, Message, Provider, Settings}
+  alias Rescord.Ruby.{Conversation, Message, Provider, Settings, Usage}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -111,6 +120,8 @@ defmodule Rescord.Ruby do
     resource Settings do
       define :read_settings, action: :read, get?: true, not_found_error?: false
     end
+
+    resource Usage
   end
 
   @typedoc """
@@ -394,6 +405,26 @@ defmodule Rescord.Ruby do
   end
 
   @doc """
+  Why `say/3` refused a message, as a reason of `Rescord.Ruby.Reason`,
+  from its error: `:allowance` (the allowance of the month is used),
+  `:too_long` (the conversation is full) or `:rate` (too many messages of
+  this person in a short time). `nil` for each other error. A page has a
+  sentence for each reason.
+  """
+  @spec refusal(term) :: :allowance | :too_long | :rate | nil
+  def refusal(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &refusal/1)
+  def refusal(%AshRateLimiter.LimitExceeded{}), do: :rate
+
+  def refusal(%Ash.Error.Changes.InvalidAttribute{field: :text, vars: vars}) do
+    case Keyword.get(List.wrap(vars), :reason) do
+      reason when reason in [:allowance, :too_long] -> reason
+      _other -> nil
+    end
+  end
+
+  def refusal(_error), do: nil
+
+  @doc """
   The problems of an error of an action, each with its field, in words for
   a person. A problem with no field has `nil`. The page of a provider puts
   each one beside its field.
@@ -410,6 +441,9 @@ defmodule Rescord.Ruby do
     |> Enum.uniq()
   end
 
+  def problems(%AshRateLimiter.LimitExceeded{}),
+    do: [{:text, "wait a moment before you ask again"}]
+
   def problems(:forbidden), do: [{nil, "You cannot do that"}]
   def problems(_error), do: [{nil, "That did not work"}]
 
@@ -417,6 +451,7 @@ defmodule Rescord.Ruby do
     do: [{field, required_words(field)}]
 
   defp problem(%Ash.Error.Forbidden.Policy{}), do: [{nil, "You cannot do that"}]
+  defp problem(%AshRateLimiter.LimitExceeded{} = error), do: problems(error)
 
   defp problem(%Ash.Error.Changes.StaleRecord{}),
     do: [{nil, "Somebody changed this a moment ago. The page shows it as it is now"}]

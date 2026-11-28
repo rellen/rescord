@@ -58,7 +58,8 @@ defmodule RescordWeb.ExpenseLive do
            approve?: can?.(:approve),
            decline?: can?.(:decline),
            reimburse?: can?.(:reimburse),
-           reopen?: can?.(:reopen)
+           reopen?: can?.(:reopen),
+           set_tax?: can?.(:set_tax)
          }
        )
        |> allow_receipts()}
@@ -119,6 +120,14 @@ defmodule RescordWeb.ExpenseLive do
       options(socket)
     )
     |> after_write(socket, "The payment is recorded.")
+  end
+
+  def handle_event("set_tax", %{"tax" => %{"amount" => text}}, socket) when is_binary(text) do
+    tax = text |> String.replace(" ", "") |> non_blank()
+
+    socket.assigns.expense
+    |> Expenses.set_expense_tax(tax, options(socket))
+    |> after_write(socket, "The tax in the amount is saved.")
   end
 
   def handle_event("reopen", _params, socket) do
@@ -271,6 +280,8 @@ defmodule RescordWeb.ExpenseLive do
       <.problems :if={@problems_at == :page} list={@problems} />
 
       <.expense_card expense={@expense} organisation={@organisation} people={@people} />
+
+      <.tax_correction expense={@expense} organisation={@organisation} can={@can} />
 
       <.decision expense={@expense} people={@people} can={@can} />
 

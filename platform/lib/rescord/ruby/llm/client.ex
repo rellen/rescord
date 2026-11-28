@@ -43,6 +43,10 @@ defmodule Rescord.Ruby.LLM.Client do
     end
   end
 
+  @doc "The records of the requests of this process so far, the first one first. Keeps them."
+  @spec requests() :: [request]
+  def requests, do: @key |> Process.get([]) |> Enum.reverse()
+
   @doc "The records of the requests of this process, the first one first. Forgets them."
   @spec take_requests() :: [request]
   def take_requests, do: @key |> Process.delete() |> List.wrap() |> Enum.reverse()

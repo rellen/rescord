@@ -101,4 +101,10 @@ defmodule Rescord.Inventory.Item do
       temporal_keys {:valid_at, :valid_at}
     end
   end
+
+  calculations do
+    calculate :stock, :map, Rescord.Inventory.Calculations.Stock do
+      description "The level of the item, its lots, and what is wrong with its stock, from the stock movements"
+    end
+  end
 end

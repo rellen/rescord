@@ -1,13 +1,15 @@
-/* Layer layout: the landmarks of a page, the site nav, the skip link and the page header. */
+/* Layer layout: the landmarks of a page, the site nav, the site footer, the skip link and the page header. */
 
 /* ------------------------------------------------------------- landmarks */
 
 /*
  * The page's landmarks centre their content with padding, so no wrapper
- * element is needed. The site header is the one that holds a nav.
+ * element is needed. The site header is the one that holds a nav, and so
+ * is the site footer.
  */
 header:has(> nav),
-main {
+main,
+footer:has(> nav) {
   padding-inline: max(var(--gutter), (100% - var(--measure)) / 2);
 }
 
@@ -216,6 +218,76 @@ main {
   main {
     padding-block-start: 2rem;
   }
+}
+
+/* ------------------------------------------------------------ loading bar */
+
+/*
+ * The bar at the top of a page that loads. `app.js` sets `data-loading` on
+ * the root element while LiveView loads a page or sends a form. The bar
+ * shows after 300ms, so a fast answer shows none, and it grows while the
+ * page waits. Where the device asks for less motion, the layer base makes
+ * the animation instant: the bar shows at its last length and stays still.
+ */
+:root[data-loading]::before {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 200;
+  block-size: 3px;
+  content: "";
+  background: var(--accent);
+  transform-origin: 0 0;
+  animation: loading 8s cubic-bezier(0.1, 0.7, 0.2, 1) 300ms both;
+}
+
+@keyframes loading {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(0.9);
+  }
+}
+
+/* ----------------------------------------------------------- site footer */
+
+/*
+ * The site footer says what Rescord is: the links to the colophon and to
+ * the source code, and the version for a person who is signed in. It is
+ * quiet, below the content of each page.
+ */
+footer:has(> nav) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-block-start: 1px solid var(--border);
+}
+
+footer > nav > ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A link of the footer is as high as a finger (ADR 0061). */
+footer > nav a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap);
+  color: inherit;
+}
+
+footer:has(> nav) > p {
+  margin: 0;
 }
 
 /* The skip link shows only while it has the focus. */

@@ -68,6 +68,7 @@ defmodule RescordWeb.ExpenseComponents do
   attr :new?, :boolean, required: true
   attr :organisation, :any, required: true
   attr :currency, :string, required: true
+  attr :tax_name, :any, default: nil
   attr :payers, :list, required: true
   attr :categories, :list, required: true
   attr :residents, :list, required: true
@@ -118,6 +119,14 @@ defmodule RescordWeb.ExpenseComponents do
       autocomplete="off"
       hint="The whole amount on the receipt, with its tax."
       required
+    />
+    <.input
+      :if={@tax_name}
+      field={@form[:tax]}
+      label={"#{@tax_name} in the amount (optional)"}
+      inputmode="decimal"
+      autocomplete="off"
+      hint={"The part of the amount that is #{@tax_name}, from the receipt. Leave it empty when the receipt shows none."}
     />
     <.input
       field={@form[:incurred_on]}
@@ -190,7 +199,7 @@ defmodule RescordWeb.ExpenseComponents do
             type="button"
             phx-click="cancel_receipt"
             phx-value-ref={entry.ref}
-            aria-label={"Take #{entry.client_name} out"}
+            aria-label={"Take out #{entry.client_name}"}
           >
             Take out
           </.button>
@@ -233,6 +242,9 @@ defmodule RescordWeb.ExpenseComponents do
                                                                       do: ", to pay back"}
         </:item>
         <:item title="Paid to">{@expense.payee}</:item>
+        <:item :if={@expense.tax} title={"#{ExpenseWords.tax_name(@organisation)} in the amount"}>
+          <span data-money>{ExpenseWords.money(@expense.tax)}</span>
+        </:item>
         <:item title="Date">{ResidentWords.date(@expense.incurred_on)}</:item>
         <:item title="Category">
           {if @expense.category, do: @expense.category.label, else: "A category that is gone"}
@@ -291,6 +303,35 @@ defmodule RescordWeb.ExpenseComponents do
         </form>
       </details>
     </section>
+    """
+  end
+
+  @doc """
+  The form that corrects the tax in the amount of an expense, for a person
+  who manages the expenses, while the organisation names a tax. It changes
+  nothing else of the expense.
+  """
+  attr :expense, :any, required: true
+  attr :organisation, :any, required: true
+  attr :can, :map, required: true
+
+  def tax_correction(assigns) do
+    ~H"""
+    <details :if={@can.set_tax? and @organisation.tax_name} id="tax-details">
+      <summary>Correct the {@organisation.tax_name}</summary>
+      <form id="tax" phx-submit="set_tax">
+        <.input
+          id="tax-amount"
+          name="tax[amount]"
+          label={"#{@organisation.tax_name} in the amount, in #{ExpenseWords.currency_plural(@expense.amount.currency)}"}
+          inputmode="decimal"
+          autocomplete="off"
+          value={if @expense.tax, do: ExpenseWords.plain(@expense.tax), else: ""}
+          hint="Leave it empty for an expense with none. The amount and the decision stay as they are."
+        />
+        <footer><.button type="submit">Save the {@organisation.tax_name}</.button></footer>
+      </form>
+    </details>
     """
   end
 
@@ -363,7 +404,11 @@ defmodule RescordWeb.ExpenseComponents do
       <p :if={@receipts == []}>The expense has no receipt.</p>
       <ul :if={@receipts != []} data-receipts>
         <li :for={receipt <- @receipts} id={"receipt-#{receipt.id}"}>
-          <a href={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}"} target="_blank">
+          <a
+            href={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}"}
+            target="_blank"
+            aria-label={!receipt.thumbnail_key && "#{receipt.name}, #{file_word(receipt)}"}
+          >
             <img
               :if={receipt.thumbnail_key}
               src={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}/thumbnail"}
@@ -372,8 +417,7 @@ defmodule RescordWeb.ExpenseComponents do
               width="320"
               height="320"
             />
-            <span :if={!receipt.thumbnail_key} data-file aria-hidden="true">{file_word(receipt)}</span>
-            <span :if={!receipt.thumbnail_key} hidden>{receipt.name}</span>
+            <span :if={!receipt.thumbnail_key} data-file>{file_word(receipt)}</span>
           </a>
           <small>{receipt.name} · {ExpenseWords.size(receipt.size)}</small>
           <.button
@@ -382,7 +426,7 @@ defmodule RescordWeb.ExpenseComponents do
             phx-click="take_off"
             phx-value-id={receipt.id}
             data-confirm={"Take #{receipt.name} off the expense?"}
-            aria-label={"Take #{receipt.name} off"}
+            aria-label={"Take off #{receipt.name}"}
           >
             Take off
           </.button>
@@ -420,6 +464,40 @@ defmodule RescordWeb.ExpenseComponents do
           {ExpenseWords.person(@people, event.user_id)} {ExpenseWords.event(event)}
         </li>
       </ol>
+    </section>
+    """
+  end
+
+  @doc """
+  The name of the tax that an expense of an organisation can hold, and the
+  form that changes it. With no name, the expenses record no tax.
+  """
+  attr :organisation, :any, required: true
+  attr :can_change?, :any, required: true
+
+  def tax_setting(assigns) do
+    ~H"""
+    <section aria-labelledby="tax-heading">
+      <h2 id="tax-heading">Tax</h2>
+      <p :if={@organisation.tax_name}>
+        An expense can hold the <strong>{@organisation.tax_name}</strong>
+        in its amount, as the receipt shows it. Rescord knows no rate.
+      </p>
+      <p :if={!@organisation.tax_name}>
+        The expenses record no tax. Give the name of a tax, and an expense can hold the part of its amount that is that tax.
+      </p>
+      <form :if={@can_change?} id="tax-name" phx-submit="save_tax_name">
+        <.input
+          id="tax-name-text"
+          name="tax[name]"
+          label="Name of the tax"
+          value={@organisation.tax_name || ""}
+          maxlength="12"
+          autocomplete="off"
+          hint="For example GST or VAT. Leave it empty to record no tax on an expense."
+        />
+        <footer><.button type="submit">Save the name</.button></footer>
+      </form>
     </section>
     """
   end

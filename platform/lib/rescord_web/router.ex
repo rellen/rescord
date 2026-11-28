@@ -42,6 +42,9 @@ defmodule RescordWeb.Router do
 
     get "/", PageController, :home
 
+    # How Rescord is built, and how well each person can use it (ADR 0090).
+    get "/colophon", PageController, :colophon
+
     # The sign-in by a link in an email (ADR 0018).
     get "/sign-in", SignInController, :new
     post "/sign-in", SignInController, :create

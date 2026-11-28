@@ -86,6 +86,14 @@ defmodule Rescord.Accounts.Organisation do
       validate Rescord.Accounts.Validations.KnownCurrency
     end
 
+    update :set_tax_name do
+      description "Names the tax that an expense can hold, such as GST, or takes the name off: with no name, the expenses record no tax"
+      # The change trims the name in Elixir.
+      require_atomic? false
+      accept [:tax_name]
+      change Rescord.Accounts.Changes.TrimTaxName
+    end
+
     update :rename do
       accept [:name]
     end
@@ -114,6 +122,7 @@ defmodule Rescord.Accounts.Organisation do
              :set_task_days_ahead,
              :set_transfer_parts,
              :set_currency,
+             :set_tax_name,
              :export
            ]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
@@ -168,6 +177,13 @@ defmodule Rescord.Accounts.Organisation do
       constraints min_length: 3, max_length: 3
 
       description "The ISO 4217 code of the currency of the amounts of new expenses, for example AUD (ADR 0082)"
+    end
+
+    attribute :tax_name, :string do
+      public? true
+      constraints max_length: 12
+
+      description "The name of the tax that an expense can hold, for example GST or VAT, or none: then the expenses record no tax (ADR 0089)"
     end
 
     attribute :transfer_parts, {:array, :atom} do

@@ -124,21 +124,63 @@ defmodule Rescord.Inventory do
   @spec item_stock(String.t(), keyword) :: {:ok, stock | nil} | {:error, term}
   def item_stock(item_id, opts \\ []) do
     with {:ok, [item]} <- read_items(Ash.Query.filter(Item, id == ^item_id), opts),
-         {:ok, lots} <-
-           Lot
-           |> Ash.Query.filter(item_id == ^item_id)
-           |> Ash.Query.load(:supplier)
-           |> Ash.read(opts),
-         lot_ids = Enum.map(lots, & &1.id),
-         {:ok, movements} <-
-           read_movements(Ash.Query.filter(StockMovement, lot_id in ^lot_ids), opts),
-         {:ok, wanted} <- ReorderLevel |> Ash.Query.filter(item_id == ^item_id) |> Ash.read(opts) do
-      {:ok, hd(build([item], lots, movements, wanted, opts))}
+         {:ok, [stock]} <- stock_of([item], opts) do
+      {:ok, stock}
     else
       {:ok, []} -> {:ok, nil}
       {:error, error} -> {:error, error}
     end
   end
+
+  @doc """
+  The stock of each of these items, in their order (ADR 0088). It reads
+  the lots, the stock movements and the reorder levels of these items
+  only. Each item must have its category and its unit: the calculation
+  `stock` of an item loads them.
+  """
+  @spec stock_of([Ash.Resource.record()], keyword) :: {:ok, [stock]} | {:error, term}
+  def stock_of([], _opts), do: {:ok, []}
+
+  def stock_of(items, opts) do
+    item_ids = Enum.map(items, & &1.id)
+
+    with {:ok, lots} <-
+           Lot
+           |> Ash.Query.filter(item_id in ^item_ids)
+           |> Ash.Query.load(:supplier)
+           |> Ash.read(opts),
+         lot_ids = Enum.map(lots, & &1.id),
+         {:ok, movements} <-
+           read_movements(Ash.Query.filter(StockMovement, lot_id in ^lot_ids), opts),
+         {:ok, wanted} <-
+           ReorderLevel |> Ash.Query.filter(item_id in ^item_ids) |> Ash.read(opts) do
+      {:ok, build(items, lots, movements, wanted, opts)}
+    end
+  end
+
+  @doc """
+  Narrows a query of items to the items whose stock has a fault: one of
+  `faults/1`, or `:any` for each item with a fault.
+
+  Rescord stores no level, and the rule of a fault is in Elixir. So this
+  calculates the stock of each item of the organisation, as `stock/1`
+  does, and gives the query the ids. An actor who can read no stock gets
+  a query that finds nothing.
+  """
+  @spec with_fault(Ash.Query.t(), fault | :any, keyword) :: Ash.Query.t()
+  def with_fault(%Ash.Query{} = query, fault, opts) do
+    case stock(opts) do
+      {:ok, stock} ->
+        ids = for stock <- stock, fault?(faults(stock), fault), do: stock.item.id
+        Ash.Query.filter(query, id in ^ids)
+
+      {:error, _error} ->
+        Ash.Query.filter(query, false)
+    end
+  end
+
+  defp fault?(faults, :any), do: faults != []
+  defp fault?(faults, fault), do: fault in faults
 
   defp read_items(query, opts) do
     query

@@ -33,10 +33,11 @@ defmodule Rescord.ReportsFixtures do
   the lists, the day of today there, and the residents and the locations by
   their names.
 
-  The refuge has five expenses of the last ten days: one that the
-  organisation owes to the member, one that waits, one that an
+  The refuge names its tax GST, and has five expenses of the last ten days:
+  one that the organisation owes to the member, one that waits, one that an
   administrator declined, one that the organisation paid, and one that it
-  paid back to the administrator.
+  paid back to the administrator. The first and the fourth hold the GST in
+  their amounts.
 
   `picture` makes the bytes of a photo from the name of a resident and a
   number. It makes a plain photo of `Rescord.StorageFixtures` at first.
@@ -45,6 +46,11 @@ defmodule Rescord.ReportsFixtures do
     root = root!()
     organisation = organisation!(root, "Wattle Creek")
     {_, administrator} = member!(organisation, :administrator, root, "ada@example.org")
+
+    # The refuge names its tax, so an expense can hold the tax in its amount.
+    organisation =
+      Accounts.set_organisation_tax_name!(organisation, "GST", actor: administrator)
+
     {_, member} = member!(organisation, :member, administrator, "mel@example.org")
     lists = lists!(organisation, root)
     admin = [actor: administrator, tenant: organisation]
@@ -342,6 +348,7 @@ defmodule Rescord.ReportsFixtures do
       expense.(
         %{
           amount: "186.00",
+          tax: "16.91",
           incurred_on: Date.add(today, -5),
           payee: "Northside Vet Clinic",
           description: "Vet consult for Biscuit",
@@ -387,6 +394,7 @@ defmodule Rescord.ReportsFixtures do
       %{
         paid_by: :organisation,
         amount: "95.00",
+        tax: "8.64",
         incurred_on: Date.add(today, -10),
         payee: "Hilltop Produce",
         description: "Meadow hay, 10 bags",

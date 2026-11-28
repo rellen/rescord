@@ -57,7 +57,7 @@ defmodule RescordWeb.AccountComponents do
             options={@roles}
             value={member.role_id}
           />
-          <.button type="submit" aria-label={"Give #{member.email} the role"}>Give the role</.button>
+          <.button type="submit" aria-label={"Give the role to #{member.email}"}>Give the role</.button>
         </form>
         <.button
           :if={Accounts.role_can?(@role, :remove, member, @organisation)}
@@ -185,7 +185,7 @@ defmodule RescordWeb.AccountComponents do
             :if={root.id != @current_user.id}
             phx-click="revoke_root"
             phx-value-id={root.id}
-            aria-label={"Make #{root.email} an ordinary user"}
+            aria-label={"Make an ordinary user of #{root.email}"}
           >
             Make an ordinary user
           </.button>

@@ -494,7 +494,7 @@ defmodule Rescord.ExpensesTest do
       for code <- ["XXX", "aud", "Dollars", "", nil] do
         assert {:error, %Ash.Error.Invalid{}} =
                  Accounts.set_organisation_currency(context.organisation, code,
-                   actor: context.root
+                   actor: context.administrator
                  ),
                "for #{inspect(code)}"
       end
@@ -503,6 +503,165 @@ defmodule Rescord.ExpensesTest do
         assert {:error, %Ash.Error.Forbidden{}} =
                  Accounts.set_organisation_currency(context.organisation, "USD", actor: actor)
       end
+    end
+  end
+
+  describe "the tax in the amount" do
+    setup context do
+      organisation =
+        Accounts.set_organisation_tax_name!(context.organisation, " GST ",
+          actor: context.administrator
+        )
+
+      assert organisation.tax_name == "GST"
+      {:ok, organisation: organisation}
+    end
+
+    test "is a part of the amount, in its currency, that a person copies from the receipt",
+         context do
+      expense = submit!(context, %{amount: "186.00", tax: "16.91"})
+      assert Money.equal?(expense.tax, Money.new(:AUD, "16.91"))
+      assert Money.equal?(expense.amount, Money.new(:AUD, "186.00"))
+
+      # No tax is not a tax of zero: nobody said, or the receipt shows none.
+      assert submit!(context).tax == nil
+      assert Money.equal?(submit!(context, %{tax: "0"}).tax, Money.new(:AUD, 0))
+      assert Money.equal?(submit!(context, %{tax: "186"}).tax, Money.new(:AUD, 186))
+
+      for {tax, words} <- [
+            {"-1", "must be zero or more"},
+            {"186.01", "must not be more than the amount"},
+            {"1.234", "has more decimal places than AUD has"}
+          ] do
+        assert {:error, %Ash.Error.Invalid{} = error} =
+                 Expenses.submit_expense(facts(context, %{tax: tax}), context.options)
+
+        assert Exception.message(error) =~ words
+      end
+
+      recorded =
+        Expenses.record_expense!(
+          facts(context, %{paid_by: :organisation, tax: "10"}),
+          context.admin
+        )
+
+      assert Money.equal?(recorded.tax, Money.new(:AUD, 10))
+    end
+
+    test "changes with the expense while it waits, and stays within the amount", context do
+      expense = submit!(context, %{amount: "100", tax: "9.09"})
+
+      revised = Expenses.revise_expense!(expense, %{payee: "Hilltop Produce"}, context.options)
+      assert Money.equal?(revised.tax, Money.new(:AUD, "9.09"))
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Expenses.revise_expense(revised, %{amount: "5"}, context.options)
+
+      assert Exception.message(error) =~ "must not be more than the amount"
+
+      revised = Expenses.revise_expense!(revised, %{amount: "5", tax: "0.45"}, context.options)
+      assert Money.equal?(revised.amount, Money.new(:AUD, 5))
+      assert Money.equal?(revised.tax, Money.new(:AUD, "0.45"))
+
+      assert Expenses.revise_expense!(revised, %{tax: nil}, context.options).tax == nil
+    end
+
+    test "a person who manages the expenses corrects it in each state, and nobody else",
+         context do
+      expense = submit!(context)
+      approved = Expenses.approve_expense!(expense, context.admin)
+
+      for options <- [
+            context.options,
+            as(context, context.kim),
+            as(context, context.visitor),
+            as(context, context.stranger),
+            as(context, nil)
+          ] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Expenses.set_expense_tax(approved, "16.91", options)
+      end
+
+      corrected = Expenses.set_expense_tax!(approved, "16.91", context.admin)
+      assert Money.equal?(corrected.tax, Money.new(:AUD, "16.91"))
+      assert Money.equal?(corrected.amount, approved.amount)
+      assert corrected.state == :approved
+      assert corrected.decided_by_id == approved.decided_by_id
+
+      paid = Expenses.reimburse_expense!(corrected, %{}, context.admin)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Expenses.set_expense_tax(paid, "186.01", context.admin)
+
+      cleared = Expenses.set_expense_tax!(paid, nil, context.admin)
+      assert cleared.tax == nil
+      assert cleared.state == :reimbursed
+
+      {:ok, events} = Expenses.history(expense.id, context.admin)
+      assert Enum.count(events, &(&1.action == :set_tax)) == 2
+      assert Enum.all?(events, &(&1.action != :set_tax or &1.user_id == context.administrator.id))
+    end
+
+    test "is refused while the organisation names no tax, and an expense keeps its tax",
+         context do
+      expense = submit!(context, %{tax: "16.91"})
+
+      assert {:ok, %{tax_name: nil}} =
+               Accounts.set_organisation_tax_name(context.organisation, "  ",
+                 actor: context.administrator
+               )
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Expenses.submit_expense(facts(context, %{tax: "1"}), context.options)
+
+      assert Exception.message(error) =~ "the organisation names no tax in its settings"
+      assert submit!(context).tax == nil
+
+      revised = Expenses.revise_expense!(expense, %{payee: "Hilltop Produce"}, context.options)
+      assert Money.equal?(revised.tax, Money.new(:AUD, "16.91"))
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Expenses.set_expense_tax(revised, "2", context.admin)
+
+      assert Expenses.set_expense_tax!(revised, nil, context.admin).tax == nil
+    end
+
+    test "the name of the tax is a setting of the organisation", context do
+      assert Accounts.tax_name_of("org_#{context.organisation.id}") == "GST"
+
+      for name <- ["VAT", "GST 10%"] do
+        assert {:ok, %{tax_name: ^name}} =
+                 Accounts.set_organisation_tax_name(context.organisation, name,
+                   actor: context.administrator
+                 )
+      end
+
+      for name <- ["A long name of a tax", "G\nST"] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.set_organisation_tax_name(context.organisation, name,
+                   actor: context.root
+                 ),
+               "for #{inspect(name)}"
+      end
+
+      for actor <- [context.sam, context.visitor, context.stranger, nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.set_organisation_tax_name(context.organisation, "VAT", actor: actor)
+      end
+    end
+
+    test "tax_sum/1 adds the tax of the expenses that have one" do
+      expenses = [
+        %{tax: Money.new(:AUD, "1.50")},
+        %{tax: nil},
+        %{tax: Money.new(:NZD, 2)},
+        %{tax: Money.new(:AUD, 1)}
+      ]
+
+      assert Expenses.tax_sum(expenses) ==
+               %{count: 3, amounts: [Money.new(:AUD, "2.50"), Money.new(:NZD, 2)]}
+
+      assert Expenses.tax_sum([%{tax: nil}]) == %{count: 0, amounts: []}
     end
   end
 

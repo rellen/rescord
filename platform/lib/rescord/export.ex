@@ -82,7 +82,10 @@ defmodule Rescord.Export do
       "A message of a conversation with the assistant: see ruby_conversations.",
     Rescord.Ruby.Settings =>
       "How the organisation uses the assistant is a setting that names a provider of this " <>
-        "server, and no record of the rescue."
+        "server, and no record of the rescue.",
+    Rescord.Ruby.Usage =>
+      "The use of the assistant is counts of tokens for the bill of this server, and no " <>
+        "record of the rescue."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."
