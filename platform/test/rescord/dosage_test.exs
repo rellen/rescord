@@ -413,6 +413,14 @@ defmodule Rescord.DosageTest do
     test "leaves zero as it is" do
       assert Dosage.round_figures(Decimal.new("0.000")) == {Decimal.new(0), true}
     end
+
+    test "keeps one figure at the least" do
+      for figures <- [0, -1] do
+        assert_raise FunctionClauseError, fn ->
+          Dosage.round_figures(Decimal.new("2.5"), figures)
+        end
+      end
+    end
   end
 
   describe "a quantity of a record" do
