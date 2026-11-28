@@ -739,6 +739,22 @@ defmodule RescordWeb.InventoryPagesTest do
       refute has_element?(view, "#short")
     end
 
+    test "keeps the capitals of the name of a location that starts a line", context do
+      ward = Locations.add_location!(%{name: "ICU ward B"}, context.admin)
+      lot = lot!(context, %{location_id: ward.id})
+      {view, _html} = open(context.admin_conn, context.item_path)
+
+      {view, _html} =
+        submit(view, context.admin_conn, "#reorder-form",
+          reorder: %{location_id: ward.id, quantity: "20"}
+        )
+
+      assert has_element?(view, "#lot-#{lot.id} li", "ICU ward B: 10 bag")
+      assert has_element?(view, "#history td", "ICU ward B")
+      assert has_element?(view, "#wanted li", "ICU ward B: bring more when")
+      assert has_element?(view, "#short li", "ICU ward B has 10 bag that is good to use")
+    end
+
     test "removes the item", context do
       {view, _html} = open(context.admin_conn, context.item_path)
 

@@ -598,6 +598,10 @@ release (ADR 0047).
 
 ### Fixed
 
+- The name of a location now keeps its capitals where it starts a line of
+  the inventory: in the levels of a lot, the history of an item, the
+  reorder levels and the stock to order. Before, only its first letter
+  stayed a capital, so "ICU ward B" read "Icu ward b".
 - The focus of the keyboard now stays where a person works. After a
   press on a button that then goes, such as Done of a task, the focus
   stays in the same row. After a link to another page, the focus goes to
