@@ -1727,3 +1727,24 @@ h3:has(+ ul[data-counts]) {
   margin-block: 1rem 0.5rem;
   font-size: 1rem;
 }
+
+/* --- catalogue ---------------------------------------------------------
+ * The page of the components, for a developer (ADR 0095). An example
+ * stands in a frame, so that its edge shows, and its markup wraps: a
+ * phone has no room for a line of code that scrolls sideways.
+ */
+[data-example] > div {
+  padding: 1rem;
+  margin-block-end: 0.5rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+[data-example] > div > :last-child {
+  margin-block-end: 0;
+}
+
+pre[data-source] {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
