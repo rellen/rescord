@@ -41,6 +41,7 @@ defmodule Rescord.PolicySweepTest do
 
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation, Token, User}
+  alias Rescord.Health.Watcher
   alias Rescord.Lists
   alias Rescord.Comments.{Comment, Follow}
   alias Rescord.Notifications.{Notification, NtfyTopic, Preference, PushSubscription}
@@ -112,8 +113,9 @@ defmodule Rescord.PolicySweepTest do
 
   # The resources of one person in no refuge (ADR 0106): a root user reaches
   # their own, as each user does, and no other. The code of Rescord runs
-  # the rest of their actions.
-  @each_person_alone [PushSubscription, NtfyTopic]
+  # the rest of their actions. A root user who watches the checks keeps one
+  # row of their own too (ADR 0114).
+  @each_person_alone [PushSubscription, NtfyTopic, Watcher]
 
   # Two reads of the sign-in that return nothing without the token of a
   # link, whoever asks: AshAuthentication builds them so.
