@@ -35,9 +35,10 @@ import {
   watch as watchCinderLists,
 } from "./cinder_tables"
 import {keepOpen as keepDetailsOpen} from "./details"
+// The focus of the keyboard stays in its place when the page changes (ADR 0090).
+import {listen as listenForNewPages, restore as restoreFocus, watch as watchFocus} from "./focus"
 // The button that copies the address of a calendar feed (ADR 0074).
 import {listen as listenForCopies} from "./copy"
-import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -50,7 +51,11 @@ const liveSocket = new LiveSocket("/live", Socket, {
       keepCinderTables(from, to)
       keepDetailsOpen(from, to)
     },
-    onPatchEnd: () => enhanceCinderTables(),
+    onPatchEnd: () => {
+      enhanceCinderTables()
+      // After LiveView put each new element in its place.
+      window.setTimeout(restoreFocus, 0)
+    },
   },
 })
 
@@ -59,11 +64,15 @@ watchCinderLists()
 holdCinderListsOpen()
 enhanceCinderTables()
 listenForCopies()
+watchFocus()
+listenForNewPages()
 
-// Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
-window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
-window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+// The bar at the top of a page that loads, on a live navigation and on a
+// form that sends. The stylesheet draws it while the root element has
+// `data-loading` (ADR 0090), so it has the lead colour of each scheme, and
+// it does not move where the device asks for less motion.
+window.addEventListener("phx:page-loading-start", _info => document.documentElement.setAttribute("data-loading", ""))
+window.addEventListener("phx:page-loading-stop", _info => document.documentElement.removeAttribute("data-loading"))
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

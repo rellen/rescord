@@ -145,7 +145,19 @@ We do not write those by hand.
   - A table is a list of cards on a phone: each cell says its column with
     `data-label`.
   - `RescordWeb.Features.PhoneTest` holds the rules in a browser with the
-    screen of a phone.
+    screen of a phone, on the pages that `RescordWeb.PagesFixtures` names.
+- **Each page keeps WCAG 2.2 AA, and a browser test holds it** (ADR 0090).
+  - `RescordWeb.Features.AccessibilityTest` runs axe-core on each page of
+    `RescordWeb.PagesFixtures`, on a phone and on a wide screen, in both
+    schemes. It also holds the landmarks, the headings, the titles, the
+    text spacing of WCAG 1.4.12 and the focus of the keyboard. The package
+    `a11y_audit` carries axe-core, for the tests only.
+  - `Layouts.app` writes the skip link, the site header, `main` and the
+    site footer, which links to the colophon at `/colophon` and to its
+    accessibility statement. `Layouts.plain` is the same with no menu,
+    and an error page uses it.
+  - Each page has a title of its own, with " · Rescord" after it.
+  - The name of a control starts with the words that show on it.
 - **The stylesheet is one cascade layer per file, and a layer is a role**
   (ADR 0007). `assets/css/app.css` states the order of the layers and imports
   one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,
@@ -175,6 +187,12 @@ We do not write those by hand.
 - **A button copies the address of a calendar feed** (ADR 0074):
   `assets/js/copy.ts` listens for a press on a button with `data-copy`,
   which names a field. Without the script the field still works.
+- **The focus of the keyboard keeps its place** (ADR 0090):
+  `assets/js/focus.ts` puts it back in the row of a button that a render
+  took away, by the `id` of the row, and on the `h1` of a new live page.
+- **The loading bar is CSS** (ADR 0090): `app.js` sets `data-loading` on
+  the root element while LiveView loads, and `layout.css` draws the bar.
+  There is no topbar script.
 - **A hook may parse the data that the server sends with zod**, so that the
   shape of a `push_event` payload or of a `data-` attribute is checked where
   it enters the browser, and typed from there on. zod is not a dependency
@@ -857,6 +875,8 @@ from GitHub, pinned to a commit (ADR 0005).
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
 - Nobody has listened to a collection with a screen reader. ADR 0087
   closed the gaps of the markup of Cinder that a browser can show.
+- Nobody has used any page with a screen reader, and nobody has checked
+  Safari or Firefox. ADR 0090 says what the automated test does not see.
 - Whether a hook that a component writes next to its markup
   (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
   is a file under `assets/js/`. Nobody has checked.

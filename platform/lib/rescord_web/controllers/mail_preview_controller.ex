@@ -12,7 +12,7 @@ defmodule RescordWeb.MailPreviewController do
   use RescordWeb, :controller
 
   def index(conn, _params) do
-    render(conn, :index, previews: Rescord.Mail.previews())
+    render(conn, :index, previews: Rescord.Mail.previews(), page_title: "The emails of Rescord")
   end
 
   def show(conn, %{"name" => name, "part" => part}) do

@@ -162,6 +162,16 @@ release (ADR 0047).
 
 ### Added
 
+- Rescord now has a colophon, at `/colophon`: what Rescord is, its
+  licence, what it is built with, how its pages are made, and an
+  accessibility statement that says what is tested and what is not right
+  yet. Each page now ends with a footer that links to the colophon, to
+  the accessibility statement and to the source code. A person who is
+  signed in also reads the version of Rescord there (ADR 0090).
+- The page of an error, such as an address that Rescord does not have,
+  is now a page of Rescord: it has the look of the site, a heading, words
+  that say what to do, and a link to the first page. Before, it was the
+  two words "Not Found" (ADR 0090).
 - Rescord now records the conditions that a resident has, such as
   bumblefoot or a respiratory infection, each with its first day, its last
   day when it is over, a mark for a chronic condition and a note
@@ -385,6 +395,13 @@ release (ADR 0047).
 
 ### Changed
 
+- The title of each page, which the tab of the browser shows, now has
+  the name of the page first and the name of the site after it:
+  "Residents · Rescord". The sign-in pages, which all had the title
+  "Rescord", now have a title each (ADR 0090).
+- The bar that shows that a page loads is now drawn by the stylesheet,
+  and it does not move for a person whose device asks for less motion
+  (ADR 0090).
 - When a member records that a resident left, Rescord now ends the
   placement of the resident, and takes it out of each routine and of each
   task that is due. A task that named only that resident is skipped, with
@@ -458,6 +475,19 @@ release (ADR 0047).
 
 ### Fixed
 
+- The focus of the keyboard now stays where a person works. After a
+  press on a button that then goes, such as Done of a task, the focus
+  stays in the same row. After a link to another page, the focus goes to
+  the heading of the new page, which a screen reader then reads. Before,
+  the focus went to the top of the page each time (ADR 0090).
+- A receipt that is a file, and not a picture, is now a link with a name
+  for a screen reader: the name of the file and its kind. Before, the
+  link had no name (ADR 0090).
+- The name that a screen reader and voice control get for a button now
+  starts with the words that show on the button, so a person who says
+  "Take off" or "Pause" to the device reaches it. This is so for the
+  buttons of the receipts, the attachments, the photos, the routines,
+  the tasks, the families and the root users (ADR 0090).
 - An administrator who removes a resident that was recorded by mistake
   now ends its placement too, and takes the resident out of each task and
   each routine that named it. Before, those records still named a resident

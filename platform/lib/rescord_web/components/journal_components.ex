@@ -277,7 +277,7 @@ defmodule RescordWeb.JournalComponents do
             type="button"
             phx-click="cancel_file"
             phx-value-ref={entry.ref}
-            aria-label={"Take #{entry.client_name} out"}
+            aria-label={"Take out #{entry.client_name}"}
           >
             Take out
           </.button>
@@ -316,7 +316,7 @@ defmodule RescordWeb.JournalComponents do
             :if={Journal.can_remove_attachment?(@role, @current_user, attachment)}
             phx-click="remove_attachment"
             phx-value-id={attachment.id}
-            aria-label={"Take #{attachment.name} off the entry"}
+            aria-label={"Take off #{attachment.name}"}
           >
             Take off
           </.button>

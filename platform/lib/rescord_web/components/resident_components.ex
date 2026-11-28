@@ -370,7 +370,7 @@ defmodule RescordWeb.ResidentComponents do
             :if={can?(@role, :family_member, :remove)}
             phx-click="remove_from_family"
             phx-value-id={membership.id}
-            aria-label={"Take the resident out of #{membership.family.name}"}
+            aria-label={"Take out of #{membership.family.name}"}
           >
             Take out
           </.button>

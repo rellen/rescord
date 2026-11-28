@@ -31,7 +31,9 @@ a location, inventory, an item, suppliers, lists, members, roles, partner
 refuges, transfers, settings, export, and the root pages. The tools and the
 dose calculator came later (ADR 0072), and `PhoneTest` visits them too. The
 expenses, the form of an expense and the page of an expense came with
-ADR 0082, and `PhoneTest` visits them too.
+ADR 0082, and `PhoneTest` visits them too. `RescordWeb.PagesFixtures` now
+makes the organisation and names the pages, for `PhoneTest` and for the
+accessibility test of ADR 0090.
 
 ## What was found, and what was done
 

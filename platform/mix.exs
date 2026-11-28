@@ -112,6 +112,9 @@ defmodule Rescord.MixProject do
       # The browser tests (ADR 0023).
       {:phoenix_test, "~> 0.14.0", only: :test, runtime: false},
       {:phoenix_test_playwright, "~> 0.19.0", only: :test, runtime: false},
+      # The rules of axe-core, which a browser test holds each page to
+      # (ADR 0090). The package carries the script of axe-core.
+      {:a11y_audit, "~> 0.6.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).

@@ -128,7 +128,7 @@ defmodule RescordWeb.TaskComponents do
                 :if={task.state != :due and Tasks.role_can?(@role, :reopen)}
                 phx-click="reopen"
                 phx-value-id={task.id}
-                aria-label={"Open the task #{task.title} again"}
+                aria-label={"Open again the task #{task.title}"}
               >
                 Open again
               </.button>

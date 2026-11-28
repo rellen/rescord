@@ -199,7 +199,7 @@ defmodule RescordWeb.ExpenseComponents do
             type="button"
             phx-click="cancel_receipt"
             phx-value-ref={entry.ref}
-            aria-label={"Take #{entry.client_name} out"}
+            aria-label={"Take out #{entry.client_name}"}
           >
             Take out
           </.button>
@@ -404,7 +404,11 @@ defmodule RescordWeb.ExpenseComponents do
       <p :if={@receipts == []}>The expense has no receipt.</p>
       <ul :if={@receipts != []} data-receipts>
         <li :for={receipt <- @receipts} id={"receipt-#{receipt.id}"}>
-          <a href={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}"} target="_blank">
+          <a
+            href={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}"}
+            target="_blank"
+            aria-label={!receipt.thumbnail_key && "#{receipt.name}, #{file_word(receipt)}"}
+          >
             <img
               :if={receipt.thumbnail_key}
               src={~p"/o/#{@organisation.short_name}/receipts/#{receipt.id}/thumbnail"}
@@ -413,8 +417,7 @@ defmodule RescordWeb.ExpenseComponents do
               width="320"
               height="320"
             />
-            <span :if={!receipt.thumbnail_key} data-file aria-hidden="true">{file_word(receipt)}</span>
-            <span :if={!receipt.thumbnail_key} hidden>{receipt.name}</span>
+            <span :if={!receipt.thumbnail_key} data-file>{file_word(receipt)}</span>
           </a>
           <small>{receipt.name} · {ExpenseWords.size(receipt.size)}</small>
           <.button
@@ -423,7 +426,7 @@ defmodule RescordWeb.ExpenseComponents do
             phx-click="take_off"
             phx-value-id={receipt.id}
             data-confirm={"Take #{receipt.name} off the expense?"}
-            aria-label={"Take #{receipt.name} off"}
+            aria-label={"Take off #{receipt.name}"}
           >
             Take off
           </.button>

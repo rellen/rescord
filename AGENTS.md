@@ -282,7 +282,36 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - Prefer HTML and CSS to a script: `popover`, `<details>`, `:has()`.
   - Wrap a `:hover` rule in `@media (hover: hover)`.
   - `RescordWeb.Features.PhoneTest` visits each kind of page with the
-    screen of a phone. Add a new page to it.
+    screen of a phone. Add a new page to `RescordWeb.PagesFixtures`, which
+    names the pages for it.
+- **Each page keeps WCAG 2.2 AA** (ADR 0090). The markup rules above do
+  most of it. These are the rest:
+  - `RescordWeb.Features.AccessibilityTest` runs axe-core on each page of
+    `RescordWeb.PagesFixtures`, in a browser. A new page goes there, and a
+    new kind of control still needs a person who uses it with the
+    keyboard.
+  - A page has one `main`, one `h1`, and no level of heading skipped.
+    `Layouts.app` writes the skip link, the site header and the site
+    footer. A page with no menu, such as an error, uses `Layouts.plain`.
+  - Each page has a title of its own: assign `page_title` in a LiveView,
+    and pass it to `render` in a controller. The root layout adds
+    " · Rescord".
+  - The name of a control starts with the words that show on it. Write
+    `aria-label={"Take off #{receipt.name}"}` on a button that says "Take
+    off", never "Take invoice.pdf off": a person who speaks to the device
+    says the words that show (WCAG 2.5.3).
+  - A link or a button that shows only a picture, a sign or a file type
+    has an `aria-label`.
+  - A row, a card or a list item that holds a button has an `id` that
+    stays the same from one render to the next. `assets/js/focus.ts` puts
+    the focus of the keyboard back in that place when the button goes,
+    and on the `h1` of a new live page. Do not move the focus yourself.
+  - Nothing moves for a person who asks for less motion: the base layer
+    stops each animation and transition of CSS. Do not animate with a
+    script.
+  - A change to what a page can or cannot do for a person with a
+    disability changes the accessibility statement of the colophon
+    (`controllers/page_html/colophon.html.heex`) too.
 - **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
   a list or a grid with filters, a sort, a search and pages. Do not write
   those by hand.

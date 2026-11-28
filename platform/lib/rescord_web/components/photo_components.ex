@@ -168,7 +168,7 @@ defmodule RescordWeb.PhotoComponents do
                 type="button"
                 phx-click="cancel_photo"
                 phx-value-ref={entry.ref}
-                aria-label={"Take #{entry.client_name} out"}
+                aria-label={"Take out #{entry.client_name}"}
               >
                 Take out
               </.button>
