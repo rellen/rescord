@@ -41,7 +41,7 @@ defmodule RescordWeb.RubyLive do
      socket
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
-     |> assign(problems: [], recent: [], about: nil, asks: [])
+     |> assign(problems: [], recent: [], about: nil, asks: [], name_form: nil)
      |> assign(refused: nil, allowance: nil, closed?: false, settings?: Ruby.sets?(scope(socket)))
      |> assign_form("")}
   end
@@ -93,11 +93,8 @@ defmodule RescordWeb.RubyLive do
         |> JS.remove_attribute("disabled", to: "#ruby-send")
       }
     >
-      <nav :if={@conversation} aria-label="Breadcrumb">
-        <.link patch={~p"/o/#{@organisation.short_name}/ruby"}>Ruby</.link>
-      </nav>
-
       <.header icon={Icons.section(:ruby)}>
+        <:crumb :if={@conversation} patch={~p"/o/#{@organisation.short_name}/ruby"}>Ruby</:crumb>
         {if @conversation, do: RubyWords.title(@conversation), else: "Ruby"}
         <:subtitle :if={!@conversation}>The assistant of {@organisation.name}</:subtitle>
         <:actions :if={@conversation}>
@@ -108,6 +105,8 @@ defmodule RescordWeb.RubyLive do
       </.header>
 
       <RubyChatComponents.about :if={@about} about={@about} organisation={@organisation} />
+
+      <RubyChatComponents.manage :if={@conversation} name_form={@name_form} />
 
       <RubyChatComponents.start
         :if={!@conversation}
@@ -146,7 +145,7 @@ defmodule RescordWeb.RubyLive do
           again={:form}
           allowance={@allowance}
         />
-        <.problems list={@problems} />
+        <.problems list={sentences(@problems)} />
       </div>
 
       <RubyChatComponents.composer
@@ -181,6 +180,45 @@ defmodule RescordWeb.RubyLive do
       {:noreply, say(socket, text)}
     else
       _not_the_last_failure -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "rename",
+        %{"name" => %{"title" => title}},
+        %{assigns: %{conversation: %{} = conversation}} = socket
+      )
+      when is_binary(title) do
+    case Ruby.rename_conversation(conversation, non_blank(title), scope(socket)) do
+      {:ok, conversation} ->
+        {:noreply,
+         socket
+         |> assign(conversation: conversation, page_title: RubyWords.title(conversation))
+         |> assign_name_form(conversation)
+         |> put_flash(:info, "The conversation has a new name.")}
+
+      # A problem of the name is in the form. Any other, such as a
+      # conversation that another tab removed, is above it, and the page
+      # reads again: it leaves a conversation that is gone.
+      {:error, error} ->
+        {named, other} = Enum.split_with(Ruby.problems(error), &match?({:title, _words}, &1))
+        socket = assign_name_form(socket, %{"title" => title}, named)
+
+        {:noreply, if(other == [], do: socket, else: socket |> assign(problems: other) |> read())}
+    end
+  end
+
+  def handle_event("remove", _params, %{assigns: %{conversation: %{} = conversation}} = socket) do
+    case Ruby.remove_conversation(conversation, scope(socket)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> leave()
+         |> put_flash(:info, "The conversation is removed.")
+         |> push_navigate(to: start_path(socket) <> "/conversations")}
+
+      {:error, error} ->
+        {:noreply, socket |> assign(problems: Ruby.problems(error)) |> read()}
     end
   end
 
@@ -312,6 +350,7 @@ defmodule RescordWeb.RubyLive do
       socket
       |> assign(conversation: conversation, problems: [], refused: nil)
       |> assign(:about, about(conversation.about, socket))
+      |> assign_name_form(conversation)
       |> read()
 
     # A page that opens while Ruby answers says so once.
@@ -440,6 +479,25 @@ defmodule RescordWeb.RubyLive do
 
   defp assign_form(socket, text),
     do: assign(socket, :form, to_form(%{"text" => text}, as: :message))
+
+  # The form of a new name, with the name that the conversation has, or
+  # with what the person typed and the problems of it.
+  defp assign_name_form(socket, %{title: title}),
+    do: assign_name_form(socket, %{"title" => title || ""}, [])
+
+  defp assign_name_form(socket, params, problems) do
+    errors = for {field, words} <- problems, field == :title, do: {:title, {words, []}}
+    assign(socket, :name_form, to_form(params, as: :name, errors: errors, action: :validate))
+  end
+
+  # The words of each problem as a sentence above the form: a problem of
+  # a field, such as the text of a message, names what to do.
+  defp sentences(problems) do
+    for {_field, words} <- problems do
+      {first, rest} = String.split_at(words, 1)
+      String.upcase(first) <> rest
+    end
+  end
 
   defp scope(socket),
     do: [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]

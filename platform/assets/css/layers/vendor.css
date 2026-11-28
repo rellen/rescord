@@ -421,7 +421,7 @@
 }
 
 /* An item that is a card has its own edge, and needs no line below it. */
-[data-key="list_item_class"]:has(> article) {
+[data-key="list_item_class"]:is(:has(> article), :has(> a[data-conversation])) {
   padding-block: 0;
   border-block-end: 0;
 }

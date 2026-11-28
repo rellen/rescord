@@ -2144,6 +2144,8 @@ pre[data-wrap] {
  *   main[data-ruby]          the page of Ruby
  *   a[data-ruby]             the link to Ruby in the site bar
  *   a[data-about]            what a conversation is about: a resident, an item
+ *   a[data-conversation]     one conversation in the list of a member
+ *   [data-manage]            the name of a conversation and its removal
  *   section[data-log]        the conversation
  *   ol[data-chat]            its messages
  *   article[data-from]       one message, from "member" or from "ruby"
@@ -2241,10 +2243,11 @@ main[data-ruby] {
   grid-template-areas:
     "head"
     "about"
+    "manage"
     "log"
     "problem"
     "say";
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto auto 1fr auto auto;
   grid-template-columns: minmax(0, 1fr);
   padding-block-end: 0;
 }
@@ -2254,19 +2257,21 @@ main[data-ruby] > header {
   margin-block-end: 1rem;
 }
 
-main[data-ruby] > nav[aria-label="Breadcrumb"] {
-  grid-area: head;
-  align-self: start;
-}
-
-/* The breadcrumb and the header share the first row: the header starts
-   below the line of the breadcrumb. */
-main[data-ruby] > nav[aria-label="Breadcrumb"] + header {
-  padding-block-start: 1.75rem;
-}
-
 main[data-ruby] > [data-about] {
   grid-area: about;
+}
+
+/* The name of a conversation and its removal: two closed lines below the
+   header, out of the way of the messages. */
+main[data-ruby] > [data-manage] {
+  display: grid;
+  grid-area: manage;
+  gap: 0.5rem;
+  margin-block-end: 1.25rem;
+}
+
+main[data-ruby] > [data-manage] > details {
+  margin: 0;
 }
 
 main[data-ruby] > section:not([data-composer]) {
@@ -2313,7 +2318,7 @@ main[data-ruby] [role="status"][data-quiet],
 
 /* ------------------------------------------- what a conversation is about */
 
-a[data-about] {
+:is(a[data-about], a[data-conversation]) {
   display: flex;
   gap: 0.625rem;
   align-items: center;
@@ -2327,28 +2332,33 @@ a[data-about] {
   border-radius: var(--radius);
 }
 
-a[data-about] > span:not([data-portrait]),
+:is(a[data-about], a[data-conversation]) > span:not([data-portrait]),
 ul[data-links] a > span:not([data-portrait]) {
   display: grid;
   flex: 1;
   min-inline-size: 0;
 }
 
-a[data-about] small,
+:is(a[data-about], a[data-conversation]) small,
 ul[data-links] a small {
   font-size: 0.8125rem;
   font-weight: 400;
   color: var(--muted);
 }
 
-a[data-about]::after {
+:is(a[data-about], a[data-conversation])::after {
   color: var(--accent);
   content: "\203A";
   content: "\203A" / "";
 }
 
+a[data-conversation] {
+  margin-block-end: 0.5rem;
+  font-weight: 600;
+}
+
 @media (hover: hover) {
-  a[data-about]:hover {
+  :is(a[data-about], a[data-conversation]):hover {
     border-color: var(--accent);
   }
 }

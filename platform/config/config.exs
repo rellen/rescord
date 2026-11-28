@@ -70,7 +70,10 @@ config :rescord, Oban,
       # that still carry their metadata (issue 34).
       {"53 * * * *", Rescord.Images.Workers.Complete},
       # The sanity checks that are due, each hour (ADR 0114, issue 38).
-      {"47 * * * *", Rescord.Health.Workers.Run}
+      {"47 * * * *", Rescord.Health.Workers.Run},
+      # The conversations of Ruby past their days or of a member who left,
+      # and a reply that lost its job (ADR 0069).
+      {"17 * * * *", Rescord.Ruby.Workers.Tidy}
     ]
   ]
 

@@ -62,6 +62,7 @@ defmodule RescordWeb.Usage do
     RescordWeb.DoseLive => :tools,
     RescordWeb.RubySettingsLive => :assistant,
     RescordWeb.RubyLive => :assistant,
+    RescordWeb.RubyConversationsLive => :assistant,
     RescordWeb.ListsLive => :lists,
     RescordWeb.MembersLive => :members,
     RescordWeb.RolesLive => :members,

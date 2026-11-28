@@ -667,6 +667,16 @@ release (ADR 0047).
   is about that record: the page of Ruby names it, with a link back, and
   offers things to ask about it, and Ruby knows which record the member
   means. A person who cannot ask Ruby sees none of these links.
+- A member finds their conversations with Ruby on a new page, "Your
+  conversations" (`/o/<organisation>/ruby/conversations`), the newest
+  first, with a search in their names, and each with the record that it
+  is about and how many messages it holds. The page says that the
+  administrators can read what a member asks Ruby and how many days a
+  conversation stays. A member gives a conversation a new name, removes
+  one, or removes all of theirs. Each hour a job deletes the
+  conversations past the days of the settings and those of a person who
+  is no member any more, and ends a reply that lost its job, so that its
+  conversation takes the next message.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

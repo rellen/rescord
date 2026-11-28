@@ -284,6 +284,7 @@ defmodule RescordWeb.PagesFixtures do
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
               insights/care insights/residents insights/conditions
               reports lists members roles partners transfers settings settings/ruby export ruby
+              ruby/conversations
               ruby/#{conversation.id} ruby/#{closed.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
               expenses/#{owed.id} tasks/#{task.id} notifications privacy privacy/#{request.id}),

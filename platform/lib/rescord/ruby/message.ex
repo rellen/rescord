@@ -143,6 +143,9 @@ defmodule Rescord.Ruby.Message do
     update :grow do
       description "Saves the words, the parts and the steps of a reply so far. Only Ruby runs it"
       accept [:text, :parts, :steps]
+      # A reply that `Workers.Tidy` ended, or that ended before, takes no
+      # more words: the write is stale, and `Replies` says `:gone`.
+      change filter(expr(state == :streaming))
     end
 
     update :close do
@@ -160,6 +163,9 @@ defmodule Rescord.Ruby.Message do
         :prompt_tokens,
         :prompt_fingerprint
       ]
+
+      # One end for each reply: the job and `Workers.Tidy` cannot both write it.
+      change filter(expr(state == :streaming))
     end
 
     update :rate do
