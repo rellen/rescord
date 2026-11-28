@@ -6,6 +6,13 @@ defmodule Rescord.RateLimit do
   each node counts by itself and a restart forgets the counts. The
   application starts it.
 
+  The window slides (ADR 0115): a limit of 30 a minute holds for each
+  minute, the last 60 seconds before each call. A fixed window would start
+  a new count at the turn of each minute, so a person could make 60 calls
+  in two seconds, and a test that ran over the turn would see no limit.
+  The table keeps one row for each call that it allowed, until the end of
+  its period.
+
   A resource limits an action with the extension `AshRateLimiter`, and names
   this module as the backend:
 
@@ -25,5 +32,5 @@ defmodule Rescord.RateLimit do
   that limits the requests of one client.
   """
 
-  use Hammer, backend: :ets
+  use Hammer, backend: :ets, algorithm: :sliding_window
 end

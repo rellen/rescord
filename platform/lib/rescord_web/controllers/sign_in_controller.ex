@@ -70,6 +70,6 @@ defmodule RescordWeb.SignInController do
   end
 
   defp client_key(conn) do
-    "sign-in/client/" <> (conn.remote_ip |> :inet.ntoa() |> to_string())
+    "sign-in/client/" <> RescordWeb.ClientAddress.limit_key(conn.remote_ip)
   end
 end

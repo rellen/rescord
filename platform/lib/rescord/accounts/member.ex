@@ -46,7 +46,7 @@ defmodule Rescord.Accounts.Member do
     domain: Rescord.Accounts,
     temporal?: false,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshCloak]
+    extensions: [AshCloak, AshRateLimiter]
 
   postgres do
     table "members"
@@ -58,6 +58,21 @@ defmodule Rescord.Accounts.Member do
     vault(fn _resource, _context -> Rescord.Vault end)
     attributes([:held_email])
     encrypt_nil?(false)
+  end
+
+  # Each invitation sends an email. One person invites 50 people in an hour
+  # at most (ADR 0115), so a member with the power `:members` cannot send
+  # mail without end, and a removal and a new invitation do not go round and
+  # round. The count is of this node, and a restart forgets it (ADR 0020).
+  rate_limit do
+    backend Rescord.RateLimit
+
+    action :invite_member, limit: 50, per: :timer.hours(1), key: &__MODULE__.inviter_key/2
+
+    action :invite_administrator,
+      limit: 50,
+      per: :timer.hours(1),
+      key: &__MODULE__.inviter_key/2
   end
 
   paper_trail do
@@ -80,7 +95,13 @@ defmodule Rescord.Accounts.Member do
 
     create :invite_member do
       description "Invites a person to the organisation, with the role `role_id` or the role of a member"
-      argument :email, :ci_string, allow_nil?: false
+
+      argument :email, :ci_string do
+        allow_nil? false
+        # An address of RFC 5321 has 254 characters at most.
+        constraints max_length: 254, match: ~r/\A[^@\s]+@[^@\s]+\z/
+      end
+
       argument :role_id, :uuid
       change {Rescord.Accounts.Changes.SetRole, key: :member}
       validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
@@ -92,7 +113,13 @@ defmodule Rescord.Accounts.Member do
 
     create :invite_administrator do
       description "Invites a person to the organisation as an administrator"
-      argument :email, :ci_string, allow_nil?: false
+
+      argument :email, :ci_string do
+        allow_nil? false
+        # An address of RFC 5321 has 254 characters at most.
+        constraints max_length: 254, match: ~r/\A[^@\s]+@[^@\s]+\z/
+      end
+
       change {Rescord.Accounts.Changes.SetRole, key: :administrator}
       change Rescord.Accounts.Changes.Invite
 
@@ -270,4 +297,10 @@ defmodule Rescord.Accounts.Member do
 
     identity :unique_former_number, [:former_number]
   end
+
+  @doc false
+  # One count for each person who invites, in all the organisations, for
+  # both kinds of invitation.
+  def inviter_key(_changeset, %{actor: %{id: id}}) when is_binary(id), do: "invite/person/" <> id
+  def inviter_key(_changeset, _context), do: "invite/nobody"
 end

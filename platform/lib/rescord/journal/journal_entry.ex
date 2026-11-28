@@ -64,6 +64,11 @@ defmodule Rescord.Journal.JournalEntry do
       validate Journal.Validations.KindHasItsFacts
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+
+      validate compare(:ends_on, greater_than_or_equal_to: :starts_on),
+        where: [present([:starts_on, :ends_on])],
+        message: "must be on or after the first day"
+
       change Journal.Changes.LinkEpisode
       change Journal.Changes.WriteDetail
     end
@@ -91,6 +96,11 @@ defmodule Rescord.Journal.JournalEntry do
       change Journal.Changes.HappenedAt
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+
+      validate compare(:ends_on, greater_than_or_equal_to: :starts_on),
+        where: [present([:starts_on, :ends_on])],
+        message: "must be on or after the first day"
+
       change Journal.Changes.LinkEpisode
       change Journal.Changes.WriteDetail
     end

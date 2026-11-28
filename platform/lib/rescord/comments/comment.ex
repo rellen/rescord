@@ -30,7 +30,8 @@ defmodule Rescord.Comments.Comment do
     domain: Rescord.Comments,
     temporal?: false,
     archive?: false,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshRateLimiter]
 
   alias Rescord.Comments.{Changes, Validations}
 
@@ -60,6 +61,15 @@ defmodule Rescord.Comments.Comment do
       reference :task, on_delete: :delete
       reference :expense, on_delete: :delete
     end
+  end
+
+  # A comment can tell members, who get a notification on each device. One
+  # person writes 10 comments in a minute at most (ADR 0115), so nobody can
+  # send notifications without end. The count is of this node, and a restart
+  # forgets it (ADR 0020).
+  rate_limit do
+    backend Rescord.RateLimit
+    action :write, limit: 10, per: :timer.minutes(1), key: &__MODULE__.writer_key/2
   end
 
   paper_trail do
@@ -224,4 +234,8 @@ defmodule Rescord.Comments.Comment do
         args: [:keep_comments, author_id: :user_id]
     end
   end
+
+  @doc false
+  def writer_key(_changeset, %{actor: %{id: id}}) when is_binary(id), do: "comments/person/" <> id
+  def writer_key(_changeset, _context), do: "comments/nobody"
 end

@@ -153,6 +153,26 @@ defmodule RescordWeb.SignInControllerTest do
       assert html_response(conn, 429) =~ "Too many requests"
     end
 
+    test "the addresses of one IPv6 network of 64 bits share one count (ADR 0115)", %{conn: conn} do
+      number = System.unique_integer([:positive])
+      network = {0x2001, 0xDB8, rem(div(number, 65_536), 65_536), rem(number, 65_536)}
+      address = fn host -> List.to_tuple(Tuple.to_list(network) ++ [0, 0, 0, host]) end
+
+      for host <- 1..20 do
+        conn = %{conn | remote_ip: address.(host)}
+        assert redirected_to(ask(conn, %{"email" => unique_address()})) == ~p"/sign-in/sent"
+      end
+
+      conn = %{conn | remote_ip: address.(21)}
+      assert html_response(ask(conn, %{"email" => unique_address()}), 429) =~ "Too many requests"
+
+      other =
+        {0x2001, 0xDB8, rem(div(number, 65_536), 65_536), rem(number + 1, 65_536), 0, 0, 0, 1}
+
+      assert redirected_to(ask(%{conn | remote_ip: other}, %{"email" => unique_address()})) ==
+               ~p"/sign-in/sent"
+    end
+
     test "behind a proxy on the same machine, each client has a limit of its own", %{conn: conn} do
       # Two clients that a proxy on 127.0.0.1 forwards (ADR 0046).
       [first, second] =

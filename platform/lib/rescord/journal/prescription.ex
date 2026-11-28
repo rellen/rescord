@@ -34,4 +34,12 @@ defmodule Rescord.Journal.Prescription do
       public? true
     end
   end
+
+  # The days of a prescription run forwards (ADR 0115). A correction can give
+  # one of the two days, so the check is of the record as it will be.
+  validations do
+    validate compare(:ends_on, greater_than_or_equal_to: :starts_on),
+      where: [present([:starts_on, :ends_on])],
+      message: "must be on or after the first day"
+  end
 end

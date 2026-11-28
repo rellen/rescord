@@ -19,6 +19,10 @@ config :rescord, RescordWeb.Endpoint,
     ]
   ]
 
+# The session cookie goes over HTTPS only (ADR 0115). Like `:force_ssl`, this
+# is set when the release is compiled.
+config :rescord, secure_session_cookie: true
+
 # Configure Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

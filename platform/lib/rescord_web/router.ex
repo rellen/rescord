@@ -19,7 +19,7 @@ defmodule RescordWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {RescordWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug RescordWeb.SecurityHeaders
     plug :fetch_current_user
   end
 
@@ -27,6 +27,12 @@ defmodule RescordWeb.Router do
   # (ADR 0110). Anyone else goes to `/`, before any part of the route runs.
   pipeline :root do
     plug :require_root
+  end
+
+  # Oban Web has an inline script and `style` attributes: its own policy,
+  # with a nonce of each response (ADR 0115).
+  pipeline :oban_web do
+    plug RescordWeb.SecurityHeaders, oban: true
   end
 
   pipeline :api do
@@ -110,7 +116,7 @@ defmodule RescordWeb.Router do
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
       live "/root/privacy", RootPrivacyLive
-      # The sanity checks of the server (ADR 0114).
+      # The sanity checks of the server (ADR 0115).
       live "/root/health", RootHealthLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
@@ -175,9 +181,10 @@ defmodule RescordWeb.Router do
   # routes, its files too; the hook guards the page each time it connects;
   # and the resolver says which actions a root user may take.
   scope "/root" do
-    pipe_through [:browser, :root]
+    pipe_through [:browser, :root, :oban_web]
 
     oban_dashboard("/oban",
+      csp_nonce_assign_key: :csp_nonce,
       on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}],
       resolver: RescordWeb.ObanResolver,
       logo_path: "/root"

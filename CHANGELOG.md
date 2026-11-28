@@ -346,6 +346,20 @@ release (ADR 0047).
   each character that a URL may not hold as a `%` code, such as `%20`
   for a space and `%5E` for `^`. A URL that worked before keeps working
   when it has no such character.
+- The session cookie now goes over HTTPS only (ADR 0115). Rescord in
+  production already sends each request of plain HTTP to HTTPS, so no step
+  is needed behind a proxy with TLS. A browser takes such a cookie on
+  `http://localhost` too, except Safari: open Rescord on a machine of
+  its own by its HTTPS address.
+- A prescription now needs a last day on or after its first day
+  (ADR 0115). A prescription from before the upgrade with a last day
+  before its first one cannot be corrected until a person gives it right
+  days. To find such rows, run this in each schema of an organisation
+  (`org_` and the id): `SELECT entry_id FROM prescriptions WHERE ends_on <
+  starts_on;`. No row changes at the upgrade.
+- A new or changed email address of a user, and the address of an
+  invitation, now needs one `@`, no space and 254 characters at most
+  (ADR 0115). An address from before the upgrade stays as it is.
 
 ### Added
 
@@ -1022,6 +1036,25 @@ release (ADR 0047).
   written again with no metadata, and its copies in the transfers on the
   server too. See the upgrade notes for what the job cannot reach
   (issue 34).
+- Each page now has a strict Content-Security-Policy (ADR 0115): a page
+  runs only the scripts of the site and loads only its styles, fonts and
+  images, and a form sends only to the site. The words that people write
+  were escaped already; the policy is a second wall behind that, so a
+  script or an image of another site that got into a page does not run
+  or load. Each page also has a Permissions-Policy that turns off the
+  camera, the microphone, the location, payment and USB for scripts. A
+  photo from the camera of a phone still works: that is a file of the
+  form.
+  Oban Web, for root users, gets a nonce for its own script and allows
+  the `style` attributes of its bars.
+- One person sends 10 comments in a minute and 50 invitations in an hour
+  at most (ADR 0115), so a member cannot send notifications or email
+  without end. The limit of sign-in links for one client now counts an
+  IPv6 network of 64 bits as one client, as one home or server has. The
+  socket of the pages takes a message of 1 MB at most.
+- Each rate limit now counts the calls of the last period, at each call
+  (ADR 0115). Before, the count started again at the turn of each
+  period, so twice the limit could pass in a few seconds across the turn.
 - The history of a record is closed to each request that asks for it by
   itself. Rescord keeps each change of a record as a version, and the
   versions had no rule of their own about who reads them. A page shows the

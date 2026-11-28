@@ -155,6 +155,30 @@ defmodule Rescord.JournalTest do
       assert Exception.message(error) =~ "cannot be after now"
     end
 
+    test "of a prescription has a last day on or after its first day (ADR 0115)", context do
+      fields = %{
+        resident_id: context.biscuit.id,
+        kind: :prescription,
+        medication: "A sample antibiotic",
+        starts_on: ~D[2026-11-16],
+        ends_on: ~D[2026-11-12]
+      }
+
+      assert {:error, %Ash.Error.Invalid{} = error} = Journal.write_entry(fields, context.options)
+      assert Exception.message(error) =~ "must be on or after the first day"
+
+      entry = Journal.write_entry!(%{fields | ends_on: ~D[2026-11-16]}, context.options)
+
+      # A correction that gives one day is held to the other day of the record.
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Journal.correct_entry(entry, %{ends_on: ~D[2026-11-01]}, context.options)
+
+      assert Exception.message(error) =~ "must be on or after the first day"
+
+      assert {:ok, _entry} =
+               Journal.correct_entry(entry, %{ends_on: ~D[2026-11-20]}, context.options)
+    end
+
     test "is in the journal in the order of the time that each thing happened", context do
       now = DateTime.utc_now()
 

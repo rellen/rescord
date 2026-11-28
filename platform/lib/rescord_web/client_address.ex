@@ -59,6 +59,24 @@ defmodule RescordWeb.ClientAddress do
     end
   end
 
+  @doc """
+  The part of the address of a client that a rate limit counts (ADR 0115):
+  an IPv4 address whole, and the network of 64 bits of an IPv6 address. A
+  single home or server gets a whole /64 of IPv6, so a count of each address
+  would give one client a new limit for each address of its network.
+
+      iex> RescordWeb.ClientAddress.limit_key({192, 0, 2, 7})
+      "192.0.2.7"
+
+      iex> RescordWeb.ClientAddress.limit_key({0x2001, 0xDB8, 1, 2, 3, 4, 5, 6})
+      "2001:db8:1:2::/64"
+  """
+  @spec limit_key(:inet.ip_address()) :: String.t()
+  def limit_key({_, _, _, _} = address), do: address |> :inet.ntoa() |> to_string()
+
+  def limit_key({a, b, c, d, _, _, _, _}),
+    do: to_string(:inet.ntoa({a, b, c, d, 0, 0, 0, 0})) <> "/64"
+
   @doc "The trusted networks of the configuration, or of the default."
   @spec trusted() :: [network]
   def trusted do

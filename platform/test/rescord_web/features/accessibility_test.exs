@@ -379,10 +379,15 @@ defmodule RescordWeb.Features.AccessibilityTest do
   defp spaced do
     """
     (async () => {
-      const style = document.createElement("style");
-      style.textContent = `* { line-height: 1.5 !important; letter-spacing: 0.12em !important;
-        word-spacing: 0.16em !important; } p { margin-block-end: 2em !important; }`;
-      document.head.append(style);
+      // A sheet of the script, not a <style> element: the policy of the page
+      // refuses an inline style (ADR 0115).
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(`* { line-height: 1.5 !important; letter-spacing: 0.12em !important;
+        word-spacing: 0.16em !important; } p { margin-block-end: 2em !important; }`);
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+      if (getComputedStyle(document.body).letterSpacing === "normal") {
+        throw new Error("the text spacing of WCAG 1.4.12 did not apply");
+      }
 
       const live = document.querySelector("[data-phx-main]");
       for (let i = 0; live && !live.classList.contains("phx-connected") && i < 100; i++) {

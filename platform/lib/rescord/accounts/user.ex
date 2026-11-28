@@ -179,6 +179,9 @@ defmodule Rescord.Accounts.User do
     attribute :email, :ci_string do
       allow_nil? true
       public? true
+      # One @, no space, and 254 characters at most (RFC 5321). The check is of
+      # a new or changed address only (ADR 0115).
+      constraints max_length: 254, match: ~r/\A[^@\s]+@[^@\s]+\z/
     end
 
     attribute :erased_at, :utc_datetime_usec do

@@ -330,7 +330,9 @@ defmodule Rescord.Ruby.UsageTest do
     test "is 120 messages a day", context do
       # 119 of the day are used, with none of this minute.
       key = "ruby/say/day/" <> context.ana.id
-      {:allow, 119} = Rescord.RateLimit.hit(key, :timer.hours(24), 120, 119)
+
+      for count <- 1..119,
+          do: {:allow, ^count} = Rescord.RateLimit.hit(key, :timer.hours(24), 120)
 
       assert {:ok, _message} = say_in_new(context.as_ana)
 
