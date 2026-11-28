@@ -87,7 +87,7 @@ defmodule RescordWeb.PhotoComponents do
           </li>
         </ul>
       </nav>
-      <p :if={@albums == []}>No albums yet.</p>
+      <p :if={@albums == []}>No album yet. An album keeps some of the photos together.</p>
 
       <details :if={@can_make?} id="make-album-details">
         <summary><.icon name="plus" /> Make an album</summary>
@@ -175,12 +175,13 @@ defmodule RescordWeb.PhotoComponents do
             </li>
           </ul>
         </fieldset>
-        <.input id="add-caption" name="add[caption]" label="Caption (optional)" value="" />
+        <.input id="add-caption" name="add[caption]" label="Caption" value="" />
         <.input
           id="add-taken-on"
           name="add[taken_on]"
           type="date"
-          label="Date (optional: the date of the camera, or today)"
+          label="Date"
+          hint="Leave it empty for the date of the camera, or today."
           value=""
           max={@max_date}
         />
@@ -215,7 +216,7 @@ defmodule RescordWeb.PhotoComponents do
 
   def grid(assigns) do
     ~H"""
-    <p :if={@items == []} id="no-photos">No photos here yet.</p>
+    <p :if={@items == []} id="no-photos">No photo here yet.</p>
     <ul :if={@items != []} data-photos id="photos">
       <li :for={item <- @items} id={"item-#{ref(item)}"}>
         <.card

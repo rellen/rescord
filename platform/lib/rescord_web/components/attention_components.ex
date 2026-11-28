@@ -60,12 +60,18 @@ defmodule RescordWeb.AttentionComponents do
         <span :if={@total > 0}>{summary(@total)}</span>
       </p>
 
-      <p :if={@total == 0} id="attention-nothing">
-        A task that is overdue or due today, an item to count or to order, a resident that is
-        expected or late back, a location over its capacity, a transfer that waits for an
-        answer, and a request to erase data that waits are here when your role can act on
-        them. The page shows a change at once, and reads them again each minute.
-      </p>
+      <div :if={@total == 0} id="attention-nothing">
+        <p>This page lists what your role can act on:</p>
+        <ul>
+          <li>a task that is overdue or due today</li>
+          <li>an item to count or to order</li>
+          <li>a resident that is expected, or late back</li>
+          <li>a location with more residents than it has room for</li>
+          <li>a transfer that waits for an answer</li>
+          <li>a request to erase data that waits for an answer</li>
+        </ul>
+        <p>The page shows a change at once.</p>
+      </div>
 
       <section
         :for={part <- @parts}

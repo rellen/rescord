@@ -140,7 +140,7 @@ defmodule RescordWeb.ResidentsLive do
         <:col :let={resident} field="name" label="Name" sort search>
           <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{resident.id}"}>
             <PhotoComponents.portrait url={@portraits[resident.id]} name={resident.name} />
-            {resident.name || "No name yet"}
+            {resident.name || "A resident with no name"}
           </.link>
         </:col>
         <:col :let={resident} field="species_label" label="Species" sort>

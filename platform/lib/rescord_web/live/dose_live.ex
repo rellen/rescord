@@ -72,7 +72,7 @@ defmodule RescordWeb.DoseLive do
        residents:
          residents
          |> Enum.reject(&(&1.status == :left))
-         |> Enum.map(&{&1.name || "No name yet", &1.id})
+         |> Enum.map(&{&1.name || "A resident with no name", &1.id})
          |> Enum.sort(),
        resident: nil,
        weights: [],

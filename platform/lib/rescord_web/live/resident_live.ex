@@ -76,7 +76,7 @@ defmodule RescordWeb.ResidentLive do
       other_residents:
         residents
         |> Enum.reject(&(&1.id == socket.assigns.resident.id))
-        |> Enum.map(&{&1.name || "No name yet", &1.id})
+        |> Enum.map(&{&1.name || "A resident with no name", &1.id})
         |> Enum.sort(),
       other_families:
         families

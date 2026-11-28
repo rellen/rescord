@@ -84,8 +84,8 @@ defmodule RescordWeb.PhotoPagesTest do
       |> upload("Choose photos", file!(context, "two.png", photo(format: ".png")))
       |> assert_has(region("Garden") |> button("Take out one.jpg"))
       |> assert_has(region("Garden") |> button("Take out two.png"))
-      |> fill_in("Caption (optional)", with: "In the garden")
-      |> fill_in("Date (optional: the date of the camera, or today)", with: "2026-11-01")
+      |> fill_in("Caption", with: "In the garden")
+      |> fill_in("Date", with: "2026-11-01")
       |> click_button("Add the photos")
       |> assert_has(status(), text: "The photos are added.")
 
@@ -264,7 +264,7 @@ defmodule RescordWeb.PhotoPagesTest do
     session
     |> assert_has(main() |> link("Biscuit"))
     |> assert_has(main() |> link("maple"))
-    |> assert_has(main() |> link("No name yet"))
+    |> assert_has(main() |> link("A resident with no name"))
     |> assert_has(portrait.(context.biscuit) <> ~s([aria-hidden="true"]))
     |> assert_has(
       portrait.(context.biscuit) <>
@@ -287,7 +287,7 @@ defmodule RescordWeb.PhotoPagesTest do
   test "a member makes, renames and removes an album", context do
     context.conn
     |> visit(context.path)
-    |> assert_has(region("Albums"), text: "No albums yet.")
+    |> assert_has(region("Albums"), text: "No album yet.")
     |> fill_in("Name of the album", with: "Recovery")
     |> click_button("Make the album")
     |> assert_has(status(), text: "The album is made.")
@@ -296,7 +296,7 @@ defmodule RescordWeb.PhotoPagesTest do
     |> click_button("Rename")
     |> assert_has(main() |> region("After surgery"))
     |> click(button("Remove the album"))
-    |> assert_has(region("Albums"), text: "No albums yet.")
+    |> assert_has(region("Albums"), text: "No album yet.")
   end
 
   test "the links send the photo and its thumbnail with their types, to a member alone",

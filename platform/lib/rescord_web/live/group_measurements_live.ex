@@ -179,11 +179,13 @@ defmodule RescordWeb.GroupMeasurementsLive do
 
       <.header icon={Icons.section(:measurements)}>
         Measurements of {Residents.group_name(@group)}
-        <:subtitle>Each member, with the others behind it</:subtitle>
+        <:subtitle>
+          A chart for each resident in the group, with the others in grey behind it
+        </:subtitle>
       </.header>
 
-      <p :if={@residents == []}>The group has no member.</p>
-      <p :if={@residents != [] and @kinds == []}>No measurement of a member is recorded.</p>
+      <p :if={@residents == []}>The group has no resident yet.</p>
+      <p :if={@residents != [] and @kinds == []}>No resident in the group has a measurement yet.</p>
 
       <form :if={length(@kinds) > 1} id="kind" phx-change="kind">
         <.input

@@ -71,7 +71,7 @@ defmodule RescordWeb.LocationComponents do
       <ul :if={@node.residents != [] or @node.groups != []}>
         <li :for={placement <- @node.residents}>
           <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{placement.resident_id}"}>{placement.resident.name ||
-            "No name yet"}</.link>
+            "A resident with no name"}</.link>
         </li>
         <li :for={{_placement, group, _members} <- @node.groups}>
           <.link navigate={~p"/o/#{@organisation.short_name}/groups/#{group.id}"}>{Rescord.Residents.group_name(
@@ -124,6 +124,7 @@ defmodule RescordWeb.LocationComponents do
           label="Or a group"
           prompt="Choose"
           options={@groups}
+          hint="Choose a resident or a group, not both. One that lives in another location moves here."
         />
         <.input
           field={@place_form[:at]}
@@ -148,11 +149,12 @@ defmodule RescordWeb.LocationComponents do
     ~H"""
     <section aria-labelledby="who-heading">
       <h2 id="who-heading">Who lives here</h2>
-      <p :if={@node.residents == [] and @node.groups == []}>Nobody has a placement here.</p>
+      <p :if={@node.residents == [] and @node.groups == []}>Nobody lives here now.</p>
       <ul :if={@node.residents != [] or @node.groups != []}>
         <li :for={placement <- @node.residents}>
           <.link navigate={resident_path(@organisation, placement.resident_id)}>
-            <.icon name={Icons.section(:residents)} /> {placement.resident.name || "No name yet"}
+            <.icon name={Icons.section(:residents)} /> {placement.resident.name ||
+              "A resident with no name"}
           </.link>
           <.button
             :if={can?(@role, :placement, :finish)}

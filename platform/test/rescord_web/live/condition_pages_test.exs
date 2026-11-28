@@ -477,7 +477,7 @@ defmodule RescordWeb.ConditionPagesTest do
       assert has_element?(
                view,
                "#now-words",
-               "3 conditions of 2 residents in care are not resolved."
+               "2 residents in care have 3 ongoing conditions."
              )
 
       assert count(view, "#now-by-condition", "Respiratory infection") == "2"
@@ -505,7 +505,7 @@ defmodule RescordWeb.ConditionPagesTest do
       assert has_element?(
                view,
                "#now-words",
-               "No resident in care has a condition that is not resolved."
+               "No resident in care has an ongoing condition."
              )
 
       refute has_element?(view, "#now-by-condition")
@@ -593,7 +593,7 @@ defmodule RescordWeb.ConditionPagesTest do
       assert has_element?(
                view,
                "#now-words",
-               "2 conditions of 1 resident in care are not resolved."
+               "1 resident in care has 2 ongoing conditions."
              )
 
       refute html =~ "Clover"

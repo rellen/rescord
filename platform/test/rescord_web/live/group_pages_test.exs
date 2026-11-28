@@ -84,7 +84,7 @@ defmodule RescordWeb.GroupPagesTest do
     test "makes a group with its first members, and lists it with its words", context do
       sisters!(context)
       {view, html} = open(context.conn, context.base <> "/groups")
-      assert html =~ "There is no group yet."
+      assert html =~ "No group yet."
 
       {_view, html} =
         submit(view, context.conn, "#group",
@@ -98,7 +98,7 @@ defmodule RescordWeb.GroupPagesTest do
       {_view, html} = open(context.conn, context.base <> "/groups")
       assert html =~ "Basil, Fern and Sage"
       assert html =~ "Sisters and an unrelated male"
-      refute html =~ "There is no group yet."
+      refute html =~ "No group yet."
     end
   end
 
@@ -215,7 +215,7 @@ defmodule RescordWeb.GroupPagesTest do
       {_view, html} = press(view, context.conn, "close", %{})
 
       assert html =~ "The group is closed."
-      assert html =~ "There is no group yet."
+      assert html =~ "No group yet."
     end
   end
 

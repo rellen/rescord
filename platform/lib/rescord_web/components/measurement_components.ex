@@ -339,7 +339,7 @@ defmodule RescordWeb.MeasurementComponents do
         <.link navigate={
           ~p"/o/#{@organisation.short_name}/residents/#{member.resident.id}/measurements?#{[range: @range]}"
         }>
-          {member.resident.name || "No name yet"}
+          {member.resident.name || "A resident with no name"}
         </.link>
         <.member_tile
           :if={member.series}

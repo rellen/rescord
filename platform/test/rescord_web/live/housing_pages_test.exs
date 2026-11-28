@@ -122,7 +122,7 @@ defmodule RescordWeb.HousingPagesTest do
     test "puts a resident there, and ends the placement", context do
       context.conn
       |> visit(context.path)
-      |> assert_has(who_lives_here(), text: "Nobody has a placement here.")
+      |> assert_has(who_lives_here(), text: "Nobody lives here now.")
       |> click_button("Put here")
       |> assert_has(main() |> alert(), text: "Choose a resident or a group")
       |> select("A resident", option: "Fern")
@@ -130,7 +130,7 @@ defmodule RescordWeb.HousingPagesTest do
       |> assert_has(who_lives_here() |> link("Fern"))
       |> assert_has(main(), text: "1 resident, room for 1")
       |> click(who_lives_here() |> button("End the placement of Fern"))
-      |> assert_has(who_lives_here(), text: "Nobody has a placement here.")
+      |> assert_has(who_lives_here(), text: "Nobody lives here now.")
     end
 
     test "puts a group there, at the time that the move happened", context do

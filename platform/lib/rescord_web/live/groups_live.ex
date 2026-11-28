@@ -24,7 +24,8 @@ defmodule RescordWeb.GroupsLive do
        page_title: "Groups",
        problems: [],
        groups: Enum.sort_by(groups, &Residents.group_name/1),
-       residents: residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort(),
+       residents:
+         residents |> Enum.map(&{&1.name || "A resident with no name", &1.id}) |> Enum.sort(),
        kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
        can_form?: Residents.role_can?(socket.assigns.role, :group, :form),
        form: to_form(%{"name" => "", "kind_id" => ""}, as: :group)
@@ -82,7 +83,10 @@ defmodule RescordWeb.GroupsLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <p :if={@groups == []}>There is no group yet.</p>
+      <p :if={@groups == []}>
+        No group yet. A group is residents you care for together, such as a litter.{if @can_form?,
+          do: " Make one with New group below."}
+      </p>
       <.groups_table :if={@groups != []} groups={@groups} organisation={@organisation} />
 
       <.new_group :if={@can_form?} form={@form} kinds={@kinds} residents={@residents} />

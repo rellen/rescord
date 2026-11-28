@@ -408,7 +408,7 @@ defmodule RescordWeb.ResidentPagesTest do
       assert html =~ ~s(href="#{context.base}/residents/#{resident.id}")
       assert html =~ "Guinea pig"
       assert html =~ "In care"
-      assert html =~ "No name yet"
+      assert html =~ "A resident with no name"
       assert html =~ "Expected"
       assert html =~ "New resident"
     end

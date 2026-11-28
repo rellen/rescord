@@ -21,7 +21,7 @@ defmodule RescordWeb.GroupComponents do
             <th scope="col">Group</th>
             <th scope="col">How they are related</th>
             <th scope="col">Kind</th>
-            <th scope="col">Members</th>
+            <th scope="col">Residents</th>
           </tr>
         </thead>
         <tbody>
@@ -35,7 +35,7 @@ defmodule RescordWeb.GroupComponents do
               {Residents.words(group) || "No relation is recorded"}
             </td>
             <td data-label="Kind">{if group.kind, do: group.kind.label, else: "Not recorded"}</td>
-            <td data-label="Members">{length(group.members)}</td>
+            <td data-label="Residents">{length(group.members)}</td>
           </tr>
         </tbody>
       </table>
@@ -62,7 +62,7 @@ defmodule RescordWeb.GroupComponents do
           options={@kinds}
         />
         <fieldset>
-          <legend>Members</legend>
+          <legend>Residents in the group</legend>
           <p :if={@residents == []}>There is no resident yet.</p>
           <label :for={{name, id} <- @residents}>
             <input type="checkbox" name="group[resident_ids][]" value={id} />
@@ -100,7 +100,8 @@ defmodule RescordWeb.GroupComponents do
         <.input
           field={@form[:description]}
           type="text"
-          label="How they are related, in your words. Leave it empty for the words of Rescord"
+          label="How they are related"
+          hint="In your words. Leave it empty, and Rescord writes it from their parents and families."
           maxlength="200"
         />
         <footer><.button type="submit">Save the group</.button></footer>
@@ -174,7 +175,7 @@ defmodule RescordWeb.GroupComponents do
     ~H"""
     <li>
       <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@member.resident_id}"}>
-        {@member.resident.name || "No name yet"}
+        {@member.resident.name || "A resident with no name"}
       </.link>
       <.leave_form :if={can?(@role, :group_member, :leave)} member={@member} />
     </li>
@@ -188,7 +189,7 @@ defmodule RescordWeb.GroupComponents do
   def join_form(assigns) do
     ~H"""
     <details id="add-member">
-      <summary><.icon name="plus" /> Add a member</summary>
+      <summary><.icon name="plus" /> Add a resident</summary>
       <.form for={@join_form} id="member" phx-submit="join">
         <.input
           field={@join_form[:resident_id]}
@@ -219,8 +220,8 @@ defmodule RescordWeb.GroupComponents do
   def group_members(assigns) do
     ~H"""
     <section aria-labelledby="members-heading">
-      <h2 id="members-heading">Members</h2>
-      <p :if={@group.members == []}>The group has no member.</p>
+      <h2 id="members-heading">Residents in the group</h2>
+      <p :if={@group.members == []}>The group has no resident yet.</p>
       <ul :if={@group.members != []}>
         <.member_item
           :for={member <- @group.members}

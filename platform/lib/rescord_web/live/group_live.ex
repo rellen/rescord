@@ -35,7 +35,7 @@ defmodule RescordWeb.GroupLive do
          others:
            residents
            |> Enum.reject(&MapSet.member?(inside, &1.id))
-           |> Enum.map(&{&1.name || "No name yet", &1.id})
+           |> Enum.map(&{&1.name || "A resident with no name", &1.id})
            |> Enum.sort(),
          kinds: kinds(kinds, group),
          join_form: to_form(%{"resident_id" => ""}, as: :member),

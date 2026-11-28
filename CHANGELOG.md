@@ -855,6 +855,15 @@ release (ADR 0047).
   as its pages do (ADR 0108).
 - A location with room for a number of residents says "2 residents, room
   for 3". A group in a location says "here: 2 of the 3 in the group".
+- The pages of the residents, the groups, the housing and the photos
+  help more: the desex status, the date of birth, the expected return, a
+  placement and the words of a group have a line of help, and an empty
+  list says what the thing is and where to add one. The residents of a
+  group are "residents in the group", and a resident with no name is "A
+  resident with no name" on each page. The conditions page says "2
+  residents in care have 3 ongoing conditions", and its filter of the
+  state says "Ongoing or chronic". The resident page links to its
+  measurements even before the first one (ADR 0108).
 
 ### Fixed
 

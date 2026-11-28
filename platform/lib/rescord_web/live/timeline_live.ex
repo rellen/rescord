@@ -88,7 +88,9 @@ defmodule RescordWeb.TimelineLive do
         </:actions>
       </.header>
 
-      <p :if={@events == []}>Nothing is on record for this resident yet.</p>
+      <p :if={@events == []}>
+        Nothing yet. The journal entries, and the changes to the stay, the location and the groups of the resident, show here.
+      </p>
 
       <ol :if={@events != []} id="timeline">
         <.timeline_event
