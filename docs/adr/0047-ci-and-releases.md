@@ -14,6 +14,9 @@ Playwright of nixpkgs, and the toolchain is pinned by `devenv.lock`.
   pull request: the format, the locked dependencies, a compile of the test
   support with no warning, and `mix test` with PostgreSQL 18 from devenv.
   CI and a machine for development then have one toolchain.
+  (Added later: a push to `main` cancels the run of the push before it,
+  and ADR 0078 gives `main` a run that no push cancels when it has waited
+  an hour for a result.)
 - **Under `CI=true`, a missing Playwright driver stops the tests**, so a run
   cannot pass with the browser tests left out.
 - **`nix.yml` runs `nix flake check`** with KVM, when a file that the

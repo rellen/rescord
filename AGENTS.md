@@ -59,7 +59,11 @@ version, and the two hashes of its native library. The same holds for
 `mjml` and `mjmlNative` (ADR 0070).
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
-ADR 0047).
+ADR 0047). A push to `main` cancels the run of the push before it. When `main`
+has waited an hour for a result, `.github/workflows/ci-catch-up.yml` starts a
+run that no push cancels (ADR 0078, `scripts/ci-catch-up.sh`). To get a result
+for `main` now, start the workflow `CI` on `main` from the Actions page or the
+API: no push cancels that run either.
 
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
@@ -816,7 +820,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `scripts/release-tarball.sh` | the tarballs of the release |
 | `docs/self-hosting.md` | the guide for an operator |
 | `docs/migrations.md`, `scripts/check-upgrade-notes.sh` | the rules of a migration and of its upgrade note, and the check that each migration has one (ADR 0073) |
-| `.github/workflows/` | CI, the flake check, and the release (ADR 0047) |
+| `.github/workflows/`, `scripts/ci-catch-up.sh` | CI, the flake check, the release (ADR 0047), and the run of CI that `main` gets when pushes cancel each other (ADR 0078) |
 | `.gitleaks.toml`, `scripts/check-secrets.sh` | the scan for secrets and for what belongs to one deployment (ADR 0064) |
 | `CHANGELOG.md` | the changes of each release, which become its notes |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |

@@ -4,7 +4,9 @@
 # also checks the messages of its commits (ADR 0060), and each run scans the
 # history for secrets (ADR 0064) and checks that each new migration has its
 # upgrade note (ADR 0073). A release runs these checks too, before it
-# publishes anything.
+# publishes anything. A push to main cancels the run of the push before it,
+# so `ci-catch-up.yml` starts a run that no push cancels when main has
+# waited an hour for a result (ADR 0078).
 name: CI
 
 on:
@@ -17,11 +19,16 @@ on:
 permissions:
   contents: read
 
-# In a release, `github.workflow` is the name of the workflow Release, so a
-# push to main and a release do not cancel each other.
+# A newer run of a branch or of a pull request cancels the older one. In a
+# release, `github.workflow` is the name of the workflow Release, so a push
+# to main and a release do not cancel each other.
+#
+# A run that the Actions page, the API or `ci-catch-up.yml` starts on main
+# (workflow_dispatch) is kept (ADR 0078): it has a group of its own, so no
+# push cancels it, and a second kept run waits for the first to end.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && '-kept' || '' }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
 
 jobs:
   # A job of its own, so a bad message does not hide the result of the tests.

@@ -1,0 +1,65 @@
+# A run of CI for the newest commit of main, when main has waited an hour
+# for a result (ADR 0078). A push to main cancels the run of the push before
+# it, so when pushes come faster than a run takes, no run ends.
+#
+# Three times an hour, `scripts/ci-catch-up.sh` reads the runs of `ci.yml`
+# on main. When the oldest run since the last result started an hour ago or
+# more, it starts `ci.yml` on main as workflow_dispatch, which no push
+# cancels. The script holds the rule, and its self-test the cases.
+#
+# GitHub starts a scheduled run late when it is busy, and may leave one out.
+# It also stops the schedule of a public repository after 60 days with no
+# commit, and of a fork until its owner turns the workflows on.
+#
+# From the Actions page: `after_minutes` of 0 starts the run now, unless the
+# newest commit has a result or a kept run is on its way. `dry_run` says
+# what would happen, and starts nothing.
+name: CI catch-up
+
+on:
+  schedule:
+    # Not at minute 0, when the schedules of GitHub are the most late.
+    - cron: "7,27,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      after_minutes:
+        description: The minutes that main may wait for a result (0 starts a run now)
+        type: number
+        default: 60
+      dry_run:
+        description: Say what would happen, and start no run
+        type: boolean
+        default: false
+
+# The token of the run starts `ci.yml`: an event of workflow_dispatch from
+# this token does start a workflow, which other events from it do not.
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ci-catch-up
+  cancel-in-progress: false
+
+jobs:
+  catch-up:
+    name: Start CI if main has waited for a result
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show that the rule decides each case
+        run: scripts/ci-catch-up.sh --self-test
+
+      - name: Read the runs of main, and start one if the rule says so
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AFTER_MINUTES: ${{ inputs.after_minutes }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          arguments=(--after "${AFTER_MINUTES:-60}")
+          if [ "$DRY_RUN" = true ]; then
+            arguments+=(--dry-run)
+          fi
+          scripts/ci-catch-up.sh "${arguments[@]}"
