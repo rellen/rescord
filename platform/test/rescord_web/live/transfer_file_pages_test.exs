@@ -150,7 +150,11 @@ defmodule RescordWeb.TransferFilePagesTest do
     |> upload("Transfer file", file!(context, "biscuit.rescord", file))
     |> click(button("Import the file"))
     |> assert_has(received() |> row(~r/^Biscuit\b/), text: "Wattle Creek")
+    # The files open after a job checks them (ADR 0113).
+    |> assert_has(received() |> row(~r/^Biscuit\b/), text: "They open when the check ends")
+    |> tap(fn _session -> assert %{success: 1} = Oban.drain_queue(queue: :transfers) end)
     |> click(received() |> row(~r/^Biscuit\b/) |> button("Accept the transfer of Biscuit"))
+    |> refute_has(received() |> row(~r/^Biscuit\b/), text: "They open when the check ends")
 
     [transfer] = Transfers.transfers!(actor: context.banksia_admin)
     assert transfer.parts == [:stay, :photos]
