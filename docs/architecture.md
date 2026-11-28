@@ -561,6 +561,21 @@ as it stood at the end of a chosen day, and writes a README that says what
 each file holds and which file each id names. Each resource of the domains
 is in the export, or `Rescord.Export.excluded/0` says why not.
 
+### Reports
+
+**A report is a PDF that an action writes** (ADR 0076). Each of the seven
+reports is a generic action of `Rescord.Reports.Report`, a resource with
+no table, and returns an `AshTypst.Document`. `Rescord.Reports.Render`
+runs it in three steps. A module below `Rescord.Reports.Facts` reads the
+records through the other domains as the person, and never with
+`authorize?: false`. The module that the configuration names
+(`:report_wording`, which is `RescordWeb.ReportWords`) turns the facts
+into text, because the words are in the web layer. Then Typst renders the
+template of `priv/typst`, which gets the text as one value, `d`, and the
+photos as virtual files. No text of a record is markup of Typst. Each role
+can make each report, and a person makes 30 in a minute at most.
+`RescordWeb.ReportController` sends a report for a `GET`.
+
 ### What needs attention
 
 **The first page of an organisation says what needs attention now**

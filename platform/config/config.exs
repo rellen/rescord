@@ -151,8 +151,11 @@ config :rescord,
     Rescord.Inventory,
     Rescord.Transfers,
     Rescord.Ruby,
-    Rescord.Calendars
+    Rescord.Calendars,
+    Rescord.Reports
   ],
+  # The module of the web layer that words the reports (ADR 0076).
+  report_wording: RescordWeb.ReportWords,
   # Each domain other than the accounts holds its own grants (ADR 0024).
   grant_sources: [
     Rescord.Lists.Grants,
@@ -163,7 +166,8 @@ config :rescord,
     Rescord.Tasks.Grants,
     Rescord.Inventory.Grants,
     Rescord.Transfers.Grants,
-    Rescord.Calendars.Grants
+    Rescord.Calendars.Grants,
+    Rescord.Reports.Grants
   ]
 
 # Configure the endpoint

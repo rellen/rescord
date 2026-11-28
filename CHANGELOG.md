@@ -94,6 +94,17 @@ release (ADR 0047).
   region: Australia, Canada, India, Ireland, New Zealand, South Africa,
   the United Kingdom, the United States, and the world. The words of the
   pages are English in each one.
+- Rescord now makes reports as PDF, for paper. The new page Reports, in
+  the site menu, has the register of the residents in care on a day, the
+  arrivals and the departures of a period with their totals, the tasks of
+  a day with a box to tick for each, the stock with a column for a count,
+  and the housing with who lives where. The page of a resident has its
+  record, with its medical history or its whole journal and its photos on
+  request, and a cage card for the door of its pen. Each member can make
+  each report, and a report holds what that member can read. A report
+  opens in the browser, which prints it or saves it. The release now
+  carries the Typst compiler, about 73 MB, and needs no new setting
+  (ADR 0076).
 - Rescord now knows what a unit of measure means, from its name. The
   lists page says for each unit of an organisation, and for each shared
   unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and

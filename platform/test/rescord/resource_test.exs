@@ -3,7 +3,7 @@ defmodule Rescord.ResourceTest do
   # resources of `Rescord.ResourceFixtures` as they compiled. No database.
   use ExUnit.Case, async: true
 
-  alias Rescord.ResourceFixtures.{Bare, Flow, Plain, Shared}
+  alias Rescord.ResourceFixtures.{Bare, Flow, NoTable, Plain, Shared}
 
   defp extensions(resource), do: Spark.extensions(resource)
 
@@ -53,6 +53,16 @@ defmodule Rescord.ResourceTest do
       refute AshPaperTrail.Resource in extensions(Bare)
       refute AshArchival.Resource in extensions(Bare)
       assert Rescord.Resource.Checks in extensions(Bare)
+    end
+
+    test "table?: false gives a resource with no table, no history and no archive" do
+      refute Ash.Resource.Info.data_layer(NoTable) == AshPostgres.DataLayer
+      refute Ash.Resource.Info.temporal?(NoTable)
+      refute AshPaperTrail.Resource in extensions(NoTable)
+      refute AshArchival.Resource in extensions(NoTable)
+      assert Rescord.Resource.Checks in extensions(NoTable)
+      # A request for it still names an organisation.
+      assert Ash.Resource.Info.multitenancy_strategy(NoTable) == :context
     end
 
     test "an option that is not a literal true or false does not compile" do

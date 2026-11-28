@@ -224,6 +224,12 @@ defmodule RescordWeb.TasksLive do
           <.link navigate={~p"/o/#{@organisation.short_name}/calendar"} data-variant="secondary">
             Calendar feeds
           </.link>
+          <RescordWeb.ReportComponents.report_link
+            id="task-sheet"
+            href={~p"/o/#{@organisation.short_name}/reports/tasks.pdf?#{[on: Date.to_iso8601(@day)]}"}
+          >
+            Sheet (PDF)
+          </RescordWeb.ReportComponents.report_link>
         </:actions>
       </.header>
 

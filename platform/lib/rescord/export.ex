@@ -66,7 +66,9 @@ defmodule Rescord.Export do
     Rescord.Ruby.Provider =>
       "A provider of the assistant is a setting of the server, and no record of a rescue.",
     Rescord.Calendars.Feed =>
-      "A calendar feed is a setting of one member, and its row holds the hash of the secret of its address."
+      "A calendar feed is a setting of one member, and its row holds the hash of the secret of its address.",
+    Rescord.Reports.Report =>
+      "A report is a document that an action writes from the other records. It has no table."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."

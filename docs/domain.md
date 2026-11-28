@@ -553,6 +553,28 @@ The calculator knows no medication. It gives no dose rate, and it does not
 say that a dose is safe. The dose rate and the strength come from a vet or
 from the label. The page tells the member to check the result with a vet.
 
+### 5.13 Reports
+
+An organisation makes reports for paper (ADR 0076). A report is a PDF. It
+is not a record, and Rescord keeps no copy of it. Each member can make
+each report, and a report holds what that member can read.
+
+- The record of a resident has its facts, its stay, its family and its
+  groups. The member chooses the part of the journal: the medical history,
+  all of it, or none. The member can add the photos. The record names no
+  member, because it can leave the refuge.
+- The cage card is one page for the door of a pen.
+- The register lists each resident in care on a day. A resident is in
+  care on a day when it arrived on or before that day and did not leave on
+  or before that day.
+- The report of the arrivals and the departures covers a period. It gives
+  the totals by kind and by species.
+- The task sheet lists the tasks of a day, with a box to tick for each.
+- The stock report lists each item with its lots, with a column for a
+  count.
+- The housing report lists each location with the residents that live
+  there.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.

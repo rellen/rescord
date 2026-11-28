@@ -631,6 +631,32 @@ hand (ADR 0073). Read it before you write a migration. In short:
     times.
   - A new problem or note of `Rescord.Dosage` takes words in
     `RescordWeb.ToolWords`.
+- **Reports** (ADR 0076). A report is a PDF that a generic action of
+  `Rescord.Reports.Report` returns, through `Rescord.Reports.Render`.
+  - A new report takes: a module of facts below `Rescord.Reports.Facts`
+    (and its entry in `Rescord.Reports.Facts`), a module of words below
+    `RescordWeb.ReportWords` (and its entry there), a template
+    `priv/typst/<name>.typ` with its `template` in the resource, the
+    action with its rate limit, the function of the domain and its name in
+    `Rescord.Reports.reports/0`, the grant in `Rescord.Reports.Grants`,
+    and a route of `RescordWeb.ReportController`.
+  - The facts read through the functions of the other domains, with the
+    options of the request as they are. **Never pass `authorize?: false`
+    in a report.**
+  - The words give text that is ready to show: a template formats nothing
+    and decides nothing about a record. A template starts with
+    `#import "look.typ": *` and `#import "data.typ": d`, and uses the parts
+    of `look.typ`.
+  - **Never put a value of a record into the source of a template**, and
+    never call `eval` in a template: the data is the value `d` alone.
+  - The fonts of a report are the files of `priv/typst/fonts`. A report
+    is not PDF/A.
+  - To look at a report, render it in a scratch test with
+    `Rescord.ReportsFixtures.refuge!/1`, write the bytes to a file, and
+    read the pages as pictures (`pdftoppm -png`). Do not commit the
+    scratch test.
+  - A new version of `ash_typst` takes the new version and the new hashes
+    in `nix/package.nix`, from the checksum file of the package.
 - **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
   time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
   for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
@@ -719,6 +745,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord/dosage.ex` | the arithmetic of a dose, for the dose calculator of the tools (ADR 0072) |
+| `platform/lib/rescord/reports.ex`, `reports/` | the reports as PDF: the actions, the facts of each report, and the render (ADR 0076) |
+| `platform/lib/rescord_web/report_words.ex`, `report_words/` | the words of each report |
+| `platform/priv/typst/` | the Typst templates of the reports, their shared look, and the fonts with their licence |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |

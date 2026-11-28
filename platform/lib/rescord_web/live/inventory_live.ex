@@ -94,6 +94,12 @@ defmodule RescordWeb.InventoryLive do
           >
             Suppliers
           </.link>
+          <RescordWeb.ReportComponents.report_link
+            id="stock-report"
+            href={~p"/o/#{@organisation.short_name}/reports/stock.pdf"}
+          >
+            Stock report (PDF)
+          </RescordWeb.ReportComponents.report_link>
         </:actions>
       </.header>
 

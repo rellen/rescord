@@ -40,6 +40,7 @@ defmodule RescordWeb do
       Rescord.Transfers,
       Rescord.Ruby,
       Rescord.Calendars,
+      Rescord.Reports,
       Rescord.Export,
       Rescord.Attention,
       Rescord.Mail

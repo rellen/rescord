@@ -377,6 +377,10 @@ defmodule RescordWeb.ResidentLive do
         organisation={@organisation}
         desex_statuses={@desex_statuses}
       />
+      <RescordWeb.ReportComponents.resident_documents
+        organisation={@organisation}
+        resident={@resident}
+      />
       <.removal :if={can?(@role, :resident, :remove)} />
     </Layouts.app>
     """

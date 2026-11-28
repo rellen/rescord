@@ -60,6 +60,17 @@ defmodule Rescord.ResourceFixtures do
     end
   end
 
+  defmodule NoTable do
+    @moduledoc false
+    use Rescord.Resource, domain: Rescord.ResourceFixtures.Domain, table?: false
+
+    actions do
+      action :answer, :integer do
+        run fn _input, _context -> {:ok, 42} end
+      end
+    end
+  end
+
   defmodule Flow do
     @moduledoc false
     use Rescord.Resource,

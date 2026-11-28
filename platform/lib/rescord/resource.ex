@@ -47,6 +47,11 @@ defmodule Rescord.Resource do
       Default `true`.
     * `shared?` - `true` for a resource that all organisations share, outside
       the schema of an organisation. Default `false`.
+    * `table?` - `false` for a resource with no table: it holds generic
+      actions only, such as the reports (ADR 0076). It has no data layer of
+      Postgres, no history and no archive, and it does not write the section
+      `postgres`. A request for it still names an organisation, unless it is
+      `shared?`. Default `true`.
 
   ## A resource with a workflow
 
@@ -72,10 +77,16 @@ defmodule Rescord.Resource do
       end
   """
 
-  @flags [temporal?: true, paper_trail?: true, archive?: true, shared?: false]
+  @flags [temporal?: true, paper_trail?: true, archive?: true, shared?: false, table?: true]
 
   defmacro __using__(opts) do
     {flags, opts} = split_flags(opts, __CALLER__)
+    # A resource with no table has no rows: nothing to version or to archive.
+    flags =
+      if flags.table?,
+        do: flags,
+        else: %{flags | temporal?: false, paper_trail?: false, archive?: false}
+
     {extensions, opts} = Keyword.pop(opts, :extensions, [])
 
     if not is_list(extensions) do
@@ -92,18 +103,15 @@ defmodule Rescord.Resource do
 
     # Spark reads the extensions while it expands `use`, so the list stays a
     # literal: our modules, then the ones that the resource names.
+    opts = Keyword.put(opts, :extensions, ours ++ extensions)
+
     opts =
-      opts
-      |> Keyword.put_new(:data_layer, AshPostgres.DataLayer)
-      |> Keyword.put(:extensions, ours ++ extensions)
+      if flags.table?, do: Keyword.put_new(opts, :data_layer, AshPostgres.DataLayer), else: opts
 
     quote do
       use Ash.Resource, unquote(opts)
 
-      postgres do
-        repo Rescord.Repo
-      end
-
+      unquote(postgres(flags))
       unquote(tenancy(flags))
       unquote(temporal(flags))
       unquote(paper_trail(flags))
@@ -132,6 +140,16 @@ defmodule Rescord.Resource do
 
       {Map.put(flags, flag, value), opts}
     end)
+  end
+
+  defp postgres(%{table?: false}), do: nil
+
+  defp postgres(_flags) do
+    quote do
+      postgres do
+        repo Rescord.Repo
+      end
+    end
   end
 
   defp tenancy(%{shared?: true}), do: nil

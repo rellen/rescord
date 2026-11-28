@@ -69,6 +69,12 @@ defmodule RescordWeb.ResidentsLive do
           >
             New resident
           </.link>
+          <RescordWeb.ReportComponents.report_link
+            id="register-report"
+            href={~p"/o/#{@organisation.short_name}/reports/register.pdf"}
+          >
+            Register (PDF)
+          </RescordWeb.ReportComponents.report_link>
         </:actions>
       </.header>
 

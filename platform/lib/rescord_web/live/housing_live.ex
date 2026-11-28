@@ -86,6 +86,14 @@ defmodule RescordWeb.HousingLive do
       <.header>
         Housing
         <:subtitle>Where the residents of {@organisation.name} live</:subtitle>
+        <:actions>
+          <RescordWeb.ReportComponents.report_link
+            id="housing-report"
+            href={~p"/o/#{@organisation.short_name}/reports/housing.pdf"}
+          >
+            Housing report (PDF)
+          </RescordWeb.ReportComponents.report_link>
+        </:actions>
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>

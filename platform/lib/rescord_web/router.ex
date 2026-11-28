@@ -61,6 +61,15 @@ defmodule RescordWeb.Router do
     post "/o/:organisation/transfers/export", TransferFileController, :export
     get "/o/:organisation/transfers/:id/files/:file", TransferFileController, :show
 
+    # The reports, each as a PDF (ADR 0076).
+    get "/o/:organisation/residents/:id/record.pdf", ReportController, :resident_record
+    get "/o/:organisation/residents/:id/card.pdf", ReportController, :cage_card
+    get "/o/:organisation/reports/register.pdf", ReportController, :register
+    get "/o/:organisation/reports/movements.pdf", ReportController, :movements
+    get "/o/:organisation/reports/tasks.pdf", ReportController, :task_sheet
+    get "/o/:organisation/reports/stock.pdf", ReportController, :stock
+    get "/o/:organisation/reports/housing.pdf", ReportController, :housing
+
     # The export of the data of an organisation (ADR 0054).
     post "/o/:organisation/export", ExportController, :create
     post "/sign-in/link", SignInController, :confirm
@@ -87,6 +96,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/transfers/:id", TransfersLive
       live "/o/:organisation/settings", SettingsLive
       live "/o/:organisation/export", ExportLive
+      live "/o/:organisation/reports", ReportsLive
       live "/o/:organisation/lists", ListsLive, :organisation
       live "/o/:organisation/tasks", TasksLive
       live "/o/:organisation/calendar", CalendarLive
