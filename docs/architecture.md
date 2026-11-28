@@ -207,6 +207,14 @@ their members (ADR 0022). For each domain:
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
 
+**Lines that actions of one resource share go in a pipeline** (ADR 0086),
+when the group has three lines or more, or three actions or more take it.
+Ash puts the lines of the pipeline in each action at compile time, so the
+action is the same as one with the lines written in it. A pipeline keeps
+the order of the lines: it runs each change before each validation, and a
+group with another order stays in its actions. `Rescord.Expenses.Expense`
+has the first two.
+
 ### Signals and workflows
 
 **We use Ash signals and AshWorkflow where they fit**, before we write the

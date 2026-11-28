@@ -410,6 +410,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A change, validation or preparation for a temporal resource is a module
     that declares `temporal_safe?/1`. Pass `as_of:` as an action option, and
     use `now()` in an expression, never the wall clock.
+  - A group of changes and validations that actions of one resource must
+    keep the same goes in a pipeline (ADR 0086): `pipelines do pipeline
+    :name do ... end end` before `actions`, and `pipe_through [:name]` in
+    each action. Write one when the group has three lines or more, or when
+    three actions or more take it; a smaller group stays in its actions.
+    Inside a pipeline Ash runs each change before each validation, so a
+    group with a validation before a change is not one pipeline. A pipeline
+    holds no argument, no `accept` and no `emit`. `Rescord.Expenses.Expense`
+    is the example.
   - A request for a sign-in link answers at once (ADR 0019). It starts a
     supervised task and gives the same answer in each case: a known address,
     an address that Rescord does not know, and a fault. Do no work that
