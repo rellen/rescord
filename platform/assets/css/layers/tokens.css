@@ -139,6 +139,17 @@
   --on-accent: light-dark(#ffffff, #04211c);
   --link: light-dark(#1a5aa3, #8bbcf7);
 
+  /* The ramp of a heat map (ADR 0116): four steps of the lead colour over
+     the ground of a card, 18%, 40%, 68% and all of it. More is always
+     nearer to the lead colour, so the ramp runs light to dark in the light
+     scheme and dark to light in the dark one. The words on steps 1 and 2
+     are --text, on step 3 --on-heat-3, and on step 4 --on-accent. */
+  --heat-1: light-dark(#d6e3e0, #1e3e38);
+  --heat-2: light-dark(#a4c1ba, #2f6359);
+  --heat-3: light-dark(#65988d, #469586);
+  --heat-4: light-dark(#0a6a5c, #62d2bd);
+  --on-heat-3: light-dark(#0f2520, #04211c);
+
   /* The site bar. */
   --bar: light-dark(#ffffff, #11231f);
   --on-bar: light-dark(#0f2520, #e3f0ec);

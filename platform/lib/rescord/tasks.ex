@@ -250,6 +250,67 @@ defmodule Rescord.Tasks do
     )
   end
 
+  # A task done this long after its time is still on time (ADR 0116).
+  @grace 3_600
+
+  @doc """
+  The counts of the tasks of each day from `first` to `last`, both in, in
+  the time zone of the organisation (ADR 0116): a map from each date of
+  the range to
+
+      %{total: 9, on_time: 6, late: 1, skipped: 1, overdue: 1, upcoming: 0}
+
+  A task is `on_time` when it was done by its time plus a grace of one
+  hour, and `late` when it was done after that. `overdue` is a task that is
+  still due and whose time is before `:now` of `opts`, and `upcoming` one
+  whose time is not yet. A cancelled task is archived, and no count has it.
+
+  `:kind` of `opts` counts only the tasks of one kind. The read is as the
+  actor of `opts`, and selects only the times and the state of each task:
+  the page of a chart has no title or note of a task.
+  """
+  @spec days(Date.t(), Date.t(), keyword) :: {:ok, %{Date.t() => map}} | {:error, term}
+  def days(%Date{} = first, %Date{} = last, opts \\ []) do
+    {kind_id, opts} = Keyword.pop(opts, :kind)
+    {now, opts} = Keyword.pop(opts, :now, DateTime.utc_now())
+    zone = Rescord.Accounts.time_zone_of(opts[:tenant])
+    {from, _} = Rescord.Accounts.day_range(opts[:tenant], first)
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+
+    query =
+      Task
+      |> Ash.Query.filter(due_at >= ^from and due_at < ^to)
+      |> Ash.Query.select([:due_at, :state, :finished_at])
+
+    query = if kind_id, do: Ash.Query.filter(query, kind_id == ^kind_id), else: query
+
+    with {:ok, tasks} <- Ash.read(query, opts) do
+      empty = %{total: 0, on_time: 0, late: 0, skipped: 0, overdue: 0, upcoming: 0}
+      blank = Map.new(Date.range(first, last), &{&1, empty})
+
+      counts =
+        Enum.reduce(tasks, blank, fn task, counts ->
+          date =
+            task.due_at |> DateTime.shift_zone!(zone, Tz.TimeZoneDatabase) |> DateTime.to_date()
+
+          Map.update!(counts, date, fn count ->
+            count
+            |> Map.update!(:total, &(&1 + 1))
+            |> Map.update!(outcome(task, now), &(&1 + 1))
+          end)
+        end)
+
+      {:ok, counts}
+    end
+  end
+
+  defp outcome(%{state: :done, finished_at: %DateTime{} = finished, due_at: due}, _now) do
+    if DateTime.diff(finished, due, :second) <= @grace, do: :on_time, else: :late
+  end
+
+  defp outcome(%{state: :done}, _now), do: :on_time
+  defp outcome(%{state: :skipped}, _now), do: :skipped
+  defp outcome(task, now), do: if(phase(task, now) == :overdue, do: :overdue, else: :upcoming)
   @doc "One task with its kind and its subjects, or `nil`."
   def task_with_facts(id, opts \\ []), do: task(id, Keyword.put(opts, :load, @facts))
 

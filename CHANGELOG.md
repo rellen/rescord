@@ -363,6 +363,15 @@ release (ADR 0047).
 
 ### Added
 
+- The page of the reports starts with "Insights", charts of the records
+  on the screen (issue 36, ADR 0116). The first is "Care, day by day": a
+  square for each day of the last 26 weeks, stronger in colour for a
+  larger share of the tasks of the day done by their time or within an
+  hour after it, with a dot on a day with a task skipped or overdue, and
+  the tasks of each day of the next two weeks. A kind of task narrows
+  both, and a press on a day says its counts with a link to its tasks.
+  Each member can open it. It counts the tasks of the refuge, and never
+  the work of one person.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

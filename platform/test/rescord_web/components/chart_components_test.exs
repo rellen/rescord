@@ -217,4 +217,86 @@ defmodule RescordWeb.ChartComponentsTest do
       assert attribute(doc, "svg[data-spark] > circle", "cx") == ["44.44%"]
     end
   end
+
+  describe "a heat map (ADR 0116)" do
+    defp heat(extra \\ []) do
+      render_component(
+        &heat_table/1,
+        [
+          id: "calendar",
+          summary: "91% of 24 tasks were done on time.",
+          corner: "Day of the week",
+          columns: [
+            %{label: "Jun", words: "Week of 1 June 2026"},
+            %{label: "", words: "Week of 8 June 2026"}
+          ],
+          rows: [
+            %{
+              label: "Mon",
+              words: "Monday",
+              cells: [
+                %{id: "2026-06-01", level: 4, words: "8 of 8 on time"},
+                %{id: "2026-06-08", level: 2, words: "7 of 8 on time, 1 skipped", mark: true}
+              ]
+            },
+            %{
+              label: "Tue",
+              words: "Tuesday",
+              cells: [
+                %{id: "2026-06-02", level: 0, words: "No task", today: true},
+                %{level: :none, words: ""}
+              ]
+            }
+          ]
+        ] ++ extra
+      )
+    end
+
+    test "is a table named by its caption, with a header for each row and column" do
+      doc = heat() |> parse()
+
+      assert doc |> LazyHTML.query("table > caption") |> LazyHTML.text() =~ "91% of 24 tasks"
+      assert count(doc, "thead th[scope=col]") == 3
+      assert count(doc, "tbody th[scope=row]") == 2
+
+      # The short words show, and the whole words are for a screen reader.
+      assert doc |> LazyHTML.query("thead th [data-words]") |> Enum.map(&LazyHTML.text/1) ==
+               ["Day of the week", "Week of 1 June 2026", "Week of 8 June 2026"]
+
+      assert attribute(doc, "tbody th > span[aria-hidden]", "aria-hidden") == ["true", "true"]
+    end
+
+    test "has a step, a dot and an outline as attributes, and the words of each cell" do
+      doc = heat() |> parse()
+
+      assert attribute(doc, "td", "data-level") == ["4", "2", "0", "none"]
+      assert count(doc, "td[data-mark]") == 1
+      assert count(doc, "td[data-today]") == 1
+
+      assert doc |> LazyHTML.query("td > span") |> Enum.map(&LazyHTML.text/1) ==
+               ["8 of 8 on time", "7 of 8 on time, 1 skipped", "No task"]
+    end
+
+    test "has cells that take a press, and no focus, with the chosen one marked" do
+      doc = heat(pick: "pick", selected: "2026-06-08") |> parse()
+
+      assert attribute(doc, "td[phx-click]", "phx-value-cell") ==
+               ["2026-06-01", "2026-06-08", "2026-06-02"]
+
+      assert attribute(doc, "td[data-selected]", "phx-value-cell") == ["2026-06-08"]
+      assert count(doc, "[tabindex]") == 0
+
+      doc = heat() |> parse()
+      assert count(doc, "td[phx-click]") == 0
+      assert count(doc, "td[data-selected]") == 0
+    end
+
+    test "has no class, no style and no colour" do
+      html = heat(variant: "numbers")
+
+      assert html =~ ~s(data-heat="numbers")
+      refute html =~ ~r/\sclass=/
+      refute html =~ ~r/\sstyle=/
+    end
+  end
 end

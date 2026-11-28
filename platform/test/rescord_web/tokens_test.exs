@@ -45,7 +45,12 @@ defmodule RescordWeb.TokensTest do
              {"text", "info-surface", @text},
              {"text", "mark", @text},
              {"alert", "bg", @text},
-             {"focus", "bar", @edge}
+             {"focus", "bar", @edge},
+             # The words of a cell of a heat map, on each step of the ramp (ADR 0116).
+             {"text", "heat-1", @text},
+             {"text", "heat-2", @text},
+             {"on-heat-3", "heat-3", @text},
+             {"on-accent", "heat-4", @text}
            ]
 
   # A tint is a share of one colour over a ground: {foreground, {colour, share, ground}, minimum}.
@@ -60,7 +65,7 @@ defmodule RescordWeb.TokensTest do
     css = File.read!(Path.join(@layers, "tokens.css"))
 
     for [_, name, light, dark] <-
-          Regex.scan(~r/--([a-z-]+):\s*light-dark\((#[0-9a-f]{6}),\s*(#[0-9a-f]{6})\)/, css),
+          Regex.scan(~r/--([a-z0-9-]+):\s*light-dark\((#[0-9a-f]{6}),\s*(#[0-9a-f]{6})\)/, css),
         into: %{} do
       {name, {rgb(light), rgb(dark)}}
     end
@@ -97,7 +102,7 @@ defmodule RescordWeb.TokensTest do
   test "the test reads the colours of tokens.css" do
     tokens = tokens()
 
-    assert map_size(tokens) == 21
+    assert map_size(tokens) == 26
     assert tokens["bg"] == {rgb("#f1f7f5"), rgb("#0b1916")}
     # A positive control for the arithmetic: black on white is 21 to 1.
     assert_in_delta contrast({0, 0, 0}, {255, 255, 255}), 21.0, 0.001

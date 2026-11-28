@@ -1,7 +1,8 @@
 defmodule RescordWeb.Chart do
   @moduledoc """
   The geometry of a line chart of values over time (ADR 0080): the scale,
-  the ticks, and the place of each point.
+  the ticks, and the place of each point. And the weeks and the steps of
+  the ramp of a heat map (ADR 0116).
 
   A place is a percentage of the plot, and never a pixel: `x` from the
   first instant at 0 to the last at 100, and `y` from the top tick at 0 to
@@ -213,6 +214,57 @@ defmodule RescordWeb.Chart do
     |> Decimal.round(2)
     |> Decimal.to_float()
   end
+
+  @doc """
+  The Mondays of the `count` weeks that end with the week of `date`, the
+  oldest first. A week starts on a Monday (ADR 0116).
+
+      iex> RescordWeb.Chart.weeks(~D[2026-11-28], 3)
+      [~D[2026-11-09], ~D[2026-11-16], ~D[2026-11-23]]
+  """
+  @spec weeks(Date.t(), pos_integer) :: [Date.t()]
+  def weeks(%Date{} = date, count) when is_integer(count) and count > 0 do
+    monday = Date.beginning_of_week(date, :monday)
+    for back <- (count - 1)..0//-1, do: Date.add(monday, -7 * back)
+  end
+
+  @doc """
+  The step of the ramp of a heat map for a count, against the greatest
+  count of the map: `0` for none, and `1` to `4` for each quarter of the
+  greatest, so the greatest is always on step 4.
+
+      iex> Enum.map([0, 1, 5, 6, 10, 20], &RescordWeb.Chart.level(&1, 20))
+      [0, 1, 1, 2, 2, 4]
+  """
+  @spec level(non_neg_integer, non_neg_integer) :: 0..4
+  def level(0, _greatest), do: 0
+
+  def level(count, greatest) when is_integer(count) and is_integer(greatest) and count > 0 do
+    # A quarter that is begun is a step: the ceiling of four times the share.
+    greatest = max(greatest, count)
+    div(count * 4 + greatest - 1, greatest)
+  end
+
+  @doc """
+  The step of the ramp for a share, `part` of `whole`, against the bounds
+  of the steps in percent: step 1 is below the first bound, and each bound
+  that the share reaches is one step more. `0` for a whole of none. The
+  sum is exact: 97 of 100 reaches 97%.
+
+      iex> RescordWeb.Chart.share_level(7, 8, [80, 90, 97])
+      2
+
+      iex> RescordWeb.Chart.share_level(97, 100, [80, 90, 97])
+      4
+
+      iex> RescordWeb.Chart.share_level(0, 0, [80, 90, 97])
+      0
+  """
+  @spec share_level(non_neg_integer, non_neg_integer, [number]) :: 0..4
+  def share_level(_part, 0, _bounds), do: 0
+
+  def share_level(part, whole, bounds) when is_integer(part) and is_integer(whole),
+    do: 1 + Enum.count(bounds, &(part * 100 >= &1 * whole))
 
   # A place with no zeros at its end: `25`, `79.33`.
   defp number(place) do

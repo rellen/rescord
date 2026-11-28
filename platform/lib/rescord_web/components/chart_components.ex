@@ -170,4 +170,90 @@ defmodule RescordWeb.ChartComponents do
     </svg>
     """
   end
+
+  @doc """
+  A heat map (ADR 0116): a table whose cells are values, each on a step of
+  one ramp. It is its own text alternative: a screen reader reads a cell
+  with the header of its row and of its column, "Tuesday, week of 6 July
+  2026, 7 of 8 on time". It stays a grid on a phone.
+
+  A column and a row each have `label`, the short words that show, and
+  `words`, the whole words for a screen reader, or `nil` when the label
+  says it all. A row has `cells`, one for each column, each a map with:
+
+    * `level`: `0` for nothing to count, `1` to `4` for the steps of the
+      ramp, or `:none` for a cell with no value, such as a day to come
+    * `words`: the value in words
+    * `mark`: a dot, for a cell that needs a look (optional)
+    * `today`: an outline, for the cell of today (optional)
+    * `day`: the day of the month, which a table of counts shows small in
+      the corner of the cell, and not to a screen reader (optional)
+    * `id`: what a press on the cell gives the event `pick` as `"cell"`
+      (optional)
+
+  The variant `"numbers"` shows the words of each cell, for a table of
+  counts. With no variant, the cells are squares and their words are for a
+  screen reader. Like a point of a line chart, a cell takes a press and no
+  keyboard focus: the table itself holds each value.
+
+  ## Examples
+
+      <.heat_table
+        id="calendar"
+        summary="91% of 2,410 tasks were done on time."
+        columns={[%{label: "Jun", words: "Week of 1 June 2026"}]}
+        rows={[%{label: "Mon", words: "Monday", cells: [%{level: 3, words: "7 of 8 on time"}]}]}
+        pick="pick"
+      />
+  """
+  attr :id, :string, required: true
+  attr :summary, :string, required: true, doc: "what the table shows, in a sentence or two"
+  attr :columns, :list, required: true
+  attr :rows, :list, required: true
+  attr :corner, :string, default: nil, doc: "the header of the column of the names of the rows"
+  attr :variant, :string, default: nil, values: [nil, "numbers"]
+  attr :pick, :string, default: nil, doc: "the event of a press on a cell"
+  attr :selected, :any, default: nil, doc: "the id of the cell that the person chose"
+
+  def heat_table(assigns) do
+    ~H"""
+    <table data-heat={@variant || true} id={@id}>
+      <caption id={"#{@id}-summary"}>{@summary}</caption>
+      <thead>
+        <tr>
+          <td :if={is_nil(@corner)}></td>
+          <th :if={@corner} scope="col"><span data-words>{@corner}</span></th>
+          <th :for={column <- @columns} scope="col"><.heat_words of={column} /></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={row <- @rows}>
+          <th scope="row"><.heat_words of={row} /></th>
+          <td
+            :for={cell <- row.cells}
+            data-level={cell.level}
+            data-mark={cell[:mark]}
+            data-today={cell[:today]}
+            data-day={cell[:day]}
+            data-selected={@selected != nil and cell[:id] == @selected}
+            phx-click={@pick && cell[:id] && @pick}
+            phx-value-cell={@pick && cell[:id]}
+          >
+            <span :if={cell.level != :none}>{cell.words}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    """
+  end
+
+  attr :of, :map, required: true
+
+  defp heat_words(%{of: %{words: words}} = assigns) when is_binary(words) do
+    ~H"""
+    <span aria-hidden="true">{@of.label}</span><span data-words>{@of.words}</span>
+    """
+  end
+
+  defp heat_words(assigns), do: ~H"{@of.label}"
 end

@@ -282,6 +282,7 @@ defmodule RescordWeb.PagesFixtures do
               residents/#{resident.id}/photos residents/#{resident.id}/timeline
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
+              insights/care
               reports lists members roles partners transfers settings settings/ruby export ruby
               ruby/#{conversation.id} ruby/#{closed.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit

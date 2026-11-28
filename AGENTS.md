@@ -933,6 +933,21 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - The measurements of a resident are series:
     `Rescord.Journal.series/2`, which chooses the unit and converts. A
     page writes a value and a change with `RescordWeb.MeasurementWords`.
+  - **A heat map is a table** (ADR 0116): `heat_table/1`, which stays a
+    grid on a phone. Each header has short words that show and whole words
+    for a screen reader, and each cell its value in words. Its ground is a
+    step of `--heat-1` to `--heat-4`, from `Chart.level/2` or
+    `Chart.share_level/3`, and never a state: a cell that needs a look
+    has a dot. The words of a page say "stronger", never "darker": the
+    ramp runs the other way in the dark scheme.
+- **Insights** (ADR 0116, issue 36). A page of insights is below
+  `/o/:organisation/insights/`, with `section={:reports}` and a card in
+  `RescordWeb.InsightComponents.insights/1`, which the page of the
+  reports shows. Its counts are functions of their domains that read as
+  the actor, select only what they count, and group in Elixir, as
+  `Rescord.Tasks.days/3` does. No chart counts the work of a named
+  person. "On time" is done by the due time plus one hour, and a week
+  starts on a Monday.
 - **Tools** (ADR 0072). A tool is a page below `/o/:organisation/tools`
   that helps with a piece of work and stores nothing: a card in
   `RescordWeb.ToolComponents.tools/1`, a route, and a LiveView with
@@ -1236,7 +1251,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/live_changes.ex` | a page listens for the changes of its domains, waits a moment, and reads once (ADR 0096) |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
-| `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
+| `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, the line chart and the sparkline as SVG (ADR 0080), and the heat map as a table (ADR 0116) |
 | `platform/lib/rescord_web/controllers/catalogue_html.ex`, `catalogue_html/examples/` | the catalogue of the components at `/dev/components`, and a template for each example (ADR 0095) |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
