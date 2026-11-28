@@ -13,7 +13,7 @@ defmodule RescordWeb.PhotoComponents do
 
   use RescordWeb, :html
 
-  alias RescordWeb.ResidentWords
+  alias RescordWeb.{JournalComponents, ResidentWords, UploadWords}
 
   @doc """
   The profile picture of a resident, with a link to its photos, or nothing
@@ -26,7 +26,7 @@ defmodule RescordWeb.PhotoComponents do
   def profile(assigns) do
     ~H"""
     <figure :if={@photo} data-profile id="profile-photo">
-      <a href={photo_url(@organisation, @photo)}>
+      <a href={open_url(@organisation, @photo)}>
         <img
           src={thumbnail_url(@organisation, @photo)}
           alt={@photo.caption || "The profile picture of #{name(@resident)}"}
@@ -87,7 +87,7 @@ defmodule RescordWeb.PhotoComponents do
           </li>
         </ul>
       </nav>
-      <p :if={@albums == []}>No albums yet.</p>
+      <p :if={@albums == []}>No album yet. An album keeps some of the photos together.</p>
 
       <details :if={@can_make?} id="make-album-details">
         <summary><.icon name="plus" /> Make an album</summary>
@@ -162,7 +162,7 @@ defmodule RescordWeb.PhotoComponents do
                 {entry.progress} percent
               </progress>
               <span :for={error <- upload_errors(@upload, entry)} role="alert">
-                {upload_words(error)}
+                {UploadWords.of(error, entry, &upload_words/1)}
               </span>
               <.button
                 type="button"
@@ -175,12 +175,13 @@ defmodule RescordWeb.PhotoComponents do
             </li>
           </ul>
         </fieldset>
-        <.input id="add-caption" name="add[caption]" label="Caption (optional)" value="" />
+        <.input id="add-caption" name="add[caption]" label="Caption" value="" />
         <.input
           id="add-taken-on"
           name="add[taken_on]"
           type="date"
-          label="Date (optional: the date of the camera, or today)"
+          label="Date"
+          hint="Leave it empty for the date of the camera, or today."
           value=""
           max={@max_date}
         />
@@ -215,7 +216,7 @@ defmodule RescordWeb.PhotoComponents do
 
   def grid(assigns) do
     ~H"""
-    <p :if={@items == []} id="no-photos">No photos here yet.</p>
+    <p :if={@items == []} id="no-photos">No photo here yet.</p>
     <ul :if={@items != []} data-photos id="photos">
       <li :for={item <- @items} id={"item-#{ref(item)}"}>
         <.card
@@ -260,7 +261,7 @@ defmodule RescordWeb.PhotoComponents do
     ~H"""
     <article>
       <figure>
-        <a href={item_photo_url(@organisation, @item)}>
+        <a href={item_open_url(@organisation, @item)}>
           <img src={item_thumbnail_url(@organisation, @item)} alt={alt(@item, @resident)} />
         </a>
         <figcaption>
@@ -272,6 +273,7 @@ defmodule RescordWeb.PhotoComponents do
           </small>
           <strong :if={@profile?}><.icon name="star" /> Profile picture</strong>
           <small :if={@in_albums != []}>In {Enum.join(@in_albums, ", ")}</small>
+          <a :if={item_display?(@item)} href={item_photo_url(@organisation, @item)}>Full size</a>
           <.link
             :if={@item.entry_id}
             navigate={
@@ -362,12 +364,30 @@ defmodule RescordWeb.PhotoComponents do
   @doc "The link to a photo record."
   def photo_url(organisation, photo), do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}"
 
+  @doc """
+  The link that opens a photo record: its display file (issue 34), or the
+  photo when it has none.
+  """
+  def open_url(organisation, photo) do
+    if photo.display_key,
+      do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}/display",
+      else: photo_url(organisation, photo)
+  end
+
   @doc "The link to the thumbnail of a photo record, or to the photo when it has none."
   def thumbnail_url(organisation, photo) do
     if photo.thumbnail_key,
       do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}/thumbnail",
       else: photo_url(organisation, photo)
   end
+
+  defp item_open_url(organisation, %{photo: %{} = photo}), do: open_url(organisation, photo)
+
+  defp item_open_url(organisation, %{attachment: attachment}),
+    do: JournalComponents.attachment_url(organisation, attachment)
+
+  defp item_display?(%{photo: %{} = photo}), do: not is_nil(photo.display_key)
+  defp item_display?(%{attachment: attachment}), do: not is_nil(attachment.display_key)
 
   defp item_photo_url(organisation, %{photo: %{} = photo}), do: photo_url(organisation, photo)
 

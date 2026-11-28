@@ -53,7 +53,7 @@ defmodule RescordWeb.Features.PhotosTest do
     |> sign_in_with_link(address)
     |> visit(path)
     |> assert_connected()
-    |> assert_has("#no-photos", text: "No photos here yet.")
+    |> assert_has("#no-photos", text: "No photo here yet.")
     # The form is closed until the member opens it.
     |> click("summary", "Add photos")
     # A refusal shows in the form, and the form stays open.
@@ -61,7 +61,7 @@ defmodule RescordWeb.Features.PhotosTest do
     |> assert_has("#add-photos p[role=alert]", text: "Choose a photo to add")
     |> upload("Choose photos", file)
     |> assert_has("#add-photos-files li", text: @file_name)
-    |> fill_in("Caption (optional)", with: "In the garden")
+    |> fill_in("Caption", with: "In the garden")
     |> click_button("Add the photos")
     |> assert_has("#photos figcaption", text: "In the garden")
     |> assert_connected()

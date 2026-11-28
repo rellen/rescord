@@ -164,7 +164,7 @@ defmodule RescordWeb.AttentionPagesTest do
 
     session
     |> state(east, "alert", "Over its capacity")
-    |> assert_has(east, text: "2 of 1 residents")
+    |> assert_has(east, text: "2 residents, room for 1")
 
     # Each part has a link to its page.
     assert href(session, part("Tasks") |> link("All the tasks of today")) == "/o/#{short}/tasks"
@@ -337,7 +337,14 @@ defmodule RescordWeb.AttentionPagesTest do
   end
 
   test "has words for each part and for each fault of the stock" do
-    assert AttentionComponents.parts() == [:tasks, :inventory, :residents, :housing, :transfers]
+    assert AttentionComponents.parts() == [
+             :tasks,
+             :inventory,
+             :residents,
+             :housing,
+             :transfers,
+             :privacy
+           ]
 
     for fault <- InventoryWords.faults() do
       assert {words, kind} = InventoryWords.fault(fault)

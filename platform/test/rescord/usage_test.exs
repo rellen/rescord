@@ -242,6 +242,14 @@ defmodule Rescord.UsageTest do
       assert_raise Ash.Error.Forbidden, fn -> Ash.load!(settings, :token, actor: root) end
     end
 
+    test "a problem names the values of its rule" do
+      error = %{
+        errors: [%{field: :endpoint, message: "is at most %{max} long", vars: [max: 2000]}]
+      }
+
+      assert Usage.problems(error) == [{:endpoint, "is at most 2000 long"}]
+    end
+
     test "a new installation id cuts the tie to what was sent before", %{root: root} do
       {:ok, %Settings{installation_id: before}} = Usage.save_settings(%{}, actor: root)
       {:ok, %Settings{installation_id: now}} = Usage.renew_installation(actor: root)
@@ -425,6 +433,14 @@ defmodule Rescord.UsageTest do
 
       assert {:ok, %Settings{test_result: :ok, test_status: 200}} = Usage.send_test(actor: root)
       assert_received {:sent, %{"resourceMetrics" => [%{"scopeMetrics" => []}]}}
+    end
+
+    test "the last full day is the newest day with a count before today", %{
+      root: root,
+      today: today
+    } do
+      assert Usage.last_full_day(today, actor: root) == Date.add(today, -1)
+      assert Usage.last_full_day(Date.add(today, -12), actor: root) == nil
     end
 
     test "the counts older than 400 days go", %{today: today} do

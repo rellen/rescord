@@ -120,6 +120,14 @@ defmodule RescordWeb.AttachmentPagesTest do
     assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "notes.html")
   end
 
+  test "the form says what to do with a HEIC photo that it refuses (issue 34)", context do
+    {view, _html} = open(context.conn, context.path)
+    upload = files(view, [{"IMG_0042.HEIC", "not read", "image/heic"}])
+
+    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "IMG_0042.HEIC")
+    assert render(view) =~ "Rescord cannot read HEIC or AVIF photos"
+  end
+
   test "a file opens for each member, and for nobody outside the organisation", context do
     entry =
       Journal.write_entry!(

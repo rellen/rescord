@@ -68,6 +68,8 @@ defmodule Rescord.Comments.Follow do
   policies do
     # A follow is of one person: no bypass for a root user.
     policy always() do
+      # The erasure of the person on request is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_erased)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -87,6 +89,15 @@ defmodule Rescord.Comments.Follow do
     attribute :journal_entry_id, :uuid, public?: true
 
     create_timestamp :inserted_at, public?: true
+  end
+
+  # A person erased on request follows nothing (ADR 0105).
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_erased, :unfollow_of_erased_member,
+        action: :unfollow,
+        get_by: [user_id: :user_id]
+    end
   end
 
   identities do

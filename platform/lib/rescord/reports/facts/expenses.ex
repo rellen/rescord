@@ -22,7 +22,7 @@ defmodule Rescord.Reports.Facts.Expenses do
     else
       with {:ok, expenses} <- Expenses.report(%{from: from, to: to}, options),
            {:ok, owed} <- Expenses.report(%{status: :to_pay_back}, options),
-           people = Accounts.labels(options) do
+           people = Accounts.labels(options, held: true) do
         {:ok,
          %{
            from: from,

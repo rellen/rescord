@@ -9,6 +9,7 @@ defmodule Rescord.Images do
     * The type comes from the first bytes (`type_of/1`): JPEG, PNG, GIF or
       WebP. libvips reads only those, and `block_untrusted/0` blocks each
       loader that libvips does not trust, at the start of the application.
+      A HEIC or an AVIF photo gets words of its own (`heif?/1`).
     * A photo of more than `max_pixels/0` pixels is refused before libvips
       decodes it, so a small file cannot fill the memory.
     * The photo turns as its EXIF orientation says, and then loses all of
@@ -17,6 +18,8 @@ defmodule Rescord.Images do
       end of the image stays.
     * A photo longer than `max_side/0` pixels on a side becomes that long,
       and a thumbnail of `thumbnail_side/0` pixels at most is a WebP image.
+      So is the display file of `display_side/0` pixels at most, which a
+      page opens in place of the photo (issue 34).
     * An animated GIF keeps its frames, and loses its metadata. Its
       thumbnail is its first frame.
 
@@ -36,12 +39,18 @@ defmodule Rescord.Images do
   @max_pixels 100_000_000
   @max_side 4096
   @thumbnail_side 480
+  @display_side 1600
 
-  @typedoc "What Rescord keeps of a photo."
+  @typedoc """
+  What Rescord keeps of a photo: the photo, its thumbnail, and the file
+  that a page opens, of `display_side/0` pixels at most (issue 34). A GIF
+  has no display file: a page opens the GIF itself.
+  """
   @type prepared :: %{
           bytes: binary,
           content_type: String.t(),
           thumbnail: binary,
+          display: binary | nil,
           taken_at: NaiveDateTime.t() | nil
         }
 
@@ -53,6 +62,12 @@ defmodule Rescord.Images do
 
   @doc "The longest side of a thumbnail, in pixels."
   def thumbnail_side, do: @thumbnail_side
+
+  @doc """
+  The longest side of the display file, in pixels: the file that a page
+  opens on a phone, in place of the photo of up to `max_side/0` pixels.
+  """
+  def display_side, do: @display_side
 
   @doc """
   Blocks the operations of libvips that its authors do not trust with a
@@ -80,6 +95,28 @@ defmodule Rescord.Images do
   def type_of(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: "image/webp"
   def type_of(_other), do: nil
 
+  # The brands of the box `ftyp` of a HEIF file: the HEIC of a phone, HEIF,
+  # and AVIF.
+  @heif_brands ~w(heic heix hevc hevx heim heis mif1 msf1 avif avis)
+
+  @doc """
+  Whether the first bytes are those of a HEIF file: a HEIC photo of a
+  phone, or an AVIF image. Rescord reads neither: the libvips of the
+  precompiled NIF of vix has no HEVC decoder. So `prepare/1` refuses such a
+  photo with the reason `:heic`, whose words say what to do (issue 34).
+
+      iex> Rescord.Images.heif?(<<0, 0, 0, 24, "ftypheic", 0, 0, 0, 0>>)
+      true
+
+      iex> Rescord.Images.heif?(<<0, 0, 0, 24, "ftypisom", 0, 0, 0, 0>>)
+      false
+  """
+  @spec heif?(binary) :: boolean
+  def heif?(<<_size::binary-size(4), "ftyp", brand::binary-size(4), _rest::binary>>),
+    do: brand in @heif_brands
+
+  def heif?(_other), do: false
+
   @doc """
   The photo that Rescord keeps, with its thumbnail, or a `RefusedFile`
   error with the reason that it cannot keep it.
@@ -87,7 +124,7 @@ defmodule Rescord.Images do
   @spec prepare(binary) :: {:ok, prepared} | {:error, RefusedFile.t()}
   def prepare(bytes) when is_binary(bytes) do
     case type_of(bytes) do
-      nil -> refused(:not_a_photo)
+      nil -> refused(if heif?(bytes), do: :heic, else: :not_a_photo)
       type -> one_of_few(fn -> prepare(bytes, type) end)
     end
   end
@@ -104,9 +141,43 @@ defmodule Rescord.Images do
   defp prepare(bytes, type) do
     with {:ok, image} <- open(bytes, type),
          :ok <- within_limit(image),
-         {:ok, full} <- full(image, type),
+         {:ok, full, display} <- full(image, type),
          {:ok, thumbnail} <- thumbnail(bytes, image, type) do
-      {:ok, %{bytes: full, content_type: type, thumbnail: thumbnail, taken_at: taken_at(image)}}
+      {:ok,
+       %{
+         bytes: full,
+         content_type: type,
+         thumbnail: thumbnail,
+         display: display,
+         taken_at: taken_at(image)
+       }}
+    else
+      {:error, %RefusedFile{} = error} -> {:error, error}
+      {:error, _reason} -> refused(:unreadable)
+    end
+  end
+
+  @doc """
+  The display file of a photo that Rescord keeps already, or `nil` for a
+  GIF, which has none (issue 34). `Rescord.Images.Workers.Complete` makes
+  it for a photo from before the display files. It goes through the slots
+  of `Rescord.Images.Limit`, as `prepare/1` does.
+  """
+  @spec display(binary) :: {:ok, binary | nil} | {:error, RefusedFile.t()}
+  def display(bytes) when is_binary(bytes) do
+    case type_of(bytes) do
+      nil -> refused(:not_a_photo)
+      "image/gif" -> {:ok, nil}
+      type -> one_of_few(fn -> display(bytes, type) end)
+    end
+  end
+
+  defp display(bytes, type) do
+    with {:ok, image} <- open(bytes, type),
+         :ok <- within_limit(image),
+         {:ok, {turned, _how}} <- Image.autorotate(image),
+         {:ok, display} <- display_of(turned) do
+      {:ok, display}
     else
       {:error, %RefusedFile{} = error} -> {:error, error}
       {:error, _reason} -> refused(:unreadable)
@@ -127,13 +198,30 @@ defmodule Rescord.Images do
   end
 
   defp full(image, "image/gif") do
-    Image.write(image, :memory, suffix: ".gif", strip_metadata: true)
+    with {:ok, bytes} <- Image.write(image, :memory, suffix: ".gif", strip_metadata: true) do
+      {:ok, bytes, nil}
+    end
   end
 
+  # The display file comes from the photo that is turned and sized already,
+  # so libvips decodes nothing more for it.
   defp full(image, type) do
     with {:ok, {turned, _how}} <- Image.autorotate(image),
-         {:ok, sized} <- Image.thumbnail(turned, @max_side, resize: :down) do
-      Image.write(sized, :memory, [suffix: suffix(type), strip_metadata: true] ++ quality(type))
+         {:ok, sized} <- Image.thumbnail(turned, @max_side, resize: :down),
+         {:ok, bytes} <-
+           Image.write(
+             sized,
+             :memory,
+             [suffix: suffix(type), strip_metadata: true] ++ quality(type)
+           ),
+         {:ok, display} <- display_of(sized) do
+      {:ok, bytes, display}
+    end
+  end
+
+  defp display_of(image) do
+    with {:ok, sized} <- Image.thumbnail(image, @display_side, resize: :down) do
+      Image.write(sized, :memory, suffix: ".webp", strip_metadata: true, quality: 80)
     end
   end
 

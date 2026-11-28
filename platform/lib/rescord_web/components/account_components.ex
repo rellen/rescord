@@ -18,6 +18,10 @@ defmodule RescordWeb.AccountComponents do
   attr :all_roles, :list, required: true, doc: "each role of the organisation, as options"
   attr :url_state, :any, required: true, doc: "the state of the table in the address"
 
+  attr :can_erase?, :boolean,
+    default: false,
+    doc: "whether the person records a request to erase data"
+
   def members_table(assigns) do
     ~H"""
     <Cinder.collection
@@ -69,6 +73,13 @@ defmodule RescordWeb.AccountComponents do
         >
           <.icon name="user-minus" /> Remove
         </.button>
+        <.link
+          :if={@can_erase? and member.user_id != @current_user.id}
+          navigate={~p"/o/#{@organisation.short_name}/privacy?member=#{member.id}"}
+          aria-label={"Erase on request the data of #{member.email}"}
+        >
+          Erase on request
+        </.link>
       </:col>
     </Cinder.collection>
     """
@@ -85,6 +96,10 @@ defmodule RescordWeb.AccountComponents do
   attr :former, :list, required: true, doc: "each former member, with `email`"
   attr :organisation, :any, required: true
   attr :can_invite?, :boolean, required: true
+
+  attr :can_erase?, :boolean,
+    default: false,
+    doc: "whether the person records a request to erase data"
 
   def former_members(assigns) do
     ~H"""
@@ -105,6 +120,13 @@ defmodule RescordWeb.AccountComponents do
           >
             <.icon name="user-plus" /> Invite again
           </.button>
+          <.link
+            :if={@can_erase?}
+            navigate={~p"/o/#{@organisation.short_name}/privacy?member=#{member.id}"}
+            aria-label={"Erase on request the data of #{member.email}"}
+          >
+            Erase on request
+          </.link>
         </li>
       </ul>
     </section>

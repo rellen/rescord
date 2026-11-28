@@ -145,7 +145,7 @@ defmodule RescordWeb.ExpenseWords do
 
   @doc "The month of a date in words: `November 2026`."
   @spec month(Date.t()) :: String.t()
-  def month(%Date{} = date), do: Calendar.strftime(date, "%B %Y")
+  def month(%Date{} = date), do: RescordWeb.Locale.month(date)
 
   @doc "An instant in the time zone of the organisation, in words."
   @spec instant(map, DateTime.t()) :: String.t()

@@ -100,8 +100,8 @@ the page.
 - The module never moves a focus that the page still has.
 
 So a row, a card and a list item that hold a button need an `id` that
-stays the same from one render to the next. The streams and the Cinder
-rows already have one.
+stays the same from one render to the next. The streams have one. The
+Cinder rows have none: ADR 0110 finds them by their `data-item-id`.
 
 ### The test
 

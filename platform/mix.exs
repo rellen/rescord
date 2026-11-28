@@ -72,6 +72,8 @@ defmodule Rescord.MixProject do
       {:ash_state_machine, "~> 0.2"},
       {:ash_oban, "~> 0.2"},
       {:oban, "~> 2.0"},
+      # The jobs of Oban, for a root user, at `/root/oban` (ADR 0110).
+      {:oban_web, "~> 2.13"},
       {:ash_workflow, "~> 0.12"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
       {:ash_phoenix, "~> 2.0"},
@@ -193,15 +195,21 @@ defmodule Rescord.MixProject do
   end
 
   # muex runs `mix test` for each mutant, in a copy of the project (a
-  # sandbox) that has no `assets/`. The set-up of the alias `test` would then
-  # fail, and it would cost seconds for each mutant. So `mix test.mutation`
+  # sandbox). The set-up of the alias `test` would cost seconds for each
+  # mutant, and `assets.build` would write into the real `priv/static`,
+  # which the copy links to. So `mix test.mutation`
   # sets RESCORD_MUTATION_RUN, each `mix test` of muex inherits it, and its
   # alias `test` skips the set-up. The workflow and a person set up the test
   # database and the assets once, before the run.
   @mutation_run "RESCORD_MUTATION_RUN"
 
+  # scripts/test-in-parts.sh sets up each database and builds the assets
+  # once, then runs several `mix test` side by side with RESCORD_TEST_SET_UP
+  # (ADR 0103): two builds of the assets at once would write the same files.
+  @test_set_up "RESCORD_TEST_SET_UP"
+
   defp test_setup do
-    if System.get_env(@mutation_run) == "1",
+    if System.get_env(@mutation_run) == "1" or System.get_env(@test_set_up) == "1",
       do: [],
       else: ["ash.setup --quiet", "assets.build"]
   end
@@ -219,13 +227,18 @@ defmodule Rescord.MixProject do
   # calls nearly each mutant of the outer module equivalent and runs no test
   # (ADR 0104). --timeout is the time with no output from `mix test`: a
   # mutant of a domain recompiles hundreds of files, and at 60 seconds four
-  # such mutants timed out on 4 cores.
+  # such mutants timed out on 4 cores. --mirror assets: some tests read
+  # `assets/`, which a copy of muex lacks without it, so they failed for
+  # each mutant and "killed" it.
   defp muex_command do
     test_files =
       Path.wildcard("test/**/*_test.exs") -- Path.wildcard("test/rescord_web/features/**")
 
     Enum.join(
-      ["muex --fail-at 0 --timeout 180000 --no-tce --test-paths", Enum.join(test_files, ",")],
+      [
+        "muex --fail-at 0 --timeout 180000 --no-tce --mirror assets --test-paths",
+        Enum.join(test_files, ",")
+      ],
       " "
     )
   end

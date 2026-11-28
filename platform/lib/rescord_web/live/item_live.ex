@@ -372,6 +372,7 @@ defmodule RescordWeb.ItemLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:inventory}
     >
       <.header>
@@ -380,6 +381,14 @@ defmodule RescordWeb.ItemLive do
           {(@item.category && @item.category.label) || "An item of the inventory"}
         </:subtitle>
         <:actions>
+          <.link
+            :if={@ruby?}
+            navigate={~p"/o/#{@organisation.short_name}/ruby?#{[about: "item:#{@item.id}"]}"}
+            data-variant="secondary"
+            id="ask-ruby"
+          >
+            <.icon name={Icons.section(:ruby)} /> Ask Ruby
+          </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/inventory"} data-variant="secondary">
             <.icon name="archive-box" /> The inventory
           </.link>

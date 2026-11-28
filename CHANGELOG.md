@@ -158,6 +158,31 @@ release (ADR 0047).
     each of the two tables, and the check that a row names one record
     counts it. Each row that is there names one record of the four, so it
     keeps to the new check. It changes no row.
+  - `20261128115541_add_the_erasure_of_a_member`, in the database: the
+    email of a user may be empty, and a new column `erased_at` says when
+    the account was erased on request (issue 31, ADR 0105). A check holds
+    that the email is empty exactly when `erased_at` is set. Each user
+    that is there has an email and no `erased_at`, so the check holds for
+    each row, and no row changes.
+  - `20261128115535_add_the_erasure_of_a_member`, in each organisation:
+    adds four empty columns to the members, for a member erased on
+    request (`erased_at`, `former_number`, `held_until` and the encrypted
+    `encrypted_held_email`), a unique index on `former_number`, and the
+    tables of the requests to erase data and of the settings of privacy,
+    with their histories. All are empty. It changes no row.
+  - `20261128120000_give_administrators_the_privacy`, in each
+    organisation: gives the new power "Work on the requests to erase
+    data, erase a member who asked, and keep the privacy settings and
+    notice" to the role with the key `administrator`, which is the role
+    Administrator that each organisation starts with. No other row
+    changes.
+  - `20261128122901_add_the_privacy_notice`, in the database: adds the
+    table of the privacy settings of the server, with its history, which
+    stays empty until a root user saves them, and a column `notice_id` to
+    the organisations, with a unique index. Each organisation that is
+    there gets a new random id in it, the id in the link of its privacy
+    notice (`/privacy/<id>`). It is not the id of the organisation, and
+    no other value of a row changes.
   - The index is a plain `CREATE INDEX`, because the rehearsal refuses
     `CONCURRENTLY`. It locks each table against reads and writes until
     the migration of its organisation commits. The migrations run at the
@@ -169,6 +194,52 @@ release (ADR 0047).
     read to answer: the tool, and the records that it named. Each
     message that is there gets an empty list, and the page shows it with
     no step. It changes no other row.
+  - `20261128125913_add_the_display_files`, in each organisation: adds
+    an empty column `display_key` to the journal attachments and to the
+    photos (issue 34). It changes no row: a job fills it after the start.
+  - `20261128131500_add_the_count_estimate_of_oban_met`, in the database:
+    adds the function `oban_count_estimate`, with which the new page of
+    the jobs for a root user estimates how many jobs wait in a queue. It
+    changes no row.
+- After the upgrade, a member with the power "Work on the requests to
+  erase data" can erase a member who asked, which takes their email
+  address out of the records of the organisation (ADR 0105). An erasure
+  writes a small marker to the store of the files, with ids and no
+  email. After a restore of a dump that is older than an erasure,
+  `bin/restore` and `rescord-restore` erase the person again by
+  themselves. With Docker Compose, run
+  `docker compose run --rm rescord bin/reapply-erasures` after
+  `docker compose run --rm backup restore` (see "Restore" in
+  `docs/self-hosting.md`). Keep the dumps for a short time, 14 days by
+  default and not more than 90, so that erased data ages out of them.
+- After the upgrade, a job of the images (`Rescord.Images.Workers.Complete`)
+  starts each hour, by itself, and does two things (issue 34):
+  - It makes a display file of each photo that is not a GIF: a WebP image
+    of 1600 pixels at most, which a page opens on a phone in place of the
+    photo. The store grows by about a tenth of the size of the photos.
+  - It cleans each journal photo that Rescord 0.1.0 kept as it was sent,
+    with its EXIF and the GPS position of the place where it was taken.
+    The file is written again with no metadata, under the same key, and
+    gets its thumbnail; a copy of it in a transfer to another refuge of
+    the server gets the same bytes. Its size changes on the attachment,
+    on each version of its photo record, and in the copy, with no new
+    version and no entry in the history: the size is a fact of the file.
+
+  It runs in batches of 50 photos, one batch at a time and two photos at a
+  time at most with the uploads of people, so a server with many photos
+  uses more CPU for some hours after the upgrade. A photo that it cannot
+  read stays as it is, and a warning of the log gives the count each
+  hour. `bin/check-files` says how many journal photos still carry their
+  metadata.
+- **The job cannot clean what has left the server.** A backup made before
+  it ran, an older object version in a bucket with versioning, and an
+  export of a transfer to another server keep the journal photos of
+  0.1.0 as they were sent, with the GPS position. To be rid of them,
+  delete those backups and the older object versions, with the tools of
+  your store, once `bin/check-files` counts no such photo.
+- Before you go back to an earlier version after this upgrade: the
+  earlier version ignores the new column and opens the photo itself, and
+  its `bin/check-files` reports the display files as leftovers.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
@@ -271,12 +342,57 @@ release (ADR 0047).
 
 ### Added
 
+- A photo of a resident and a photo of the journal open as a display file
+  of 1600 pixels at most, a WebP image of a few hundred kilobytes, in
+  place of the photo of up to 4096 pixels, which costs a phone a few
+  megabytes of its data. The card of a photo has a link "Full size" to the
+  photo itself, and the cage card prints the profile picture from the
+  display file, which is sharper on paper than the thumbnail (issue 34).
+- A root user watches the background jobs of the server at `/root/oban`,
+  with Oban Web: the jobs that wait, run, failed or were cancelled, with
+  their errors, and the queues. The root page links to it. A root user
+  can cancel or retry a job and pause or resume a queue, and nothing
+  else: no delete, no new job, and no change to a queue, a cron entry or
+  a pruner rule. No member and no administrator of an organisation can
+  open it (ADR 0110).
 - The members page lists the former members, with the day each one left
   and a button "Invite again", and asks before it removes a member. The
   records of a member who was removed stay theirs: each page names them
   "email (former member)", and the work of a root user who is not a
   member says "Rescord operator". `members.csv` of the export has the
   former members too, with the new column `former?` (ADR 0105).
+- The erasure of a member on request (issue 31, ADR 0105). An erasure
+  makes the person "Former member N" on each record of the organisation,
+  removes them first if they are a member, deletes their conversations
+  with Ruby, their notifications and follows, and, unless the person who
+  erases keeps them, their comments, and renames their calendar feeds.
+  An expense younger than the money period of the organisation, 7 years
+  at first, keeps their email, encrypted, for the pages of the expenses,
+  and a job lets it go at the end. With no membership left, the account
+  goes too: its email, also in its history, its sessions, its devices and
+  each job that names the email. Each erasure starts from a request,
+  which is due one month after it arrived and keeps what was kept and
+  why, and the person gets an email that says so, unless they asked by
+  letter. A daily job deletes the closed requests after 3 years, and can
+  pseudonymise each former member after a number of months. The new
+  power "Work on the requests to erase data" is the role Administrator
+  at first, and only a root user erases a member who can change the
+  members. `bin/reapply-erasures` erases again after a restore. The page
+  Privacy of an organisation (`/o/<short name>/privacy`, linked from the
+  members page) lets a member ask for the erasure of their data and see
+  their requests, and lets a person with the power record a request that
+  came another way, erase, extend, refuse or withdraw it, and keep the
+  settings. The members page links each member who can be erased to it,
+  and the first page lists the requests that wait. `/root/privacy` lets
+  a root user keep what the notices say about the server, and erase a
+  whole account on request, which closes a request in each organisation
+  of the person.
+- Privacy notices (ADR 0105). `/privacy` is the notice of the server, and
+  `/privacy/<notice id>` the notice of an organisation, both public. The
+  notice id is random and only for that link, so the link names no
+  organisation, and a new one makes the old link stop working. A notice
+  says which blanks are missing until the operator and the organisation
+  fill them in.
 - Comments and notifications (issue 29, ADR 0106). A member writes a
   comment on a resident, a task, an expense, a transfer or a journal
   entry, with bold, italics, lists and links, and ticks the members to
@@ -433,8 +549,7 @@ release (ADR 0047).
   `/o/<organisation>/ruby`, while the organisation has Ruby on. The page
   offers a few things to ask, keeps the conversations of the member, and
   shows the words of the answer as they arrive, with a button Stop. Ruby
-  reads only what the member can read, and records nothing. The page has
-  no link in the menu yet: that comes in a later version. For anybody
+  reads only what the member can read, and records nothing. For anybody
   else, or while Ruby is off, the address is a page that is not there.
 - While Ruby reads to answer, the page of Ruby shows each step, such as
   "Looks at the stock", and what it found. An answer keeps its steps in
@@ -448,6 +563,13 @@ release (ADR 0047).
   rest" for an answer that was cut short, a new conversation, or, for a
   person who sets Ruby up, the settings. A conversation in which the
   service refused to answer takes no more messages.
+- A member who can ask Ruby finds it in the bar at the top of each page
+  of the organisation, and first on its first page ("Ask Ruby"). The page
+  of a resident and of an item of the inventory, and the tasks of a day,
+  have a button "Ask Ruby". From a resident or an item, the conversation
+  is about that record: the page of Ruby names it, with a link back, and
+  offers things to ask about it, and Ruby knows which record the member
+  means. A person who cannot ask Ruby sees none of these links.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.
@@ -610,6 +732,12 @@ release (ADR 0047).
 
 ### Changed
 
+- A HEIC or an AVIF photo, which Rescord cannot read, is refused with
+  words that say what to do: on an iPhone, pick it from Photos, which
+  sends a JPEG, or set the camera to Most Compatible; elsewhere, save it as
+  a JPEG first. The forms of the photos, the journal and the receipts say
+  so for a file that the browser refuses, and Rescord for a file whose
+  first bytes are those of HEIF (issue 34).
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is
@@ -769,9 +897,45 @@ release (ADR 0047).
   now at the top of one list, each with its day, and not in a table of
   their own, so a filter holds for both. After Take, Done, Skip or Open
   again the page stays where it was (ADR 0097).
+- The help beside a tick box is tied to the box, so a screen reader reads
+  it with the box: the notes of a calendar feed, and the two kinds of
+  notification of a server. The whole email address shows in the menu,
+  on two lines where it is long, and the whole public key of the push
+  service shows on its page: before, each was cut short and the rest was
+  only in a tooltip (ADR 0108).
+- The page names the language and region of the organisation, such as
+  `en-AU`, for a screen reader and a browser. The words of a calendar
+  feed, and the month of the expenses, have the forms of the organisation
+  as its pages do (ADR 0108).
+- A location with room for a number of residents says "2 residents, room
+  for 3". A group in a location says "here: 2 of the 3 in the group".
+- The pages of the residents, the groups, the housing and the photos
+  help more: the desex status, the date of birth, the expected return, a
+  placement and the words of a group have a line of help, and an empty
+  list says what the thing is and where to add one. The residents of a
+  group are "residents in the group", and a resident with no name is "A
+  resident with no name" on each page. The conditions page says "2
+  residents in care have 3 ongoing conditions", and its filter of the
+  state says "Ongoing or chronic". The resident page links to its
+  measurements even before the first one (ADR 0108).
 
 ### Fixed
 
+- The warning of an expiry on the lists page said "1 days" for a value of
+  one day, and a location with room for one resident said "1 of 1
+  residents".
+- Done on a task that leaves the list of the day no longer moves the focus
+  to the button of another task, where a second Enter acted on that task.
+  The focus goes to the heading of the list. After a measurement, a
+  journal entry, a movement of stock, the button Clear of a filter and
+  the links to another day, the focus now stays near, and no longer goes
+  to the top of the page (ADR 0110).
+- A weight, a measurement or a quantity of stock typed with a comma, such
+  as "1,2", is now refused. Before, the browser dropped the comma and the
+  value was 12. An arrow key no longer changes such a number (ADR 0110).
+- The skip link now gives the focus to the content, and the menu of a
+  phone closes when the Tab key leaves it. Before, the open menu hid the
+  link that had the focus (ADR 0110).
 - The table "Owed to members" of the expense report put every person who
   had left in one row "A person who left". Each payer has their own row
   now (ADR 0105).
@@ -810,7 +974,14 @@ release (ADR 0047).
 
 ### Security
 
+- A journal photo that Rescord 0.1.0 kept as it was sent, with its EXIF
+  block and the GPS position where it was taken, is cleaned after the
+  upgrade by a job, as each photo has been since 0.2.0: the file is
+  written again with no metadata, and its copies in the transfers on the
+  server too. See the upgrade notes for what the job cannot reach
+  (issue 34).
 - The history of a record is closed to each request that asks for it by
+
   itself. Rescord keeps each change of a record as a version, and the
   versions had no rule of their own about who reads them. A page shows the
   history of a resident only after the resident has passed the rules of

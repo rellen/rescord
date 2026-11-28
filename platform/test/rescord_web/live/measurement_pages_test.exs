@@ -99,7 +99,7 @@ defmodule RescordWeb.MeasurementPagesTest do
       {view, html} = open(context.conn, context.path)
 
       assert html =~ "Measurements of Biscuit"
-      assert html =~ "No measurement is recorded."
+      assert html =~ "No measurement yet. Record the first one with the form above."
       assert has_element?(view, "#record #measurement")
       refute has_element?(view, "nav[data-choice]")
       refute has_element?(view, "article[data-measure]")
@@ -751,11 +751,11 @@ defmodule RescordWeb.MeasurementPagesTest do
       assert has_element?(view, "a[href='#{context.path}']", "Measurements")
     end
 
-    test "with no measurement says so, and has no link to the measurements", context do
+    test "with no measurement says so, and links to the page to record one", context do
       {view, html} = open(context.conn, "#{context.base}/residents/#{context.biscuit.id}")
 
-      assert html =~ "No measurement is recorded."
-      refute has_element?(view, "a[href='#{context.path}']")
+      assert html =~ "No weight or other measurement yet."
+      assert has_element?(view, "a[href='#{context.path}']", "Measurements")
     end
   end
 
@@ -803,7 +803,7 @@ defmodule RescordWeb.MeasurementPagesTest do
       {view, html} = open(context.conn, context.group_path)
 
       assert html =~ "Measurements of The spring litter"
-      assert html =~ "No measurement of a member is recorded."
+      assert html =~ "No resident in the group has a measurement yet."
       refute has_element?(view, "ul[data-multiples]")
       refute has_element?(view, "nav[data-choice]")
     end
@@ -941,7 +941,7 @@ defmodule RescordWeb.MeasurementPagesTest do
       end
 
       {_view, html} = open(context.conn, context.group_path)
-      assert html =~ "The group has no member."
+      assert html =~ "The group has no resident yet."
     end
   end
 end

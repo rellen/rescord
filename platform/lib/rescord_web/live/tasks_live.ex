@@ -48,7 +48,8 @@ defmodule RescordWeb.TasksLive do
        problems: [],
        refused_form?: false,
        kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
-       residents: residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort(),
+       residents:
+         residents |> Enum.map(&{&1.name || "A resident with no name", &1.id}) |> Enum.sort(),
        groups: groups |> Enum.map(&{Residents.group_name(&1), &1.id}) |> Enum.sort(),
        locations:
          for(
@@ -255,6 +256,7 @@ defmodule RescordWeb.TasksLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:tasks}
     >
       <.header icon={Icons.section(:tasks)}>
@@ -275,6 +277,14 @@ defmodule RescordWeb.TasksLive do
           </.link>
           <.link patch={day_path(assigns, Date.add(@day, 1))} data-variant="secondary">
             The day after <.icon name="chevron-right" />
+          </.link>
+          <.link
+            :if={@ruby?}
+            navigate={~p"/o/#{@organisation.short_name}/ruby"}
+            data-variant="secondary"
+            id="ask-ruby"
+          >
+            <.icon name={Icons.section(:ruby)} /> Ask Ruby
           </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/routines"} data-variant="secondary">
             <.icon name={Icons.section(:routines)} /> Routines

@@ -321,6 +321,7 @@ defmodule RescordWeb.PhotosLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">

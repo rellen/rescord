@@ -6,13 +6,18 @@ defmodule RescordWeb.PhotoPagesTest do
   of the resident and in the list of the residents, what the links send,
   and who sees which control.
 
+  The tests find what a person finds (ADR 0107). A card of a photo is
+  found by its id, as two photos with no caption of one day have the same
+  words.
+
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest, only: [render_async: 1, render_click: 3, render_submit: 3]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -51,57 +56,69 @@ defmodule RescordWeb.PhotoPagesTest do
     photo
   end
 
+  # A file to choose, in the folder of the test.
+  defp file!(context, name, content) do
+    path = Path.join(context.tmp_dir, name)
+    File.write!(path, content)
+    path
+  end
+
+  defp card(%Photos.Photo{id: id}), do: "#item-photo-#{id}"
+  defp card(ref) when is_binary(ref), do: "#item-#{ref}"
+
+  # The album that the page shows is the current link of the albums.
+  defp current_album(session, words) do
+    within(session, navigation("Albums"), &assert_has(&1, "[aria-current=page]", text: words))
+  end
+
   test "new photos have their caption, and go into the open album", context do
     {:ok, album} =
       Photos.make_album(%{resident_id: context.biscuit.id, name: "Garden"}, context.options)
 
-    {:ok, view, _html} = live(context.conn, "#{context.path}?album=#{album.id}")
-    assert has_element?(view, "h2", "Garden")
-    assert has_element?(view, ~s(nav[aria-label="Albums"] a[aria-current="page"]), "Garden (0)")
+    session =
+      context.conn
+      |> visit("#{context.path}?album=#{album.id}")
+      |> assert_has(main() |> region("Garden"))
+      |> current_album("Garden (0)")
+      |> upload("Choose photos", file!(context, "one.jpg", photo(gps: true)))
+      |> upload("Choose photos", file!(context, "two.png", photo(format: ".png")))
+      |> assert_has(region("Garden") |> button("Take out one.jpg"))
+      |> assert_has(region("Garden") |> button("Take out two.png"))
+      |> fill_in("Caption", with: "In the garden")
+      |> fill_in("Date", with: "2026-11-01")
+      |> click_button("Add the photos")
+      |> assert_has(status(), text: "The photos are added.")
 
-    upload =
-      file_input(view, "#add-photos", :photos, [
-        %{name: "one.jpg", content: photo(gps: true), type: "image/jpeg"},
-        %{name: "two.png", content: photo(format: ".png"), type: "image/png"}
-      ])
-
-    assert render_upload(upload, "one.jpg") =~ "one.jpg"
-    assert render_upload(upload, "two.png") =~ "two.png"
-
-    {:ok, view, _html} =
-      view
-      |> form("#add-photos", add: %{caption: "In the garden", taken_on: "2026-11-01"})
-      |> render_submit()
-      |> follow_redirect(context.conn)
-
-    assert render(view) =~ "The photos are added."
     {:ok, items} = Photos.photos_of(context.biscuit.id, context.options)
     assert length(items) == 2
     assert Enum.all?(items, &(&1.caption == "In the garden" and &1.taken_on == ~D[2026-11-01]))
     assert Enum.all?(items, &(&1.album_ids == [album.id]))
 
     for item <- items do
-      assert has_element?(view, "#item-photo-#{item.photo.id} figcaption", "In the garden")
-      assert has_element?(view, "#item-photo-#{item.photo.id} img[alt='In the garden']")
+      within(session, card(item.photo), fn card ->
+        card
+        |> assert_has("figcaption", text: "In the garden")
+        |> assert_has(image("In the garden"))
+      end)
     end
 
-    assert has_element?(view, ~s(a[aria-current="page"]), "Garden (2)")
+    current_album(session, "Garden (2)")
   end
 
   test "a file that is not a photo stays out, and the page says why", context do
-    {:ok, view, _html} = live(context.conn, context.path)
+    fake = file!(context, "fake.jpg", <<0xFF, 0xD8, 0xFF>> <> "not a photo")
 
-    upload =
-      file_input(view, "#add-photos", :photos, [
-        %{name: "fake.jpg", content: <<0xFF, 0xD8, 0xFF>> <> "not a photo", type: "image/jpeg"}
-      ])
-
-    render_upload(upload, "fake.jpg")
-    view |> form("#add-photos", add: %{caption: ""}) |> render_submit()
-
+    context.conn
+    |> visit(context.path)
+    |> upload("Choose photos", fake)
+    |> click_button("Add the photos")
     # The form that the person sent says why, and not the top of the page.
-    assert has_element?(view, "#add-photos p[role=alert]", "is a photo that Rescord cannot read")
-    refute has_element?(view, "main > p[role=alert]")
+    |> within(
+      "#add-photos",
+      &assert_has(&1, alert(), text: "is a photo that Rescord cannot read")
+    )
+    |> refute_has("main > [role=alert]")
+
     assert {:ok, []} = Photos.photos_of(context.biscuit.id, context.options)
   end
 
@@ -120,59 +137,66 @@ defmodule RescordWeb.PhotoPagesTest do
     {:ok, album} =
       Photos.make_album(%{resident_id: context.biscuit.id, name: "Sun"}, context.options)
 
-    {:ok, view, _html} = live(context.conn, context.path)
-    ref = "attachment-#{attachment.id}"
+    short = context.organisation.short_name
+    session = visit(context.conn, context.path)
+    sun = card("attachment-#{attachment.id}")
 
-    assert has_element?(
-             view,
-             ~s(#item-#{ref} a[href$="/journal?entry=#{entry.id}"]),
-             "From the journal"
-           )
+    assert href(session, link("From the journal")) =~ ~r"/journal\?entry=#{entry.id}$"
 
-    assert has_element?(
-             view,
-             ~s(#item-#{ref} img[src="/o/#{context.organisation.short_name}/attachments/#{attachment.id}/thumbnail"])
-           )
+    assert src(session, image(~r/^A photo of Biscuit/)) ==
+             "/o/#{short}/attachments/#{attachment.id}/thumbnail"
 
-    # The journal photo has no removal here: it leaves with its entry.
-    refute has_element?(view, ~s(#item-#{ref} button[phx-click="remove_photo"]))
+    # The photo opens as its display file, and "Full size" opens the file
+    # (issue 34).
+    assert_has(
+      session,
+      "#{sun} figure > a[href=\"/o/#{short}/attachments/#{attachment.id}/display\"]"
+    )
 
-    {:ok, view, _html} =
-      view
-      |> form("#keep-#{ref}",
-        photo: %{ref: ref, caption: "Warm", taken_on: "2026-11-02", album_ids: ["", album.id]}
-      )
-      |> render_submit()
-      |> follow_redirect(context.conn)
+    assert href(session, link("Full size")) == "/o/#{short}/attachments/#{attachment.id}"
+
+    session =
+      session
+      # The journal photo has no removal here: it leaves with its entry.
+      |> within(sun, &refute_has(&1, button("Remove")))
+      |> within(sun, fn card ->
+        card
+        |> fill_in("Caption", with: "Warm")
+        |> fill_in("Date", with: "2026-11-02")
+        |> check("Sun")
+        |> click_button("Save")
+      end)
 
     assert {:ok, [item]} = Photos.photos_of(context.biscuit.id, context.options)
     assert item.photo.attachment_id == attachment.id
     assert {item.caption, item.taken_on, item.album_ids} == {"Warm", ~D[2026-11-02], [album.id]}
-    assert has_element?(view, "#item-photo-#{item.photo.id} figcaption", "Warm")
-    assert has_element?(view, "#item-photo-#{item.photo.id} figcaption", "In Sun")
+
+    within(session, card(item.photo), fn card ->
+      card
+      |> assert_has("figcaption", text: "Warm")
+      |> assert_has("figcaption", text: "In Sun")
+    end)
   end
 
   test "the form of a photo says what it refused, and the other forms do not", context do
     photo = add!(context, %{caption: "Before"})
     other = add!(context)
-    {:ok, view, _html} = live(context.conn, context.path)
 
     # The browser holds the date to today with `max`; a request does not.
     tomorrow = context.organisation |> Accounts.today() |> Date.add(1) |> Date.to_iso8601()
 
-    view
-    |> form("#keep-photo-#{photo.id}", photo: %{caption: "After", taken_on: tomorrow})
-    |> render_submit()
-
-    assert has_element?(
-             view,
-             "#keep-photo-#{photo.id} p[role=alert]",
-             "Taken on cannot be after today"
-           )
-
-    refute has_element?(view, "#keep-photo-#{other.id} p[role=alert]")
-    refute has_element?(view, "#add-photos p[role=alert]")
-    refute has_element?(view, "main > p[role=alert]")
+    context.conn
+    |> visit(context.path)
+    |> within(card(photo), fn card ->
+      card
+      |> fill_in("Caption", with: "After")
+      |> fill_in("Date", with: tomorrow)
+      |> click_button("Save")
+    end)
+    |> within(card(photo), &assert_has(&1, alert(), text: "Taken on cannot be after today"))
+    |> within(card(other), &refute_has(&1, alert()))
+    |> within("#add-photos", &refute_has(&1, alert()))
+    |> refute_has("main > [role=alert]")
 
     # The photo is as it was.
     {:ok, items} = Photos.photos_of(context.biscuit.id, context.options)
@@ -181,61 +205,50 @@ defmodule RescordWeb.PhotoPagesTest do
 
   test "an album that the browser names and the page does not have changes nothing", context do
     photo = add!(context)
-    {:ok, view, _html} = live(context.conn, context.path)
     ref = "photo-#{photo.id}"
 
     # The photo is saved, with no album.
-    assert {:error, {:live_redirect, _to}} =
-             render_submit(view, "keep", %{
-               "photo" => %{
-                 "ref" => ref,
-                 "caption" => "Seen",
-                 "album_ids" => [Ash.UUID.generate()]
-               }
-             })
+    context.conn
+    |> visit(context.path)
+    |> unwrap(
+      &render_submit(&1, "keep", %{
+        "photo" => %{"ref" => ref, "caption" => "Seen", "album_ids" => [Ash.UUID.generate()]}
+      })
+    )
+    |> assert_path(context.path)
 
     assert {:ok, [%{album_ids: [], caption: "Seen"}]} =
              Photos.photos_of(context.biscuit.id, context.options)
 
     # A reference that the page does not have changes nothing.
-    {:ok, view, _html} = live(context.conn, context.path)
-    render_click(view, "make_profile", %{"ref" => "photo-#{Ash.UUID.generate()}"})
+    context.conn
+    |> visit(context.path)
+    |> unwrap(&render_click(&1, "make_profile", %{"ref" => "photo-#{Ash.UUID.generate()}"}))
+
     assert {:ok, nil} = Photos.profile_photo(context.biscuit.id, context.options)
   end
 
   test "the profile picture shows on the page of the resident, and links to its photos",
        context do
     photo = add!(context, %{caption: "Biscuit on the sofa"})
-    {:ok, view, _html} = live(context.conn, context.path)
+    short = context.organisation.short_name
+    profile = main() |> figure("Profile picture") |> image("Biscuit on the sofa")
 
-    {:ok, view, _html} =
-      view
-      |> element(~s(#item-photo-#{photo.id} button[phx-click="make_profile"]))
-      |> render_click()
-      |> follow_redirect(context.conn)
+    context.conn
+    |> visit(context.path)
+    |> refute_has(profile)
+    |> within(card(photo), &click_button(&1, "Make it the profile picture"))
+    |> assert_has(profile)
+    |> within(card(photo), &assert_has(&1, "figcaption strong", text: "Profile picture"))
 
-    assert has_element?(view, "#profile-photo img[alt='Biscuit on the sofa']")
-    assert has_element?(view, "#item-photo-#{photo.id} figcaption > strong", "Profile picture")
+    resident = visit(context.conn, ~p"/o/#{short}/residents/#{context.biscuit.id}")
+    assert src(resident, profile) == "/o/#{short}/photos/#{photo.id}/thumbnail"
+    assert href(resident, main() |> link("Photos")) == context.path
 
-    resident_path = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}"
-    {:ok, resident, _html} = live(context.conn, resident_path)
-
-    assert has_element?(
-             resident,
-             ~s(#profile-photo img[src="/o/#{context.organisation.short_name}/photos/#{photo.id}/thumbnail"])
-           )
-
-    assert has_element?(resident, ~s(a[href="#{context.path}"]), "Photos")
-
-    {:ok, view, _html} = live(context.conn, context.path)
-
-    {:ok, view, _html} =
-      view
-      |> element(~s(button[phx-click="clear_profile"]))
-      |> render_click()
-      |> follow_redirect(context.conn)
-
-    refute has_element?(view, "#profile-photo")
+    context.conn
+    |> visit(context.path)
+    |> click(button("No profile picture"))
+    |> refute_has(main() |> figure("Profile picture"))
   end
 
   test "the list of the residents shows each profile picture beside the name, or a letter",
@@ -254,58 +267,45 @@ defmodule RescordWeb.PhotoPagesTest do
     base = ~p"/o/#{short}/residents"
     portrait = fn resident -> ~s(a[href="#{base}/#{resident.id}"] [data-portrait]) end
 
-    {:ok, view, _html} = live(context.conn, base)
-    render_async(view)
+    session = context.conn |> visit(base) |> unwrap(&render_async/1)
 
     # The picture is decoration: the name alone is the words of the link.
-    assert has_element?(view, portrait.(context.biscuit) <> ~s([aria-hidden="true"]))
-
-    assert has_element?(
-             view,
-             portrait.(context.biscuit) <>
-               ~s( img[alt=""][src="/o/#{short}/photos/#{photo.id}/thumbnail"])
-           )
-
-    refute has_element?(view, portrait.(maple) <> " img")
-    assert has_element?(view, portrait.(maple) <> " span", "M")
-    assert has_element?(view, portrait.(nameless))
-    refute has_element?(view, portrait.(nameless) <> " img")
+    session
+    |> assert_has(main() |> link("Biscuit"))
+    |> assert_has(main() |> link("maple"))
+    |> assert_has(main() |> link("A resident with no name"))
+    |> assert_has(portrait.(context.biscuit) <> ~s([aria-hidden="true"]))
+    |> assert_has(
+      portrait.(context.biscuit) <>
+        ~s( img[alt=""][src="/o/#{short}/photos/#{photo.id}/thumbnail"])
+    )
+    |> refute_has(portrait.(maple) <> " img")
+    |> assert_has(portrait.(maple) <> " span", text: "M")
+    |> assert_has(portrait.(nameless))
+    |> refute_has(portrait.(nameless) <> " img")
 
     :ok = Photos.remove_photo(photo, context.options)
-    {:ok, view, _html} = live(context.conn, base)
-    render_async(view)
 
-    refute has_element?(view, "[data-portrait] img")
-    assert has_element?(view, portrait.(context.biscuit) <> " span", "B")
+    context.conn
+    |> visit(base)
+    |> unwrap(&render_async/1)
+    |> refute_has("[data-portrait] img")
+    |> assert_has(portrait.(context.biscuit) <> " span", text: "B")
   end
 
   test "a member makes, renames and removes an album", context do
-    {:ok, view, _html} = live(context.conn, context.path)
-    assert has_element?(view, "p", "No albums yet.")
-
-    {:ok, view, _html} =
-      view
-      |> form("#make-album", album: %{name: "Recovery"})
-      |> render_submit()
-      |> follow_redirect(context.conn)
-
-    assert has_element?(view, ~s(a[aria-current="page"]), "Recovery (0)")
-
-    {:ok, view, _html} =
-      view
-      |> form("#rename-album", album: %{name: "After surgery"})
-      |> render_submit()
-      |> follow_redirect(context.conn)
-
-    assert has_element?(view, "h2", "After surgery")
-
-    {:ok, view, _html} =
-      view
-      |> element(~s(button[phx-click="remove_album"]))
-      |> render_click()
-      |> follow_redirect(context.conn)
-
-    assert has_element?(view, "p", "No albums yet.")
+    context.conn
+    |> visit(context.path)
+    |> assert_has(region("Albums"), text: "No album yet.")
+    |> fill_in("Name of the album", with: "Recovery")
+    |> click_button("Make the album")
+    |> assert_has(status(), text: "The album is made.")
+    |> current_album("Recovery (0)")
+    |> fill_in("New name of the album", with: "After surgery")
+    |> click_button("Rename")
+    |> assert_has(main() |> region("After surgery"))
+    |> click(button("Remove the album"))
+    |> assert_has(region("Albums"), text: "No album yet.")
   end
 
   test "the links send the photo and its thumbnail with their types, to a member alone",
@@ -330,9 +330,20 @@ defmodule RescordWeb.PhotoPagesTest do
     assert get_resp_header(conn, "content-type") == ["image/webp"]
     assert Rescord.Images.type_of(response(conn, 200)) == "image/webp"
 
+    # The display file, which a page opens (issue 34).
+    conn = get(context.conn, ~p"/o/#{short}/photos/#{photo.id}/display")
+    assert {:ok, display} = Rescord.Storage.get(photo.display_key)
+    assert response(conn, 200) == display
+    assert get_resp_header(conn, "content-type") == ["image/webp"]
+
+    assert get_resp_header(conn, "content-disposition") == [
+             ~s(inline; filename="photo-2026-11-03.webp")
+           ]
+
     for path <- [
           ~p"/o/#{short}/photos/#{photo.id}",
           ~p"/o/#{short}/photos/#{photo.id}/thumbnail",
+          ~p"/o/#{short}/photos/#{photo.id}/display",
           ~p"/o/#{short}/photos/#{Ash.UUID.generate()}",
           ~p"/o/#{short}/photos/not-an-id"
         ] do
@@ -364,27 +375,30 @@ defmodule RescordWeb.PhotoPagesTest do
       )
 
     conn = sign_in(build_conn(), reader)
-    {:ok, view, _html} = live(conn, context.path)
 
-    assert has_element?(view, "#item-photo-#{photo.id} img")
-    assert has_element?(view, "a", "Home (0)")
+    session =
+      conn
+      |> visit(context.path)
+      |> assert_has(main() |> image(~r/^A photo of Biscuit/))
+      |> assert_has(navigation("Albums") |> link("Home (0)"))
 
     for control <- [
-          "#add-photos",
-          "#make-album",
-          "#keep-photo-#{photo.id}",
-          ~s(button[phx-click="make_profile"]),
-          ~s(button[phx-click="remove_photo"])
+          "Add the photos",
+          "Make the album",
+          "Save",
+          "Make it the profile picture",
+          "Remove"
         ] do
-      refute has_element?(view, control)
+      refute_has(session, main() |> button(control))
     end
 
-    {:ok, view, _html} = live(conn, "#{context.path}?album=#{album.id}")
-    refute has_element?(view, "#rename-album")
-    refute has_element?(view, ~s(button[phx-click="remove_album"]))
-
+    conn
+    |> visit("#{context.path}?album=#{album.id}")
+    |> refute_has(main() |> button("Rename"))
+    |> refute_has(main() |> button("Remove the album"))
     # A sent event is refused by the policy too.
-    render_click(view, "make_profile", %{"ref" => "photo-#{photo.id}"})
+    |> unwrap(&render_click(&1, "make_profile", %{"ref" => "photo-#{photo.id}"}))
+
     assert {:ok, nil} = Photos.profile_photo(context.biscuit.id, context.options)
   end
 

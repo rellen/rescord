@@ -62,8 +62,10 @@ let
   # (ADR 0059), `rescord-rotate-vault` encrypts again what the previous
   # secret of the server encrypted (ADR 0068),
   # `rescord-migrate --rehearse` rehearses an upgrade and changes nothing
-  # (ADR 0081), and `rescord-check-files` compares the files of the store
-  # with the records of the database (ADR 0091).
+  # (ADR 0081), `rescord-check-files` compares the files of the store
+  # with the records of the database (ADR 0091), and
+  # `rescord-reapply-erasures` erases again each person whom a marker of the
+  # store names (ADR 0105).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
@@ -95,6 +97,7 @@ let
   rotateVault = releaseCommand "rescord-rotate-vault" "rotate-vault";
   migrate = releaseCommand "rescord-migrate" "migrate";
   checkFiles = releaseCommand "rescord-check-files" "check-files";
+  reapplyErasures = releaseCommand "rescord-reapply-erasures" "reapply-erasures";
 in
 {
   options.services.rescord = {
@@ -217,6 +220,7 @@ in
       rotateVault
       migrate
       checkFiles
+      reapplyErasures
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {

@@ -25,7 +25,7 @@ defmodule RescordWeb.ExpenseFileController do
          {:ok, organisation, _member} <- Accounts.organisation_for(user, short_name),
          options = [actor: user, tenant: organisation],
          {:ok, expenses} <- Expenses.report(limits(params), options),
-         people = Accounts.labels(options) do
+         people = Accounts.labels(options, held: true) do
       # The words of the file are in the locale of the organisation.
       RescordWeb.Locale.put(organisation)
       rows = Enum.map(expenses, &ExpenseWords.csv_row(&1, organisation, people))

@@ -82,6 +82,7 @@ defmodule RescordWeb.HousingLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:housing}
     >
       <.header icon={Icons.section(:housing)}>
@@ -99,7 +100,11 @@ defmodule RescordWeb.HousingLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <p :if={@tree == []}>There is no location yet.</p>
+      <p :if={@tree == []}>
+        No location yet. A location is a building, a room or a pen where residents live.{if @can_add?,
+          do: " Add one with New location below.",
+          else: " An administrator adds them."}
+      </p>
       <.place :for={node <- @tree} node={node} organisation={@organisation} level={2} />
 
       <.new_location :if={@can_add?} form={@form} kinds={@kinds} places={@places} />

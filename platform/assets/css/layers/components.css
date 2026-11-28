@@ -1824,24 +1824,27 @@ article[data-day] h3 > svg {
   }
 }
 
-/* A wide screen has Ruby in the row of the parts of the organisation, at
-   its end. */
+/* A wide screen keeps the link of the bar, in the first row between the
+   account and the bell: the row of the parts of a large rescue is full at
+   1280 pixels. The menu has no second link to Ruby: the bar is in the same
+   navigation, and one link says it once. */
 @media (width >= 60rem) {
+  header > nav:has(> a[data-ruby]) {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
   header > nav > a[data-ruby] {
-    display: none;
+    grid-row: 1;
+    grid-column: 3;
   }
 
-  header > nav ul > li:has(> a[data-ruby]) {
-    margin-inline-start: auto;
+  header > nav:has(> a[data-ruby]) > a[data-inbox] {
+    grid-column: 4;
   }
-}
-
-header > nav ul a[data-ruby] {
-  gap: 0.375rem;
 }
 
 /* The link in the bar says that the page is the page of Ruby, as a link
-   of the menu does. */
+   of the menu says it of its page. */
 header > nav > a[data-ruby][aria-current] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 16%, transparent);

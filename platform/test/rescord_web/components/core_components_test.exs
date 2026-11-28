@@ -57,6 +57,25 @@ defmodule RescordWeb.CoreComponentsTest do
            ]
   end
 
+  test "a checkbox with a hint is described by it, below its label" do
+    doc =
+      render_component(&input/1,
+        type: "checkbox",
+        id: "notes",
+        name: "notes",
+        label: "Include the notes",
+        hint: "A calendar service keeps a copy."
+      )
+      |> parse()
+
+    assert attribute(doc, ~s(label > input[type="checkbox"]), "aria-describedby") == [
+             "notes-hint"
+           ]
+
+    assert doc |> LazyHTML.query("label + small#notes-hint[data-hint]") |> LazyHTML.text() ==
+             "A calendar service keeps a copy."
+  end
+
   test "a primary button and a link button carry their variant" do
     assigns = %{}
 
@@ -123,6 +142,23 @@ defmodule RescordWeb.CoreComponentsTest do
     assert attribute(doc, "input#part", "inputmode") == ["decimal"]
     assert attribute(doc, "input#stated", "inputmode") == ["tel"]
     assert attribute(doc, "input#words", "inputmode") == []
+  end
+
+  test "a decimal is a text control with the keyboard of a decimal (ADR 0110)" do
+    assigns = %{}
+
+    doc =
+      rendered_to_string(~H"""
+      <.input id="weight" name="weight" type="decimal" label="Weight" value="1.25" min="0" step="any" />
+      """)
+      |> parse()
+
+    assert attribute(doc, "input#weight", "type") == ["text"]
+    assert attribute(doc, "input#weight", "inputmode") == ["decimal"]
+    assert attribute(doc, "input#weight", "autocomplete") == ["off"]
+    assert attribute(doc, "input#weight", "value") == ["1.25"]
+    assert attribute(doc, "input#weight", "step") == []
+    assert attribute(doc, "input#weight", "min") == []
   end
 
   test "each cell of a table but the first says its column, for a phone (ADR 0061)" do

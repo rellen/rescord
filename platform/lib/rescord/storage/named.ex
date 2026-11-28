@@ -4,8 +4,9 @@ defmodule Rescord.Storage.Named do
   command that compares the store with the database
   (`Rescord.Storage.Compare`, ADR 0091).
 
-  A record of a file holds the key of the file in `key`, and the key of
-  its thumbnail in `thumbnail_key`. A domain that keeps files gives the
+  A record of a file holds the key of the file in `key`, the key of its
+  thumbnail in `thumbnail_key`, and the key of its display file in
+  `display_key` (issue 34). A domain that keeps files gives the
   keys of its records with one function, `file_keys/1`, and that function
   calls `keys/3` for each of its resources.
 
@@ -26,7 +27,7 @@ defmodule Rescord.Storage.Named do
   """
   @type entry :: {Storage.key(), kind :: String.t(), id :: String.t()}
 
-  @columns [:key, :thumbnail_key]
+  @columns [:key, :thumbnail_key, :display_key]
 
   @doc """
   Each key that a row of the table of `resource` names, in the schema of

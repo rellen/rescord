@@ -443,6 +443,20 @@ and a copy of each new file of the store. A dump is kept for 14 days,
 `RESCORD_BACKUP_KEEP_DAYS`. A bucket of S3 is not copied: keep it with the
 versions of its provider.
 
+Keep the dumps for a short time. A person who asks a rescue to erase
+their data (ADR 0105) is still in each dump from before, until the dump
+goes: 14 days by default. Do not keep them for more than 90 days, and
+keep the copies that you make elsewhere for the same days. The privacy
+notice of a rescue can then say how long its backups hold a person.
+
+As a root user, fill in the page `/root/privacy` after the first sign-in:
+who runs the server, where a person writes to you about their account,
+the country and the provider of the servers and the files, the provider
+of the email, and the days of `RESCORD_BACKUP_KEEP_DAYS`. The privacy
+notices (`/privacy`, and the link of each rescue on its page Privacy)
+say that they are not finished until you do. The same page erases an
+account when a person asks you, the operator.
+
 The backups are on the server. Copy them to another place each day too,
 with the secrets: the environment file or `.env`. A backup does not hold
 the secrets, and without `RESCORD_KEY_SECRET`, Rescord cannot open the keys
@@ -475,6 +489,7 @@ docker compose stop rescord
 docker compose exec db psql -U rescord -d postgres \
   -c 'DROP DATABASE rescord' -c 'CREATE DATABASE rescord'
 docker compose run --rm backup restore
+docker compose run --rm rescord bin/reapply-erasures
 docker compose start rescord
 ```
 
@@ -500,6 +515,13 @@ sudo systemctl start rescord
 
 To restore an older dump, give its name after the directory, such as
 `rescord-20261120T020000Z.dump`.
+
+A dump that is older than an erasure on request still holds the person
+who was erased (ADR 0105). Each erasure writes a marker to the store,
+with ids and no email, and `rescord-restore` and `rescord restore` read
+the markers after the restore and erase each such person again, before
+Rescord starts. With Docker Compose, `bin/reapply-erasures` above does
+the same. It prints a count, and a second run changes nothing.
 
 ## Move the files to another store
 
@@ -688,7 +710,8 @@ Rescord works in full without it, and a server sends nothing to any
 service of a language model until a root user sets one up. The work comes
 in steps: this version has the settings of the server and of an
 organisation, and the page where a member asks Ruby,
-`/o/<organisation>/ruby`, which the menu does not link to yet.
+`/o/<organisation>/ruby`, which the bar at the top of each page links
+to for a member who can ask it.
 
 **Ruby has no setting in the environment**, and none in a file of the
 server. A root user of Rescord sets it on the page `/root/ruby`:

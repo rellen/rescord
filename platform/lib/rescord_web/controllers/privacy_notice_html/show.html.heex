@@ -1,0 +1,88 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    How {@organisation.name} uses your data in Rescord
+    <:subtitle>The privacy notice of {@organisation.name}</:subtitle>
+  </.header>
+
+  <p :if={@missing != []} id="notice-missing" role="status">
+    {@organisation.name} has not finished this notice yet. Ask them about your data in the
+    meantime.
+  </p>
+
+  <article :if={@missing == []} id="notice">
+    <p>
+      {@organisation.name} uses Rescord to keep the records of its animals and the work of its
+      volunteers. Rescord is run for us by {@server.operator_name}, on servers in {@server.hosting}.
+    </p>
+
+    <section aria-labelledby="what-heading">
+      <h2 id="what-heading">What we keep about you</h2>
+      <p>
+        Your email address, which you sign in with. The records you write and the changes you
+        make, with your name on them, so that we know who cared for each animal. Expenses you
+        record or are paid back for. Comments, and your conversations with the assistant if we
+        use it.
+      </p>
+    </section>
+
+    <section aria-labelledby="why-heading">
+      <h2 id="why-heading">Why</h2>
+      <p>To run {@organisation.name} and care for its animals, and to keep our accounts.</p>
+    </section>
+
+    <section aria-labelledby="who-heading">
+      <h2 id="who-heading">Who else sees it</h2>
+      <p>
+        The other members of {@organisation.name}. A partner refuge that receives an animal
+        gets a copy of its records, without your name. Emails go through {@server.mail_provider}.
+      </p>
+    </section>
+
+    <section aria-labelledby="long-heading">
+      <h2 id="long-heading">How long</h2>
+      <p>
+        While you are a member. When you leave, your records stay with your name, marked as a
+        former member<span :if={@settings.pseudonymise_after_months}>, and after {@settings.pseudonymise_after_months} months we replace your name with "Former member" and a number</span>.
+        Expenses stay with your name for {@settings.money_years} years after each expense,
+        because the law requires it.
+      </p>
+    </section>
+
+    <section aria-labelledby="rights-heading">
+      <h2 id="rights-heading">Your rights</h2>
+      <p>
+        You can ask to see your data, to correct it, or to erase it. When we erase it, we remove
+        your email address and your account, and replace your name on our records with
+        "Former member" and a number. We keep what the law requires, such as money records, and
+        tell you what and until when. Records you wrote about the animals stay, because the care
+        of each animal depends on them. You can ask us to delete your comments.
+      </p>
+      <p>
+        Our backups hold your data for {@server.backup_days} more days, and we never use them for
+        anything else. If we ever restore a backup, Rescord erases you again before anybody uses
+        it.
+      </p>
+    </section>
+
+    <section aria-labelledby="ask-heading">
+      <h2 id="ask-heading">How to ask</h2>
+      <p>
+        From the page Privacy of {@organisation.name} in Rescord, or by writing to
+        <span :if={@settings.contact_name}>{@settings.contact_name}, at </span><a href={"mailto:#{@settings.contact_email}"}>{@settings.contact_email}</a>.
+        We answer within one month.
+      </p>
+    </section>
+
+    <section aria-labelledby="complaints-heading">
+      <h2 id="complaints-heading">Complaints</h2>
+      <p>
+        Write to us first.<span :if={@settings.authority}> You can also complain to {@settings.authority}.</span>
+      </p>
+    </section>
+
+    <section :if={paragraphs(@settings.notice_text) != []} aria-labelledby="more-heading">
+      <h2 id="more-heading">More from {@organisation.name}</h2>
+      <p :for={paragraph <- paragraphs(@settings.notice_text)}>{paragraph}</p>
+    </section>
+  </article>
+</Layouts.app>

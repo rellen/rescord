@@ -50,14 +50,17 @@ defmodule RescordWeb.LocationComponents do
   attr :organisation, :map, required: true
   attr :level, :integer, required: true, doc: "the level of the heading, from 2 to 6"
 
-  @doc "One location as a card, with the locations inside it as cards in it."
+  @doc "One location as a card named by its heading, with the locations inside it as cards in it."
   def place(assigns) do
     assigns = assign(assigns, free?: assigns.node.count == 0 and assigns.node.children == [])
 
     ~H"""
-    <article data-place={if @free?, do: "free", else: "used"}>
+    <article
+      data-place={if @free?, do: "free", else: "used"}
+      aria-labelledby={"place-#{@node.location.id}"}
+    >
       <header>
-        <.dynamic_tag tag_name={"h#{min(@level, 6)}"}>
+        <.dynamic_tag tag_name={"h#{min(@level, 6)}"} id={"place-#{@node.location.id}"}>
           <.link navigate={~p"/o/#{@organisation.short_name}/housing/#{@node.location.id}"}>{@node.location.name}</.link>
         </.dynamic_tag>
         <small>
@@ -68,7 +71,7 @@ defmodule RescordWeb.LocationComponents do
       <ul :if={@node.residents != [] or @node.groups != []}>
         <li :for={placement <- @node.residents}>
           <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{placement.resident_id}"}>{placement.resident.name ||
-            "No name yet"}</.link>
+            "A resident with no name"}</.link>
         </li>
         <li :for={{_placement, group, _members} <- @node.groups}>
           <.link navigate={~p"/o/#{@organisation.short_name}/groups/#{group.id}"}>{Rescord.Residents.group_name(
@@ -89,15 +92,15 @@ defmodule RescordWeb.LocationComponents do
     """
   end
 
-  @doc "The words for how full a location is: `2 of 2 residents`, `3 residents`, `Free`."
+  @doc "The words for how full a location is: `2 residents, room for 2`, `3 residents`, `Free`."
   def occupancy(%{count: 0}), do: "Free"
 
   def occupancy(%{count: count, location: %{capacity: capacity}}) when is_integer(capacity),
-    do: "#{count} of #{capacity} residents"
+    do: "#{residents(count)}, room for #{RescordWeb.Locale.number(capacity)}"
 
-  def occupancy(%{count: 1}), do: "1 resident"
+  def occupancy(%{count: count}), do: residents(count)
 
-  def occupancy(%{count: count}), do: "#{count} residents"
+  defp residents(count), do: RescordWeb.Locale.count(count, "resident", "residents")
   @doc "The form that puts a resident or a group in a location."
   attr :place_form, :any, required: true
   attr :residents, :any, required: true
@@ -121,6 +124,7 @@ defmodule RescordWeb.LocationComponents do
           label="Or a group"
           prompt="Choose"
           options={@groups}
+          hint="Choose a resident or a group, not both. One that lives in another location moves here."
         />
         <.input
           field={@place_form[:at]}
@@ -145,11 +149,12 @@ defmodule RescordWeb.LocationComponents do
     ~H"""
     <section aria-labelledby="who-heading">
       <h2 id="who-heading">Who lives here</h2>
-      <p :if={@node.residents == [] and @node.groups == []}>Nobody has a placement here.</p>
+      <p :if={@node.residents == [] and @node.groups == []}>Nobody lives here now.</p>
       <ul :if={@node.residents != [] or @node.groups != []}>
         <li :for={placement <- @node.residents}>
           <.link navigate={resident_path(@organisation, placement.resident_id)}>
-            <.icon name={Icons.section(:residents)} /> {placement.resident.name || "No name yet"}
+            <.icon name={Icons.section(:residents)} /> {placement.resident.name ||
+              "A resident with no name"}
           </.link>
           <.button
             :if={can?(@role, :placement, :finish)}
@@ -165,7 +170,7 @@ defmodule RescordWeb.LocationComponents do
             <.icon name={Icons.section(:groups)} /> {Residents.group_name(group)}
           </.link>
           <span>
-            ({length(members)} of {length(group.members)} members here)
+            (here: {length(members)} of the {length(group.members)} in the group)
           </span>
           <.button
             :if={can?(@role, :placement, :finish)}

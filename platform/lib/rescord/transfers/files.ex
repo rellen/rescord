@@ -103,7 +103,63 @@ defmodule Rescord.Transfers.Files do
   defp in_store(copy, _no_sources, _copied),
     do: for(%{"id" => file_id} <- Snapshot.files(copy || %{}), do: file_id)
 
+  @doc """
+  The copies of a file of the organisation `from_organisation_id` in the
+  transfers that it sent to an organisation of this server, as
+  `{transfer id, key}` with the key in the store of the receiver. A file of
+  a copy has the id of its attachment or of its photo record (ADR 0057).
+  A transfer that left the server as an export has no copy here. The key
+  is in the list when the copy names the file; the store may still not
+  have it, for a copy that the job has not finished. It reads the table
+  itself, with no actor (issue 34).
+  """
+  @spec copies_of(String.t(), String.t()) :: [{String.t(), Storage.key()}]
+  def copies_of(from_organisation_id, file_id)
+      when is_binary(from_organisation_id) and is_binary(file_id) do
+    from(transfer in "transfers",
+      where:
+        transfer.from_organisation_id == type(^from_organisation_id, Ecto.UUID) and
+          not is_nil(transfer.to_organisation_id),
+      select: {transfer.id, transfer.to_organisation_id, transfer.snapshot}
+    )
+    |> Repo.all(timeout: :timer.minutes(5))
+    |> Enum.flat_map(fn {id, to_id, copy} ->
+      if Enum.any?(Snapshot.files(copy || %{}), &(&1["id"] == file_id)) do
+        transfer_id = Ecto.UUID.load!(id)
+        [{transfer_id, key(Ecto.UUID.load!(to_id), transfer_id, file_id)}]
+      else
+        []
+      end
+    end)
+  end
+
+  @doc """
+  Writes `size` as the size of the file `file_id` in the copy of the
+  transfer, where the copy names the file: in the files of its entries and
+  in its photos. `Rescord.Images.Workers.Complete` calls it after it wrote
+  a cleaned photo again (issue 34). It writes the table itself, with no
+  actor and no version of the paper trail: the size is a fact of the file.
+  """
+  @spec put_file_size(String.t(), String.t(), non_neg_integer) :: :ok
+  def put_file_size(transfer_id, file_id, size)
+      when is_binary(transfer_id) and is_binary(file_id) and is_integer(size) do
+    query = from(transfer in "transfers", where: transfer.id == type(^transfer_id, Ecto.UUID))
+
+    Repo.transaction(fn ->
+      case Repo.one(from(transfer in query, select: transfer.snapshot, lock: "FOR UPDATE")) do
+        %{} = copy ->
+          Repo.update_all(query, set: [snapshot: Snapshot.put_file_size(copy, file_id, size)])
+
+        nil ->
+          :ok
+      end
+    end)
+
+    :ok
+  end
+
   @doc "A file that the copy of a transfer names, or `nil`."
+
   @spec named(map, String.t()) :: map | nil
   def named(snapshot, file_id) do
     snapshot

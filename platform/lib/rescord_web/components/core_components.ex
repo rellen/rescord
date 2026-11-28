@@ -121,6 +121,11 @@ defmodule RescordWeb.CoreComponents do
 
     * `type="checkbox"` is used exclusively to render boolean values
 
+    * `type="decimal"` is a number with a part, such as a weight or a
+      quantity: a text field with the keyboard of a phone for a decimal
+      (ADR 0110). A field of `type="number"` drops a comma that a person
+      types, so "1,2" became 12, and an arrow key changed the number.
+
     * For live file uploads, see `Phoenix.Component.live_file_input/1`
 
   See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
@@ -153,7 +158,7 @@ defmodule RescordWeb.CoreComponents do
 
   attr :type, :string,
     default: "text",
-    values: ~w(checkbox color date datetime-local email file month number password
+    values: ~w(checkbox color date datetime-local decimal email file month number password
                search select tel text textarea time url week hidden)
 
   attr :field, Phoenix.HTML.FormField,
@@ -215,12 +220,13 @@ defmodule RescordWeb.CoreComponents do
           value="true"
           checked={@checked}
           aria-invalid={@errors != [] && "true"}
-          aria-describedby={@errors != [] && error_id(@id)}
+          aria-describedby={described_by(@id, @errors, @hint)}
           {@rest}
         />
         {@label}
       </label>
       <.errors id={@id} errors={@errors} />
+      <.hint id={@id} hint={@hint} />
     </div>
     """
   end
@@ -265,7 +271,10 @@ defmodule RescordWeb.CoreComponents do
 
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
-    assigns = assign(assigns, :rest, keyboard(assigns.type, assigns.rest))
+    assigns =
+      assigns
+      |> assign(:rest, keyboard(assigns.type, assigns.rest))
+      |> assign(:type, if(assigns.type == "decimal", do: "text", else: assigns.type))
 
     ~H"""
     <div>
@@ -291,6 +300,18 @@ defmodule RescordWeb.CoreComponents do
   defp keyboard("number", rest) do
     mode = if rest[:step] in [nil, "1", 1], do: "numeric", else: "decimal"
     Map.put_new(rest, :inputmode, mode)
+  end
+
+  # A decimal is text that the browser does not change: no arrow key, no
+  # spelling, and no list of what was typed before (ADR 0110). A page that
+  # states one of these keeps it. A step and a limit are for a number field
+  # only: the action checks the limits.
+  defp keyboard("decimal", rest) do
+    rest
+    |> Map.drop([:step, :min, :max])
+    |> Map.put_new(:inputmode, "decimal")
+    |> Map.put_new(:autocomplete, "off")
+    |> Map.put_new(:spellcheck, "false")
   end
 
   defp keyboard(_type, rest), do: rest

@@ -8,7 +8,7 @@ defmodule RescordWeb.JournalComponents do
   use RescordWeb, :html
 
   alias Rescord.{Accounts, Journal}
-  alias RescordWeb.JournalWords
+  alias RescordWeb.{JournalWords, UploadWords}
 
   @doc "The form of a new journal entry, with the fields of the kind that the member chooses."
   attr :form, :any, required: true
@@ -84,8 +84,7 @@ defmodule RescordWeb.JournalComponents do
         <.input
           :if={@kind == :measurement}
           field={@form[:value]}
-          type="number"
-          step="any"
+          type="decimal"
           label="Value"
           required
         />
@@ -195,8 +194,7 @@ defmodule RescordWeb.JournalComponents do
           :if={@entry.measurement}
           id={"correct-#{@entry.id}-value"}
           name="entry[value]"
-          type="number"
-          step="any"
+          type="decimal"
           label={value_label(@entry.measurement)}
           value={@entry.measurement.value |> Decimal.normalize() |> Decimal.to_string(:normal)}
         />
@@ -283,7 +281,11 @@ defmodule RescordWeb.JournalComponents do
           <progress value={entry.progress} max="100" aria-label={"Sent of #{entry.client_name}"}>
             {entry.progress} percent
           </progress>
-          <span :for={error <- upload_errors(@upload, entry)} role="alert">{upload_words(error)}</span>
+          <span :for={error <- upload_errors(@upload, entry)} role="alert">{UploadWords.of(
+            error,
+            entry,
+            &upload_words/1
+          )}</span>
           <.button
             type="button"
             phx-click="cancel_file"
@@ -319,7 +321,7 @@ defmodule RescordWeb.JournalComponents do
     <section :if={@attachments != []} aria-label="Files of the entry">
       <ul>
         <li :for={attachment <- @attachments} id={"attachment-#{attachment.id}"}>
-          <a href={~p"/o/#{@organisation.short_name}/attachments/#{attachment.id}"}>
+          <a href={attachment_url(@organisation, attachment)}>
             {attachment.name}
           </a>
           <small>{JournalWords.file_size(attachment.size)}</small>
@@ -337,7 +339,19 @@ defmodule RescordWeb.JournalComponents do
     """
   end
 
+  @doc """
+  The link that opens a file of an entry: the display file of a photo
+  (issue 34), or the file itself for a PDF, a GIF and a photo with no
+  display file yet.
+  """
+  def attachment_url(organisation, attachment) do
+    if attachment.display_key,
+      do: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}/display",
+      else: ~p"/o/#{organisation.short_name}/attachments/#{attachment.id}"
+  end
+
   @doc "The form that adds to an entry."
+
   attr :entry, :any, required: true
 
   def addendum_form(assigns) do

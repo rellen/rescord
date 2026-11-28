@@ -1,7 +1,8 @@
 defmodule RescordWeb.Router do
   use RescordWeb, :router
 
-  import RescordWeb.UserAuth, only: [fetch_current_user: 2]
+  import Oban.Web.Router, only: [oban_dashboard: 2]
+  import RescordWeb.UserAuth, only: [fetch_current_user: 2, require_root: 2]
 
   # In the tests only: a LiveView of a browser test uses the database
   # transaction of that test (ADR 0023). This hook is the first one of each
@@ -20,6 +21,12 @@ defmodule RescordWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
+  end
+
+  # A route of a root user that is not a page of the live session `:root`
+  # (ADR 0110). Anyone else goes to `/`, before any part of the route runs.
+  pipeline :root do
+    plug :require_root
   end
 
   pipeline :api do
@@ -45,6 +52,11 @@ defmodule RescordWeb.Router do
     # How Rescord is built, and how well each person can use it (ADR 0090).
     get "/colophon", PageController, :colophon
 
+    # The privacy notices, at a random id of each organisation, and of the
+    # server (ADR 0105).
+    get "/privacy", PrivacyNoticeController, :index
+    get "/privacy/:notice_id", PrivacyNoticeController, :show
+
     # The sign-in by a link in an email (ADR 0018).
     get "/sign-in", SignInController, :new
     post "/sign-in", SignInController, :create
@@ -55,10 +67,12 @@ defmodule RescordWeb.Router do
     # (ADR 0041).
     get "/o/:organisation/attachments/:id", AttachmentController, :show
     get "/o/:organisation/attachments/:id/thumbnail", PhotoController, :attachment_thumbnail
+    get "/o/:organisation/attachments/:id/display", PhotoController, :attachment_display
 
     # The photos of the residents and their thumbnails (ADR 0055).
     get "/o/:organisation/photos/:id", PhotoController, :show
     get "/o/:organisation/photos/:id/thumbnail", PhotoController, :thumbnail
+    get "/o/:organisation/photos/:id/display", PhotoController, :display
 
     # The transfer files and the files of a copy (ADR 0043).
     post "/o/:organisation/transfers/export", TransferFileController, :export
@@ -95,6 +109,7 @@ defmodule RescordWeb.Router do
       live "/root/ruby/:id", RootRubyLive, :provider
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
+      live "/root/privacy", RootPrivacyLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
     end
@@ -103,9 +118,12 @@ defmodule RescordWeb.Router do
     live_session :organisation,
       on_mount:
         @sandbox_hooks ++
-          [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] do
+          [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] ++
+          [{RescordWeb.RubyLink, :check}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
+      live "/o/:organisation/privacy", PrivacyLive
+      live "/o/:organisation/privacy/:id", PrivacyRequestLive
       live "/o/:organisation/roles", RolesLive
       live "/o/:organisation/partners", PartnersLive
       live "/o/:organisation/transfers", TransfersLive
@@ -147,6 +165,21 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/residents/:id/photos", PhotosLive
       live "/o/:organisation/residents/:id/timeline", TimelineLive
     end
+  end
+
+  # The jobs of Oban, for a root user (ADR 0110). Oban Web makes a live
+  # session of its own, with its own layout, so it cannot be a page of the
+  # live session `:root`. The plug `:require_root` guards each of its
+  # routes, its files too; the hook guards the page each time it connects;
+  # and the resolver says which actions a root user may take.
+  scope "/root" do
+    pipe_through [:browser, :root]
+
+    oban_dashboard("/oban",
+      on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}],
+      resolver: RescordWeb.ObanResolver,
+      logo_path: "/root"
+    )
   end
 
   # Other scopes may use custom stacks.

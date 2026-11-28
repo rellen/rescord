@@ -63,6 +63,12 @@ defmodule Rescord.Calendars.Feed do
     ignore_actions [:mark]
   end
 
+  # A revoked feed is archived. `:of_erased_user` reads it too, so that an
+  # erasure takes the name that the person gave it (ADR 0105).
+  archive do
+    exclude_read_actions [:of_erased_user]
+  end
+
   actions do
     defaults [:read]
 
@@ -91,6 +97,21 @@ defmodule Rescord.Calendars.Feed do
       filter expr(owner_id == ^arg(:user_id))
       pagination keyset?: true, required?: false
     end
+
+    read :of_erased_user do
+      description "Each feed of a user, also a revoked one. An erasure runs it"
+      argument :user_id, :uuid, allow_nil?: false
+      filter expr(owner_id == ^arg(:user_id))
+      pagination keyset?: true, required?: false
+    end
+
+    update :forget_name do
+      description "Names the feed of an erased person \"Feed of former member N\", and redacts the old name in its versions (ADR 0105)"
+      accept []
+      argument :former_number, :integer, allow_nil?: false
+      require_atomic? false
+      change Changes.ForgetName
+    end
   end
 
   policies do
@@ -101,6 +122,7 @@ defmodule Rescord.Calendars.Feed do
     policy always() do
       # The removal of a member is the decision (ADR 0105).
       authorize_if signal_in(Rescord.Accounts.Signals, :member_removed)
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_erased)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -186,6 +208,11 @@ defmodule Rescord.Calendars.Feed do
         action: :revoke,
         read_action: :of_user,
         args: [:user_id]
+
+      on :member_erased, :forget_name,
+        read_action: :of_erased_user,
+        args: [:user_id],
+        inputs: [:former_number]
     end
   end
 end

@@ -41,7 +41,7 @@ defmodule RescordWeb.ExpenseLive do
          expense: expense,
          receipts: receipts,
          events: events,
-         people: Accounts.labels(options),
+         people: Accounts.labels(options, held: true),
          problems: [],
          problems_at: :page,
          max_date: Date.to_iso8601(Accounts.today(socket.assigns.organisation)),
@@ -251,6 +251,7 @@ defmodule RescordWeb.ExpenseLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:expenses}
     >
       <nav aria-label="Breadcrumb">

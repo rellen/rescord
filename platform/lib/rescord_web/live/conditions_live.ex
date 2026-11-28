@@ -17,7 +17,7 @@ defmodule RescordWeb.ConditionsLive do
   import RescordWeb.ConditionComponents
 
   alias Rescord.{Journal, Lists}
-  alias RescordWeb.{JournalWords, ResidentWords}
+  alias RescordWeb.{JournalWords, Locale, ResidentWords}
 
   # The times that the form of the counts offers, in months.
   @months [3, 6, 12, 24]
@@ -98,16 +98,17 @@ defmodule RescordWeb.ConditionsLive do
   defp month_rows(rows),
     do: Enum.map(rows, &%{label: JournalWords.month(&1.month), count: &1.count})
 
-  # `9 conditions of 7 residents in care are not resolved.`
-  defp now_words(%{conditions: 0}),
-    do: "No resident in care has a condition that is not resolved."
+  # `7 residents in care have 9 ongoing conditions.`
+  defp now_words(%{conditions: 0}), do: "No resident in care has an ongoing condition."
 
-  defp now_words(%{conditions: 1}), do: "1 condition of 1 resident in care is not resolved."
+  defp now_words(%{conditions: 1}), do: "1 resident in care has 1 ongoing condition."
 
-  defp now_words(%{conditions: conditions, residents: residents}) do
-    of = if residents == 1, do: "1 resident", else: "#{residents} residents"
-    "#{conditions} conditions of #{of} in care are not resolved."
-  end
+  defp now_words(%{conditions: conditions, residents: 1}),
+    do: "1 resident in care has #{Locale.number(conditions)} ongoing conditions."
+
+  defp now_words(%{conditions: conditions, residents: residents}),
+    do:
+      "#{Locale.number(residents)} residents in care have #{Locale.number(conditions)} ongoing conditions."
 
   @impl true
   def render(assigns) do
@@ -117,6 +118,7 @@ defmodule RescordWeb.ConditionsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">
@@ -196,9 +198,15 @@ defmodule RescordWeb.ConditionsLive do
           actor={@current_user}
           tenant={@organisation}
         >
+          <:empty :let={found}>
+            <p :if={found.filtered?}>No condition matches the search and the filters.</p>
+            <p :if={not found.filtered?}>
+              No condition yet. A condition starts with a diagnosis in the journal of a resident.
+            </p>
+          </:empty>
           <:col :let={episode} field="resident_name" label="Resident" sort search>
             <.link navigate={journal_path(@organisation, episode.resident_id, episode: episode.id)}>
-              {episode.resident_name || "No name yet"}
+              {episode.resident_name || "A resident with no name"}
             </.link>
             <small :if={episode.note}>{episode.note}</small>
           </:col>
@@ -228,7 +236,7 @@ defmodule RescordWeb.ConditionsLive do
             filter={[
               type: :select,
               prompt: "Any state",
-              options: [{"Ongoing", "ongoing"}, {"Resolved", "resolved"}]
+              options: [{"Ongoing or chronic", "ongoing"}, {"Resolved", "resolved"}]
             ]}
           >
             <.condition_state episode={episode} />

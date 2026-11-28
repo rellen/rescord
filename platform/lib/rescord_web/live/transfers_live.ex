@@ -129,7 +129,7 @@ defmodule RescordWeb.TransfersLive do
     residents =
       if socket.assigns.can_send? or socket.assigns.can_export? do
         {:ok, residents} = Residents.residents([load: [:name]] ++ options(socket))
-        residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort()
+        residents |> Enum.map(&{&1.name || "A resident with no name", &1.id}) |> Enum.sort()
       else
         []
       end
@@ -258,6 +258,7 @@ defmodule RescordWeb.TransfersLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
     >
       <nav aria-label="Breadcrumb">
         <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</.link>
@@ -275,6 +276,7 @@ defmodule RescordWeb.TransfersLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
     >
       <.header icon={Icons.section(:transfers)}>
         Transfers

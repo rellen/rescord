@@ -57,6 +57,24 @@ defmodule RescordWeb.RubyChatComponents do
     """
   end
 
+  @doc """
+  The record that a conversation is about, as a link back to its page:
+  "About Biscuit". The page shows it at the start and above the messages.
+  """
+  attr :about, :map, required: true, doc: "`%{ref, kind, label}`, from `Rescord.Ruby.about/2`"
+  attr :organisation, :map, required: true
+
+  def about(assigns) do
+    ~H"""
+    <.link id="ruby-about" navigate={RubyMarkdown.path(@about.ref, @organisation)} data-about>
+      <span :if={@about.kind == "resident" and @about.name} data-portrait aria-hidden="true">
+        <span>{String.first(@about.name)}</span>
+      </span>
+      <span><small>About</small> {@about.label}</span>
+    </.link>
+    """
+  end
+
   # A link to a conversation opens it at its newest message: the browser
   # scrolls to the element of the fragment.
   defp conversation_path(organisation, conversation),

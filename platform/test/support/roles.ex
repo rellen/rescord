@@ -61,6 +61,8 @@ defmodule RescordWeb.Roles do
     link: "a[href]",
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
+    figure: "figure",
+    image: "img:not([alt=''])",
     row: "tr",
     item: "li",
     alert: "[role=alert]",
@@ -95,6 +97,12 @@ defmodule RescordWeb.Roles do
 
   @doc "A table, by its name."
   def table(scope \\ nil, name), do: locate(scope, :table, name)
+
+  @doc "A figure, by its name: the words of its `figcaption`."
+  def figure(scope \\ nil, name), do: locate(scope, :figure, name)
+
+  @doc "An image, by its `alt`. An image with an empty `alt` is decoration, and is not found."
+  def image(scope \\ nil, name), do: locate(scope, :image, name)
 
   @doc "A row of a table, by its words: give a regex, such as `row(~r/^Meadow hay/)`."
   def row(scope \\ nil, name), do: locate(scope, :row, name)
@@ -174,6 +182,12 @@ defmodule RescordWeb.Roles do
   @spec href(source, t) :: String.t() | nil
   def href(source, locator) do
     source |> one(locator) |> LazyHTML.attribute("href") |> List.first()
+  end
+
+  @doc "Where the one image that the locator finds comes from."
+  @spec src(source, t) :: String.t() | nil
+  def src(source, locator) do
+    source |> one(locator) |> LazyHTML.attribute("src") |> List.first()
   end
 
   @doc "The accessible names of each element, in the order of the page."
@@ -395,6 +409,7 @@ defmodule RescordWeb.Roles do
     "internal:role=#{pw_role(role)}#{attributes}"
   end
 
+  defp pw_role(:image), do: "img"
   defp pw_role(role), do: Atom.to_string(role)
 
   defp pw_name(%Regex{source: source}), do: "/#{source}/"
@@ -481,6 +496,12 @@ defmodule RescordWeb.Roles do
 
       role == :field ->
         field_label(node, root)
+
+      role == :image ->
+        fold(attribute(node, "alt") || "")
+
+      role == :figure ->
+        node |> LazyHTML.query("figcaption") |> visible_text()
 
       role == :table ->
         node |> LazyHTML.query("caption") |> visible_text()

@@ -231,10 +231,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:quantity]}
-          type="number"
+          type="decimal"
           label={quantity_label("How much came in", @item)}
-          min="0"
-          step="any"
           required
         />
         <.input
@@ -276,10 +274,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:quantity]}
-          type="number"
+          type="decimal"
           label={quantity_label("How much was used", @item)}
-          min="0"
-          step="any"
           required
         />
         <.input field={@form[:note]} type="text" label="Note" maxlength="500" />
@@ -319,10 +315,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:quantity]}
-          type="number"
+          type="decimal"
           label={quantity_label("How much moved", @item)}
-          min="0"
-          step="any"
           required
         />
         <.input field={@form[:note]} type="text" label="Note" maxlength="500" />
@@ -354,10 +348,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:quantity]}
-          type="number"
+          type="decimal"
           label={quantity_label("How much was thrown out", @item)}
-          min="0"
-          step="any"
           required
         />
         <.input field={@form[:note]} type="text" label="Why" maxlength="500" />
@@ -395,10 +387,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:counted]}
-          type="number"
+          type="decimal"
           label={quantity_label("How much is there", @item)}
-          min="0"
-          step="any"
           required
         />
         <.input field={@form[:note]} type="text" label="Note" maxlength="500" />
@@ -559,10 +549,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:reorder_level]}
-          type="number"
+          type="decimal"
           label="Order more when the stock is below, if you give a number"
-          min="0"
-          step="any"
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
@@ -603,10 +591,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:quantity]}
-          type="number"
+          type="decimal"
           label="Bring more when the stock there is below. No number removes the level"
-          min="0"
-          step="any"
         />
         <footer><.button type="submit">Save the level</.button></footer>
       </.form>
@@ -790,10 +776,8 @@ defmodule RescordWeb.InventoryComponents do
         />
         <.input
           field={@form[:reorder_level]}
-          type="number"
+          type="decimal"
           label="Order more when the stock is below, if you give a number"
-          min="0"
-          step="any"
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />

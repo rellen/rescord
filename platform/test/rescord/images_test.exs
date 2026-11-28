@@ -101,6 +101,46 @@ defmodule Rescord.ImagesTest do
     assert Exception.message(error) == "is a photo that Rescord cannot read"
   end
 
+  test "a photo gets a display file of 1600 pixels at most, as WebP with no metadata (issue 34)" do
+    assert {:ok, kept} = Images.prepare(photo(width: 3200, height: 1600, gps: true))
+    assert Images.type_of(kept.display) == "image/webp"
+    assert shape(kept.display) == {Images.display_side(), 800}
+    refute :binary.match(kept.display, "Exif") != :nomatch
+
+    # A small photo keeps its size in its display file.
+    assert {:ok, small} = Images.prepare(photo(width: 64, height: 32))
+    assert shape(small.display) == {64, 32}
+
+    # A photo turned by its EXIF is turned in its display file too.
+    assert {:ok, turned} = Images.prepare(photo(width: 64, height: 32, orientation: 6))
+    assert shape(turned.display) == {32, 64}
+  end
+
+  test "a GIF has no display file" do
+    assert {:ok, %{display: nil}} = Images.prepare(photo(format: ".gif"))
+    assert {:ok, nil} = Images.display(photo(format: ".gif"))
+  end
+
+  test "display/1 makes the display file of a photo that Rescord keeps already" do
+    {:ok, kept} = Images.prepare(photo(width: 2000, height: 1000))
+    assert {:ok, display} = Images.display(kept.bytes)
+    assert shape(display) == {Images.display_side(), 800}
+    assert {:error, %RefusedFile{reason: :not_a_photo}} = Images.display("%PDF-1.7")
+  end
+
+  test "refuses a HEIC or an AVIF photo with words that say what to do (issue 34)" do
+    for brand <- ~w(heic heix mif1 avif) do
+      bytes = <<0, 0, 0, 24, "ftyp", brand::binary, 0, 0, 0, 0, "mif1heic">>
+      assert {:error, %RefusedFile{reason: :heic} = error} = Images.prepare(bytes)
+      assert Exception.message(error) =~ "HEIC or AVIF photo"
+      assert Exception.message(error) =~ "JPEG"
+    end
+
+    # An MP4 has a box `ftyp` too, with another brand.
+    assert {:error, %RefusedFile{reason: :not_a_photo}} =
+             Images.prepare(<<0, 0, 0, 24, "ftypisom", 0, 0, 0, 0>>)
+  end
+
   test "refuses a photo of more than 100 million pixels before it decodes it" do
     # A PNG whose header says 20000 by 20000 pixels, with almost no data:
     # libvips reads the header, and decodes nothing.

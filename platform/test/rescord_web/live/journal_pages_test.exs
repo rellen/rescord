@@ -239,7 +239,7 @@ defmodule RescordWeb.JournalPagesTest do
 
       {_view, html} = open(context.conn, context.resident_path)
       assert html =~ "1,095 g,"
-      refute html =~ "No measurement is recorded."
+      refute html =~ "No weight or other measurement yet."
     end
 
     test "says what is wrong, and keeps what the member typed", context do

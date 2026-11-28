@@ -1,0 +1,37 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Your account on this server
+    <:subtitle>The privacy notice of the server</:subtitle>
+  </.header>
+
+  <p
+    :if={is_nil(@server.operator_name) or is_nil(@server.operator_contact)}
+    id="notice-missing"
+    role="status"
+  >
+    The operator of this server has not finished this notice yet.
+  </p>
+
+  <article :if={@server.operator_name && @server.operator_contact} id="notice">
+    <p>
+      This server of Rescord is run by {@server.operator_name}<span :if={@server.hosting}>, on servers in {@server.hosting}</span>.
+      Each organisation on it keeps its own records and has its own notice, at the link that it
+      gives its members.
+    </p>
+    <section aria-labelledby="account-heading">
+      <h2 id="account-heading">Your account</h2>
+      <p>
+        The server keeps your email address, which you sign in with, and the sessions of your
+        sign-ins. An organisation that you belong to keeps the records you write there.
+      </p>
+    </section>
+    <section aria-labelledby="erase-heading">
+      <h2 id="erase-heading">Erasing your account</h2>
+      <p>
+        Write to {@server.operator_contact} to erase your account. The operator then replaces your
+        name with "Former member" and a number in each organisation where you were a member, and
+        removes your email address and your sign-ins. The backups hold your data for {@server.backup_days} more days, and a restore erases you again.
+      </p>
+    </section>
+  </article>
+</Layouts.app>

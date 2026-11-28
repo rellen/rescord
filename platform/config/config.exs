@@ -33,6 +33,10 @@ config :ex_money, auto_start_exchange_rate_service: false
 
 config :ash, :temporal_safe_modules, [Ash.Resource.Change.EmitSignal]
 
+# Oban Met gathers the counts of Oban Web (ADR 0110). Its function of the
+# database comes from a migration, so the reporter does not make it.
+config :oban_met, reporter: [auto_migrate: false]
+
 config :rescord, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
@@ -40,8 +44,9 @@ config :rescord, Oban,
   # hour of Ruby cannot fill the others (ADR 0069). A reply holds its place
   # for as long as the model writes. The files of the transfers have one
   # too, with two jobs at one time, so that a large transfer cannot take
-  # the queue of the emails (ADR 0100).
-  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2],
+  # the queue of the emails (ADR 0100). The job that completes the files of
+  # the photos runs one at a time (issue 34).
+  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2, images: 1],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Rescord.Repo,
@@ -56,7 +61,13 @@ config :rescord, Oban,
       # A transfer whose job is gone after the lifeline is `failed` (ADR 0100).
       {"41 * * * *", Rescord.Transfers.Workers.FailStoppedCopies},
       # The old notifications go, each night (issue 29, ADR 0106).
-      {"41 3 * * *", Rescord.Notifications.Workers.Prune}
+      {"41 3 * * *", Rescord.Notifications.Workers.Prune},
+      # The holds of the money records that ended, the old closed requests,
+      # and the pseudonymisation after the months of the settings (ADR 0105).
+      {"53 3 * * *", Rescord.Privacy.Workers.Daily},
+      # The display files of the photos, and the journal photos of 0.1.0
+      # that still carry their metadata (issue 34).
+      {"53 * * * *", Rescord.Images.Workers.Complete}
     ]
   ]
 
@@ -178,7 +189,8 @@ config :rescord,
     Rescord.Reports,
     Rescord.Usage,
     Rescord.Comments,
-    Rescord.Notifications
+    Rescord.Notifications,
+    Rescord.Privacy
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,
@@ -197,7 +209,8 @@ config :rescord,
     Rescord.Reports.Grants,
     Rescord.Ruby.Grants,
     Rescord.Comments.Grants,
-    Rescord.Notifications.Grants
+    Rescord.Notifications.Grants,
+    Rescord.Privacy.Grants
   ]
 
 # Configure the endpoint

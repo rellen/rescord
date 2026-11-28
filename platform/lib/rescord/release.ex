@@ -39,6 +39,11 @@ defmodule Rescord.Release do
   `rotate_vault/0` encrypts again, with the secret of today, what the
   previous secret of the server encrypted (ADR 0068). `bin/rotate-vault`
   runs it.
+
+  `reapply_erasures/0` erases again each person whom a marker of the store
+  names and whom the database does not show as erased: after the restore
+  of a dump from before an erasure (ADR 0105). `bin/restore` runs it, and
+  `bin/reapply-erasures` runs it alone.
   """
 
   use Boundary,
@@ -47,15 +52,18 @@ defmodule Rescord.Release do
       Rescord,
       Rescord.Accounts,
       Rescord.Expenses,
+      Rescord.Images.Workers.Complete,
       Rescord.Journal,
       Rescord.Mail,
       Rescord.Photos,
+      Rescord.Privacy,
       Rescord.Ruby,
       Rescord.Transfers,
       Rescord.Usage,
       Rescord.Vault
     ]
 
+  alias Rescord.Images.Workers.Complete
   alias Rescord.Release.Rehearsal
   alias Rescord.Storage.{Compare, Move}
 
@@ -213,8 +221,25 @@ defmodule Rescord.Release do
     end
   end
 
+  # The journal photos of Rescord 0.1.0 that still carry their metadata
+  # (issue 34): the job of the images cleans them after the start.
+  defp print_uncleaned do
+    case Enum.sum_by(Rescord.Repo.all_tenants(), fn "org_" <> id -> Complete.uncleaned(id) end) do
+      0 ->
+        :ok
+
+      count ->
+        IO.puts(
+          "\nJournal photos that still carry their metadata: #{count}. " <>
+            "Rescord cleans them in a job after the start, each hour; " <>
+            "a count that does not go down is in the warnings of the log."
+        )
+    end
+  end
+
   @doc """
   Compares the files of the store with the records of the database, and
+
   prints the report (ADR 0091): the files that a record names, the
   leftovers that no record names, with their size, and each file that a
   record names and that the store does not have. `all: true` prints each
@@ -235,10 +260,45 @@ defmodule Rescord.Release do
     case Rescord.Release.Files.compare() do
       {:ok, report} ->
         IO.puts(Compare.format(report, store, opts))
+        print_uncleaned()
         if Compare.complete?(report), do: :ok, else: :missing
 
       {:error, fault} ->
         IO.puts(Compare.format_fault(fault, store))
+        :error
+    end
+  end
+
+  @doc """
+  Erases again each person whom a marker in the store names, and whom the
+  database does not show as erased (`Rescord.Privacy.reapply_erasures/0`,
+  ADR 0105). After the restore of a dump that is older than an erasure,
+  this takes the person out again before anybody uses the server. It
+  prints a count, and no name. A second run changes nothing.
+
+  A dump of an older version has an older schema, so it runs the
+  migrations first, as the start of Rescord would (`migrate/1`).
+  """
+  @spec reapply_erasures() :: :ok | :error
+  def reapply_erasures do
+    with :ok <- migrate() do
+      {:ok, _apps} = Application.ensure_all_started(:req)
+      start_repo()
+      reapply()
+    end
+  end
+
+  defp reapply do
+    case Rescord.Privacy.reapply_erasures() do
+      {:ok, count} ->
+        IO.puts("Erased again after the restore: #{count} people.")
+        :ok
+
+      {:error, reason} ->
+        IO.puts(
+          "The markers of the erasures could not be read: #{Rescord.Storage.reason_words(reason)}"
+        )
+
         :error
     end
   end

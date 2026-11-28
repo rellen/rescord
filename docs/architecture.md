@@ -314,6 +314,11 @@ declared on a resource with `extensions: [AshWorkflow, AshOban]`. There is no
 workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 `deps/ash/usage-rules/signals.md` and `deps/ash_workflow/usage-rules.md`.
 
+A root user watches the jobs and the queues in Oban Web, at `/root/oban`
+(ADR 0110). Its routes are guarded by the plug and the hook `:require_root`,
+and `RescordWeb.ObanResolver` lets a root user cancel and retry a job and
+pause a queue, and take no other action.
+
 **A signal module is in the domain that emits it**, as
 `Rescord.<Domain>.Signals`, and that domain exports it when another domain
 listens (ADR 0067). There are three signals:

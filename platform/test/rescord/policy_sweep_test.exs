@@ -42,8 +42,9 @@ defmodule Rescord.PolicySweepTest do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation, Token, User}
   alias Rescord.Lists
-  alias Rescord.Comments.Follow
+  alias Rescord.Comments.{Comment, Follow}
   alias Rescord.Notifications.{Notification, NtfyTopic, Preference, PushSubscription}
+  alias Rescord.Privacy.InstanceSettings
   alias Rescord.Ruby.{Conversation, Message}
   alias Rescord.Transfers.{Partnership, RefugeKey, RemotePartner, Transfer}
 
@@ -72,8 +73,14 @@ defmodule Rescord.PolicySweepTest do
         "filtered to the actor, and the create sets the actor as the person. " <>
         "Rescord.NotificationsTest holds that a person reads and changes no device of another."
 
+    server_notice =
+      "The privacy notice of the server is public, at /privacy with no sign-in (ADR 0105). " <>
+        "The one row holds what the operator wrote for the notice: no secret, no person. " <>
+        "Only a root user changes it, which this sweep holds for :set and :change."
+
     [
       {User, :read, :signed_in, own_record},
+      {InstanceSettings, :read, :anyone, server_notice},
       {User, :get_by_subject, :signed_in, own_record},
       {User, :get_by_email, :signed_in, own_record},
       {User, :roots, :signed_in, own_record},
@@ -112,7 +119,8 @@ defmodule Rescord.PolicySweepTest do
   # link, whoever asks: AshAuthentication builds them so.
   @return_nothing [{User, :request_magic_link}, {User, :sign_in_with_magic_link}]
 
-  # What four actions of AshAuthentication need before their policies can be
+  # What four actions of AshAuthentication, and the read of the comments
+  # of an erased person, need before their policies can be
   # asked: without these arguments the action raises while it is built.
   defp needs(Token, :get_token), do: [input: %{jti: "none"}]
   defp needs(Token, :revoke_jti), do: [input: %{jti: "none", subject: "none"}]
@@ -122,6 +130,9 @@ defmodule Rescord.PolicySweepTest do
     strategy = AshAuthentication.Info.strategy!(User, :magic_link)
     [input: %{jti: "none"}, context: %{strategy: strategy}]
   end
+
+  defp needs(Comment, :of_erased_author),
+    do: [input: %{author_id: Ash.UUID.generate(), keep_comments: false}]
 
   defp needs(_resource, _action), do: []
 

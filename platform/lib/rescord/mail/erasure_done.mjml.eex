@@ -1,0 +1,4 @@
+<mj-text css-class="rs-text"><h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700;">We erased your data</h1></mj-text>
+<mj-text css-class="rs-text" padding="0 0 16px"><%= @organisation %> erased your data in Rescord, as you asked. Your email address is gone from its records, and they name you "<%= @label %>".</mj-text>
+<mj-text css-class="rs-text" padding="0 0 16px"><%= @kept %></mj-text>
+<mj-text css-class="rs-text" padding="0 0 16px">The records that members wrote about the animals stay, because the care of each animal depends on them. The backups of the server hold your data until they are deleted, and nobody uses them for anything else.</mj-text>

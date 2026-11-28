@@ -18,7 +18,7 @@ defmodule Rescord.Reports.Facts.CageCard do
          {:ok, places} <- Places.read(options),
          {:ok, measurements} <- Journal.latest_measurements(id, options),
          {:ok, routines} <- Tasks.routines_with_facts(now, options),
-         {:ok, profile} <- ResidentRecord.profile(id, options) do
+         {:ok, profile} <- ResidentRecord.profile(id, options, :display) do
       relations = Residents.relations(id, options)
       group_ids = for {_membership, group} <- (relations && relations.groups) || [], do: group.id
 

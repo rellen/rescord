@@ -75,7 +75,12 @@ defmodule RescordWeb.ResidentComponents do
       <summary><.icon name="map-pin" /> Mark as away for a time</summary>
       <.form for={@absence_form} id="absence" phx-submit="start_absence">
         <.input field={@absence_form[:reason]} type="text" label="Where and why" required />
-        <.input field={@absence_form[:expected_back_on]} type="date" label="Expected back" />
+        <.input
+          field={@absence_form[:expected_back_on]}
+          type="date"
+          label="Expected back"
+          hint="After this day, the first page shows the resident as late back."
+        />
         <.input
           field={@absence_form[:at]}
           type="datetime-local"
@@ -217,7 +222,9 @@ defmodule RescordWeb.ResidentComponents do
     ~H"""
     <section aria-labelledby="journal-heading">
       <h2 id="journal-heading">Journal</h2>
-      <p :if={@measurements == []}>No measurement is recorded.</p>
+      <p :if={@measurements == []}>
+        No weight or other measurement yet. Record one on the page of the measurements.
+      </p>
       <RescordWeb.MeasurementComponents.newest_values
         :if={@measurements != []}
         series={@measurements}
@@ -225,7 +232,6 @@ defmodule RescordWeb.ResidentComponents do
       />
       <p>
         <.link
-          :if={@measurements != []}
           navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/measurements"}
           data-variant="secondary"
         >
@@ -356,7 +362,7 @@ defmodule RescordWeb.ResidentComponents do
         <ul>
           <li :for={link <- @relations.young}>
             <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{link.resident_id}"}>
-              {link.resident.name || "No name yet"}
+              {link.resident.name || "A resident with no name"}
             </.link>
           </li>
         </ul>
@@ -556,7 +562,7 @@ defmodule RescordWeb.ResidentComponents do
 
   def location_path(organisation, id), do: ~p"/o/#{organisation.short_name}/housing/#{id}"
 
-  def name(resident), do: resident.name || "No name yet"
+  def name(resident), do: resident.name || "A resident with no name"
 
   @doc "The fields of the facts of a resident that have one value each."
   attr :form, :any, required: true
@@ -581,8 +587,14 @@ defmodule RescordWeb.ResidentComponents do
         type="select"
         label="Desex status"
         options={ResidentWords.options(:desex)}
+        hint="Entire: not spayed or neutered."
       />
-      <.input field={@form[:born_on]} type="date" label="Date of birth" />
+      <.input
+        field={@form[:born_on]}
+        type="date"
+        label="Date of birth"
+        hint="Not sure of the day? Give a near date, and tick the box below."
+      />
       <.input
         field={@form[:born_on_estimated]}
         type="checkbox"
@@ -621,7 +633,7 @@ defmodule RescordWeb.ResidentComponents do
     ~H"""
     <fieldset>
       <legend>The arrival</legend>
-      <p>Leave the arrival empty for a resident that you expect.</p>
+      <p>Leave these empty for a resident that is not here yet. It shows as Expected.</p>
       <.input
         field={@form[:arrival_kind]}
         type="select"

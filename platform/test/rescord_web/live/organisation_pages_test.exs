@@ -382,6 +382,9 @@ defmodule RescordWeb.OrganisationPagesTest do
       assert has_element?(view, "dd", "6:30 PM")
       assert has_element?(view, "#locale option[value=en-US][selected]")
 
+      # The document names the language and region, for a screen reader.
+      assert conn |> get(path) |> html_response(200) =~ ~r/<html[^>]* lang="en-US"/
+
       # The date of today, which is another part of the page, follows too.
       today = Accounts.today(context.organisation)
       assert has_element?(view, "dd", Calendar.strftime(today, "%B %-d, %Y"))

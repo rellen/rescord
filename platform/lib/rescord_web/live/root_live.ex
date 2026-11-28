@@ -123,6 +123,11 @@ defmodule RescordWeb.RootLive do
 
       <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <p><.link navigate={~p"/root/push"}>Set the notifications on devices and ntfy</.link>.</p>
+      <p>
+        <.link navigate={~p"/root/privacy"}>Privacy of the server</.link>: what the notices say
+        about it, and the erasure of an account.
+      </p>
+      <p><a href={~p"/root/oban"}>Watch the background jobs, in Oban Web</a>.</p>
       <.root_line providers={@providers} />
       <p id="usage-line">
         Usage counts: {RescordWeb.UsageWords.mode(@usage_mode)}. <a href={~p"/root/usage"}>See the counts, and where they go</a>.

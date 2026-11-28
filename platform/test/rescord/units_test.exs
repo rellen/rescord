@@ -379,6 +379,9 @@ defmodule Rescord.UnitsTest do
       assert Quantity.parse("half a tablet") == {:error, :not_a_number}
       assert Quantity.parse("") == {:error, :not_a_number}
       assert Quantity.parse(nil) == {:error, :not_a_number}
+      # Bytes that are not UTF-8 are no number, and raise nothing.
+      assert Quantity.parse("2 kg" <> <<0xFF>>) == {:error, :not_a_number}
+      assert Quantity.new(<<0xFF, 0xFE>>, "kg") == {:error, :not_a_number}
       assert Quantity.parse("5") == {:error, :unknown_unit}
       assert Quantity.parse("12.5") == {:error, :unknown_unit}
       assert Quantity.parse("5 scoops") == {:error, :unknown_unit}

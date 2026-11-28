@@ -76,7 +76,8 @@ defmodule Rescord.Accounts.Grants do
     :expenses,
     :manage_expenses,
     :comments,
-    :moderate_comments
+    :moderate_comments,
+    :privacy
   ]
 
   # The powers of a member of ADR 0021, the calendar feed of ADR 0074, and
@@ -114,7 +115,9 @@ defmodule Rescord.Accounts.Grants do
       {Organisation, :set_paper_size, :all}
     ],
     # The export of the data of the organisation (ADR 0054).
-    export: [{Organisation, :export, :all}]
+    export: [{Organisation, :export, :all}],
+    # A new random id of the link of the privacy notice (ADR 0105).
+    privacy: [{Organisation, :new_notice_id, :all}]
   }
 
   # The sources of the other domains. A module name is an atom, so this is

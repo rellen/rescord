@@ -169,6 +169,38 @@ defmodule RescordWeb.Locale do
   end
 
   @doc """
+  A count with the word for one or the word for more than one: `1 day`,
+  `0 days`, `1,200 days`. A page gives both words whole, and never adds an
+  `s` to a word: a plural that is a word of its own moves to Gettext with
+  the sentence when a second language comes (ADR 0075).
+
+      iex> RescordWeb.Locale.count(1, "day", "days")
+      "1 day"
+
+      iex> RescordWeb.Locale.count(1200, "entry", "entries")
+      "1,200 entries"
+  """
+  @spec count(integer, String.t(), String.t()) :: String.t()
+  def count(1, one, _many), do: "1 #{one}"
+  def count(number, _one, many) when is_integer(number), do: "#{number(number)} #{many}"
+
+  @doc """
+  Words joined as a list, with the pattern of the locale: `Biscuit and
+  Clover`, `Biscuit, Clover and Pip`. A page never joins words with `", "`
+  and `" and "` by hand (ADR 0108).
+
+      iex> RescordWeb.Locale.list(["Biscuit", "Clover"])
+      "Biscuit and Clover"
+  """
+  @spec list([String.t()]) :: String.t()
+  def list(words) when is_list(words) do
+    case Localize.List.to_string(words, locale: current()) do
+      {:ok, joined} -> joined
+      {:error, reason} -> plain(Enum.join(words, ", "), reason)
+    end
+  end
+
+  @doc """
   An amount of money, with the sign or the code of its currency as the
   locale writes it (ADR 0082).
 

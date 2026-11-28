@@ -119,6 +119,14 @@ defmodule Rescord.Comments.Comment do
     destroy :erase do
       description "Deletes each comment of one person, for a person who asks for that. A moderator runs it"
     end
+
+    read :of_erased_author do
+      description "The comments of a person erased on request, when the erasure did not keep them (ADR 0105)"
+      argument :author_id, :uuid, allow_nil?: false
+      argument :keep_comments, :boolean, allow_nil?: false
+      filter expr(author_id == ^arg(:author_id) and ^arg(:keep_comments) == false)
+      pagination keyset?: true, required?: false
+    end
   end
 
   policies do
@@ -127,6 +135,8 @@ defmodule Rescord.Comments.Comment do
     end
 
     policy always() do
+      # The erasure of the person on request is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_erased)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -200,6 +210,18 @@ defmodule Rescord.Comments.Comment do
       define_attribute? false
       source_attribute :journal_entry_id
       temporal_keys {nil, :valid_at}
+    end
+  end
+
+  # The comments of a person erased on request go, unless the person who
+  # erased chose to keep them, signed Former member N (ADR 0105, issue 31,
+  # calls 7 and 8).
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_erased, :erase_of_erased_member,
+        action: :erase,
+        read_action: :of_erased_author,
+        args: [:keep_comments, author_id: :user_id]
     end
   end
 end

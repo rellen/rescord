@@ -31,6 +31,8 @@ defmodule RescordWeb.RolesTest do
       <p role="status">Saved</p>
     </article>
     <p role="alert">The quantity is not a number.</p>
+    <figure><img src="/hay.webp" alt="A bale of hay" /><figcaption>The bale</figcaption></figure>
+    <img src="/line.svg" alt="" />
   </main>
   <footer><nav aria-label="About Rescord"><a href="/colophon">Colophon</a></nav></footer>
   <div aria-live="polite">
@@ -75,6 +77,12 @@ defmodule RescordWeb.RolesTest do
     assert [_, _] = all(@page, region("Lots") |> item(~r/./))
     assert has?(@page, item(~r/^B-2\b/) |> button("Take off B-2"))
     refute has?(@page, item(~r/^B-2\b/) |> button("Take off B-1"))
+  end
+
+  test "an image is named by its alt, and a figure by its caption" do
+    assert names(@page, image(~r/./)) == ["A bale of hay"]
+    assert src(@page, figure("The bale") |> image("A bale of hay")) == "/hay.webp"
+    assert playwright(image("A bale of hay")) == ~s(internal:role=img[name="A bale of hay"s])
   end
 
   test "one raises for none or for more than one" do

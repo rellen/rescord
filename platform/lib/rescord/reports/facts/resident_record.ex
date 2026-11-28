@@ -64,11 +64,13 @@ defmodule Rescord.Reports.Facts.ResidentRecord do
 
   @doc """
   The profile picture of a resident for a template: its path and the bytes
-  of its thumbnail, or `nil` for a resident with none.
+  of its thumbnail, or `nil` for a resident with none. With `:display`,
+  the bytes of its display file, which is sharper on paper, or of its
+  thumbnail when it has none (the cage card, issue 34).
   """
-  def profile(id, options) do
+  def profile(id, options, which \\ :thumbnail) when which in [:thumbnail, :display] do
     with {:ok, %{} = photo} <- Photos.profile_photo(id, options),
-         {:ok, _photo, bytes} <- Photos.photo_file(photo.id, :thumbnail, options) do
+         {:ok, bytes} <- profile_bytes(photo, which, options) do
       {:ok, %{file: "photos/profile.webp", bytes: bytes}}
     else
       # No picture, or a picture whose file the store does not have.
@@ -78,7 +80,18 @@ defmodule Rescord.Reports.Facts.ResidentRecord do
     end
   end
 
+  # A GIF, and a photo from before the display files, have none.
+  defp profile_bytes(%{display_key: key} = photo, :display, options) when is_binary(key) do
+    with {:ok, _photo, bytes} <- Photos.photo_file(photo.id, :display, options), do: {:ok, bytes}
+  end
+
+  defp profile_bytes(photo, _which, options) do
+    with {:ok, _photo, bytes} <- Photos.photo_file(photo.id, :thumbnail, options),
+         do: {:ok, bytes}
+  end
+
   defp entries(:none, _id, _options), do: {:ok, []}
+
   defp entries(:all, id, options), do: Journal.entries(id, options)
   defp entries(_medical, id, options), do: Journal.entries(id, [only: :medical] ++ options)
 

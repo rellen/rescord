@@ -56,6 +56,10 @@ defmodule RescordWeb.Layouts do
     default: nil,
     doc: "the number of new notifications of the person, from `RescordWeb.Inbox`"
 
+  attr :ruby, :boolean,
+    default: false,
+    doc: "the person can ask Ruby, from `RescordWeb.RubyLink`: the site bar links to it"
+
   attr :section, :atom,
     default: nil,
     values:
@@ -73,7 +77,15 @@ defmodule RescordWeb.Layouts do
 
     <header>
       <nav aria-label={gettext("Site")}>
-        <a href={~p"/"}><.icon name="mark" /> Rescord</a>
+        <a href={~p"/"}><.icon name="mark" /> <span>Rescord</span></a>
+        <.link
+          :if={@ruby && @organisation}
+          navigate={~p"/o/#{@organisation.short_name}/ruby"}
+          data-ruby
+          aria-current={current(@section, :ruby)}
+        >
+          <.icon name={Icons.section(:ruby)} /> Ruby
+        </.link>
         <a :if={!@current_user} href={~p"/sign-in"}><.icon name="door-in" /> {gettext("Sign in")}</a>
         <.inbox_link
           :if={@current_user && @organisation}
@@ -190,7 +202,7 @@ defmodule RescordWeb.Layouts do
               </.link>
             </li>
             <li>
-              <span title={@current_user.email}><.icon name="user-circle" /> {@current_user.email}</span>
+              <span><.icon name="user-circle" /> {@current_user.email}</span>
             </li>
             <li>
               <.link href={~p"/sign-out"} method="delete">
@@ -202,7 +214,7 @@ defmodule RescordWeb.Layouts do
       </nav>
     </header>
 
-    <main id="main" {@rest}>
+    <main id="main" tabindex="-1" {@rest}>
       {render_slot(@inner_block)}
     </main>
 
@@ -237,7 +249,7 @@ defmodule RescordWeb.Layouts do
       </nav>
     </header>
 
-    <main id="main">
+    <main id="main" tabindex="-1">
       {render_slot(@inner_block)}
     </main>
 
@@ -286,7 +298,6 @@ defmodule RescordWeb.Layouts do
     <.link
       navigate={~p"/o/#{@organisation.short_name}/notifications"}
       data-inbox
-      title={gettext("Notifications")}
       aria-current={@current && "true"}
     >
       <.icon name="bell" /><span>{gettext("Notifications")}</span>

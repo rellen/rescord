@@ -161,7 +161,7 @@ defmodule RescordWeb.ResidentPagesTest do
       {view, html} = open(conn, context.base <> "/lists")
 
       assert html =~ "Units: any unit"
-      assert html =~ "Expires soon: 30 days, the default before its date"
+      assert html =~ "Expires soon: 30 days before its date (the default)"
 
       {view, html} =
         submit(view, conn, "#units-#{lists.measure_kind.weight}",
@@ -408,7 +408,7 @@ defmodule RescordWeb.ResidentPagesTest do
       assert html =~ ~s(href="#{context.base}/residents/#{resident.id}")
       assert html =~ "Guinea pig"
       assert html =~ "In care"
-      assert html =~ "No name yet"
+      assert html =~ "A resident with no name"
       assert html =~ "Expected"
       assert html =~ "New resident"
     end

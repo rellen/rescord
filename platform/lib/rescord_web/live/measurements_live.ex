@@ -199,6 +199,7 @@ defmodule RescordWeb.MeasurementsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:residents}
     >
       <nav aria-label="Breadcrumb">
@@ -236,7 +237,9 @@ defmodule RescordWeb.MeasurementsLive do
         unit_needed?={@unit_needed?}
       />
 
-      <p :if={@series == []}>No measurement is recorded.</p>
+      <p :if={@series == []}>
+        No measurement yet.{if @can_write?, do: " Record the first one with the form above."}
+      </p>
 
       <div :if={@series != []} data-charts>
         <.measure

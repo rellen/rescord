@@ -61,7 +61,8 @@ version, and the two hashes of its native library. The same holds for
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
 ADR 0047), in jobs side by side from one compile (ADR 0103): the checks of
-the code, the tests in parts (`mix test --partitions`), the browser tests in
+the code, the tests in parts (`mix test --partitions`, four parts side by
+side on each runner with `scripts/test-in-parts.sh`), the browser tests in
 parts of their own, the checks of the workflows and the scripts, and the
 flake check (`nix.yml`). The job `CI` gives one result for the run. A push to
 `main` cancels the run of the push before it. When `main` has waited an hour
@@ -1144,6 +1145,45 @@ hand (ADR 0073). Read it before you write a migration. In short:
   `8:30 am`. After an update of `localize`, run
   `mix localize.download_locales` and commit the files of
   `priv/localize/locales`: `Rescord.LocaleFilesTest` fails until then.
+- **Help on a page** (ADR 0108). A field that a volunteer could get
+  wrong has a `hint`: what it takes, what an empty field means, and what
+  follows from a choice. A label is short: a condition or a default
+  ("if not 14", "leave it empty for…") goes in the hint, not the label. A
+  tick box takes a `hint` too. The sentence of a collection for nothing
+  yet says what the thing is in a few words and where to add one, or who
+  can: "No group yet. A group is residents you care for together, such
+  as a litter. Make one with New group below." A word of Rescord (lot,
+  placement, partner card, feed, power) is explained where it first
+  shows on a page. No words only in a `title` attribute, or in anything
+  that shows only on hover or focus (WCAG 1.4.13).
+- **Text that is ready for Gettext** (ADR 0108). The pages are in English
+  (ADR 0075), and a later translation stays cheap:
+  - A sentence is whole. Do not join a name to the end of a sentence
+    from another module, or change the case of words another module gave.
+  - A count with a word is `RescordWeb.Locale.count(n, "day", "days")`:
+    both words whole, never an `s` added, never an `if` on 1 in a page.
+  - A list of names that a person reads is `RescordWeb.Locale.list/1`,
+    never `Enum.join(names, ", ")` with `" and "`.
+- **One name for one thing** (ADR 0108). Use the first word; the words
+  after "not" name the same thing and are not used for it:
+  - **organisation**, or its name; not refuge or rescue for the
+    organisation itself. **partner refuge** for the other side of a
+    partnership or a transfer.
+  - **member** for a person of the organisation; not user, person or
+    account. **residents in the group**, not members, for a group.
+  - **former member** for a person who left; not "a person who is not a
+    member now" or "a person who left".
+  - **A resident with no name** where a resident has none.
+  - **location** for a building, a room or a pen; not place or where.
+  - **overdue** for a task past its time; not late or still due.
+  - **lot** for one batch of an item, explained once on a page as a
+    batch.
+  - **administrator** for a member whose role has the power to change the
+    settings.
+  - **Get notifications for this**, the words of the button; not follow.
+  - **From** and **To** for a range of days, as the forms say.
+  - The verbs on buttons, Save and Cancel, confirmations and the words of
+    a flash have their own rules.
 - **Atoms.** Never create atoms from text that a client sends.
 - **Branches.** Work is on `main` for now (the maintainer, 15 November 2026).
   Commit there and push `main`, with no pull request. A session whose own

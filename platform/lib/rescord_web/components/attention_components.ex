@@ -16,6 +16,7 @@ defmodule RescordWeb.AttentionComponents do
   alias RescordWeb.{
     InventoryWords,
     LocationComponents,
+    PrivacyWords,
     ResidentWords,
     TaskComponents,
     TaskWords,
@@ -28,7 +29,8 @@ defmodule RescordWeb.AttentionComponents do
     inventory: {"Stock", "The whole inventory"},
     residents: {"Residents", "All the residents"},
     housing: {"Housing", "The whole housing"},
-    transfers: {"Transfers and partners", "All the transfers"}
+    transfers: {"Transfers and partners", "All the transfers"},
+    privacy: {"Requests to erase data", "All the requests"}
   ]
 
   @doc "The parts that have words, for the test that holds them."
@@ -58,12 +60,18 @@ defmodule RescordWeb.AttentionComponents do
         <span :if={@total > 0}>{summary(@total)}</span>
       </p>
 
-      <p :if={@total == 0} id="attention-nothing">
-        A task that is overdue or due today, an item to count or to order, a resident that is
-        expected or late back, a location over its capacity, and a transfer that waits for an
-        answer are here when your role can act on them. The page shows a change at once, and
-        reads them again each minute.
-      </p>
+      <div :if={@total == 0} id="attention-nothing">
+        <p>This page lists what your role can act on:</p>
+        <ul>
+          <li>a task that is overdue or due today</li>
+          <li>an item to count or to order</li>
+          <li>a resident that is expected, or late back</li>
+          <li>a location with more residents than it has room for</li>
+          <li>a transfer that waits for an answer</li>
+          <li>a request to erase data that waits for an answer</li>
+        </ul>
+        <p>The page shows a change at once.</p>
+      </div>
 
       <section
         :for={part <- @parts}
@@ -108,6 +116,7 @@ defmodule RescordWeb.AttentionComponents do
   defp part_path(organisation, :residents), do: ~p"/o/#{organisation.short_name}/residents"
   defp part_path(organisation, :housing), do: ~p"/o/#{organisation.short_name}/housing"
   defp part_path(organisation, :transfers), do: ~p"/o/#{organisation.short_name}/transfers"
+  defp part_path(organisation, :privacy), do: ~p"/o/#{organisation.short_name}/privacy"
 
   attr :row, :map, required: true
   attr :organisation, :map, required: true
@@ -209,6 +218,25 @@ defmodule RescordWeb.AttentionComponents do
         {other_name(@row.record, @organisation)}
       </.link>
       <.state kind="info">Asks to be a partner</.state>
+    </li>
+    """
+  end
+
+  defp row(%{row: %{kind: :erasure_request}} = assigns) do
+    assigns =
+      assign(assigns,
+        days: Date.diff(assigns.row.due, Accounts.local_date(assigns.organisation, assigns.now))
+      )
+
+    ~H"""
+    <li id={"attention-erasure-request-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/privacy/#{@row.record.id}"}>
+        A request to erase data
+      </.link>
+      <.state kind={if @days < 7, do: "alert", else: "info"}>
+        {PrivacyWords.days_left(@days)}
+      </.state>
+      <small>Due on {ResidentWords.date(@row.due)}</small>
     </li>
     """
   end

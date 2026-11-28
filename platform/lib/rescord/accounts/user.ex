@@ -19,6 +19,15 @@ defmodule Rescord.Accounts.User do
   and only a root user can run them. The first root user comes from
   `Rescord.Accounts.bootstrap_root/1`.
 
+  ## An erased user
+
+  An erasure of the account (ADR 0105) keeps the row, with no email and
+  with `erased_at`: many versions name the id, and the records of each
+  organisation keep it under "Former member N". The row names nobody, and
+  nobody signs in with it: a sign-in link goes to an email, and the row has
+  none. A check of the database holds that `email` is empty exactly when
+  `erased_at` is set. A root user is never erased.
+
   ## The limit on the requests for a link
 
   One address gets no more than 5 links in 15 minutes (ADR 0020). The limit
@@ -36,6 +45,12 @@ defmodule Rescord.Accounts.User do
 
   postgres do
     table "users"
+
+    check_constraints do
+      check_constraint :email, "email_exactly_when_not_erased",
+        check: "(email IS NULL) = (erased_at IS NOT NULL)",
+        message: "is empty exactly when the user is erased"
+    end
   end
 
   authentication do
@@ -120,6 +135,15 @@ defmodule Rescord.Accounts.User do
       change set_attribute(:root?, true)
     end
 
+    update :erase do
+      description "Erases the account: the email goes, and the row stays with `erased_at`. Only `Rescord.Privacy` runs it (ADR 0105)"
+      accept []
+      require_atomic? false
+      validate attribute_equals(:root?, false), message: "is a root user: revoke root first"
+      change set_attribute(:email, nil)
+      change set_attribute(:erased_at, &DateTime.utc_now/0)
+    end
+
     update :revoke_root do
       description "Makes a root user an ordinary user. The last root user stays one."
       accept []
@@ -153,8 +177,14 @@ defmodule Rescord.Accounts.User do
     uuid_primary_key :id
 
     attribute :email, :ci_string do
-      allow_nil? false
+      allow_nil? true
       public? true
+    end
+
+    attribute :erased_at, :utc_datetime_usec do
+      public? true
+      writable? false
+      description "When the account was erased (ADR 0105). The email is empty from then on"
     end
 
     attribute :root?, :boolean do

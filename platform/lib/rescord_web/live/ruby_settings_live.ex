@@ -171,6 +171,7 @@ defmodule RescordWeb.RubySettingsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:settings}
     >
       <nav aria-label="Breadcrumb">

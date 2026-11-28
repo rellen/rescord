@@ -742,6 +742,15 @@ defmodule Rescord.Journal do
           {:ok, map, binary} | {:error, :not_found | term}
   def attachment_thumbnail(id, opts \\ []), do: file_of(id, :thumbnail_key, opts)
 
+  @doc """
+  An attachment and the bytes of the display file of its photo, which a
+  page opens in place of the photo (issue 34). A PDF, a GIF, and a photo
+  whose display file is not made yet have none.
+  """
+  @spec attachment_display(String.t(), keyword) ::
+          {:ok, map, binary} | {:error, :not_found | term}
+  def attachment_display(id, opts \\ []), do: file_of(id, :display_key, opts)
+
   defp file_of(id, field, opts) do
     with {:ok, %{} = attachment} <- attachment(id, opts),
          key when is_binary(key) <- Map.fetch!(attachment, field),

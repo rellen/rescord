@@ -16,11 +16,13 @@ defmodule RescordWeb.Features.RubyTest do
 
   use RescordWeb.FeatureCase, async: false
 
+  import Rescord.ResidentsFixtures
   import Rescord.RubyFixtures
 
   alias Rescord.Ruby.ScriptedModel
 
   @address "a.member.who.asks.ruby@wattle-creek.example.org"
+  @from_a_resident "a.member.who.asks.about.biscuit@wattle-creek.example.org"
 
   @small [viewport: %{width: 320, height: 640}, has_touch: true]
 
@@ -28,12 +30,17 @@ defmodule RescordWeb.Features.RubyTest do
     root = root!()
     organisation = organisation!(root, "Wattle Creek")
     {_, administrator} = member!(organisation, :administrator, root, @address)
-    ruby_on!(root, actor: administrator, tenant: organisation)
+    {_, _other} = member!(organisation, :administrator, root, @from_a_resident)
+    admin = [actor: administrator, tenant: organisation]
+    ruby_on!(root, admin)
+    biscuit = resident!(lists!(organisation, root), admin, %{name: "Biscuit"})
 
     # The email of the invitation is not what the test looks at.
     flush_emails()
 
-    {:ok, ruby: "/o/#{organisation.short_name}/ruby"}
+    {:ok,
+     ruby: "/o/#{organisation.short_name}/ruby",
+     biscuit: "/o/#{organisation.short_name}/residents/#{biscuit.id}"}
   end
 
   defp work!, do: Oban.drain_queue(queue: :ruby, with_safety: false)
@@ -73,5 +80,50 @@ defmodule RescordWeb.Features.RubyTest do
     |> press("#ruby-message", "Enter")
     |> assert_has("article[data-from=member]", text: "Who arrived this week?")
     |> assert_has("#ruby-answer", text: "is working")
+  end
+
+  @tag browser_context_opts: @small
+  test "from the page of a resident on a phone, a conversation about the resident",
+       %{conn: session, biscuit: biscuit} do
+    session
+    |> sign_in_with_link(@from_a_resident)
+    |> visit(biscuit)
+    |> assert_has("header > nav > a[data-ruby]", text: "Ruby")
+    |> click_link("#ask-ruby", "Ask Ruby")
+    |> assert_has("h1", text: "Ruby")
+    |> assert_has("a#ruby-about[href=\"#{biscuit}\"]", text: "Biscuit")
+    |> assert_connected()
+    |> click_button("What happened to Biscuit this week?")
+    |> assert_has("article[data-from=member]", text: "What happened to Biscuit this week?")
+    |> assert_has("a#ruby-about[href=\"#{biscuit}\"]", text: "Biscuit")
+  end
+
+  @tag browser_context_opts: [viewport: %{width: 1280, height: 800}]
+  test "on a wide screen the link to Ruby is in the first row of the bar, once",
+       %{conn: session, biscuit: biscuit} do
+    session
+    |> sign_in_with_link(@address)
+    |> visit(biscuit)
+    |> assert_connected()
+    |> evaluate(
+      """
+      (() => {
+        const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+        const links = document.querySelectorAll("header nav a[data-ruby]");
+        return {
+          links: links.length,
+          ruby: box("header > nav > a[data-ruby]"),
+          bell: box("header > nav > a[data-inbox]"),
+          parts: box("#site-menu ul:first-child").top
+        };
+      })()
+      """,
+      fn bar ->
+        assert bar["links"] == 1
+        assert bar["ruby"]["width"] > 0, "the link to Ruby is not in view"
+        assert bar["ruby"]["bottom"] <= bar["parts"], "the link to Ruby is below the first row"
+        assert bar["ruby"]["right"] <= bar["bell"]["left"], "the link to Ruby is after the bell"
+      end
+    )
   end
 end

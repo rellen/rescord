@@ -16,7 +16,9 @@ defmodule Rescord.Attention do
       and the ones that are expected;
     * `Rescord.Locations.attention/2` - the locations over their capacity;
     * `Rescord.Transfers.attention/3` - the transfers and the partner
-      requests that wait for an answer.
+      requests that wait for an answer;
+    * `Rescord.Privacy.attention/2` - the requests to erase data that wait
+      (ADR 0105).
 
   Three rules hold for each of them.
 
@@ -36,10 +38,11 @@ defmodule Rescord.Attention do
       Rescord.Inventory,
       Rescord.Residents,
       Rescord.Locations,
-      Rescord.Transfers
+      Rescord.Transfers,
+      Rescord.Privacy
     ]
 
-  alias Rescord.{Inventory, Locations, Residents, Tasks, Transfers}
+  alias Rescord.{Inventory, Locations, Privacy, Residents, Tasks, Transfers}
 
   # The rows that a part shows. The total of the part counts the others.
   @limit 8
@@ -59,7 +62,7 @@ defmodule Rescord.Attention do
   at most `limit/0` of them, and the number of all such things in it.
   """
   @type part :: %{
-          part: :tasks | :inventory | :residents | :housing | :transfers,
+          part: :tasks | :inventory | :residents | :housing | :transfers | :privacy,
           rows: [row, ...],
           total: pos_integer
         }
@@ -69,7 +72,7 @@ defmodule Rescord.Attention do
   each (ADR 0096).
   """
   @spec domains() :: [module]
-  def domains, do: [Tasks, Inventory, Residents, Locations, Transfers]
+  def domains, do: [Tasks, Inventory, Residents, Locations, Transfers, Privacy]
 
   @doc "The most rows that a part shows."
   @spec limit() :: pos_integer
@@ -101,7 +104,8 @@ defmodule Rescord.Attention do
           inventory: fn -> Inventory.attention(role, scoped) end,
           residents: fn -> Residents.attention(role, scoped) end,
           housing: fn -> Locations.attention(role, scoped) end,
-          transfers: fn -> Transfers.attention(role, organisation, scoped) end
+          transfers: fn -> Transfers.attention(role, organisation, scoped) end,
+          privacy: fn -> Privacy.attention(role, scoped) end
         ],
         # A read that fails is a fault of Rescord, and not an empty part.
         {:ok, found} = read.(),

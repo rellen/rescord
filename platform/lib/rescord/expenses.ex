@@ -397,6 +397,28 @@ defmodule Rescord.Expenses do
     do: Rescord.Storage.Named.keys(Receipt, "receipt of an expense", organisation_id)
 
   @doc """
+  The last day of the money records that name the user `user_id` in the
+  organisation `tenant`: the newest date of an expense that the user paid,
+  recorded, decided or paid back, or of its payment back (ADR 0105). `nil`
+  when no expense names the user. An erasure holds the email of the person
+  from it, for the years of the money period. It reads with no actor: the
+  erasure decided, and the result is one date.
+  """
+  @spec last_day_naming(Ecto.UUID.t(), term) :: Date.t() | nil
+  def last_day_naming(user_id, tenant) do
+    Expense
+    |> Ash.Query.filter(
+      payer_id == ^user_id or author_id == ^user_id or decided_by_id == ^user_id or
+        reimbursed_by_id == ^user_id
+    )
+    |> Ash.Query.select([:incurred_on, :reimbursed_on])
+    |> Ash.read!(tenant: tenant, authorize?: false)
+    |> Enum.flat_map(&[&1.incurred_on, &1.reimbursed_on])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.max(Date, fn -> nil end)
+  end
+
+  @doc """
   Whether the error of an action says that the expense changed after the
   caller read it: another person decided it a moment before.
   """

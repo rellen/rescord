@@ -33,6 +33,7 @@ defmodule RescordWeb.ToolsLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:tools}
     >
       <.header icon={Icons.section(:tools)}>

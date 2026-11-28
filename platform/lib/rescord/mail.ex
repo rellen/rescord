@@ -26,7 +26,7 @@ defmodule Rescord.Mail do
 
   import Swoosh.Email
 
-  alias Rescord.Mail.{Invitation, MailWorks, SignInLink}
+  alias Rescord.Mail.{ErasureDone, Invitation, MailWorks, SignInLink}
 
   @doc """
   The email with a sign-in link. `url` is the address that signs the person
@@ -58,6 +58,23 @@ defmodule Rescord.Mail do
     })
   end
 
+  @doc """
+  The email that tells a person that the organisation with the name
+  `organisation` erased their data (ADR 0105). `label` is the name that
+  its records give the person now, such as "Former member 3", and `kept`
+  says what stays and until when.
+  """
+  @spec erasure_done(String.t(), String.t(), String.t(), String.t()) :: Swoosh.Email.t()
+  def erasure_done(to, organisation, label, kept) do
+    build(to, "#{organisation} erased your data", ErasureDone, %{
+      organisation: organisation,
+      label: label,
+      kept: kept,
+      preview: "Your email address is gone from the records of #{organisation}.",
+      note: "This is the last email that #{organisation} sends you from Rescord."
+    })
+  end
+
   @doc "The test email of `bin/check`: it says that the mail settings work."
   @spec mail_works(String.t()) :: Swoosh.Email.t()
   def mail_works(to) do
@@ -85,6 +102,13 @@ defmodule Rescord.Mail do
          "Wattle Creek Refuge",
          "sam@example.org",
          "https://rescord.example.org/sign-in"
+       )},
+      {"erasure-done",
+       erasure_done(
+         "kim@example.org",
+         "Wattle Creek Refuge",
+         "Former member 3",
+         "We keep your email address on 4 expenses until 30 June 2033, because the law asks us to keep the money records."
        )},
       {"mail-works", mail_works("kim@example.org")}
     ]

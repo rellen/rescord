@@ -12,6 +12,12 @@ defmodule Rescord.Accounts.Signals do
       that are open let go of the user, and the calendar feeds of the member
       are revoked (ADR 0105).
 
+    * `:member_erased` - a former member was erased on request: the
+      organisation of the action that emitted, with the number of Former
+      member N and whether the comments of the person stay. The
+      conversations of the person with Ruby are deleted, and the calendar
+      feeds of the person lose their names (ADR 0105).
+
   `mix ash.signals` prints what emits each signal and what listens to it.
   """
 
@@ -27,6 +33,13 @@ defmodule Rescord.Accounts.Signals do
     signal :member_removed do
       description "A member was taken out of the organisation of the action"
       argument :user_id, :uuid, allow_nil?: false
+    end
+
+    signal :member_erased do
+      description "A former member of the organisation of the action was erased on request"
+      argument :user_id, :uuid, allow_nil?: false
+      argument :former_number, :integer, allow_nil?: false
+      argument :keep_comments, :boolean, allow_nil?: false
     end
   end
 end

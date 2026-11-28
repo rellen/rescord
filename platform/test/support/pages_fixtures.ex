@@ -20,7 +20,17 @@ defmodule RescordWeb.PagesFixtures do
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
 
-  alias Rescord.{Accounts, Comments, Expenses, Inventory, Journal, Locations, Residents, Tasks}
+  alias Rescord.{
+    Accounts,
+    Comments,
+    Expenses,
+    Inventory,
+    Journal,
+    Locations,
+    Privacy,
+    Residents,
+    Tasks
+  }
 
   @doc """
   Makes the refuge in the directory `tmp_dir`, with an administrator who
@@ -216,6 +226,38 @@ defmodule RescordWeb.PagesFixtures do
         tenant: organisation
       )
 
+    # A request to erase the data of a member, and the notices with each
+    # blank filled (ADR 0105).
+    {volunteer, _user} = member!(organisation, :member, root)
+
+    {:ok, request} =
+      Privacy.record_request(
+        %{
+          member_id: volunteer.id,
+          how_received: :email,
+          identity: "Answered from the address of the account"
+        },
+        actor: user,
+        tenant: organisation
+      )
+
+    {:ok, _} =
+      Privacy.save_instance_settings(
+        %{
+          operator_name: "Example Hosting",
+          operator_contact: "operator@example.org",
+          hosting: "Australia",
+          mail_provider: "Example Mail"
+        },
+        actor: root
+      )
+
+    {:ok, _} =
+      Privacy.save_settings(%{contact_name: "Jo", contact_email: "privacy@example.org"},
+        actor: user,
+        tenant: organisation
+      )
+
     Oban.drain_queue(queue: :default, with_recursion: true, with_safety: false)
 
     home = "/o/#{organisation.short_name}"
@@ -225,7 +267,14 @@ defmodule RescordWeb.PagesFixtures do
       root: root,
       organisation: organisation,
       pages:
-        ["/", "/colophon", "/dev/components", home] ++
+        [
+          "/",
+          "/colophon",
+          "/dev/components",
+          "/privacy",
+          "/privacy/#{organisation.notice_id}",
+          home
+        ] ++
           Enum.map(
             ~w(tasks routines residents residents/new residents/#{resident.id}
               residents/#{resident.id}/edit residents/#{resident.id}/journal
@@ -236,7 +285,7 @@ defmodule RescordWeb.PagesFixtures do
               reports lists members roles partners transfers settings settings/ruby export ruby
               ruby/#{conversation.id} ruby/#{closed.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
-              expenses/#{owed.id} tasks/#{task.id} notifications),
+              expenses/#{owed.id} tasks/#{task.id} notifications privacy privacy/#{request.id}),
             &"#{home}/#{&1}"
           )
     }

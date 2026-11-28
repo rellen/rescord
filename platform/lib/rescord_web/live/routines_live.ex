@@ -37,7 +37,8 @@ defmodule RescordWeb.RoutinesLive do
        problems: [],
        refused_form?: false,
        kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}),
-       residents: residents |> Enum.map(&{&1.name || "No name yet", &1.id}) |> Enum.sort(),
+       residents:
+         residents |> Enum.map(&{&1.name || "A resident with no name", &1.id}) |> Enum.sort(),
        groups: groups |> Enum.map(&{Residents.group_name(&1), &1.id}) |> Enum.sort(),
        locations:
          for(
@@ -286,6 +287,7 @@ defmodule RescordWeb.RoutinesLive do
       current_user={@current_user}
       organisation={@organisation}
       inbox={@inbox}
+      ruby={@ruby?}
       section={:tasks}
     >
       <.header icon={Icons.section(:routines)}>

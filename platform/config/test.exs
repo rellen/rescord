@@ -44,9 +44,16 @@ config :rescord, Rescord.Repo,
   pool_size: System.schedulers_online() * 2
 
 # The tests run a server on port 4002, for the browser tests. Two runs of
-# `mix test` at one time cannot both have that port.
+# `mix test` at one time cannot both have that port, so part k of
+# `mix test --partitions` (MIX_TEST_PARTITION) takes 4002 + k:
+# scripts/test-in-parts.sh runs several parts side by side (ADR 0103).
+test_partition = System.get_env("MIX_TEST_PARTITION", "")
+
 config :rescord, RescordWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
+  http: [
+    ip: {127, 0, 0, 1},
+    port: 4002 + if(test_partition == "", do: 0, else: String.to_integer(test_partition))
+  ],
   secret_key_base: "9iDnT6galUTuMetbw7HGDpETn9kOplPWofCu2/hsMdMN7kGHzrwJ4iTte0GffAyG",
   # A browser test needs a real server (ADR 0023). A run of muex starts
   # several `mix test` at one time and has no browser test, so it starts no
@@ -69,7 +76,9 @@ config :rescord, Rescord.Transfers.Keys, secret: "the secret of the test keys, 3
 
 # The same secret gives the key of the vault of the settings (ADR 0068).
 config :rescord, Rescord.Vault, secret: "the secret of the test keys, 32 bytes or more"
-config :rescord, Rescord.Storage.Disk, root: Path.join(System.tmp_dir!(), "rescord-test-store")
+# The store of the files, a directory for each part of the tests.
+config :rescord, Rescord.Storage.Disk,
+  root: Path.join(System.tmp_dir!(), "rescord-test-store#{test_partition}")
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false

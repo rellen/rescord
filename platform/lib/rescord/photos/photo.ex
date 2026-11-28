@@ -128,6 +128,13 @@ defmodule Rescord.Photos.Photo do
       description "The key of the thumbnail in the store, or nil for an old journal photo"
     end
 
+    attribute :display_key, :string do
+      public? true
+      writable? false
+
+      description "The key of the display file in the store, which a page opens, or nil for a GIF and a photo that has none yet (issue 34)"
+    end
+
     # An attachment is not temporal, and the database holds no key from a
     # table with a period to one with none here, so this is a plain id.
     attribute :attachment_id, :uuid do

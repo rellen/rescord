@@ -296,8 +296,7 @@ defmodule Rescord.CommentsTest do
       :ok = Accounts.remove_member(context.sam_member, context.admin)
 
       people = Comments.people([comment], context.admin)
-      assert {email, :former} = people[context.sam.id]
-      assert email == to_string(context.sam.email)
+      assert people[context.sam.id] == {"#{context.sam.email} (former member)", :former}
       assert {_, :member} = people[context.kim.id]
 
       assert RescordWeb.CommentWords.person(people, context.sam.id) ==

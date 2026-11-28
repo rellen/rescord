@@ -94,13 +94,8 @@ defmodule RescordWeb.CalendarComponents do
             field={@form[:with_notes]}
             type="checkbox"
             label="Include the notes that people wrote"
+            hint="Google, Apple or Microsoft keep a copy of the feed. Leave this off to keep the notes out: each event then has only its title, the residents and a link to Rescord."
           />
-          <p>
-            <small>
-              A calendar service keeps a copy of the feed. Without this, an event has the
-              title, the names of the residents and a link to Rescord, and no note.
-            </small>
-          </p>
         </fieldset>
         <footer>
           <.button type="submit">Make the feed</.button>

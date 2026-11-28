@@ -217,6 +217,49 @@ defmodule RescordWeb.RubyWords do
   def asks, do: @asks
 
   @doc """
+  The things to ask about a record, for a conversation that is about it
+  (`Rescord.Ruby.about/2`), each with the tool that answers it, so that a
+  page offers only what the role can read.
+  """
+  def asks_about(%{kind: "resident"} = about) do
+    name = about.name || "this resident"
+
+    [
+      {"resident_timeline", "What happened to #{name} this week?"},
+      {"resident_timeline", "When was #{name} last weighed?"},
+      {"resident_profile", "What does the record of #{name} say?"},
+      {"housing", "Where does #{name} live?"}
+    ]
+  end
+
+  def asks_about(%{kind: "group"} = about) do
+    name = about.name || "this group"
+
+    [
+      {"find_residents", "Who is in #{name}?"},
+      {"housing", "Where does #{name} live?"}
+    ]
+  end
+
+  def asks_about(%{kind: "location"} = about) do
+    name = about.name || "this place"
+
+    [
+      {"housing", "Who lives in #{name}?"},
+      {"housing", "How full is #{name}?"}
+    ]
+  end
+
+  def asks_about(%{kind: "item"} = about) do
+    name = about.name || "this item"
+
+    [
+      {"stock_levels", "How much #{name} is left?"},
+      {"stock_levels", "Is #{name} running low?"}
+    ]
+  end
+
+  @doc """
   When a message was written, in the time zone of the organisation: the
   time alone for today, and the date and the time before.
   """

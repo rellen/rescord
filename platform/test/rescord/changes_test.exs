@@ -204,6 +204,9 @@ defmodule Rescord.ChangesTest do
           Rescord.Notifications.PushSubscription,
           Rescord.Notifications.NtfyTopic,
           Rescord.Notifications.Settings,
+          # The privacy settings of the server, which only a root user
+          # changes, and which a notice reads at each request (ADR 0105).
+          Rescord.Privacy.InstanceSettings,
           # The private keys of a refuge. No page waits for one.
           Rescord.Transfers.RefugeKey
         ]

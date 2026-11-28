@@ -82,6 +82,7 @@ defmodule Rescord.Journal.AttachmentsTest do
       for {content, reason, words} <- [
             {"<html><script></script>", :not_a_photo_or_pdf, "Content is not a photo or a PDF"},
             {"", :empty, "Content is an empty file"},
+            {<<0, 0, 0, 24, "ftypheic", 0, 0, 0, 0>>, :heic, "Content is a HEIC or AVIF photo"},
             {<<0xFF, 0xD8, 0xFF>> <> :binary.copy("a", StoreAttachment.max_size()), :too_large,
              "Content is more than 20 MB"}
           ] do

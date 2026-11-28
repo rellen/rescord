@@ -43,7 +43,7 @@ defmodule RescordWeb.ErrorHTMLTest do
     html = html_response(conn, 404)
     doc = LazyHTML.from_document(html)
 
-    assert count(doc, ~s(html[lang="en"])) == 1
+    assert count(doc, ~s(html[lang="en-AU"])) == 1
     assert text(doc, "title") == "Rescord has no page at this address · Rescord"
     assert count(doc, "main h1") == 1
     assert count(doc, ~s(link[rel="stylesheet"])) == 1

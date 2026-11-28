@@ -23,14 +23,15 @@ defmodule RescordWeb.CommentWords do
 
   @doc """
   A person whom a comment names, from `Rescord.Comments.people/2`: the
-  address, with "(former member)" for a person who left the organisation,
-  and "a former member" alone for a user who is gone from the server.
+  label of `Rescord.Accounts.people/2`, such as the address, the address
+  with "(former member)" for a person who left the organisation, or
+  "Former member N" for a person erased on request (ADR 0105), and "a
+  former member" alone for a user who is in none of these.
   """
   @spec person(map, Ecto.UUID.t()) :: String.t()
   def person(people, user_id) do
     case Map.get(people, user_id) do
-      {email, :member} -> email
-      {email, :former} -> "#{email} (former member)"
+      {label, _state} -> label
       nil -> "a former member"
     end
   end

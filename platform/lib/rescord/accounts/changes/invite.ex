@@ -12,6 +12,8 @@ defmodule Rescord.Accounts.Changes.Invite do
 
   use Ash.Resource.Change
 
+  require Ash.Query
+
   alias Rescord.Accounts
   alias Rescord.Accounts.User
 
@@ -20,8 +22,27 @@ defmodule Rescord.Accounts.Changes.Invite do
     Ash.Changeset.before_action(changeset, fn changeset ->
       address = Ash.Changeset.get_argument(changeset, :email)
       user = find_or_make_user(address, changeset)
-      Ash.Changeset.force_change_attribute(changeset, :user_id, user.id)
+
+      if erased_here?(user, changeset.tenant) do
+        Ash.Changeset.add_error(changeset,
+          field: :email,
+          message:
+            "was erased from this organisation on request. A root user can erase the whole account, and the person is then invited as a new person"
+        )
+      else
+        Ash.Changeset.force_change_attribute(changeset, :user_id, user.id)
+      end
     end)
+  end
+
+  # The records of the organisation name a person erased here as Former
+  # member N. The same account as a member again would put their name back
+  # on them (ADR 0105).
+  defp erased_here?(user, tenant) do
+    Accounts.Member
+    |> Ash.Query.for_read(:with_former)
+    |> Ash.Query.filter(user_id == ^user.id and not is_nil(erased_at))
+    |> Ash.exists?(tenant: tenant, authorize?: false)
   end
 
   defp find_or_make_user(address, changeset) do
