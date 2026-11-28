@@ -227,7 +227,7 @@ again only if the maintainer wants to build the state from events.
    test 1 to Ash.
 3. **S2**, a departure, after the maintainer says what a departure ends.
 4. **S3**, the email of an invitation, as the first signal in a job.
-5. **P1**, the operation id (built in ADR 0100, with a correlation, an
+5. **P1**, the operation id (built in ADR 0101, with a correlation, an
    operation and a causation id), when the timeline should show a reaction with
    its cause.
 6. **W1**: design the adoption and foster records as the first workflow.

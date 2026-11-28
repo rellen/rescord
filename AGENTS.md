@@ -503,7 +503,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
     compile (ADR 0012).
   - A domain adds `AshPaperTrail.Domain` to its extensions, with
     `paper_trail do include_versions? true end`.
-  - **One piece of work has one correlation id** (ADR 0100). Each
+  - **One piece of work has one correlation id** (ADR 0101). Each
     version has `correlation_id`, `operation_id` and `causation_id`,
     which `Rescord.Resource` sets: write none of them by hand. A change
     that builds the options of a nested action gives it

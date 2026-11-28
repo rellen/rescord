@@ -26,7 +26,7 @@ defmodule Rescord.Tasks.Changes.WriteDose do
 
   defp write(prescription_id, task, changeset, actor) do
     # The entry and its details share the correlation id of the completion
-    # (ADR 0100).
+    # (ADR 0101).
     options = [
       actor: actor,
       tenant: changeset.tenant,

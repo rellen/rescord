@@ -31,7 +31,7 @@ defmodule Rescord do
       Repo,
       Resource,
       Resource.Checks,
-      # `Rescord.Resource` adds them to each resource with a trail (ADR 0100).
+      # `Rescord.Resource` adds them to each resource with a trail (ADR 0101).
       Resource.Operations,
       Resource.Operations.Stamp,
       # `Rescord.Resource` names it in each resource of a domain, and a domain

@@ -32,7 +32,7 @@ defmodule Rescord.Resource do
       actor (`Rescord.Resource.VersionPolicies`, ADR 0063): a domain reads
       the versions after the record has decided.
     * Each version holds the correlation id of the action call that wrote
-      it (`correlation_id`, ADR 0100). A change that runs a nested action
+      it (`correlation_id`, ADR 0101). A change that runs a nested action
       gives it `context: Rescord.Correlation.context(changeset)`, so that
       both write one id.
     * A destroy archives the row (AshArchival).
@@ -221,7 +221,7 @@ defmodule Rescord.Resource do
       end
 
       # A version row is in the table of the resource. Most rows from before
-      # ADR 0100 have no id, so the index holds only the rows that have one.
+      # ADR 0101 have no id, so the index holds only the rows that have one.
       postgres do
         custom_indexes do
           index [:correlation_id], where: "correlation_id IS NOT NULL"
@@ -239,7 +239,7 @@ defmodule Rescord.Resource do
         metadata :operation_id, :uuid, allow_nil?: true
         metadata :causation_id, :uuid, allow_nil?: true
         version_extensions authorizers: [Ash.Policy.Authorizer]
-        # The policies, and the index of the version table (ADR 0100).
+        # The policies, and the index of the version table (ADR 0101).
         mixin Rescord.Resource.VersionTable
       end
     end

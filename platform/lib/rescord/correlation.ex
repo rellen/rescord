@@ -1,7 +1,7 @@
 defmodule Rescord.Correlation do
   @moduledoc """
   The correlation id that ties together each version that one action writes,
-  with the versions of its nested actions and of its listeners (ADR 0100).
+  with the versions of its nested actions and of its listeners (ADR 0101).
 
   `Rescord.Resource` sets `operation_id_field :correlation_id` of
   AshPaperTrail. When an action starts, AshPaperTrail puts a new id in

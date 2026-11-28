@@ -568,7 +568,7 @@ defmodule Rescord.Journal do
   @spec write_entry_with_files(map, [{String.t(), binary}], keyword) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def write_entry_with_files(facts, files, opts \\ []) do
-    # One correlation id for the entry and each of its files (ADR 0100).
+    # One correlation id for the entry and each of its files (ADR 0101).
     opts = Rescord.Correlation.start(opts)
 
     Ash.transact(

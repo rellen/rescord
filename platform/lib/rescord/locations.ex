@@ -63,7 +63,7 @@ defmodule Rescord.Locations do
   one transaction.
   """
   def move_location(%Location{} = location, parent_id, opts \\ []) do
-    # One correlation id for the end of the old tie and the new one (ADR 0100).
+    # One correlation id for the end of the old tie and the new one (ADR 0101).
     opts = Rescord.Correlation.start(opts)
 
     # `Ash.transact`, and not a transaction of the repo: it sends the

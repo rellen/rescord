@@ -163,7 +163,7 @@ defmodule Rescord.Photos do
   @spec keep(item, %{caption: String.t() | nil, taken_on: term, album_ids: [String.t()]}, keyword) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def keep(item, %{caption: caption, taken_on: taken_on, album_ids: album_ids}, opts \\ []) do
-    # One correlation id for each write of the photo (ADR 0100).
+    # One correlation id for each write of the photo (ADR 0101).
     opts = Rescord.Correlation.start(opts)
 
     Ash.transact(

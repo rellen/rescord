@@ -1,4 +1,4 @@
-# ADR 0100: A correlation, an operation and a causation id on each version
+# ADR 0101: A correlation, an operation and a causation id on each version
 
 Status: accepted. P1 of ADR 0062. The maintainer chose "test first" on
 28 November 2026, and the spike (report in the private repository of the

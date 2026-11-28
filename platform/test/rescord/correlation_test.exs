@@ -1,6 +1,6 @@
 defmodule Rescord.CorrelationTest do
   @moduledoc """
-  Holds the rule of ADR 0100: each version that one action writes, with the
+  Holds the rule of ADR 0101: each version that one action writes, with the
   versions of its nested actions and of its listeners, has one correlation
   id.
 
@@ -294,7 +294,7 @@ defmodule Rescord.CorrelationTest do
 
       assert contexts >= tenants,
              "#{path} passes a tenant to a call with no " <>
-               "`context: Rescord.Correlation.context(changeset)` (ADR 0100). " <>
+               "`context: Rescord.Correlation.context(changeset)` (ADR 0101). " <>
                "A change that only reads goes in @no_context of this test, with the reason."
     end
   end

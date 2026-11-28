@@ -126,7 +126,7 @@ release (ADR 0047).
     empty columns, `correlation_id`, `operation_id` and `causation_id`,
     to the 23 tables of the shared records with a history and of the
     histories, for the ids of the work that wrote each version
-    (ADR 0100). It has no default. It adds an index on `correlation_id`
+    (ADR 0101). It has no default. It adds an index on `correlation_id`
     to each of those tables, only for the rows that have one, so each
     index is empty after the upgrade. It changes no row: each version
     that is there keeps no id.
@@ -520,7 +520,7 @@ release (ADR 0047).
   residents page finds a resident by its name or by its markings.
   `residents.csv` of the export has the new column `markings`.
 - Each version that Rescord writes in a history now holds three ids
-  (ADR 0100). `correlation_id` is the same for each version of one piece
+  (ADR 0101). `correlation_id` is the same for each version of one piece
   of work: the removal of a resident, with the tasks and routines that it
   changes, has one. `operation_id` is the id of the one action that wrote
   the version, and `causation_id` is the `operation_id` of the action

@@ -1,7 +1,7 @@
 defmodule Rescord.Resource.Operations.Stamp do
   @moduledoc """
   Gives an action call its operation id, and records the operation id of the
-  call that ran it as its causation id (ADR 0100).
+  call that ran it as its causation id (ADR 0101).
 
   AshPaperTrail writes both on the version of the call, from
   `context.paper_trail_metadata`, which no nested call gets. The change also

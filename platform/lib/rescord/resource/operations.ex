@@ -2,7 +2,7 @@ defmodule Rescord.Resource.Operations do
   @moduledoc """
   Stamps each create, update and destroy of a resource with a paper trail
   with the operation id of its call and the causation id of the call that
-  ran it (ADR 0100).
+  ran it (ADR 0101).
 
   `use Rescord.Resource` adds this extension to each resource with a paper
   trail. It has no DSL of its own: its transformer puts the change

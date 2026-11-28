@@ -572,7 +572,7 @@ script of ours.
   gives a version resource no authorizer, so `Rescord.Resource` gives each
   one a policy that refuses each actor. A domain reads the versions of its
   own resources, after the record that they belong to has decided.
-- **Each version says which piece of work wrote it** (ADR 0100):
+- **Each version says which piece of work wrote it** (ADR 0101):
   `correlation_id` is the same for each version of one piece of work, with
   its nested actions and the signal listeners that run inline;
   `operation_id` is the one action call; `causation_id` is the
