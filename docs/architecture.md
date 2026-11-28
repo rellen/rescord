@@ -978,6 +978,14 @@ helpers for results, options and collections, and `shoddy_phoenix` has the
 LiveView helpers, the plumbing of the live widgets among them. Both come
 from GitHub, pinned to a commit (ADR 0005).
 
+Today Rescord calls `Shoddy.Strings` in each LiveView that reads a form,
+`Shoddy.Env` in `config/runtime.exs`, `Shoddy.Tests` in the tests, and a
+few helpers of `Shoddy.Maps`, `Shoddy.Keywords` and `Shoddy.Strings`
+elsewhere. No page has a live widget yet (ADR 0037), so `shoddy_phoenix`
+runs only in `test/rescord_web/widget_test.exs`, and `choose/1` and
+`switch/1` are imported into each template for the first page that needs
+them.
+
 - Use a function of theirs where it says the same thing in fewer words.
 - When Rescord writes a helper that is not about Rescord, such as
   `RescordWeb.Widget`'s bookkeeping, or works around a gap in a library, that
