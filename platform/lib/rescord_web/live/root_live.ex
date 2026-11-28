@@ -124,6 +124,7 @@ defmodule RescordWeb.RootLive do
 
       <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <p><.link navigate={~p"/root/push"}>Set the notifications on devices and ntfy</.link>.</p>
+      <p><.link navigate={~p"/root/scan"}>Set the virus scan of the PDFs</.link>.</p>
       <p>
         <.link navigate={~p"/root/privacy"}>Privacy of the server</.link>: what the notices say
         about it, and the erasure of an account.

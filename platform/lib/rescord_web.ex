@@ -49,7 +49,8 @@ defmodule RescordWeb do
       Rescord.Attention,
       Rescord.Mail,
       Rescord.Privacy,
-      Rescord.Health
+      Rescord.Health,
+      Rescord.Storage.Scan
     ],
     exports: [Endpoint, Telemetry, Usage],
     check: [aliases: true, apps: [:ash]]

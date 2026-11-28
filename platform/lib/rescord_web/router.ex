@@ -120,6 +120,8 @@ defmodule RescordWeb.Router do
       live "/root/health", RootHealthLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
+      # The virus scan of the PDFs (issue 37).
+      live "/root/scan", RootScanLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).

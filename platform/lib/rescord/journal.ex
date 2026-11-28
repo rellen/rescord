@@ -24,7 +24,16 @@ defmodule Rescord.Journal do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
+
+    deps [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Lists,
+      Rescord.Residents,
+      Rescord.Locations,
+      Rescord.Storage.Scan
+    ]
+
     # A page reads a series of measurements, which is no resource.
     exports [Rescord.Journal.Series, Rescord.Journal.Series.Point, Rescord.Journal.Standard]
   end

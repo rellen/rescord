@@ -69,7 +69,8 @@ defmodule RescordWeb.Usage do
     RescordWeb.RootRubyLive => :server,
     RescordWeb.RootUsageLive => :server,
     RescordWeb.RootPushLive => :server,
-    RescordWeb.RootPrivacyLive => :server
+    RescordWeb.RootPrivacyLive => :server,
+    RescordWeb.RootScanLive => :server
   }
 
   # The feature and the item of each file, by the controller and its action.

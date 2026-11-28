@@ -59,6 +59,7 @@ defmodule Rescord.Release do
       Rescord.Photos,
       Rescord.Privacy,
       Rescord.Ruby,
+      Rescord.Storage.Scan,
       Rescord.Transfers,
       Rescord.Usage,
       Rescord.Vault

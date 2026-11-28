@@ -108,6 +108,11 @@ defmodule Rescord.Metrics do
         tags: [:feature, :kind],
         description: "The uses of each feature, as the usage counts have them (ADR 0098)"
       ),
+      counter("rescord.scan.count",
+        event_name: [:rescord, :scan, :stop],
+        tags: [:result],
+        description: "The scans of PDFs by clamd: clean, found harmful, or a fault of clamd"
+      ),
       counter("rescord.photo.refused.count",
         event_name: [:rescord, :photos, :refused],
         description: "The photos that waited too long for a slot of libvips"

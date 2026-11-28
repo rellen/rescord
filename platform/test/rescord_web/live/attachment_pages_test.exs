@@ -18,6 +18,7 @@ defmodule RescordWeb.AttachmentPagesTest do
   require Ecto.Query
 
   alias Rescord.Journal
+  alias Rescord.Storage.Scan
 
   @moduletag :tmp_dir
 
@@ -113,6 +114,35 @@ defmodule RescordWeb.AttachmentPagesTest do
       |> render_submit()
 
     assert html =~ "is not a photo or a PDF"
+    assert entries(context) == []
+  end
+
+  test "with the virus scan on, a PDF that clamd finds or cannot scan writes no entry (issue 37)",
+       context do
+    send_pdf = fn ->
+      {view, _html} = open(context.conn, context.path)
+      upload = files(view, [{"report.pdf", pdf(), "application/pdf"}])
+      render_upload(upload, "report.pdf")
+
+      view
+      |> form("#entry", entry: %{kind: "general", note: "With a file."})
+      |> render_submit()
+    end
+
+    root = root!()
+    address = Rescord.FakeClamd.start({:found, "Win.Test.EICAR_HDB-1"})
+    {:ok, _settings} = Scan.save_settings(%{scan_on: true, address: address}, actor: root)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert send_pdf.() =~ "holds something that the virus scan found harmful"
+      assert_received {:clamd_scanned, _bytes}
+
+      {:ok, _settings} =
+        Scan.save_settings(%{address: Rescord.FakeClamd.nobody()}, actor: root)
+
+      assert send_pdf.() =~ "could not be checked for viruses. Try again later"
+    end)
+
     assert entries(context) == []
   end
 

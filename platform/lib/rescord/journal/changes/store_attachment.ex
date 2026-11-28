@@ -13,8 +13,8 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
   rest, and gets a thumbnail at `<organisation id>/thumbnails/<attachment
   id>`, and a display file at `<organisation id>/displays/<attachment id>`
   unless it is a GIF (issue 34). The size is then the size of the photo
-  that Rescord keeps. A PDF
-  stays as the person sent it.
+  that Rescord keeps. A PDF stays as the person sent it, after the virus
+  scan when a root user turned it on (`Rescord.Storage.Scan`, issue 37).
 
   The files go into the store in an `after_action` hook, in the
   transaction: a fault of the store returns an error, and the record is
@@ -25,7 +25,7 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
   use Ash.Resource.Change
 
   alias Rescord.{Accounts, Storage}
-  alias Rescord.Storage.Upload
+  alias Rescord.Storage.{Scan, Upload}
 
   @doc "The largest file, in bytes: 20 MB."
   defdelegate max_size(), to: Upload
@@ -34,8 +34,11 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
   def change(changeset, _opts, _context) do
     case Ash.Changeset.get_argument(changeset, :content) do
       content when is_binary(content) ->
-        case Upload.prepare(content) do
-          {:ok, files} -> store(changeset, files)
+        # A PDF goes to the virus scan when it is on (issue 37).
+        with {:ok, files} <- Upload.prepare(content),
+             :ok <- Scan.check(files) do
+          store(changeset, files)
+        else
           {:error, error} -> Ash.Changeset.add_error(changeset, %{error | field: :content})
         end
 

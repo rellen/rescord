@@ -205,6 +205,11 @@ release (ADR 0047).
     table of what each sanity check found at its last run (ADR 0114). It
     is empty until the first run, an hour or less after the start. It
     changes no row.
+  - `20261128134238_add_the_settings_of_the_scan`, in the database: adds
+    the table of the settings of the virus scan of the PDFs, with its
+    history (issue 37). Both stay empty until a root user saves the
+    settings at `/root/scan`, so no PDF is scanned and nothing changes
+    after the upgrade. It changes no row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -383,6 +388,15 @@ release (ADR 0047).
   with no root user, stuck and failed jobs, hourly jobs that stopped,
   migrations that have not run, and the clock of the server against the
   clock of the database.
+- A virus scan of the PDFs, with clamd, which a root user turns on at
+  `/root/scan` with the address of clamd: `host:port` or the path of a
+  Unix socket. Then each PDF of a journal entry or of an expense goes to
+  clamd before Rescord keeps it. A file that clamd finds harmful is
+  refused, and so is each PDF while clamd does not answer. A photo is not
+  scanned, since Rescord writes it again from its pixels. clamd is not in
+  the image: `docs/self-hosting.md` shows how to run it beside Rescord.
+  `bin/check` says whether the scan is on and clamd answers, and the
+  metrics count the scans (issue 37, ADR 0113).
 - `bin/check` names the version of libvips that reads the photos, and the
   colophon shows it to a person who is signed in, so an operator can
   compare it with an advisory. A weekly workflow of the repository,

@@ -11,6 +11,8 @@ defmodule Rescord.Release.Check do
       the settings, and sends nothing;
     * the values that the secret of the server encrypts open with it
       (ADR 0068);
+    * the virus scan of the PDFs: off, or on with a clamd that answers
+      (issue 37);
     * each provider of the assistant has what a request needs (ADR 0069).
       This check reads the database, sends no request and decrypts no key;
     * what the server does with its usage counts, and what the last send
@@ -29,6 +31,7 @@ defmodule Rescord.Release.Check do
   """
 
   alias Rescord.{Health, Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
+  alias Rescord.Storage.Scan
 
   @typedoc """
   The result of a check: `:ok`, `:note` for something to know that is not a
@@ -52,7 +55,7 @@ defmodule Rescord.Release.Check do
     # the next start runs them.
     of_the_database =
       if match?({:ok, _name, _words}, migrations),
-        do: [vault() | assistant()] ++ [usage(), health()],
+        do: [vault(), scan() | assistant()] ++ [usage(), health()],
         else: []
 
     [database(), migrations, store(), libvips(), smtp()] ++
@@ -149,6 +152,29 @@ defmodule Rescord.Release.Check do
     {:note, "libvips", "#{Rescord.Images.libvips_version()} reads the photos"}
   rescue
     error -> {:fail, "libvips", "does not load: #{Exception.message(error)}"}
+  end
+
+  @doc """
+  The virus scan of the PDFs (issue 37): a note when it is off, and with it
+  on, whether clamd answers a `PING`. It sends no file.
+  """
+  @spec scan() :: result
+  def scan do
+    case Scan.settings() do
+      %{scan_on: true, address: address} ->
+        case Scan.ping(address) do
+          :ok ->
+            {:ok, "scan", "clamd at #{address} answers"}
+
+          {:fault, words} ->
+            {:fail, "scan", "on, and clamd at #{address} #{words}: each PDF is refused"}
+        end
+
+      _off ->
+        {:note, "scan", "off: no PDF is scanned. A root user turns it on at /root/scan"}
+    end
+  rescue
+    error -> {:fail, "scan", "cannot read the settings: #{Exception.message(error)}"}
   end
 
   @doc """

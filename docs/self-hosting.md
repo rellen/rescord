@@ -218,6 +218,7 @@ ok    store      the directory /var/lib/rescord/files takes, gives back and dele
 note  libvips    8.18.7 reads the photos
 ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and the user rescord
 ok    vault      each of the 3 encrypted values opens with the secret of this server
+note  scan       off: no PDF is scanned. A root user turns it on at /root/scan
 note  assistant  no provider yet. A root user adds one at /root/ruby
 ok    usage      kept on this server, and sent nowhere
 ok    checks     each sanity check passes
@@ -236,8 +237,10 @@ Rescord is ready.
   fix of libvips or of one of its decoders reaches the Docker image and
   the tarball with a new version of Rescord with a new `vix`; the Nix
   package takes the libvips of nixpkgs. Compare this version with an
-  advisory. The
-  colophon shows it too, to a person who is signed in.
+  advisory. The colophon shows it too, to a person who is signed in.
+- **scan**: the virus scan of the PDFs (see "The virus scan of the
+  PDFs"): a note when it is off, and with it on, whether clamd answers. A
+  fault here means that each PDF is refused until clamd answers.
 - **mail**: the SMTP server takes the connection, the TLS and the user of
   the settings. This check sends nothing.
 - **vault**: each value that Rescord keeps encrypted opens with
@@ -417,6 +420,8 @@ scrape_configs:
 - The numbers start at zero when Rescord starts.
 - `rescord_usage_count` counts the use of each feature (see "Usage
   counts").
+- `rescord_scan_count` counts the scans of PDFs by clamd, by their
+  result: `clean`, `found` or `fault` (see "The virus scan of the PDFs").
 - The numbers of a rescue (the residents, the tasks) are on its pages, and
   not here.
 
@@ -866,6 +871,60 @@ of notifications, and subscribes to the address that the page shows in
 the ntfy app. The name of the topic is random, and anybody who knows it
 can read the topic: that is why it gets only the sentence. A person can
 renew the name, or stop.
+
+## The virus scan of the PDFs
+
+Rescord can send each PDF that a person adds to a journal entry or to an
+expense to [clamd](https://docs.clamav.net), the daemon of ClamAV, before
+it keeps the file (issue 37). It is off until a root user turns it on, on
+the page `/root/scan`. **None of it is in the environment.** A photo is
+not scanned: Rescord writes each photo again from its pixels, with no
+metadata and nothing after the image.
+
+clamd is not in the image of Rescord, and not in the tarball. It runs
+apart, on the same machine or on another, and its signatures take a few
+GB of memory, more while it loads new ones: read the requirements of
+ClamAV for the size of your machine.
+
+With Docker Compose, add a service of the image of ClamAV next to
+Rescord. It downloads its signatures at its first start, which takes a
+few minutes, and keeps them up to date with freshclam:
+
+```yaml
+services:
+  clamd:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes:
+      - clamav:/var/lib/clamav
+
+volumes:
+  clamav:
+```
+
+Then:
+
+1. Check that the `StreamMaxLength` of clamd is at least `20M`, the
+   largest file that Rescord takes. clamd refuses a larger stream, and
+   Rescord then refuses the PDF. Its default depends on the version of
+   ClamAV: `clamconf` in the container of clamd shows it.
+2. Open `/root/scan`, give the address of clamd, `clamd:3310` with the
+   Compose file above, or the path of its Unix socket, such as
+   `/run/clamav/clamd.ctl`, and press "Test".
+3. When the test says that clamd answers, tick "Scan each PDF" and save.
+4. Run `bin/check`: the line `scan` says whether clamd answers.
+
+- **A PDF that clamd finds harmful is refused**, with words that say so.
+  The log has a warning with the name that clamd gave, and no name of the
+  file.
+- **While clamd does not answer, each PDF is refused**: a scan that is on
+  lets no PDF in without a scan. Watch the line `scan` of `bin/check`, and
+  the metric `rescord_scan_count` with the label `result="fault"`.
+- clamd takes no password. Keep its port inside the network of Rescord:
+  do not publish it, and do not open it in a firewall.
+- The PDFs that Rescord kept before the scan was on are not scanned.
+- A PDF still opens in the browser, whose viewer runs in a sandbox, and
+  not in a program of the desktop.
 
 ## Upgrade
 

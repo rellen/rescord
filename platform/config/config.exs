@@ -194,7 +194,8 @@ config :rescord,
     Rescord.Comments,
     Rescord.Notifications,
     Rescord.Privacy,
-    Rescord.Health
+    Rescord.Health,
+    Rescord.Storage.Scan
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,

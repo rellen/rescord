@@ -29,7 +29,7 @@ defmodule Rescord.Expenses do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents]
+    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Storage.Scan]
   end
 
   paper_trail do

@@ -1,8 +1,8 @@
 # ADR 0113: Safer uploads: a watch on libvips, a virus scan of PDFs, clean photos in a transfer
 
 Status: accepted. The maintainer chose the nine calls of issue 37 on
-28 November 2026. The watch on libvips is built; the scan and the
-transfers follow, and this record grows with them.
+28 November 2026. The watch on libvips and the scan of PDFs are
+built; the transfers follow, and this record grows with them.
 
 ## Context
 
@@ -47,15 +47,43 @@ nixpkgs, which an update of `flake.lock` brings.
    and the memory of a second program. The limits of ADR 0056 (the pixels
    read before the decode, two decodes at a time) stay the guard.
 
-### A virus scan of PDFs (to follow)
+### A virus scan of PDFs
 
-A root user turns it on at `/root/scan` (`Rescord.Storage.ScanSettings`,
-one row of the server, ADR 0068), with the address of clamd. Each PDF is
-scanned with the INSTREAM command of clamd before its record is written;
-a photo is not, since it is written again from its pixels. A find is
-refused as `:infected`, and with the scan on, a clamd that does not
-answer refuses the file as `:unscanned`. clamd is not in the image. The
-PDFs in the store now are not scanned. A PDF opens in the browser as now.
+1. **The setting is an Ash resource, not the environment** (ADR 0068):
+   `Rescord.Storage.Scan.Settings`, one row of the server in the domain
+   `Rescord.Storage.Scan`, which a root user sets at `/root/scan`: on or
+   off, and the address of clamd, `host:port` or the absolute path of a
+   Unix socket. clamd takes no password, so the row holds no secret. Only a
+   root user reads or changes it, and the policy sweep (ADR 0064) holds
+   that. With no row, or with the scan off, nothing is scanned.
+2. **"Test" sends `PING`** to the address in the form, saved or not, so a
+   root user sees that clamd answers before turning the scan on.
+3. **Each PDF of a journal file or of a receipt goes to clamd** before its
+   record is written (`Rescord.Storage.Scan.check/1`, called by the change
+   that stores the file). A photo does not: it is written again from its
+   pixels (ADR 0055), so the bytes that were sent are not what Rescord
+   keeps. The PDFs of an imported transfer are scanned by the job of the
+   transfers, below.
+4. **No library.** `Rescord.Storage.Scan.Clamd` speaks `zPING` and
+   `zINSTREAM` over `:gen_tcp`, in chunks of 256 KiB, with 5 seconds for
+   the connection and 30 for the answer.
+5. **A find is refused** with the reason `:infected` of `RefusedFile`, and
+   the log has a warning with the name that clamd gave and no name of the
+   file. **With the scan on, a clamd that does not answer refuses the
+   file** with the reason `:unscanned`: a root user who turned the scan on
+   wants no PDF that was not scanned.
+6. `bin/check` has a line `scan`, and the metric `rescord_scan_count`
+   counts the scans by result: `clean`, `found`, `fault`.
+7. **clamd is not in the image**: its signatures take a few GB of memory,
+   more than a small server has. `docs/self-hosting.md` shows how to run
+   it beside Rescord.
+8. The PDFs in the store now are not scanned. A PDF opens in the browser
+   as now: the viewer of a browser runs in a sandbox, and a download would
+   open it in a program of the desktop, which is often less guarded.
+
+The domain is `Rescord.Storage.Scan`, and not a module of the core: a
+resource needs a domain, and the core has none. The changes of the journal
+and of the expenses call it, so those two domains depend on it.
 
 ### The photos of an imported transfer (to follow)
 
