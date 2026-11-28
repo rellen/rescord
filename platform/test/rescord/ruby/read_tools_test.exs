@@ -17,6 +17,7 @@ defmodule Rescord.Ruby.ReadToolsTest do
   use Rescord.DataCase, async: false
 
   import Rescord.AccountsFixtures
+  import Rescord.ClockFixtures
   import Rescord.ResidentsFixtures
   import Rescord.RubyFixtures
 
@@ -30,6 +31,8 @@ defmodule Rescord.Ruby.ReadToolsTest do
     root = root!()
     organisation = organisation!(root, "Wattle Creek")
     {:ok, organisation} = Accounts.set_organisation_time_zone(organisation, @zone, actor: root)
+    # The tests compare the day that a tool reads with the day of the test.
+    clear_of_midnight(organisation)
     {_, administrator} = member!(organisation, :administrator, root)
     admin = [actor: administrator, tenant: organisation]
     {_, member} = member!(organisation, :member, administrator)
