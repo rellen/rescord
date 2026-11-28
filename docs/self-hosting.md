@@ -254,7 +254,7 @@ take, stop the start with the name of the setting.
 
 | Setting | Required | Default | What it is |
 | --- | --- | --- | --- |
-| `DATABASE_URL` | yes | | The database, as `ecto://USER:PASSWORD@HOST/DATABASE`. Add `?socket_dir=/run/postgresql` for a login over the local socket. |
+| `DATABASE_URL` | yes | | The database, as `ecto://USER:PASSWORD@HOST/DATABASE`, or with `postgres://` or `postgresql://`. Add `?socket_dir=/run/postgresql` for a login over the local socket. Write a character of the password that a URL may not hold as a `%` code, such as `%20` for a space. Rescord stops at the start when the value is no URL with a host. |
 | `PHX_HOST` | yes | | The name of the server in each link that Rescord sends, such as `rescord.example.org`. |
 | `PORT` | no | `4000` | The port of the web server, behind the reverse proxy. |
 | `RESCORD_LISTEN_ADDRESS` | no | `0.0.0.0` | The address that the web server listens on. `127.0.0.1` for a reverse proxy on the same machine, which the NixOS module and the systemd unit set. `::` for IPv6 and IPv4. |
@@ -272,7 +272,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_MAIL_FROM_NAME` | no | `Rescord` | The name that the mail comes from, such as the name of the rescue. |
 | `RESCORD_STORAGE` | no | `disk` | Where the photos and the PDFs go: `disk` or `s3`. |
 | `RESCORD_FILES_DIR` | with `disk` | | The directory of the files. The user of Rescord must write it. |
-| `RESCORD_S3_ENDPOINT` | with `s3` | | The address of the service, such as `https://s3.example.org`. |
+| `RESCORD_S3_ENDPOINT` | with `s3` | | The address of the service, with `http://` or `https://`, such as `https://s3.example.org`. |
 | `RESCORD_S3_REGION` | no | `auto` | The region that the service asks for. |
 | `RESCORD_S3_BUCKET` | with `s3` | | The bucket. |
 | `RESCORD_S3_ADDRESSING` | no | `path` | Where the bucket goes in each address: `path`, as in `https://s3.example.org/rescord/...`, or `virtual`, as in `https://rescord.s3.example.org/...`. Garage and MinIO take `path` as they are set up by default. Tigris needs `virtual`, with the endpoint `https://t3.storage.dev` and the region `auto`. |
@@ -362,8 +362,74 @@ scrape_configs:
   server. The use of one organisation is in its own records, and the bill
   of the provider is the truth.
 - The numbers start at zero when Rescord starts.
+- `rescord_usage_count` counts the use of each feature (see "Usage
+  counts").
 - The numbers of a rescue (the residents, the tasks) are on its pages, and
   not here.
+
+## Usage counts
+
+Rescord counts how often each feature is used on the server, for each
+day: the pages that open, the actions that people run, and the files
+that Rescord sends, such as a report or a calendar feed (ADR 0098). A
+count holds a day, a feature, a kind and the name of a page, an action
+or a file as the code names it. It holds no person, no organisation, no
+record, no host name and no time closer than the day.
+
+**Nothing leaves the server unless you send it.** A new or upgraded
+server counts, and shows the counts to its root users on the page
+`/root/usage`. Rescord has no address of its own to send to. On that
+page a root user chooses one of three modes:
+
+- **Count on this server** (the default): the counts stay in the
+  database, 400 days at most.
+- **Count, and send each day**: each hour, Rescord sends each full day
+  (UTC) that is not sent yet to the one address that you give, with
+  `POST`. It sends no day before the day that you turned this on, none
+  older than 7 days, and none with no count. It follows no redirect. A
+  day that the address does not take is sent again the next hour.
+- **Count nothing**: Rescord stores no new count. "Delete the counts"
+  empties the table.
+
+The format of a send is **OpenTelemetry** by default: the metrics of
+OTLP as JSON over HTTP, which an OpenTelemetry Collector takes at
+`/v1/metrics`. The other format is a plain JSON document of Rescord. The
+page shows the exact document of the last full day before you send
+anything, and "Send a test" sends a document with no count.
+
+```yaml
+# A Collector that takes the counts of Rescord.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+exporters:
+  debug: {}
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+```
+
+- A token is optional. Rescord sends it as `authorization: Bearer`, only
+  to an address with `https://` or to this machine. It keeps the token
+  encrypted with the secret of the server, and no page shows it again.
+- The document names the server only by a random id, which comes from
+  nothing of the server. "Make a new id" cuts the tie between what was
+  sent before and what comes next.
+- **The metrics endpoint has the counts too.** With
+  `RESCORD_METRICS_PORT` (see "The metrics"), the counter
+  `rescord_usage_count` with the labels `feature` and `kind` counts each
+  use, in each mode but "Count nothing". A collector that reads
+  Prometheus then has the counts, and you name no address. It starts at
+  zero when Rescord starts; the counts of each day stay in the database.
+- On a server with one person, a day of counts still says what that
+  person used on that day. You can tell the rescues on your server:
+  "Rescord counts which of its features are used on this server, each
+  day, with no name, record or organisation in a count. The counts stay
+  on the server" (and, in the mode that sends: "and go each day to …").
 
 ## Back up
 

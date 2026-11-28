@@ -1,6 +1,6 @@
 defmodule RescordWeb.CatalogueHTML do
   @moduledoc """
-  The catalogue of the components, for a developer (ADR 00XX): each
+  The catalogue of the components, for a developer (ADR 0095): each
   element that the stylesheet styles and each core component, by itself
   and in each of its states. The router has the page in development and
   in the tests alone. The page shows no record and reads no database.

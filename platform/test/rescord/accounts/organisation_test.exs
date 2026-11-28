@@ -120,9 +120,8 @@ defmodule Rescord.Accounts.OrganisationTest do
       organisation: organisation
     } do
       mailer = Application.fetch_env!(:rescord, Rescord.Mailer)
-      on_exit(fn -> Application.put_env(:rescord, Rescord.Mailer, mailer) end)
 
-      Application.put_env(:rescord, Rescord.Mailer,
+      Shoddy.Tests.put_app_env(:rescord, Rescord.Mailer,
         adapter: Rescord.Accounts.OrganisationTest.Down
       )
 

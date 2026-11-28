@@ -142,7 +142,7 @@ defmodule Rescord.Release.Rehearsal do
         "#{count(tenant, "migration")} in #{count(length(plan.organisations), "organisation")}"
       end
 
-    [database, organisations] |> Enum.reject(&is_nil/1) |> Enum.join(", and ")
+    Shoddy.Strings.join_present([database, organisations], ", and ")
   end
 
   defp count(1, word), do: "1 #{word}"

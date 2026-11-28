@@ -1,6 +1,6 @@
 defmodule RescordWeb.CatalogueController do
   @moduledoc """
-  Shows the catalogue of the components (ADR 00XX), for a developer who
+  Shows the catalogue of the components (ADR 0095), for a developer who
   writes or changes one. The router has the page with the setting
   `catalogue`, which development and the tests turn on: the release has no
   such page.

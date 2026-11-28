@@ -123,7 +123,7 @@ defmodule RescordWeb.AccountComponents do
           <p :if={not found.filtered?}>Rescord has no organisation yet.</p>
         </:empty>
         <:col :let={organisation} field="name" label="Name" filter sort>
-          <a href={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</a>
+          <.link navigate={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</.link>
         </:col>
         <:col :let={organisation} field="time_zone" label="Time zone" sort>
           <span data-label="Time zone">{organisation.time_zone}</span>

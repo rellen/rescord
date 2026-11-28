@@ -586,7 +586,7 @@ defmodule Rescord.Ruby.RepliesTest do
 
     test "nothing listens at the address", context do
       fake!([])
-      Application.put_env(:rescord, :fake_anthropic_url, "http://127.0.0.1:1")
+      Shoddy.Tests.put_app_env(:rescord, :fake_anthropic_url, "http://127.0.0.1:1")
 
       {conversation, _message} = ask!(context, "Who is #{@marker}?")
       log = capture_log(fn -> work!() end)

@@ -66,4 +66,24 @@ defmodule Rescord.Ruby.Reason do
 
   def of(:timeout), do: :provider_down
   def of(_other), do: :unknown
+
+  @doc """
+  How the stream of a reply ended, as the state and the reason: from the
+  error of the stream (`nil` for none), the last event of the loop (`nil`
+  when the stream gave none), and the record of the last request
+  (`Rescord.Ruby.LLM.Client`), which says why the model stopped.
+
+  A reply and a run of the evaluation set both ask here, so the two never
+  name one end in two ways. A stop by the member is not here: the caller
+  knows it.
+  """
+  @spec ending(term, term, map | nil) :: {:complete | :failed | :awaiting, t | nil}
+  def ending(:too_long, _result, _last), do: {:failed, :too_long}
+  def ending(error, _result, _last) when not is_nil(error), do: {:failed, of(error)}
+  # The stream ended with no last event. The loop does not do that.
+  def ending(nil, nil, _last), do: {:failed, :unknown}
+  def ending(nil, %{status: :awaiting_approval}, _last), do: {:awaiting, nil}
+  def ending(nil, _result, %{finish_reason: :content_filter}), do: {:failed, :refused}
+  def ending(nil, _result, %{finish_reason: :length}), do: {:complete, :cut}
+  def ending(nil, _result, _last), do: {:complete, nil}
 end

@@ -115,9 +115,7 @@ defmodule Rescord.Storage.CompareTest do
 
   describe "the report in words" do
     setup do
-      previous = Application.get_env(:rescord, Disk)
-      Application.put_env(:rescord, Disk, root: "/var/lib/rescord/files")
-      on_exit(fn -> Application.put_env(:rescord, Disk, previous) end)
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: "/var/lib/rescord/files")
     end
 
     test "says each group with its size, and names the files" do

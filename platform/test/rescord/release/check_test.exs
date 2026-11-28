@@ -32,9 +32,7 @@ defmodule Rescord.Release.CheckTest do
   end
 
   defp mailer!(settings) do
-    previous = Application.get_env(:rescord, Rescord.Mailer)
-    Application.put_env(:rescord, Rescord.Mailer, Rescord.Mailer.smtp_options(settings))
-    on_exit(fn -> Application.put_env(:rescord, Rescord.Mailer, previous) end)
+    Shoddy.Tests.put_app_env(:rescord, Rescord.Mailer, Rescord.Mailer.smtp_options(settings))
   end
 
   defp settings(port, username, password),

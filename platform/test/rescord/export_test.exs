@@ -16,6 +16,7 @@ defmodule Rescord.ExportTest do
   import Rescord.ResidentsFixtures
 
   alias Rescord.{Accounts, Export, Lists, Residents}
+  alias Rescord.Export.Errors.InvalidDate
 
   setup do
     root = root!()
@@ -132,11 +133,15 @@ defmodule Rescord.ExportTest do
   end
 
   test "refuses a date after today", context do
-    assert Export.export(context.wattle, Date.add(context.today, 1), actor: context.administrator) ==
-             {:error, "The date is after today."}
+    assert {:error, %InvalidDate{reason: :after_today} = error} =
+             Export.export(context.wattle, Date.add(context.today, 1),
+               actor: context.administrator
+             )
 
-    assert Export.export(context.wattle, "2026-11-25", actor: context.administrator) ==
-             {:error, "The date is not a date."}
+    assert Accounts.error_messages(error) == ["The date is after today."]
+
+    assert {:error, %InvalidDate{reason: :not_a_date}} =
+             Export.export(context.wattle, "2026-11-25", actor: context.administrator)
   end
 
   test "the README says when, and which file each id names", context do

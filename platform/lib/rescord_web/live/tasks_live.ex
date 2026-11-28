@@ -8,11 +8,23 @@ defmodule RescordWeb.TasksLive do
   with a reason, and opens it again. A member plans a task for any day,
   which can be months ahead. The routines page makes the tasks that repeat.
 
+  The tasks are a collection of Cinder (ADR 0097): a search on the title,
+  filters on the state, the kind and the person, and pages, all in the
+  address (ADR 0084), so `?state=due&who=me` is what is left for the person.
+  Cinder reads those parameters. The page reads only `day`, and gives the
+  others back in the links to another day. It does not hold the tasks: an
+  event reads its task again with `Rescord.Tasks.task_of_day/3`.
+
+  The collection reads again when a task changes (ADR 0096), so a member
+  sees at once that another member took a task or finished it. A task is
+  not temporal, so the query reads the present.
+
   The page reads only the fields that it knows from what the browser sends,
   and makes no atom from it.
   """
 
   use RescordWeb, :live_view
+  use Cinder.UrlSync
 
   import RescordWeb.TaskComponents
 
@@ -29,7 +41,9 @@ defmodule RescordWeb.TasksLive do
     {:ok, members} = Accounts.members([load: [:email]] ++ options)
 
     {:ok,
-     assign(socket,
+     socket
+     |> LiveChanges.listen([Tasks], &read_again/1)
+     |> assign(
        page_title: "Tasks",
        problems: [],
        refused_form?: false,
@@ -42,12 +56,14 @@ defmodule RescordWeb.TasksLive do
            do: {String.duplicate("– ", depth) <> node.location.name, node.location.id}
          ),
        members: members |> Enum.map(&{to_string(&1.email), &1.user_id}) |> Enum.sort(),
+       all_kinds: all_kinds(options),
+       for_person: &for_person(&1, &2, socket.assigns.current_user.id),
        can_plan?: Tasks.role_can?(socket.assigns.role, :plan)
      )}
   end
 
   @impl true
-  def handle_params(params, _uri, socket) do
+  def handle_params(params, uri, socket) do
     today = Accounts.today(socket.assigns.organisation)
 
     day =
@@ -56,42 +72,87 @@ defmodule RescordWeb.TasksLive do
         _not_a_date -> today
       end
 
-    {:noreply, socket |> assign(day: day, today: today) |> assign_tasks() |> assign_form()}
+    {:noreply,
+     socket
+     |> assign(day: day, today: today, now: DateTime.utc_now(), query: query_of(uri))
+     |> assign_form()}
   end
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
   end
 
-  defp assign_tasks(socket) do
-    now = DateTime.utc_now()
-    options = options(socket)
-    {:ok, tasks} = Tasks.day(socket.assigns.day, options)
-
-    # The tasks of earlier days that are still due, on the page of today.
-    earlier =
-      if socket.assigns.day == socket.assigns.today do
-        {from, _to} = Accounts.day_range(socket.assigns.organisation, socket.assigns.today)
-        {:ok, overdue} = Tasks.overdue(from, options)
-        overdue
-      else
-        []
-      end
-
-    assign(socket, tasks: tasks, earlier: earlier, now: now)
+  # After a change of another person (ADR 0096): the rows stay on the page
+  # while Cinder reads.
+  defp read_again(socket) do
+    socket
+    |> assign(now: DateTime.utc_now())
+    |> Cinder.refresh_table("tasks", silent: true)
   end
+
+  # The options of the query of the day: the page of today has the tasks of
+  # earlier days that are still due too.
+  defp day_options(assigns) do
+    [
+      actor: assigns.current_user,
+      tenant: assigns.organisation,
+      earlier: assigns.day == assigns.today
+    ]
+  end
+
+  # The parameters of the address, as the browser sent them. The page reads
+  # none of the parameters of Cinder: it gives them back in the links to
+  # another day, so the search and the filters stay.
+  defp query_of(uri) when is_binary(uri), do: URI.decode_query(URI.parse(uri).query || "")
+
+  # Each kind of task of the organisation, as the choices of the filter. A
+  # kind that an administrator retired is one of them: a task can still
+  # have it.
+  defp all_kinds(options) do
+    case Lists.values(:task_kind, options) do
+      {:ok, values} -> Enum.map(values, &{to_string(&1.label), &1.id})
+      {:error, _error} -> []
+    end
+  end
+
+  # The filter "Who". The value comes from the address or from the form of
+  # the filter, and Cinder passes only a value of its options.
+  defp for_person(query, %{value: "me"}, user_id), do: Tasks.for_person(query, user_id)
+  defp for_person(query, %{value: "anybody"}, _user_id), do: Tasks.for_person(query, :anybody)
+
+  defp for_person(query, %{value: value}, _user_id) when is_binary(value) do
+    case Ecto.UUID.cast(value) do
+      {:ok, id} -> Tasks.for_person(query, id)
+      :error -> query
+    end
+  end
+
+  defp for_person(query, _filter, _user_id), do: query
 
   defp assign_form(socket, fields \\ nil) do
     fields = fields || %{"date" => Date.to_iso8601(socket.assigns.day), "time" => "08:00"}
     assign(socket, form: typed_form(fields, as: :task))
   end
 
-  defp path(socket) do
-    base = ~p"/o/#{socket.assigns.organisation.short_name}/tasks"
+  # The address of the tasks of a day, with the search and the filters of
+  # `query`. Today has no `day`.
+  defp tasks_path(assigns, query) do
+    base = ~p"/o/#{assigns.organisation.short_name}/tasks"
 
-    if socket.assigns.day == socket.assigns.today,
-      do: base,
-      else: base <> "?day=" <> Date.to_iso8601(socket.assigns.day)
+    case query do
+      empty when map_size(empty) == 0 -> base
+      query -> base <> "?" <> URI.encode_query(query)
+    end
+  end
+
+  # The address of another day, with the search and the filters, from its
+  # first page.
+  defp day_path(assigns, date) do
+    query = Map.drop(assigns.query, ["day", "page"])
+
+    if date == assigns.today,
+      do: tasks_path(assigns, query),
+      else: tasks_path(assigns, Map.put(query, "day", Date.to_iso8601(date)))
   end
 
   @impl true
@@ -122,12 +183,6 @@ defmodule RescordWeb.TasksLive do
          to: ~p"/o/#{socket.assigns.organisation.short_name}/tasks?day=#{Date.to_iso8601(day)}"
        )}
     else
-      {:error, words} when is_binary(words) ->
-        {:noreply,
-         socket
-         |> assign(problems: [words], refused_form?: socket.assigns.can_plan?)
-         |> assign_form(fields)}
-
       {:error, error} ->
         {:noreply,
          socket
@@ -166,29 +221,30 @@ defmodule RescordWeb.TasksLive do
       |> Enum.filter(&is_binary/1)
       |> Enum.reject(&(&1 == ""))
 
-  # Runs an action on a task of this page: the page has them in hand.
-  defp act(socket, id, action) do
-    case Enum.find(socket.assigns.tasks ++ socket.assigns.earlier, &(&1.id == id)) do
-      nil ->
-        {:noreply, socket}
-
-      task ->
+  # Runs an action on a task that the page shows. The page does not hold
+  # the tasks, so it reads the task again, as the person, from the tasks of
+  # this day alone. Then the collection reads again, and keeps its search,
+  # its filters and its page. After a refusal it shows the task as it is
+  # now: another member can be the reason.
+  defp act(socket, id, action) when is_binary(id) do
+    with {:ok, %{} = task} <-
+           Tasks.task_of_day(socket.assigns.day, id, day_options(socket.assigns)) do
+      problems =
         case action.(task) do
-          {:ok, _task} ->
-            {:noreply, push_navigate(socket, to: path(socket))}
-
-          # The tasks are read again: another member can be the reason.
-          {:error, error} ->
-            {:noreply,
-             socket
-             |> assign(problems: Accounts.error_messages(error), refused_form?: false)
-             |> assign_tasks()}
+          {:ok, _task} -> []
+          {:error, error} -> Accounts.error_messages(error)
         end
+
+      {:noreply,
+       socket
+       |> assign(problems: problems, refused_form?: false, now: DateTime.utc_now())
+       |> Cinder.Refresh.refresh_table("tasks")}
+    else
+      _not_on_the_page -> {:noreply, socket}
     end
   end
 
-  defp day_path(organisation, date),
-    do: ~p"/o/#{organisation.short_name}/tasks?day=#{Date.to_iso8601(date)}"
+  defp act(socket, _id, _action), do: {:noreply, socket}
 
   @impl true
   def render(assigns) do
@@ -205,17 +261,17 @@ defmodule RescordWeb.TasksLive do
           {TaskWords.day(@day)}{if @day == @today, do: ", today"}
         </:subtitle>
         <:actions>
-          <.link patch={day_path(@organisation, Date.add(@day, -1))} data-variant="secondary">
+          <.link patch={day_path(assigns, Date.add(@day, -1))} data-variant="secondary">
             The day before
           </.link>
           <.link
             :if={@day != @today}
-            patch={~p"/o/#{@organisation.short_name}/tasks"}
+            patch={day_path(assigns, @today)}
             data-variant="secondary"
           >
             Today
           </.link>
-          <.link patch={day_path(@organisation, Date.add(@day, 1))} data-variant="secondary">
+          <.link patch={day_path(assigns, Date.add(@day, 1))} data-variant="secondary">
             The day after
           </.link>
           <.link navigate={~p"/o/#{@organisation.short_name}/routines"} data-variant="secondary">
@@ -235,32 +291,19 @@ defmodule RescordWeb.TasksLive do
 
       <.problems :if={not @refused_form?} list={@problems} />
 
-      <section :if={@earlier != []} aria-labelledby="earlier-heading">
-        <h2 id="earlier-heading">Still due from earlier days</h2>
-        <.tasks
-          tasks={@earlier}
-          organisation={@organisation}
-          members={@members}
-          user={@current_user}
-          role={@role}
-          now={@now}
-          with_day
-        />
-      </section>
-
-      <section aria-labelledby="day-heading">
-        <h2 id="day-heading">Tasks of the day</h2>
-        <p :if={@tasks == []}>There is no task on this day.</p>
-        <.tasks
-          :if={@tasks != []}
-          tasks={@tasks}
-          organisation={@organisation}
-          members={@members}
-          user={@current_user}
-          role={@role}
-          now={@now}
-        />
-      </section>
+      <.tasks
+        day={@day}
+        today={@today}
+        query={Tasks.query_to_day(@day, day_options(assigns))}
+        url_state={@url_state}
+        organisation={@organisation}
+        members={@members}
+        kinds={@all_kinds}
+        for_person={@for_person}
+        user={@current_user}
+        role={@role}
+        now={@now}
+      />
 
       <.new_task
         :if={@can_plan?}

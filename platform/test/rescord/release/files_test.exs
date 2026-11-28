@@ -115,8 +115,7 @@ defmodule Rescord.Release.FilesTest do
 
   defp refuse!(refuse) do
     Process.put(:refuse, refuse)
-    Application.put_env(:rescord, :storage, Refusing)
-    on_exit(fn -> Application.put_env(:rescord, :storage, Disk) end)
+    Shoddy.Tests.put_app_env(:rescord, :storage, Refusing)
   end
 
   describe "a file that no record names" do
@@ -174,8 +173,10 @@ defmodule Rescord.Release.FilesTest do
     end
 
     test "stays when the transaction of an upload does not commit", context do
-      assert {:error, :stopped} =
-               Repo.transaction(fn ->
+      # `Ash.transact/3`, so that Ash knows of the transaction and drops the
+      # notification of the photo that does not commit (ADR 0096).
+      assert {:error, %Ash.Error.Unknown.UnknownError{error: "unknown error: :stopped"}} =
+               Ash.transact(Rescord.Photos.Photo, fn ->
                  add_photo!(context)
                  Repo.rollback(:stopped)
                end)
@@ -315,7 +316,7 @@ defmodule Rescord.Release.FilesTest do
   describe "what stops the comparison" do
     test "is a store that cannot list its files", %{tmp_dir: tmp_dir} do
       missing = Path.join(tmp_dir, "none")
-      Application.put_env(:rescord, Disk, root: missing)
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: missing)
       assert Files.compare() == {:error, {:list, {:enoent, missing}}}
     end
   end

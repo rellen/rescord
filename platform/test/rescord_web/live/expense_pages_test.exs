@@ -131,6 +131,28 @@ defmodule RescordWeb.ExpensePagesTest do
       assert has_element?(view, "span[data-state=info]", "To pay back")
     end
 
+    test "shows at once what another person recorded and decided (ADR 0096)", context do
+      {view, html} = open(context.admin_conn, context.path)
+      refute html =~ "Hay of Kim"
+
+      hay =
+        expense!(context, %{description: "Hay of Kim", amount: "40"},
+          actor: context.kim,
+          tenant: context.organisation
+        )
+
+      # The sums are of the page, and the rows are of Cinder, which reads
+      # them after the message.
+      assert has_element?(view, "dl[data-figures] dd[data-money]", "$40.00")
+      assert render_changes(view) =~ "Hay of Kim"
+
+      # A member reads their own expenses alone, also after a change.
+      {mine, _html} = open(context.conn, context.path)
+      Expenses.approve_expense!(hay, context.admin)
+      refute render_changes(mine) =~ "Hay of Kim"
+      assert render_changes(view) =~ "To pay back"
+    end
+
     test "holds the filters in its address, and the link to the CSV file carries them", context do
       expense!(context)
       declined = expense!(context, %{description: "Fuel"})

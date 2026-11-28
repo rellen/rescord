@@ -3,10 +3,23 @@ import Config
 # Jobs are not run unless a test runs them itself.
 config :rescord, Oban, testing: :manual
 
+# The usage counts stay in memory until a test writes them (ADR 0098).
+config :rescord, Rescord.Usage.Counter, auto?: false
+# A send of the usage counts goes to a stub of `Req.Test`.
+config :rescord, Rescord.Usage.Sender, req_options: [plug: {Req.Test, Rescord.Usage.Sender}]
+
 config :ash,
   policies: [show_policy_breakdowns?: true],
   keyset_signing_secret: "RCqjVbP5zdhSYiU+ArBvz7f6Vj0YEk2VjYm0j+PfFkI",
   disable_async?: true
+
+# An action in a transaction that Ash did not start loses its notification,
+# and a page then hears nothing (ADR 0096). A test fails for it.
+config :ash, :missed_notifications, :raise
+
+# A page reads again at once after a change, with no wait, so a test writes
+# and then renders (ADR 0096).
+config :rescord, RescordWeb.LiveChanges, wait: 0
 
 # The secret that signs a sign-in token, for the tests only.
 config :rescord,
@@ -36,7 +49,7 @@ config :rescord, RescordWeb.Endpoint,
   server: true
 
 # The catalogue of the components, at /dev/components: a browser test holds
-# each example to the rules of a page (ADR 00XX).
+# each example to the rules of a page (ADR 0095).
 config :rescord, catalogue: true
 
 # In test we don't send emails

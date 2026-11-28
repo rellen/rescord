@@ -12,6 +12,7 @@ defmodule Rescord.Tasks.Changes.WriteDose do
   use Ash.Resource.Change
 
   alias Rescord.Journal
+  alias Rescord.Tasks.Errors.NoPrescription
 
   @impl true
   def change(changeset, _opts, context) do
@@ -40,7 +41,7 @@ defmodule Rescord.Tasks.Changes.WriteDose do
            ) do
       {:ok, task}
     else
-      {:ok, nil} -> {:error, "the prescription of the task is not there"}
+      {:ok, nil} -> {:error, NoPrescription.exception()}
       {:error, error} -> {:error, error}
     end
   end

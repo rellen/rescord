@@ -45,7 +45,14 @@ config :rescord, Oban,
   repo: Rescord.Repo,
   # The tasks of the routines, each hour (ADR 0033). A day starts at a
   # different hour in each time zone.
-  cron: [crontab: [{"7 * * * *", Rescord.Tasks.Workers.GenerateTasks}]]
+  cron: [
+    crontab: [
+      {"7 * * * *", Rescord.Tasks.Workers.GenerateTasks},
+      # The usage counts: the old ones go, and in the mode `send` the full
+      # days leave for the address of the operator (ADR 0098).
+      {"23 * * * *", Rescord.Usage.Workers.Send}
+    ]
+  ]
 
 # These enable behaviors that will become the default in the next major
 # version of Ash. Setting them now opts your application into the new
@@ -162,7 +169,8 @@ config :rescord,
     Rescord.Ruby,
     Rescord.Calendars,
     Rescord.Expenses,
-    Rescord.Reports
+    Rescord.Reports,
+    Rescord.Usage
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,

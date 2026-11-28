@@ -108,6 +108,13 @@ defmodule Rescord.Resource do
     opts =
       if flags.table?, do: Keyword.put_new(opts, :data_layer, AshPostgres.DataLayer), else: opts
 
+    # A resource with a table tells the pages when a record changes (ADR 0096).
+    opts =
+      if flags.table?,
+        do:
+          Keyword.update(opts, :notifiers, [Ash.Notifier.PubSub], &([Ash.Notifier.PubSub] ++ &1)),
+        else: opts
+
     quote do
       use Ash.Resource, unquote(opts)
 
@@ -115,6 +122,21 @@ defmodule Rescord.Resource do
       unquote(tenancy(flags))
       unquote(temporal(flags))
       unquote(paper_trail(flags))
+      unquote(changes(flags, domain_key(opts, __CALLER__)))
+    end
+  end
+
+  # The part of a topic that names the domain of the resource, such as "tasks".
+  defp domain_key(opts, caller) do
+    case Macro.expand(Keyword.get(opts, :domain), caller) do
+      domain when is_atom(domain) and not is_nil(domain) ->
+        Rescord.Changes.key(domain)
+
+      _other ->
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description: "use Rescord.Resource needs the option :domain, as a literal module"
     end
   end
 
@@ -197,6 +219,34 @@ defmodule Rescord.Resource do
         store_action_name? true
         version_extensions authorizers: [Ash.Policy.Authorizer]
         mixin Rescord.Resource.VersionPolicies
+      end
+    end
+  end
+
+  defp changes(%{table?: false}, _key), do: nil
+
+  # A shared resource has no tenant, so it has no publication from here: it
+  # writes its own, with the attribute that holds the id of the organisation.
+  defp changes(%{shared?: true}, _key) do
+    quote do
+      pub_sub do
+        module Rescord.Changes
+        prefix unquote(Rescord.Changes.prefix())
+        transform &Rescord.Changes.change/1
+      end
+    end
+  end
+
+  defp changes(_flags, key) do
+    quote do
+      pub_sub do
+        module Rescord.Changes
+        prefix unquote(Rescord.Changes.prefix())
+        transform &Rescord.Changes.change/1
+
+        publish_all :create, [:_tenant, unquote(key)]
+        publish_all :update, [:_tenant, unquote(key)]
+        publish_all :destroy, [:_tenant, unquote(key)]
       end
     end
   end

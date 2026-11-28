@@ -5,8 +5,6 @@ defmodule Rescord.StorageFixtures do
   temporary directory of a test, and a store of S3 in its memory.
   """
 
-  import ExUnit.Callbacks, only: [on_exit: 1]
-
   alias Vix.Vips.{Image, MutableImage}
 
   @doc "The bytes of a small JPEG with no metadata."
@@ -69,10 +67,7 @@ defmodule Rescord.StorageFixtures do
   `:tmp_dir`, and puts the store back after the test.
   """
   def disk_store!(tmp_dir) do
-    previous = Application.get_env(:rescord, Rescord.Storage.Disk)
-    Application.put_env(:rescord, Rescord.Storage.Disk, root: tmp_dir)
-    on_exit(fn -> Application.put_env(:rescord, Rescord.Storage.Disk, previous) end)
-    :ok
+    Shoddy.Tests.put_app_env(:rescord, Rescord.Storage.Disk, root: tmp_dir)
   end
 
   @doc """
@@ -83,9 +78,8 @@ defmodule Rescord.StorageFixtures do
   """
   def s3_store!(opts \\ []) do
     service = ExUnit.Callbacks.start_supervised!({Rescord.FakeS3, opts})
-    previous = Application.get_env(:rescord, Rescord.Storage.S3)
 
-    Application.put_env(:rescord, Rescord.Storage.S3,
+    Shoddy.Tests.put_app_env(:rescord, Rescord.Storage.S3,
       endpoint: "http://s3.test:3900",
       region: "garage",
       bucket: Keyword.get(opts, :bucket, "rescord"),
@@ -93,12 +87,6 @@ defmodule Rescord.StorageFixtures do
       secret_access_key: "000000000000000000000000000000000000000000000000000000000000dec0",
       req_options: [plug: &Rescord.FakeS3.call(&1, service), retry: false]
     )
-
-    on_exit(fn ->
-      if previous,
-        do: Application.put_env(:rescord, Rescord.Storage.S3, previous),
-        else: Application.delete_env(:rescord, Rescord.Storage.S3)
-    end)
 
     service
   end

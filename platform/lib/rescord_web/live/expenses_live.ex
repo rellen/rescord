@@ -11,6 +11,9 @@ defmodule RescordWeb.ExpensesLive do
   The filters are in the address of the page (`Cinder.UrlSync`), so the
   link to the CSV file carries them, and the file holds what the list
   holds.
+
+  The page reads the sums and the list again when an expense changes
+  (ADR 0096), so a decision of another person shows at once.
   """
 
   use RescordWeb, :live_view
@@ -33,7 +36,9 @@ defmodule RescordWeb.ExpensesLive do
     {:ok, categories} = Lists.values(:expense_category, options)
 
     {:ok,
-     assign(socket,
+     socket
+     |> LiveChanges.listen([Expenses], &read_again/1)
+     |> assign(
        page_title: "Expenses",
        can_manage?: Expenses.role_can?(role, :expense, :approve),
        can_record?: Expenses.role_can?(role, :expense, :submit),
@@ -73,6 +78,16 @@ defmodule RescordWeb.ExpensesLive do
     else
       _no_period -> {Date.beginning_of_month(today), today}
     end
+  end
+
+  # After a change of another person (ADR 0096): the sums, and the rows of
+  # the list, which stay on the page while Cinder reads.
+  defp read_again(socket) do
+    {:ok, figures} = Expenses.figures(options(socket))
+
+    socket
+    |> assign(figures: figures)
+    |> Cinder.refresh_table("expenses", silent: true)
   end
 
   defp resident(socket, id) when is_binary(id) do

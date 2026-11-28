@@ -41,7 +41,11 @@ if config_env() == :dev do
   config :rescord, Rescord.Vault, secret: "the secret of the development keys, 32 bytes"
 
   config :rescord, Rescord.Storage.S3,
-    endpoint: Shoddy.Env.string("GARAGE_S3_ENDPOINT", default: "http://127.0.0.1:3900"),
+    endpoint:
+      Shoddy.Env.uri("GARAGE_S3_ENDPOINT",
+        default: "http://127.0.0.1:3900",
+        schemes: ["http", "https"]
+      ),
     region: "garage",
     bucket: "rescord",
     access_key_id: "GK0000000000000000000000ad",
@@ -72,9 +76,14 @@ if config_env() == :prod do
     level:
       Shoddy.Env.one_of("RESCORD_LOG_LEVEL", [:debug, :info, :warning, :error], default: :info)
 
-  # A required text: `Shoddy.Env.string/2` refuses a variable that is absent
-  # or blank. For example: ecto://USER:PASS@HOST/DATABASE
-  database_url = Shoddy.Env.string("DATABASE_URL")
+  # A required URL: `Shoddy.Env.uri/2` refuses a variable that is absent or
+  # blank, and a value with no host or another scheme, at the start and
+  # with no password in the message. For example: ecto://USER:PASS@HOST/DATABASE
+  database_url =
+    Shoddy.Env.uri("DATABASE_URL",
+      schemes: ["ecto", "postgres", "postgresql"],
+      hint: "Write it as ecto://USER:PASSWORD@HOST/DATABASE, with %XX for a special character."
+    )
 
   maybe_ipv6 =
     if Shoddy.Env.boolean("ECTO_IPV6", default: false, digits: true),
@@ -142,7 +151,7 @@ if config_env() == :prod do
 
   if Rescord.Storage.S3 in stores do
     config :rescord, Rescord.Storage.S3,
-      endpoint: Shoddy.Env.string("RESCORD_S3_ENDPOINT"),
+      endpoint: Shoddy.Env.uri("RESCORD_S3_ENDPOINT", schemes: ["http", "https"]),
       region: Shoddy.Env.string("RESCORD_S3_REGION", default: "auto"),
       bucket: Shoddy.Env.string("RESCORD_S3_BUCKET"),
       addressing: Shoddy.Env.one_of("RESCORD_S3_ADDRESSING", [:path, :virtual], default: :path),

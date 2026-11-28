@@ -14,8 +14,7 @@ defmodule Rescord.Ruby.LLM.PingTest do
 
   # The real library, in place of the scripted model of each other test.
   setup do
-    Application.put_env(:rescord, :ruby_llm, ReqLLM)
-    on_exit(fn -> Application.put_env(:rescord, :ruby_llm, ScriptedModel) end)
+    Shoddy.Tests.put_app_env(:rescord, :ruby_llm, ReqLLM)
   end
 
   defp profile(fake) do
@@ -56,7 +55,7 @@ defmodule Rescord.Ruby.LLM.PingTest do
   end
 
   test "the test of a page goes through the scripted model too" do
-    Application.put_env(:rescord, :ruby_llm, ScriptedModel)
+    Shoddy.Tests.put_app_env(:rescord, :ruby_llm, ScriptedModel)
     ScriptedModel.script([{:text, "pong"}])
 
     {:ok, profile} = Profile.from_provider(%{kind: :anthropic, api_key: "none"})

@@ -42,4 +42,38 @@ defmodule RescordWeb.ConnCase do
     Rescord.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  The HTML of a page with a collection of Cinder, after a change of another
+  process (ADR 0096). The page asks Cinder to read in the message of the
+  change, and Cinder starts its read in a message after that one. The
+  first render lets the page take both messages, and the second waits for
+  the read.
+  """
+  @spec render_changes(Phoenix.LiveViewTest.View.t()) :: String.t()
+  def render_changes(view) do
+    _html = Phoenix.LiveViewTest.render(view)
+    Phoenix.LiveViewTest.render_async(view)
+  end
+
+  @doc """
+  Runs `fun`, which opens a page, so that the page waits a minute before it
+  reads again after a change (ADR 0096). In the tests a page reads at once.
+  With this, a test holds what a page does when it has not read yet: a
+  person presses a button a moment after another person did.
+
+  The wait is a value of the application, so only a test that does not run
+  beside others calls this.
+  """
+  @spec with_slow_changes((-> result)) :: result when result: term
+  def with_slow_changes(fun) when is_function(fun, 0) do
+    before = Application.fetch_env!(:rescord, RescordWeb.LiveChanges)
+    Application.put_env(:rescord, RescordWeb.LiveChanges, wait: :timer.minutes(1))
+
+    try do
+      fun.()
+    after
+      Application.put_env(:rescord, RescordWeb.LiveChanges, before)
+    end
+  end
 end

@@ -16,6 +16,8 @@ defmodule Rescord do
   use Boundary,
     deps: [],
     exports: [
+      Changes,
+      Changes.Change,
       Dosage,
       Dosage.Result,
       History,
@@ -33,6 +35,8 @@ defmodule Rescord do
       Resource.VersionPolicies,
       Storage,
       Storage.Compare,
+      # A change of a resource puts its field on it (ADR 0077, E3).
+      Storage.Errors.RefusedFile,
       Storage.Move,
       Storage.Named,
       Storage.Upload,

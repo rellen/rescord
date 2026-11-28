@@ -121,8 +121,4 @@ defmodule Rescord.Ruby.Digests.Shape do
   end
 
   def cut(_none, _limit), do: nil
-
-  @doc "A map without the keys that have no value."
-  @spec drop_nil(map) :: map
-  def drop_nil(map), do: Map.reject(map, fn {_key, value} -> is_nil(value) end)
 end

@@ -7,7 +7,9 @@ defmodule Rescord.Application do
 
   # The application starts both the core and the web layer, so it is a
   # boundary of its own, outside the core (ADR 0009).
-  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, Rescord.Ruby, RescordWeb]
+  use Boundary,
+    top_level?: true,
+    deps: [Rescord, Rescord.Accounts, Rescord.Ruby, Rescord.Usage, RescordWeb]
 
   @impl true
   def start(_type, _args) do
@@ -19,6 +21,11 @@ defmodule Rescord.Application do
     # writes a line (ADR 0077).
     :ok = Rescord.Log.attach()
 
+    # The usage counts (ADR 0098): the actions of Ash, and the pages and the
+    # files of the web layer. A handler does nothing in the mode `off`.
+    :ok = Rescord.Usage.Actions.attach()
+    :ok = RescordWeb.Usage.attach()
+
     children = [
       RescordWeb.Telemetry,
       Rescord.Repo,
@@ -26,6 +33,9 @@ defmodule Rescord.Application do
       {Phoenix.PubSub, name: Rescord.PubSub},
       # The counts of the rate limits (ADR 0020), in a table of this node.
       {Rescord.RateLimit, clean_period: :timer.minutes(1)},
+      # The usage counts of this node in memory, which it writes to the
+      # database each minute (ADR 0098). It starts after the repo.
+      Rescord.Usage.Counter,
       # Oban runs the background steps of the workflows (ADR 0010). It starts
       # after the repo, which holds its jobs, and after PubSub, so that a job
       # can publish.

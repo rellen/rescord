@@ -134,6 +134,28 @@ defmodule Rescord.ProductionConfigTest do
     assert config[:rescord][Rescord.Storage.S3][:addressing] == :virtual
   end
 
+  test "a URL of the database or of the store that is no URL stops the start, with no secret" do
+    for url <- ["postgres://rescord:secret@db/rescord", "postgresql://rescord:secret@db/rescord"] do
+      config = read(Map.put(@required, "DATABASE_URL", url))
+      assert config[:rescord][Rescord.Repo][:url] == url
+    end
+
+    for url <- ["rescord:secret@db/rescord", "mysql://rescord:secret@db/rescord"] do
+      error =
+        assert_raise ArgumentError, ~r/DATABASE_URL/, fn ->
+          read(Map.put(@required, "DATABASE_URL", url))
+        end
+
+      refute Exception.message(error) =~ "secret"
+    end
+
+    for endpoint <- ["s3.example.org", "ftp://s3.example.org"] do
+      assert_raise ArgumentError, ~r/RESCORD_S3_ENDPOINT/, fn ->
+        read(Map.put(@s3, "RESCORD_S3_ENDPOINT", endpoint))
+      end
+    end
+  end
+
   test "the move of the files reads the settings of both stores, and needs each one" do
     # The server reads the settings of its own store alone.
     config = read(Map.put(@s3, "RESCORD_STORAGE", "disk"))

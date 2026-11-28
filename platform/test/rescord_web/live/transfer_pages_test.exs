@@ -258,4 +258,57 @@ defmodule RescordWeb.TransferPagesTest do
     assert has_element?(view, "li", "The placements")
     refute has_element?(view, "#parts")
   end
+
+  describe "what the other refuge does (ADR 0096)" do
+    test "shows at once on the page of the partners", context do
+      {_conn, view, _html} =
+        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/partners")
+
+      assert has_element?(view, "p", "This refuge has no partner yet.")
+
+      {:ok, asked} =
+        Transfers.ask_partner(context.wattle, context.banksia.short_name,
+          actor: context.wattle_admin
+        )
+
+      assert has_element?(view, "tbody td", "Wattle Creek")
+      assert has_element?(view, "button", "Accept")
+
+      # A refuge with no part in it hears nothing, and reads nothing new.
+      other = organisation!(context.root, "Ironbark Flat")
+      {_, stranger} = member!(other, :administrator, context.root)
+      {_conn, outside, _html} = open(stranger, ~p"/o/#{other.short_name}/partners")
+      Transfers.accept_partner!(asked, actor: context.banksia_admin)
+      assert has_element?(outside, "p", "This refuge has no partner yet.")
+    end
+
+    test "shows a transfer that arrives, and its answer at the refuge that sent it", context do
+      partners!(context)
+
+      {_conn, there, _html} =
+        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
+
+      {_conn, here, _html} =
+        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+
+      refute render(there) =~ "Biscuit"
+
+      transfer =
+        Transfers.send_transfer!(
+          %{
+            organisation_id: context.wattle.id,
+            partner_id: context.banksia.id,
+            resident_id: context.biscuit.id
+          },
+          actor: context.wattle_admin
+        )
+
+      assert render(there) =~ "Biscuit"
+      assert has_element?(there, "button", "Accept")
+      assert has_element?(here, "[data-state=info]", "Waits for an answer")
+
+      Transfers.accept_transfer!(transfer, actor: context.banksia_admin)
+      assert has_element?(here, "[data-state=ok]", "Accepted")
+    end
+  end
 end

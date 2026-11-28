@@ -113,6 +113,15 @@ release (ADR 0047).
     or names that one. Each other kind gets no standard unit. It changes
     no measurement: each keeps the number and the unit that the person
     recorded.
+  - `20261128084020_add_the_usage_counts`, in the database: adds the table
+    of the usage counts, the table of their settings and the table of the
+    history of the settings. All three are empty until Rescord counts. It
+    changes no row.
+- After the upgrade, Rescord counts how often each feature is used on the
+  server, and keeps the counts in its database for its root users, at
+  `/root/usage`. It sends them nowhere. A root user can turn the counting
+  off there, or name an address that gets them (see "Usage counts" in
+  `docs/self-hosting.md`).
 - Each organisation has the paper A4 for its reports after the upgrade. An
   administrator of a rescue that prints on US Letter changes it on the
   settings page, in "Paper of the reports".
@@ -189,9 +198,27 @@ release (ADR 0047).
 - The receipts of the expenses are files in the store of the server,
   beside the photos and the attachments, 20 MB each at most. The backup
   of the files holds them.
+- Rescord now checks `DATABASE_URL` and `RESCORD_S3_ENDPOINT` at the
+  start, and stops with the name of the setting when one is not a URL
+  with a host. `DATABASE_URL` takes the schemes `ecto://`, `postgres://`
+  and `postgresql://`, and the endpoint takes `http://` and `https://`.
+  The message never holds the value, so no password reaches the log.
+  Before the upgrade, check that a password in `DATABASE_URL` writes
+  each character that a URL may not hold as a `%` code, such as `%20`
+  for a space and `%5E` for `^`. A URL that worked before keeps working
+  when it has no such character.
 
 ### Added
 
+- Usage counts (ADR 0098): Rescord counts, for each day, how often each
+  feature of the server is used: the pages that open, the actions that
+  people run and the files that it sends, with no person, organisation or
+  record in a count. A root user reads them on the new page `/root/usage`,
+  and chooses there whether the counts stay on the server (the default),
+  go each day to one address as OpenTelemetry metrics (OTLP, JSON over
+  HTTP) or as a plain JSON document, or are not counted at all. The page
+  shows the exact document before anything is sent, and has "Send a
+  test". The metrics endpoint has the counter `rescord_usage_count` too.
 - A kind of measurement, such as the weight, can have a standard unit,
   which an administrator chooses on the page Lists. Rescord then shows
   each measurement of that kind in that unit: in the charts and their
@@ -457,6 +484,18 @@ release (ADR 0047).
 
 ### Changed
 
+- A failure of Rescord itself, such as a time after now in a form, a
+  file that is not a photo or an email of an invitation that the mail
+  server refused, is now an error with a name and a reason, and no
+  longer a sentence. The log line of a background job that fails names
+  that error and its reason, such as
+  `Rescord.Accounts.Errors.InvitationNotSent`, where it said only that
+  the reason was text. The words on the pages are the same (ADR 0077).
+- The site menu, the list of the parts on the first page of an
+  organisation, and the other links from one live page to another now
+  move over the open connection, with no load of a document. A move is
+  quicker, and the server reads the new page once and not twice
+  (ADR 0099).
 - The chart of a kind of measurement with a standard unit is in that
   unit. It was in the unit of the newest measurement, so one weight in
   kg changed a chart in g. A kind with no standard unit keeps the unit of
@@ -481,6 +520,15 @@ release (ADR 0047).
   resident again, and add it to its routines again. A resident that left
   before this version keeps its place and its tasks until a member clears
   them.
+- Five pages show what another person did, without a reload: the first
+  page of an organisation, the tasks, the transfers, the partner refuges
+  and the expenses. A task that another member takes or finishes, a
+  transfer that arrives, the answer of the other refuge and a decision
+  on an expense show at once. The first page still reads each minute
+  too, for a task that becomes overdue (ADR 0096).
+  An instance on several machines shows such a change on each machine
+  only when the machines form a cluster (`DNS_CLUSTER_QUERY`); with no
+  cluster the pages on another machine are as before.
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,
@@ -551,9 +599,23 @@ release (ADR 0047).
   condition keeps them. A link from the measurements or from a photo to
   its entry now opens that one entry, with what a member added to it
   (ADR 0092).
+- The tasks page now has a search on the title of a task, and filters on
+  the state (due, done or skipped), on the kind, and on who does it: "Me",
+  "Anybody" for the tasks that name no member, or one member. The tasks
+  are in pages of 50, 100 or 200. The address holds the search and the
+  filters, so the address that ends in `?state=due&who=me` is what is left
+  for the person who opens it, and "The day before" and "The day after"
+  keep them. On today the tasks of earlier days that are still due are
+  now at the top of one list, each with its day, and not in a table of
+  their own, so a filter holds for both. After Take, Done, Skip or Open
+  again the page stays where it was (ADR 0097).
 
 ### Fixed
 
+- The name of a location now keeps its capitals where it starts a line of
+  the inventory: in the levels of a lot, the history of an item, the
+  reorder levels and the stock to order. Before, only its first letter
+  stayed a capital, so "ICU ward B" read "Icu ward b".
 - The focus of the keyboard now stays where a person works. After a
   press on a button that then goes, such as Done of a task, the focus
   stays in the same row. After a link to another page, the focus goes to

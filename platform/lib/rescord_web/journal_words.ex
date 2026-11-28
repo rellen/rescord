@@ -8,6 +8,7 @@ defmodule RescordWeb.JournalWords do
   """
 
   alias RescordWeb.ResidentWords
+  alias Shoddy.Strings
 
   @kinds [
     examination: "Examination",
@@ -138,19 +139,15 @@ defmodule RescordWeb.JournalWords do
       prescription.route && route(prescription.route),
       days(prescription.starts_on, prescription.ends_on)
     ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(", ")
+    |> Strings.join_present(", ")
   end
 
   def facts(%{dose: %{} = dose}) do
     of = if match?(%{medication: _}, dose.prescription), do: dose.prescription.medication
-    [of, dose.amount] |> Enum.reject(&is_nil/1) |> Enum.join(": ") |> nil_if_empty()
+    Strings.join_present([of, dose.amount], ": ", default: nil)
   end
 
   def facts(_entry), do: nil
-
-  defp nil_if_empty(""), do: nil
-  defp nil_if_empty(text), do: text
 
   defp days(nil, nil), do: nil
   defp days(from, nil), do: "from #{ResidentWords.date(from)}"

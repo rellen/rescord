@@ -1729,7 +1729,7 @@ h3:has(+ ul[data-counts]) {
 }
 
 /* --- catalogue ---------------------------------------------------------
- * The page of the components, for a developer (ADR 00XX). An example
+ * The page of the components, for a developer (ADR 0095). An example
  * stands in a frame, so that its edge shows, and its markup wraps: a
  * phone has no room for a line of code that scrolls sideways.
  */
@@ -1747,4 +1747,15 @@ h3:has(+ ul[data-counts]) {
 pre[data-source] {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+/* ------------------------------------------------------------ documents */
+
+/* A document that a page shows as it is, such as the JSON of the usage
+   counts (ADR 0098): its long lines wrap, so that nothing scrolls sideways
+   on a phone, and the indent stays. */
+pre[data-wrap] {
+  overflow-x: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

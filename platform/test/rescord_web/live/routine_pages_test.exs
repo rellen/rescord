@@ -351,7 +351,7 @@ defmodule RescordWeb.RoutinePagesTest do
           ~p"/o/#{context.organisation.short_name}/tasks?day=#{Date.to_iso8601(context.tomorrow)}"
         )
 
-      assert has_element?(view, "tbody th small", "From a routine")
+      assert has_element?(view, "tbody td small", "From a routine")
       assert has_element?(view, "a", "Routines")
     end
   end

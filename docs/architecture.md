@@ -105,8 +105,9 @@ We do not write those by hand.
 - A collection that is the page keeps its search, its filters, its sort
   and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
   residents, the members, the organisations, the items of the inventory,
-  the journal of a resident (in the list layout, ADR 0092). A collection
-  that is a part of a page does not: the stock history of an item.
+  the journal of a resident (in the list layout, ADR 0092), the tasks of
+  a day (ADR 0097). A collection that is a part of a page does not: the
+  stock history of an item.
 - Cinder is for a collection that needs a filter, a sort or pages. A
   short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
@@ -159,7 +160,7 @@ We do not write those by hand.
   - Each page has a title of its own, with " · Rescord" after it.
   - The name of a control starts with the words that show on it.
 - **A developer sees each core component by itself in the catalogue**
-  (ADR 00XX): the page `/dev/components`, which development and the tests
+  (ADR 0095): the page `/dev/components`, which development and the tests
   have. An example is a template of its own, which the page renders and
   shows as text. The phone test and the accessibility test visit the
   page, so each example is held to the rules of a page. There is no
@@ -230,8 +231,8 @@ their members (ADR 0022). For each domain:
 
 - each domain uses `AshBoundary`, and the web layer calls resources through
   the code interfaces on their domain (see "Boundaries");
-- changes reach the pages through `Ash.Notifier.PubSub` notifications, which
-  the widgets that show a resource subscribe to;
+- changes reach the pages through `Ash.Notifier.PubSub` notifications
+  (ADR 0096, and "Pages that hear a change" below);
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
 
@@ -242,6 +243,47 @@ action is the same as one with the lines written in it. A pipeline keeps
 the order of the lines: it runs each change before each validation, and a
 group with another order stays in its actions. `Rescord.Expenses.Expense`
 has the first two.
+
+### Pages that hear a change
+
+**A page shows what another person changed, without a reload**
+(ADR 0096).
+
+- **Each resource says that a record changed.** `Rescord.Resource` gives
+  each resource with a table the notifier `Ash.Notifier.PubSub`. After a
+  create, an update or a destroy has committed, the notifier calls
+  `Rescord.Changes`, the module of the core that wraps `Phoenix.PubSub`.
+- **A topic is one domain of one organisation**:
+  `changes:org_<id>:tasks`. A process subscribes with its own
+  organisation, so it hears no other. A resource that organisations
+  share has no tenant: it writes its own publications, with the
+  attribute that holds the id of the organisation.
+- **A change says that something changed, and not what.** The message is
+  a `Rescord.Changes.Change`: the domain, the resource, the action and
+  the primary key, and no attribute of the record. A topic is not a
+  policy, so no record goes on one. A process that hears a change reads
+  again as its own actor, and the policies answer that read.
+  `Rescord.ChangesTest` sweeps each resource for it.
+- **A page listens with `RescordWeb.LiveChanges.listen/3`**, in
+  `mount/3`, with its domains and the function that reads them again.
+  The page waits 250 milliseconds after the first change and reads once
+  for all the changes of that time. The function leaves the forms alone.
+  For a collection of Cinder it calls
+  `Cinder.refresh_table(socket, id, silent: true)`. A collection of a
+  temporal resource needs a new query too, because its query holds the
+  instant at which the page built it (ADR 0096, "With Cinder").
+- **The process that wrote hears nothing of its own change.** A page that
+  writes reads again in its own event.
+- **A write in a transaction is `Ash.transact/3`**, and not a transaction
+  of the repo, which loses the notifications. A test fails for a lost
+  one.
+- **Not for the chat of the assistant**, which has the topic of one
+  conversation and the text of a reply as it comes (ADR 0069).
+
+A list is an assign, and a `:for` over a list that reads again has a
+`:key`. Rescord has no stream of LiveView outside the chat of the
+assistant, and reads in `mount/3` until the metrics say that a read is
+slow (ADR 0096 has the candidates for `assign_async` and `start_async`).
 
 ### Signals and workflows
 
@@ -254,7 +296,8 @@ same thing by hand.
   and the resource that acts should not know them, in place of a call from an
   `after_action` hook. The emitter gets nothing back, so call a code
   interface when the action needs an answer. A signal is not for PubSub:
-  what a page hears after a commit is still a notifier's work.
+  what a page hears after a commit is a notifier's work (see "Pages that
+  hear a change").
 - **AshWorkflow** declares a process of several steps on a resource: steps
   that run in the background, steps that wait for a person, deadlines and
   reminders. It generates the states and transitions of `ash_state_machine`
@@ -386,7 +429,10 @@ table (ADR 0025).
 - **A task** (ADR 0032) is due, done or skipped. It is not temporal, and it
   names a resident, a group or a location by a plain id. A task that names a
   prescription writes the dose to the journal when a member completes it.
-  `Rescord.Tasks.day/2` gives the tasks of a day of the organisation.
+  `Rescord.Tasks.day/2` gives the tasks of a day of the organisation. The
+  tasks page reads them in pages, with `Rescord.Tasks.query_to_day/2`
+  (ADR 0097), and an event of the page finds a task again with
+  `Rescord.Tasks.task_of_day/3`.
 - **A routine** (ADR 0033) is a task that repeats. It makes its tasks a
   number of days ahead: the setting `task_days_ahead` of the organisation,
   or the number of the routine. `Rescord.Tasks.Changes.SyncTasks` makes
@@ -721,9 +767,10 @@ Each domain says what needs somebody in its part with a function
 `attention`, and `Rescord.Attention.parts/2` asks each of them. Three
 rules hold: a read runs as the person, so the policies decide what they
 see; a row is there only for a role that can act on it; and a part has a
-limit and a total. The page reads again each minute, because the time
-alone makes a task overdue. A row is a link to the page of its record,
-where the person acts.
+limit and a total. The page reads again when a record of one of its parts
+changes (ADR 0096), and each minute, because the time alone makes a task
+overdue. A row is a link to the page of its record, where the person
+acts.
 
 ### Calendar feeds
 
@@ -831,6 +878,19 @@ code does not have yet is what its phase lands.
   organisation. It is deleted for real: not temporal, no paper trail, no
   archive. Both are exceptions that ADR 0069 states.
 - No test calls a provider: a scripted model answers.
+- The evaluation set measures what a real model does with the tools and
+  the prompt. `mix rescord.ruby.eval` plants a rescue of made-up records
+  (`Rescord.Ruby.Eval.Seed`), asks each question of
+  `Rescord.Ruby.Eval.Cases` three times with the options of a reply, and
+  scores each answer by code (`Rescord.Ruby.Eval.Score`): the tools that
+  were called, each reference and each number against the tool results,
+  patterns for what the answer must and must not say, and its form. A
+  case passes when each run passes, and each group has a bar: 95% of the
+  reads, and each case of the groups where Ruby must say that the records
+  hold nothing, must not advise on the care of an animal, and must not
+  follow an instruction inside a record. Only a person runs it, because
+  it costs money and its result can change. The checks see words and not
+  meaning, so a person reads the answers that failed.
 
 ## The log, the metrics and the errors
 
@@ -865,13 +925,32 @@ of a person. A number about the work of a rescue is on a page (see "What
 needs attention"), and not a metric. Rescord does not use AshMetrics, and
 has no traces.
 
+**The usage counts say which features are in use, and stay on the server
+until a root user names an address** (ADR 0098). `Rescord.Usage.Actions`
+and `RescordWeb.Usage` listen to the `:telemetry` events of Ash and
+Phoenix, and `Rescord.Usage.count/3` adds one in memory for a day, a
+feature of `Rescord.Usage.Features`, a kind and the name of the item in
+the code. `Rescord.Usage.Counter` writes the memory to the shared table
+`usage_counts` each minute. A count holds nothing of a person, an
+organisation, a record or a host. `Rescord.Usage.Settings` holds the mode
+(`off`, `local` by default, `send`), the address, the format (OTLP JSON or
+the plain document of `Rescord.Usage.Document`) and the token under
+AshCloak, and a root user sets them at `/root/usage`. The job
+`Rescord.Usage.Workers.Send` sends each full day each hour in the mode
+`send`. The counter `rescord.usage.count` is on the metrics endpoint too.
+A new page, domain, resource or file route needs its feature: tests fail
+without one.
+
 **An error of our own is a Splode error in a class of Ash** (ADR 0077).
 Each action answers with the classes of Ash, and Rescord has no second
 tree. A new failure that can reach a person is a module with
 `use Splode.Error` and the class `:invalid` or `:forbidden`, in the domain
 that returns it, and not a sentence: Ash reads a sentence as a fault of
-the code. An atom is for a result that only the caller sees. The sentences
-that some functions still return change with the localisation.
+the code. An atom is for a result that only the caller sees. The times
+of a form, the export, a file that Rescord refuses, the dose of a task
+and the email of an invitation each have one (`Errors` in the namespace
+of the domain), with a reason that is an atom.
+`Rescord.Accounts.error_messages/1` says each in words.
 
 ## Releases
 
@@ -898,6 +977,14 @@ patterns back to them.** They are the maintainer's libraries: `shoddy` has
 helpers for results, options and collections, and `shoddy_phoenix` has the
 LiveView helpers, the plumbing of the live widgets among them. Both come
 from GitHub, pinned to a commit (ADR 0005).
+
+Today Rescord calls `Shoddy.Strings` in each LiveView that reads a form,
+`Shoddy.Env` in `config/runtime.exs`, `Shoddy.Tests` in the tests, and a
+few helpers of `Shoddy.Maps`, `Shoddy.Keywords` and `Shoddy.Strings`
+elsewhere. No page has a live widget yet (ADR 0037), so `shoddy_phoenix`
+runs only in `test/rescord_web/widget_test.exs`, and `choose/1` and
+`switch/1` are imported into each template for the first page that needs
+them.
 
 - Use a function of theirs where it says the same thing in fewer words.
 - When Rescord writes a helper that is not about Rescord, such as

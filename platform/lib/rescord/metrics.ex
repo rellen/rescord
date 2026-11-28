@@ -103,6 +103,11 @@ defmodule Rescord.Metrics do
         measurement: :cost_microdollars,
         description: "About what the replies of the assistant cost, in millionths of a US dollar"
       ),
+      counter("rescord.usage.count",
+        event_name: [:rescord, :usage, :count],
+        tags: [:feature, :kind],
+        description: "The uses of each feature, as the usage counts have them (ADR 0098)"
+      ),
       counter("rescord.photo.refused.count",
         event_name: [:rescord, :photos, :refused],
         description: "The photos that waited too long for a slot of libvips"

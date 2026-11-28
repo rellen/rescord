@@ -149,8 +149,7 @@ defmodule Rescord.ReleaseTest do
 
     setup do
       s3 = s3_store!()
-      Application.put_env(:rescord, :storage, Storage.S3)
-      on_exit(fn -> Application.put_env(:rescord, :storage, Storage.Disk) end)
+      Shoddy.Tests.put_app_env(:rescord, :storage, Storage.S3)
 
       root = root!()
       organisation = organisation!(root, "Wattle Creek")

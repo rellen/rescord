@@ -5,7 +5,8 @@ AshMetrics? Are we logging best practice? Are we using Splode?" This
 record builds the log (L1 to L6), the endpoint of the metrics (M1) and
 the errors (E1, E2 and E4). Each of L7 and M1 needs a new dependency, so
 the maintainer chose on the same day: the endpoint of the metrics, and
-not JSON. L7 and E3 stay proposals.
+not JSON. L7 stays a proposal. E3 was built later the same day, after
+the locale of an organisation (ADR 0075).
 
 ## Context
 
@@ -252,12 +253,40 @@ An atom stays right for a result that the caller matches and that no
 person sees: `{:error, :busy}`, `{:error, :not_found}`, the reasons of
 `Rescord.Transfers.Crypto`.
 
-**E3. The sentences of today change with the localisation (proposed).**
-About 13 places return a sentence: the times of `Rescord.Accounts`, the
-export, `Rescord.Images`, the dose of a task, the email of an invitation.
-They work. They become errors of E2 when the pages get a second language,
-because that is when the fields are needed, and one change then removes
-the clause for a sentence from 6 pages and a controller.
+**E3. The sentences of the domain became errors of E2 (built).** Each
+place of the domain that returned a sentence now returns one of six
+errors, each with a reason that is an atom and never a value that a
+person typed:
+
+| Error | Class | Reasons | Returned by |
+|---|---|---|---|
+| `Rescord.Accounts.Errors.InvalidTime` | invalid | `:after_now`, `:not_a_time` | `Accounts.instant/2`, `Accounts.local_instant/2` |
+| `Rescord.Export.Errors.InvalidDate` | invalid | `:after_today`, `:not_a_date` | `Export.export/3` |
+| `Rescord.Export.Errors.Unreadable` | unknown | the name of the file | `Export.export/3` |
+| `Rescord.Storage.Errors.RefusedFile` | invalid | `:empty`, `:too_large`, `:not_a_photo_or_pdf`, `:not_a_photo`, `:busy`, `:unreadable`, `:too_many_pixels` | `Storage.Upload.prepare/1`, `Images.prepare/1` |
+| `Rescord.Tasks.Errors.NoPrescription` | invalid | | the change that writes a dose |
+| `Rescord.Accounts.Errors.InvitationNotSent` | unknown | | the action that sends an invitation |
+
+A change of a resource that stores a file puts its field on a
+`RefusedFile` (`:content`) and adds that error to the changeset, so the
+action answers `Ash.Error.Invalid` with it inside.
+`Rescord.Accounts.error_messages/1` takes one error of Rescord as well as
+an error of an action. For an error of Rescord it gives the words of the
+module, after the name of the field when it has one, and with no bread
+crumbs of Ash in front. The words of the pages did not change, except
+that the dose now starts with a capital. The pages of a resident, a
+group, the measurements, the tasks and the journal lost their clause for
+a sentence; the page of a location keeps one for its own words; the
+export controller says the words of the error.
+
+What stays a sentence, on purpose: the words that a page or a controller
+writes itself for its own form ("Choose a resident or a group", "The date
+is not a date." of the reports), the casts of the types of the units,
+which follow the rule of Ash for a type, the changes of the expenses that
+add an error with a field and a message, which Ash already classes as
+invalid, and the answers of the tools of Ruby, which are words for the
+model. A second language for the pages, when it comes, translates the
+words of each module from its reason.
 
 **E4. The log reads the tree.** `Rescord.Log.reason/1` (L4) walks the
 classes of a Splode error. This is the use of Splode that Rescord has

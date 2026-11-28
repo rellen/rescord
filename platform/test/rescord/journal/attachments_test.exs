@@ -16,6 +16,7 @@ defmodule Rescord.Journal.AttachmentsTest do
 
   alias Rescord.Journal
   alias Rescord.Journal.Changes.StoreAttachment
+  alias Rescord.Storage.Errors.RefusedFile
 
   doctest StoreAttachment
 
@@ -78,13 +79,16 @@ defmodule Rescord.Journal.AttachmentsTest do
     test "is a photo or a PDF, and not empty, and 20 MB at most", context do
       assert {:ok, %{content_type: "application/pdf"}} = attach(context, pdf())
 
-      for {content, words} <- [
-            {"<html><script></script>", "is not a photo or a PDF"},
-            {"", "is an empty file"},
-            {<<0xFF, 0xD8, 0xFF>> <> :binary.copy("a", StoreAttachment.max_size()),
-             "is more than 20 MB"}
+      for {content, reason, words} <- [
+            {"<html><script></script>", :not_a_photo_or_pdf, "Content is not a photo or a PDF"},
+            {"", :empty, "Content is an empty file"},
+            {<<0xFF, 0xD8, 0xFF>> <> :binary.copy("a", StoreAttachment.max_size()), :too_large,
+             "Content is more than 20 MB"}
           ] do
-        assert {:error, %Ash.Error.Invalid{} = error} = attach(context, content)
+        # A Splode error of Rescord is an error of the class invalid of Ash
+        # (ADR 0077, E2), and keeps its reason and its field.
+        assert {:error, %Ash.Error.Invalid{errors: errors} = error} = attach(context, content)
+        assert [%RefusedFile{reason: ^reason, field: :content}] = errors
         assert hd(Rescord.Accounts.error_messages(error)) =~ words
       end
 
@@ -112,8 +116,7 @@ defmodule Rescord.Journal.AttachmentsTest do
     end
 
     test "is not written when the store refuses the file", context do
-      Application.put_env(:rescord, :storage, __MODULE__.DownStore)
-      on_exit(fn -> Application.put_env(:rescord, :storage, Rescord.Storage.Disk) end)
+      Shoddy.Tests.put_app_env(:rescord, :storage, __MODULE__.DownStore)
 
       assert {:error, %Ash.Error.Invalid{} = error} = attach(context, jpeg())
 

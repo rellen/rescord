@@ -93,6 +93,8 @@ defmodule RescordWeb.Router do
       live "/root/ruby", RootRubyLive, :index
       live "/root/ruby/new", RootRubyLive, :new
       live "/root/ruby/:id", RootRubyLive, :provider
+      # The usage counts of the server (ADR 0098).
+      live "/root/usage", RootUsageLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
@@ -165,7 +167,7 @@ defmodule RescordWeb.Router do
     end
   end
 
-  # The catalogue of the components (ADR 00XX). Development has it, and the
+  # The catalogue of the components (ADR 0095). Development has it, and the
   # tests, whose browser holds each example to the rules of a page.
   if Application.compile_env(:rescord, :catalogue, false) do
     scope "/dev", RescordWeb do

@@ -1,6 +1,6 @@
 defmodule RescordWeb.CatalogueControllerTest do
   @moduledoc """
-  The catalogue of the components (ADR 00XX): the page renders each
+  The catalogue of the components (ADR 0095): the page renders each
   example and shows its markup, and each core component has an example.
   `PhoneTest` and `AccessibilityTest` hold the page in a browser.
   """

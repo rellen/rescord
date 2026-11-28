@@ -70,23 +70,11 @@ defmodule Rescord.AccountsFixtures do
 
   @doc "Waits until each task of a request for a sign-in link has ended."
   def wait_for_sign_in_tasks(timeout \\ 5_000) do
-    deadline = System.monotonic_time(:millisecond) + timeout
-    wait_until(deadline)
-  end
+    ended? = fn -> Task.Supervisor.children(Accounts.sign_in_tasks()) == [] end
 
-  defp wait_until(deadline) do
-    case Task.Supervisor.children(Accounts.sign_in_tasks()) do
-      [] ->
-        :ok
-
-      _running ->
-        if System.monotonic_time(:millisecond) > deadline do
-          raise "the tasks of the sign-in did not end"
-        else
-          Process.sleep(10)
-          wait_until(deadline)
-        end
-    end
+    if Shoddy.Tests.eventually(ended?, timeout: timeout),
+      do: :ok,
+      else: raise("the tasks of the sign-in did not end")
   end
 
   @doc "The token of the sign-in link in an email."
@@ -100,14 +88,8 @@ defmodule Rescord.AccountsFixtures do
   ends. `watcher` is the test process, which the stand-ins write to.
   """
   def build_links_with(module, watcher) do
-    before = Application.fetch_env!(:rescord, :sign_in_link_url)
-    Application.put_env(:rescord, :sign_in_link_url, {module, :url})
-    Application.put_env(:rescord, :sign_in_link_watcher, watcher)
-
-    ExUnit.Callbacks.on_exit(fn ->
-      Application.put_env(:rescord, :sign_in_link_url, before)
-      Application.delete_env(:rescord, :sign_in_link_watcher)
-    end)
+    Shoddy.Tests.put_app_env(:rescord, :sign_in_link_url, {module, :url})
+    Shoddy.Tests.put_app_env(:rescord, :sign_in_link_watcher, watcher)
   end
 
   defmodule SlowLink do

@@ -23,6 +23,7 @@ defmodule Rescord.Ruby.LLM.Profile do
   """
 
   alias Rescord.Ruby.LLM.Cost
+  alias Shoddy.Keywords
 
   # The kinds of a provider, as the resource names them, and the provider of
   # ReqLLM that each one uses.
@@ -402,8 +403,8 @@ defmodule Rescord.Ruby.LLM.Profile do
       receive_timeout: profile.receive_timeout,
       total_timeout: profile.total_timeout
     ]
-    |> put_present(:api_key, profile.api_key)
-    |> put_present(:base_url, base_url(profile))
+    |> Keywords.put_present(:api_key, profile.api_key)
+    |> Keywords.put_present(:base_url, base_url(profile))
     |> Keyword.merge(provider_opts(profile))
   end
 
@@ -439,7 +440,4 @@ defmodule Rescord.Ruby.LLM.Profile do
     do: [provider_options: [auth_mode: :none]]
 
   defp provider_opts(%__MODULE__{provider: :openai_compatible}), do: []
-
-  defp put_present(opts, _key, nil), do: opts
-  defp put_present(opts, key, value), do: Keyword.put(opts, key, value)
 end

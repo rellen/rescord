@@ -60,6 +60,45 @@ defmodule Rescord.Accounts.ErrorMessagesTest do
     refute words =~ "Rescord"
   end
 
+  describe "an error of Rescord itself (ADR 0077, E2)" do
+    alias Rescord.Accounts.Errors.InvalidTime
+    alias Rescord.Storage.Errors.RefusedFile
+
+    test "has its words alone, or in an error of an action" do
+      error = InvalidTime.exception(reason: :after_now)
+
+      assert Accounts.error_messages(error) == ["The time cannot be after now"]
+      assert messages([error]) == ["The time cannot be after now"]
+    end
+
+    test "says its words after the name of its field" do
+      error = RefusedFile.exception(reason: :empty, field: :content)
+      assert messages([error]) == ["Content is an empty file"]
+    end
+
+    test "has no bread crumbs of Ash in front of its words" do
+      error =
+        [reason: :not_a_time]
+        |> InvalidTime.exception()
+        |> Ash.Error.to_error_class(bread_crumbs: ["Returned from bulk create"])
+
+      assert Exception.message(error) =~ "Bread Crumbs"
+
+      assert Accounts.error_messages(error) == [
+               "The time is not a date and a time of this time zone"
+             ]
+    end
+
+    test "is in the class that it names, and the log has its reason" do
+      error = Ash.Error.to_error_class(RefusedFile.exception(reason: :busy, field: :content))
+
+      assert %Ash.Error.Invalid{errors: [%RefusedFile{}]} = error
+
+      assert Rescord.Log.reason(error) ==
+               "invalid: Rescord.Storage.Errors.RefusedFile(field: :content, reason: :busy)"
+    end
+  end
+
   test "a thing that is no error of an action has plain words" do
     assert Accounts.error_messages(:oops) == ["That did not work"]
   end
