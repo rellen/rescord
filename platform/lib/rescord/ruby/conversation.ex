@@ -81,6 +81,8 @@ defmodule Rescord.Ruby.Conversation do
   policies do
     # No bypass for a root user (ADR 0069).
     policy always() do
+      # The erasure of the person on request is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_erased)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -123,6 +125,18 @@ defmodule Rescord.Ruby.Conversation do
     has_many :messages, Rescord.Ruby.Message do
       # The id of a message holds its time, so this is the order of the talk.
       sort id: :asc
+    end
+  end
+
+  # The conversations of a person erased on request are their own words,
+  # and go with their messages (ADR 0105). The rows of `Rescord.Ruby.Usage`
+  # stay for the costs: they name the user id, whose account names nobody
+  # once it is erased.
+  signals_in do
+    from Rescord.Accounts.Signals do
+      on :member_erased, :remove_of_erased_member,
+        action: :remove,
+        get_by: [owner_id: :user_id]
     end
   end
 end

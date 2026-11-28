@@ -22,6 +22,12 @@ defmodule RescordWeb.IconsTest do
     end
   end
 
+  test "each part of the attention page has a shape" do
+    for part <- RescordWeb.AttentionComponents.parts() do
+      assert Icons.section(part) in Icons.names(), "the part #{part} has no shape"
+    end
+  end
+
   test "each kind of stock movement has a shape" do
     for kind <- Rescord.Inventory.MovementKind.values() do
       assert Icons.movement(kind) in Icons.names(), "the movement #{kind} has no shape"

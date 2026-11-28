@@ -95,6 +95,7 @@ These subjects are out of scope for now:
 | How does a person sign in? | With a link that Rescord sends by email. Rescord stores no password. |
 | How does a person join an organisation? | By invitation only. A root user invites an administrator, and an administrator invites a member. |
 | What happens to the records of a member who is removed? | They stay theirs, and each page names the person "email (former member)". The removal takes them out of each task that is due and each routine, and revokes their calendar feeds. The last member who can change the members stays (ADR 0105). |
+| What does an erasure on request do? | It starts from a request, due one month after it arrived. The person becomes "Former member N" on each record of the organisation; the care records stay, the conversations with Ruby, notifications and follows go, and the comments go unless the person who erases keeps them. An expense of the money period keeps the email, encrypted, until the end of the period. With no membership left, the account loses its email. Only a root user erases a member who can change the members (ADR 0105). |
 | Who creates an organisation? | A root user. |
 | Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
 | Where does the first root user come from? | From a script that a person runs in IEx when Rescord is first deployed. |

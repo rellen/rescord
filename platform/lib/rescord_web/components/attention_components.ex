@@ -16,6 +16,7 @@ defmodule RescordWeb.AttentionComponents do
   alias RescordWeb.{
     InventoryWords,
     LocationComponents,
+    PrivacyWords,
     ResidentWords,
     TaskComponents,
     TaskWords,
@@ -28,7 +29,8 @@ defmodule RescordWeb.AttentionComponents do
     inventory: {"Stock", "The whole inventory"},
     residents: {"Residents", "All the residents"},
     housing: {"Housing", "The whole housing"},
-    transfers: {"Transfers and partners", "All the transfers"}
+    transfers: {"Transfers and partners", "All the transfers"},
+    privacy: {"Requests to erase data", "All the requests"}
   ]
 
   @doc "The parts that have words, for the test that holds them."
@@ -60,9 +62,9 @@ defmodule RescordWeb.AttentionComponents do
 
       <p :if={@total == 0} id="attention-nothing">
         A task that is overdue or due today, an item to count or to order, a resident that is
-        expected or late back, a location over its capacity, and a transfer that waits for an
-        answer are here when your role can act on them. The page shows a change at once, and
-        reads them again each minute.
+        expected or late back, a location over its capacity, a transfer that waits for an
+        answer, and a request to erase data that waits are here when your role can act on
+        them. The page shows a change at once, and reads them again each minute.
       </p>
 
       <section
@@ -108,6 +110,7 @@ defmodule RescordWeb.AttentionComponents do
   defp part_path(organisation, :residents), do: ~p"/o/#{organisation.short_name}/residents"
   defp part_path(organisation, :housing), do: ~p"/o/#{organisation.short_name}/housing"
   defp part_path(organisation, :transfers), do: ~p"/o/#{organisation.short_name}/transfers"
+  defp part_path(organisation, :privacy), do: ~p"/o/#{organisation.short_name}/privacy"
 
   attr :row, :map, required: true
   attr :organisation, :map, required: true
@@ -209,6 +212,25 @@ defmodule RescordWeb.AttentionComponents do
         {other_name(@row.record, @organisation)}
       </.link>
       <.state kind="info">Asks to be a partner</.state>
+    </li>
+    """
+  end
+
+  defp row(%{row: %{kind: :erasure_request}} = assigns) do
+    assigns =
+      assign(assigns,
+        days: Date.diff(assigns.row.due, Accounts.local_date(assigns.organisation, assigns.now))
+      )
+
+    ~H"""
+    <li id={"attention-erasure-request-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/privacy/#{@row.record.id}"}>
+        A request to erase data
+      </.link>
+      <.state kind={if @days < 7, do: "alert", else: "info"}>
+        {PrivacyWords.days_left(@days)}
+      </.state>
+      <small>Due on {ResidentWords.date(@row.due)}</small>
     </li>
     """
   end

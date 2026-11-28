@@ -37,14 +37,15 @@ defmodule Rescord.CorrelationTest do
      lists: lists}
   end
 
-  # Each version of each table of the schema:
+  # Each version of each table of versions of the schema (a request to
+  # erase data keeps a correlation id of its own, ADR 0105):
   # {table, correlation id, action, operation id, causation id}.
   defp versions(schema) do
     %{rows: tables} =
       Repo.query!(
         """
         select table_name from information_schema.columns
-        where table_schema = $1 and column_name = 'correlation_id'
+        where table_schema = $1 and column_name = 'version_action_name'
         order by 1
         """,
         [schema]
@@ -272,6 +273,14 @@ defmodule Rescord.CorrelationTest do
   @no_context %{
     # It reads a role, and writes nothing.
     "lib/rescord/accounts/changes/set_role.ex" => :read,
+    # It reads the largest number of a former member, and writes nothing.
+    "lib/rescord/accounts/changes/pseudonymise.ex" => :read,
+    # It asks whether the person was erased in the organisation, and writes
+    # nothing.
+    "lib/rescord/accounts/changes/invite.ex" => :read,
+    # They read the member of a request to erase data, and write nothing.
+    "lib/rescord/privacy/changes/ask_for_self.ex" => :read,
+    "lib/rescord/privacy/changes/for_member.ex" => :read,
     # It reads the snapshot of a resident, and writes nothing.
     "lib/rescord/transfers/changes/send_transfer.ex" => :read,
     # It runs in a job, and the resources of a conversation keep no paper

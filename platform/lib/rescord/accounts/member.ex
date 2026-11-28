@@ -29,20 +29,40 @@ defmodule Rescord.Accounts.Member do
 
   This resource is not temporal: an organisation has one member for a user at
   each time. A removed member is archived, so the user can be invited again.
+
+  ## An erased member
+
+  An erasure on request (ADR 0105) keeps the archived row, with `erased_at`
+  and `former_number`: each page then names the person "Former member N",
+  and N is the next number of the organisation, never used again. When an
+  expense younger than the money period names the person, the row holds
+  their email in `held_email`, encrypted with AshCloak, until `held_until`:
+  the pages of the expenses show it, and a daily job lets it go.
+  `Rescord.Privacy` runs `erase`, and no role has a grant for it. A person
+  erased here is not invited here again with the same account.
   """
 
   use Rescord.Resource,
     domain: Rescord.Accounts,
     temporal?: false,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshCloak]
 
   postgres do
     table "members"
     identity_wheres_to_sql unique_user: "archived_at IS NULL"
   end
 
+  cloak do
+    # A function, so that AshCloak asks for no vault of the package `cloak`.
+    vault(fn _resource, _context -> Rescord.Vault end)
+    attributes([:held_email])
+    encrypt_nil?(false)
+  end
+
   paper_trail do
     belongs_to_actor :user, Rescord.Accounts.User, domain: Rescord.Accounts
+    ignore_attributes [:encrypted_held_email]
   end
 
   # A removed member is archived. `:with_former` reads them too, so a page
@@ -113,6 +133,40 @@ defmodule Rescord.Accounts.Member do
       emit Rescord.Accounts.Signals, :member_removed, fields: [user_id: :user_id]
     end
 
+    update :erase do
+      description "Pseudonymises an archived member as Former member N, and holds the email for the money records until `held_until`. Only `Rescord.Privacy` runs it"
+      accept [:held_email, :held_until]
+      argument :keep_comments, :boolean, allow_nil?: false, default: false
+      # The number of a marker, when an erasure runs again after a restore.
+      argument :former_number, :integer, constraints: [min: 1]
+      require_atomic? false
+
+      validate attribute_does_not_equal(:archived_at, nil),
+        message: "is a member: remove the member first"
+
+      validate attribute_equals(:erased_at, nil), message: "is erased already"
+      change Rescord.Accounts.Changes.Pseudonymise
+
+      # Ruby, calendars and comments let go of the person (ADR 0105).
+      emit Rescord.Accounts.Signals, :member_erased,
+        fields: [user_id: :user_id, former_number: :former_number],
+        values: [keep_comments: arg(:keep_comments)]
+    end
+
+    update :release_hold do
+      description "Lets go of the email that an erased member held for the money records. A daily job runs it"
+      accept []
+      require_atomic? false
+      change set_attribute(:encrypted_held_email, nil)
+      change set_attribute(:held_until, nil)
+    end
+
+    read :held_before do
+      description "The erased members whose hold ended before a day. A daily job runs it"
+      argument :day, :date, allow_nil?: false
+      filter expr(not is_nil(erased_at) and held_until < ^arg(:day))
+    end
+
     action :send_invitation do
       description "Sends the email of an invitation. A job runs this for `:member_invited`, and no role has a grant for it"
 
@@ -142,6 +196,32 @@ defmodule Rescord.Accounts.Member do
 
   attributes do
     uuid_primary_key :id
+
+    attribute :erased_at, :utc_datetime_usec do
+      public? true
+      writable? false
+      description "When the member was erased on request (ADR 0105)"
+    end
+
+    attribute :former_number, :integer do
+      public? true
+      writable? false
+      constraints min: 1
+
+      description "The N of Former member N, after an erasure. Unique in the organisation, and never used again"
+    end
+
+    # AshCloak takes this attribute away, and makes the attribute
+    # `encrypted_held_email` and the calculation `held_email`.
+    attribute :held_email, :string do
+      sensitive? true
+      constraints max_length: 254
+    end
+
+    attribute :held_until, :date do
+      public? true
+      description "The last day that an expense needs the email of the erased member"
+    end
   end
 
   relationships do
@@ -187,5 +267,7 @@ defmodule Rescord.Accounts.Member do
     identity :unique_user, [:user_id],
       where: expr(is_nil(archived_at)),
       message: "is a member of the organisation already"
+
+    identity :unique_former_number, [:former_number]
   end
 end

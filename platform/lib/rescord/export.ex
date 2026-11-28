@@ -35,7 +35,8 @@ defmodule Rescord.Export do
       Rescord.Tasks,
       Rescord.Inventory,
       Rescord.Expenses,
-      Rescord.Comments
+      Rescord.Comments,
+      Rescord.Privacy
     ],
     # A page that sends one table as a file writes it with the same CSV.
     exports: [CSV]
@@ -56,7 +57,8 @@ defmodule Rescord.Export do
     Rescord.Tasks,
     Rescord.Inventory,
     Rescord.Expenses,
-    Rescord.Comments
+    Rescord.Comments,
+    Rescord.Privacy
   ]
 
   # Columns that are calculations, after the attributes.

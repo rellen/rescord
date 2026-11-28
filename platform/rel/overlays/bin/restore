@@ -10,6 +10,8 @@
 #
 # It needs pg_restore of PostgreSQL 18 or later on PATH, and the settings of
 # the server: DATABASE_URL, RESCORD_STORAGE and RESCORD_FILES_DIR.
+# After the restore, it erases again each person who was erased on request
+# after the dump was made (bin/reapply-erasures, ADR 0105).
 set -eu
 
 # Copies each file of $1 that $2 does not have. Rescord never changes a file,
@@ -52,3 +54,7 @@ if [ "${RESCORD_STORAGE:-disk}" = disk ] && [ -n "${RESCORD_FILES_DIR:-}" ] && [
   copy_new_files "$source/files" "$RESCORD_FILES_DIR"
   echo "The files are back in $RESCORD_FILES_DIR."
 fi
+
+# A dump that is older than an erasure on request holds the person again:
+# the markers of the store erase them again (ADR 0105).
+"$(dirname -- "$0")/reapply-erasures"

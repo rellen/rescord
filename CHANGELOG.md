@@ -158,6 +158,31 @@ release (ADR 0047).
     each of the two tables, and the check that a row names one record
     counts it. Each row that is there names one record of the four, so it
     keeps to the new check. It changes no row.
+  - `20261128115541_add_the_erasure_of_a_member`, in the database: the
+    email of a user may be empty, and a new column `erased_at` says when
+    the account was erased on request (issue 31, ADR 0105). A check holds
+    that the email is empty exactly when `erased_at` is set. Each user
+    that is there has an email and no `erased_at`, so the check holds for
+    each row, and no row changes.
+  - `20261128115535_add_the_erasure_of_a_member`, in each organisation:
+    adds four empty columns to the members, for a member erased on
+    request (`erased_at`, `former_number`, `held_until` and the encrypted
+    `encrypted_held_email`), a unique index on `former_number`, and the
+    tables of the requests to erase data and of the settings of privacy,
+    with their histories. All are empty. It changes no row.
+  - `20261128120000_give_administrators_the_privacy`, in each
+    organisation: gives the new power "Work on the requests to erase
+    data, erase a member who asked, and keep the privacy settings and
+    notice" to the role with the key `administrator`, which is the role
+    Administrator that each organisation starts with. No other row
+    changes.
+  - `20261128122901_add_the_privacy_notice`, in the database: adds the
+    table of the privacy settings of the server, with its history, which
+    stays empty until a root user saves them, and a column `notice_id` to
+    the organisations, with a unique index. Each organisation that is
+    there gets a new random id in it, the id in the link of its privacy
+    notice (`/privacy/<id>`). It is not the id of the organisation, and
+    no other value of a row changes.
   - The index is a plain `CREATE INDEX`, because the rehearsal refuses
     `CONCURRENTLY`. It locks each table against reads and writes until
     the migration of its organisation commits. The migrations run at the
@@ -169,6 +194,17 @@ release (ADR 0047).
     read to answer: the tool, and the records that it named. Each
     message that is there gets an empty list, and the page shows it with
     no step. It changes no other row.
+- After the upgrade, a member with the power "Work on the requests to
+  erase data" can erase a member who asked, which takes their email
+  address out of the records of the organisation (ADR 0105). An erasure
+  writes a small marker to the store of the files, with ids and no
+  email. After a restore of a dump that is older than an erasure,
+  `bin/restore` and `rescord-restore` erase the person again by
+  themselves. With Docker Compose, run
+  `docker compose run --rm rescord bin/reapply-erasures` after
+  `docker compose run --rm backup restore` (see "Restore" in
+  `docs/self-hosting.md`). Keep the dumps for a short time, 14 days by
+  default and not more than 90, so that erased data ages out of them.
 - Before you go back to an earlier version after this upgrade, withdraw
   each transfer that is "Sending" or "Not sent" on the page Transfers of
   its refuge. An earlier version does not know these two states.
@@ -277,6 +313,38 @@ release (ADR 0047).
   "email (former member)", and the work of a root user who is not a
   member says "Rescord operator". `members.csv` of the export has the
   former members too, with the new column `former?` (ADR 0105).
+- The erasure of a member on request (issue 31, ADR 0105). An erasure
+  makes the person "Former member N" on each record of the organisation,
+  removes them first if they are a member, deletes their conversations
+  with Ruby, their notifications and follows, and, unless the person who
+  erases keeps them, their comments, and renames their calendar feeds.
+  An expense younger than the money period of the organisation, 7 years
+  at first, keeps their email, encrypted, for the pages of the expenses,
+  and a job lets it go at the end. With no membership left, the account
+  goes too: its email, also in its history, its sessions, its devices and
+  each job that names the email. Each erasure starts from a request,
+  which is due one month after it arrived and keeps what was kept and
+  why, and the person gets an email that says so, unless they asked by
+  letter. A daily job deletes the closed requests after 3 years, and can
+  pseudonymise each former member after a number of months. The new
+  power "Work on the requests to erase data" is the role Administrator
+  at first, and only a root user erases a member who can change the
+  members. `bin/reapply-erasures` erases again after a restore. The page
+  Privacy of an organisation (`/o/<short name>/privacy`, linked from the
+  members page) lets a member ask for the erasure of their data and see
+  their requests, and lets a person with the power record a request that
+  came another way, erase, extend, refuse or withdraw it, and keep the
+  settings. The members page links each member who can be erased to it,
+  and the first page lists the requests that wait. `/root/privacy` lets
+  a root user keep what the notices say about the server, and erase a
+  whole account on request, which closes a request in each organisation
+  of the person.
+- Privacy notices (ADR 0105). `/privacy` is the notice of the server, and
+  `/privacy/<notice id>` the notice of an organisation, both public. The
+  notice id is random and only for that link, so the link names no
+  organisation, and a new one makes the old link stop working. A notice
+  says which blanks are missing until the operator and the organisation
+  fill them in.
 - Comments and notifications (issue 29, ADR 0106). A member writes a
   comment on a resident, a task, an expense, a transfer or a journal
   entry, with bold, italics, lists and links, and ticks the members to

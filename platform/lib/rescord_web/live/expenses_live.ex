@@ -42,7 +42,7 @@ defmodule RescordWeb.ExpensesLive do
        can_manage?: Expenses.role_can?(role, :expense, :approve),
        can_record?: Expenses.role_can?(role, :expense, :submit),
        figures: figures,
-       people: Accounts.labels(options),
+       people: Accounts.labels(options, held: true),
        categories: for(value <- categories, do: {to_string(value.label), value.id}),
        resident: nil,
        limits: %{},

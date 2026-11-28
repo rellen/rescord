@@ -56,7 +56,10 @@ config :rescord, Oban,
       # A transfer whose job is gone after the lifeline is `failed` (ADR 0100).
       {"41 * * * *", Rescord.Transfers.Workers.FailStoppedCopies},
       # The old notifications go, each night (issue 29, ADR 0106).
-      {"41 3 * * *", Rescord.Notifications.Workers.Prune}
+      {"41 3 * * *", Rescord.Notifications.Workers.Prune},
+      # The holds of the money records that ended, the old closed requests,
+      # and the pseudonymisation after the months of the settings (ADR 0105).
+      {"53 3 * * *", Rescord.Privacy.Workers.Daily}
     ]
   ]
 
@@ -178,7 +181,8 @@ config :rescord,
     Rescord.Reports,
     Rescord.Usage,
     Rescord.Comments,
-    Rescord.Notifications
+    Rescord.Notifications,
+    Rescord.Privacy
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,
@@ -197,7 +201,8 @@ config :rescord,
     Rescord.Reports.Grants,
     Rescord.Ruby.Grants,
     Rescord.Comments.Grants,
-    Rescord.Notifications.Grants
+    Rescord.Notifications.Grants,
+    Rescord.Privacy.Grants
   ]
 
 # Configure the endpoint

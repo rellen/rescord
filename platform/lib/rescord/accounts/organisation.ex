@@ -28,6 +28,9 @@ defmodule Rescord.Accounts.Organisation do
   postgres do
     table "organisations"
 
+    # Each organisation that is there gets a random id of its notice.
+    migration_defaults notice_id: "fragment(\"gen_random_uuid()\")"
+
     manage_tenant do
       template ["org_", :id]
     end
@@ -99,6 +102,19 @@ defmodule Rescord.Accounts.Organisation do
       accept [:paper_size]
     end
 
+    update :new_notice_id do
+      description "Gives the privacy notice of the organisation a new random id: the old link ends (ADR 0105)"
+      accept []
+      change set_attribute(:notice_id, &Ash.UUID.generate/0)
+    end
+
+    read :by_notice_id do
+      description "The organisation of a privacy notice, by the random id of its link"
+      argument :notice_id, :uuid, allow_nil?: false
+      get? true
+      filter expr(notice_id == ^arg(:notice_id))
+    end
+
     update :rename do
       accept [:name]
     end
@@ -129,6 +145,7 @@ defmodule Rescord.Accounts.Organisation do
              :set_currency,
              :set_tax_name,
              :set_paper_size,
+             :new_notice_id,
              :export
            ]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
@@ -208,6 +225,15 @@ defmodule Rescord.Accounts.Organisation do
       description "The paper of a report when the person chooses no other: A4 or US Letter (ADR 0093)"
     end
 
+    attribute :notice_id, :uuid do
+      allow_nil? false
+      default &Ash.UUID.generate/0
+      public? true
+      writable? false
+
+      description "The random id of the link of the privacy notice, made only for it and never the id of the organisation (ADR 0105)"
+    end
+
     attribute :transfer_parts, {:array, :atom} do
       allow_nil? false
       default []
@@ -220,6 +246,7 @@ defmodule Rescord.Accounts.Organisation do
 
   identities do
     identity :unique_short_name, [:short_name]
+    identity :unique_notice_id, [:notice_id]
   end
 
   @doc "The name of the schema of an organisation."

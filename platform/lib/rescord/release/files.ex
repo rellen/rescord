@@ -22,7 +22,7 @@ defmodule Rescord.Release.Files do
   alias Rescord.{Repo, Storage}
   alias Rescord.Storage.Compare
 
-  @domains [Rescord.Journal, Rescord.Photos, Rescord.Expenses, Rescord.Transfers]
+  @domains [Rescord.Journal, Rescord.Photos, Rescord.Expenses, Rescord.Transfers, Rescord.Privacy]
 
   @typedoc """
   Why the comparison could not be made: the store did not list its files,

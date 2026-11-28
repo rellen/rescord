@@ -90,32 +90,19 @@ defmodule Rescord.Comments do
   end
 
   @doc """
-  The people whom `comments` name, as their writer and as the members they
-  told, read as the actor: `%{user_id => {email, :member | :former}}`.
-
-  A member who left the organisation keeps their comments, and their name
-  on them, with the mark `:former`, as Rob chose (28 November 2026). The
-  comments are ones that the actor read, and each person that one names was
-  a member when it was written, so the address is no news to the actor. A
-  user who is gone from the server is not in the map: a page then says "a
-  former member" with no address. The erasure of a person on request is a
-  design of its own, which starts there.
+  The people whom `comments` can name, as their writer and as the members
+  they told, read as the actor: `%{user_id => {label, state}}`, from
+  `Rescord.Accounts.people/2` (ADR 0105). A member is their address, a
+  member who left keeps their comments and their name on them with
+  "(former member)", as Rob chose (28 November 2026), and a person erased
+  on request is "Former member N". A user who is in none of these is not in
+  the map: a page then says "a former member" with no address.
   """
-  @spec people([Comment.t()], keyword) :: %{Ecto.UUID.t() => {String.t(), :member | :former}}
-  def people(comments, opts) do
-    {:ok, members} = Rescord.Accounts.members([load: [:email]] ++ opts)
-    current = Map.new(members, &{&1.user_id, {to_string(&1.email), :member}})
-
-    named =
-      comments
-      |> Enum.flat_map(&[&1.author_id | &1.told_ids])
-      |> Enum.uniq()
-      |> Enum.reject(&Map.has_key?(current, &1))
-
-    named
-    |> Rescord.Accounts.emails_of_users()
-    |> Map.new(fn {id, email} -> {id, {email, :former}} end)
-    |> Map.merge(current)
+  @spec people([Comment.t()], keyword) :: %{Ecto.UUID.t() => {String.t(), atom}}
+  def people(_comments, opts) do
+    for {id, %{label: label, state: state}} <- Rescord.Accounts.people(opts),
+        into: %{},
+        do: {id, {label, state}}
   end
 
   @doc "Whether the actor follows the record."

@@ -45,6 +45,11 @@ defmodule RescordWeb.Router do
     # How Rescord is built, and how well each person can use it (ADR 0090).
     get "/colophon", PageController, :colophon
 
+    # The privacy notices, at a random id of each organisation, and of the
+    # server (ADR 0105).
+    get "/privacy", PrivacyNoticeController, :index
+    get "/privacy/:notice_id", PrivacyNoticeController, :show
+
     # The sign-in by a link in an email (ADR 0018).
     get "/sign-in", SignInController, :new
     post "/sign-in", SignInController, :create
@@ -95,6 +100,7 @@ defmodule RescordWeb.Router do
       live "/root/ruby/:id", RootRubyLive, :provider
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
+      live "/root/privacy", RootPrivacyLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
     end
@@ -106,6 +112,8 @@ defmodule RescordWeb.Router do
           [{RescordWeb.UserAuth, :require_organisation}, {RescordWeb.Inbox, :count}] do
       live "/o/:organisation", OrganisationLive
       live "/o/:organisation/members", MembersLive
+      live "/o/:organisation/privacy", PrivacyLive
+      live "/o/:organisation/privacy/:id", PrivacyRequestLive
       live "/o/:organisation/roles", RolesLive
       live "/o/:organisation/partners", PartnersLive
       live "/o/:organisation/transfers", TransfersLive

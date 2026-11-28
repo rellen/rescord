@@ -120,6 +120,8 @@ defmodule Rescord.Notifications.Notification do
     policy always() do
       # The comment was the decision: the listener makes the notifications.
       authorize_if signal_in(Rescord.Comments.Signals, :commented)
+      # The erasure of the person on request is the decision (ADR 0105).
+      authorize_if signal_in(Rescord.Accounts.Signals, :member_erased)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -181,6 +183,13 @@ defmodule Rescord.Notifications.Notification do
   # of the comment: the writer does not wait, and a fault makes no comment
   # fail. Oban tries again after a fault.
   signals_in do
+    # The notifications of a person erased on request go (ADR 0105).
+    from Rescord.Accounts.Signals do
+      on :member_erased, :forget_of_erased_member,
+        action: :forget,
+        get_by: [user_id: :user_id]
+    end
+
     from Rescord.Comments.Signals do
       on :commented, :notify_of_comment,
         delivery: {AshOban.Signals, queue: :default, max_attempts: 5}

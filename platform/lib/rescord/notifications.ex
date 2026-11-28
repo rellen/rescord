@@ -329,6 +329,24 @@ defmodule Rescord.Notifications do
     with {:ok, settings} <- row(opts), do: set_ntfy_token(settings, token, opts)
   end
 
+  @doc """
+  Takes away each device and the topic of ntfy of the user `user_id`: an
+  erasure of the account runs it (ADR 0105). It runs with no policy, after
+  the check of the erasure.
+  """
+  @spec forget_user(Ecto.UUID.t()) :: :ok
+  def forget_user(user_id) do
+    for resource <- [PushSubscription, NtfyTopic] do
+      action = if resource == PushSubscription, do: :forget, else: :stop
+
+      resource
+      |> Ash.Query.filter(user_id == ^user_id)
+      |> Ash.bulk_destroy!(action, %{}, authorize?: false, strategy: [:atomic, :stream])
+    end
+
+    :ok
+  end
+
   @doc "The number of devices of each person of the server, for a root user."
   @spec device_count() :: non_neg_integer
   def device_count, do: Ash.count!(PushSubscription, authorize?: false)

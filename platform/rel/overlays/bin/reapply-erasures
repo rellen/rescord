@@ -1,0 +1,23 @@
+#!/bin/sh
+# Erases again each person whom a marker of the store names and whom the
+# database does not show as erased (ADR 0105): after the restore of a dump
+# that is older than an erasure on request. bin/restore runs it by itself;
+# Docker Compose runs it after `docker compose run --rm backup restore`:
+#
+#   docker compose run --rm rescord bin/reapply-erasures
+#
+# It prints a count, and no name. A second run changes nothing. It exits
+# with 1 when it could not read the markers of the store.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  echo "bin/reapply-erasures takes no argument." >&2
+  exit 2
+fi
+
+cd -P -- "$(dirname -- "$0")"
+exec ./rescord eval '
+  case Rescord.Release.reapply_erasures() do
+    :ok -> :ok
+    :error -> System.halt(1)
+  end'

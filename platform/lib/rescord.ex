@@ -28,6 +28,8 @@ defmodule Rescord do
       Mailer,
       Metrics,
       RateLimit,
+      # An erasure on request redacts old versions (ADR 0105).
+      Redaction,
       Repo,
       Resource,
       Resource.Checks,

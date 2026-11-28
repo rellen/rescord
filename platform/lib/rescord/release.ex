@@ -39,6 +39,11 @@ defmodule Rescord.Release do
   `rotate_vault/0` encrypts again, with the secret of today, what the
   previous secret of the server encrypted (ADR 0068). `bin/rotate-vault`
   runs it.
+
+  `reapply_erasures/0` erases again each person whom a marker of the store
+  names and whom the database does not show as erased: after the restore
+  of a dump from before an erasure (ADR 0105). `bin/restore` runs it, and
+  `bin/reapply-erasures` runs it alone.
   """
 
   use Boundary,
@@ -50,6 +55,7 @@ defmodule Rescord.Release do
       Rescord.Journal,
       Rescord.Mail,
       Rescord.Photos,
+      Rescord.Privacy,
       Rescord.Ruby,
       Rescord.Transfers,
       Rescord.Usage,
@@ -239,6 +245,40 @@ defmodule Rescord.Release do
 
       {:error, fault} ->
         IO.puts(Compare.format_fault(fault, store))
+        :error
+    end
+  end
+
+  @doc """
+  Erases again each person whom a marker in the store names, and whom the
+  database does not show as erased (`Rescord.Privacy.reapply_erasures/0`,
+  ADR 0105). After the restore of a dump that is older than an erasure,
+  this takes the person out again before anybody uses the server. It
+  prints a count, and no name. A second run changes nothing.
+
+  A dump of an older version has an older schema, so it runs the
+  migrations first, as the start of Rescord would (`migrate/1`).
+  """
+  @spec reapply_erasures() :: :ok | :error
+  def reapply_erasures do
+    with :ok <- migrate() do
+      {:ok, _apps} = Application.ensure_all_started(:req)
+      start_repo()
+      reapply()
+    end
+  end
+
+  defp reapply do
+    case Rescord.Privacy.reapply_erasures() do
+      {:ok, count} ->
+        IO.puts("Erased again after the restore: #{count} people.")
+        :ok
+
+      {:error, reason} ->
+        IO.puts(
+          "The markers of the erasures could not be read: #{Rescord.Storage.reason_words(reason)}"
+        )
+
         :error
     end
   end

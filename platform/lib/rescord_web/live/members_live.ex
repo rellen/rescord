@@ -30,6 +30,7 @@ defmodule RescordWeb.MembersLive do
      socket
      |> assign(page_title: "Members", problems: [])
      |> assign(can_invite?: Accounts.role_can?(role, :invite_member))
+     |> assign(can_erase?: Rescord.Privacy.role_can?(role, :record))
      |> assign(roles: for(r <- roles, givable?(role, r), do: {to_string(r.name), r.id}))
      |> assign(all_roles: for(r <- roles, do: {to_string(r.name), r.id}))
      |> assign(member_role_id: Enum.find_value(roles, &(&1.key == :member && &1.id)))
@@ -155,6 +156,9 @@ defmodule RescordWeb.MembersLive do
           <.link navigate={~p"/o/#{@organisation.short_name}/roles"} data-variant="secondary">
             <.icon name="key" /> The roles
           </.link>
+          <.link navigate={~p"/o/#{@organisation.short_name}/privacy"} data-variant="secondary">
+            <.icon name={Icons.section(:privacy)} /> Privacy
+          </.link>
         </:actions>
       </.header>
 
@@ -167,11 +171,17 @@ defmodule RescordWeb.MembersLive do
         roles={@roles}
         all_roles={@all_roles}
         url_state={@url_state}
+        can_erase?={@can_erase?}
       />
 
       <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />
 
-      <.former_members former={@former} organisation={@organisation} can_invite?={@can_invite?} />
+      <.former_members
+        former={@former}
+        organisation={@organisation}
+        can_invite?={@can_invite?}
+        can_erase?={@can_erase?}
+      />
     </Layouts.app>
     """
   end

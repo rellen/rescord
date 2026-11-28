@@ -95,6 +95,8 @@ defmodule RescordWeb.Icons do
     "link" =>
       ~S|<path d="M10 14a4 4 0 0 0 5.66 0l3-3A4 4 0 0 0 13 5.34l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3A4 4 0 0 0 11 18.66l1-1"/>|,
     "list-bullet" => ~S|<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>|,
+    "lock" =>
+      ~S|<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5v-3a4 4 0 0 1 8 0v3M12 14.5v2.5"/>|,
     "magnifying-glass" => ~S|<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/>|,
     "map-pin" =>
       ~S|<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/>|,
@@ -234,6 +236,7 @@ defmodule RescordWeb.Icons do
   def section(:usage), do: "chart-bar"
   def section(:export), do: "arrow-down-tray"
   def section(:root), do: "shield"
+  def section(:privacy), do: "lock"
   def section(:notifications), do: "bell"
   def section(:journal), do: "book-open"
   def section(:measurements), do: "chart-line"

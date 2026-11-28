@@ -337,7 +337,14 @@ defmodule RescordWeb.AttentionPagesTest do
   end
 
   test "has words for each part and for each fault of the stock" do
-    assert AttentionComponents.parts() == [:tasks, :inventory, :residents, :housing, :transfers]
+    assert AttentionComponents.parts() == [
+             :tasks,
+             :inventory,
+             :residents,
+             :housing,
+             :transfers,
+             :privacy
+           ]
 
     for fault <- InventoryWords.faults() do
       assert {words, kind} = InventoryWords.fault(fault)
