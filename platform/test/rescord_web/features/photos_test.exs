@@ -69,7 +69,7 @@ defmodule RescordWeb.Features.PhotosTest do
 
     session
     |> click_button("Make it the profile picture")
-    |> assert_has("#photos [data-state=info]", text: "Profile picture")
+    |> assert_has("#photos figcaption > strong", text: "Profile picture")
     |> assert_connected()
     |> assert_drawn("#profile-photo img")
     # The page of the resident shows the picture too. Its title is the name

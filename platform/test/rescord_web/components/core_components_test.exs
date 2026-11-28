@@ -6,6 +6,7 @@ defmodule RescordWeb.CoreComponentsTest do
   import Phoenix.Component
   import Phoenix.LiveViewTest
   import RescordWeb.CoreComponents
+  import RescordWeb.Icons, only: [icon: 1]
 
   defp parse(html), do: LazyHTML.from_fragment(html)
 

@@ -25,7 +25,8 @@ defmodule RescordWeb.PageControllerTest do
     # The button names the menu, and the menu is a popover (ADR 0061).
     assert doc |> LazyHTML.query(~s(nav > button[popovertarget="site-menu"])) |> Enum.count() == 1
     assert doc |> LazyHTML.query("nav > #site-menu[popover]") |> Enum.count() == 1
-    assert doc |> LazyHTML.query("#site-menu span") |> LazyHTML.text() == to_string(user.email)
+    assert doc |> LazyHTML.query("#site-menu span") |> LazyHTML.text() |> String.trim() ==
+             to_string(user.email)
     assert doc |> LazyHTML.query(~s(#site-menu a[href="/sign-out"])) |> Enum.count() == 1
     # The page is in no part of an organisation, so the menu marks none.
     assert doc |> LazyHTML.query("#site-menu [aria-current]") |> Enum.count() == 0

@@ -236,8 +236,12 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `assets/css/app.css`, which only states the order of the layers and
     imports them. A new component is a section of `components.css`; add a
     layer only for a new role.
-  - Icons are our own inline SVGs in `CoreComponents.icon/1`, always
-    `aria-hidden`. There is no icon library.
+  - Icons are our own inline SVGs in `RescordWeb.Icons`, always
+    `aria-hidden`, drawn on a grid of 24 with one round line of 2 units
+    (ADR 0102). There is no icon library. An icon is never alone: words
+    beside it say what it means. One place of the site has one shape
+    (`Icons.section/1`), and one shape has one meaning. No icon on a
+    "Save", on Cancel, or on the button of a form whose `summary` has it.
   - The icon of a tab is the mark of the site bar, drawn again in
     `priv/static/images/favicon.svg` (ADR 0058). After a change to it, run
     `scripts/favicons.sh` from the root of the repository, which writes

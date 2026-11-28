@@ -452,7 +452,7 @@ defmodule RescordWeb.JournalLive do
         )}</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:journal)}>
         Journal of {name(@resident)}
         <:subtitle>{subtitle(@episode)}, the newest first</:subtitle>
         <:actions>
@@ -460,7 +460,7 @@ defmodule RescordWeb.JournalLive do
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/timeline"}
             data-variant="secondary"
           >
-            Timeline
+            <.icon name="timeline" /> Timeline
           </.link>
         </:actions>
       </.header>

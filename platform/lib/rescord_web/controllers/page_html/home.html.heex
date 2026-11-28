@@ -12,7 +12,9 @@
     </p>
     <ul :if={@organisations != []} data-links>
       <li :for={organisation <- @organisations}>
-        <a href={~p"/o/#{organisation.short_name}"}>{organisation.name}</a>
+        <a href={~p"/o/#{organisation.short_name}"}>
+          <.icon name={Icons.section(:home)} /> {organisation.name}
+        </a>
       </li>
     </ul>
   </section>

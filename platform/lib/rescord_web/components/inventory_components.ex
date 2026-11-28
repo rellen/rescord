@@ -48,7 +48,7 @@ defmodule RescordWeb.InventoryComponents do
           navigate={~p"/o/#{@organisation.short_name}/tools/dose?#{[item: @item.id]}"}
           data-variant="secondary"
         >
-          Calculate a dose with this strength
+          <.icon name="calculator" /> Calculate a dose with this strength
         </.link>
       </p>
 
@@ -201,7 +201,7 @@ defmodule RescordWeb.InventoryComponents do
   def receive_form(assigns) do
     ~H"""
     <details id="receive">
-      <summary>Stock came in</summary>
+      <summary><.icon name={Icons.movement(:received)} /> Stock came in</summary>
       <.problems :if={@refused == :receive} list={@problems} />
       <.form for={@form} id="receive-form" phx-submit="receive">
         <.input
@@ -265,7 +265,7 @@ defmodule RescordWeb.InventoryComponents do
   def use_form(assigns) do
     ~H"""
     <details id="use">
-      <summary>Stock was used</summary>
+      <summary><.icon name={Icons.movement(:used)} /> Stock was used</summary>
       <.problems :if={@refused == :use} list={@problems} />
       <.form for={@form} id="use-form" phx-submit="use">
         <.input
@@ -301,7 +301,7 @@ defmodule RescordWeb.InventoryComponents do
   def move_form(assigns) do
     ~H"""
     <details id="move">
-      <summary>Stock moved to another place</summary>
+      <summary><.icon name={Icons.movement(:moved)} /> Stock moved to another place</summary>
       <.problems :if={@refused == :move} list={@problems} />
       <.form for={@form} id="move-form" phx-submit="move">
         <.input
@@ -343,7 +343,7 @@ defmodule RescordWeb.InventoryComponents do
   def discard_form(assigns) do
     ~H"""
     <details id="discard">
-      <summary>Stock was thrown out</summary>
+      <summary><.icon name={Icons.movement(:discarded)} /> Stock was thrown out</summary>
       <.problems :if={@refused == :discard} list={@problems} />
       <.form for={@form} id="discard-form" phx-submit="discard">
         <.input
@@ -379,7 +379,7 @@ defmodule RescordWeb.InventoryComponents do
   def count_form(assigns) do
     ~H"""
     <details :if={@lots != []} id="count">
-      <summary>I counted the stock</summary>
+      <summary><.icon name={Icons.movement(:counted)} /> I counted the stock</summary>
       <.problems :if={@refused == :count} list={@problems} />
       <p>
         Give the number that is there. Rescord records the difference from its own number.
@@ -449,7 +449,9 @@ defmodule RescordWeb.InventoryComponents do
           label="What"
           filter={[type: :select, prompt: "Any kind", options: InventoryWords.movement_options()]}
         >
-          <span data-label="What">{InventoryWords.movement(movement)}</span>
+          <span data-label="What">
+            <.icon name={Icons.movement(movement.kind)} /> {InventoryWords.movement(movement)}
+          </span>
         </:col>
         <:col :let={movement} field="quantity" label="Change">
           <span data-label="Change">{InventoryWords.change(movement.quantity)}</span>
@@ -533,7 +535,7 @@ defmodule RescordWeb.InventoryComponents do
   def item_form(assigns) do
     ~H"""
     <details id="edit-item">
-      <summary>Change the item</summary>
+      <summary><.icon name="pencil" /> Change the item</summary>
       <.problems :if={@refused == :item} list={@problems} />
       <.form for={@form} id="item-form" phx-submit="revise">
         <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
@@ -578,7 +580,7 @@ defmodule RescordWeb.InventoryComponents do
   def reorder_form(assigns) do
     ~H"""
     <details id="reorder">
-      <summary>Reorder levels in a location ({length(@wanted)})</summary>
+      <summary><.icon name="flag" /> Reorder levels in a location ({length(@wanted)})</summary>
       <.problems :if={@refused == :reorder} list={@problems} />
       <ul :if={@wanted != []} id="wanted">
         <li :for={level <- @wanted}>
@@ -614,7 +616,7 @@ defmodule RescordWeb.InventoryComponents do
   def remove_item(assigns) do
     ~H"""
     <details id="remove-item">
-      <summary>Remove the item</summary>
+      <summary><.icon name="trash" /> Remove the item</summary>
       <p>
         The item leaves the inventory. Its lots and what happened to its stock stay in the
         history.
@@ -762,7 +764,7 @@ defmodule RescordWeb.InventoryComponents do
   def new_item(assigns) do
     ~H"""
     <details id="new-item">
-      <summary>New item</summary>
+      <summary><.icon name="plus" /> New item</summary>
       <.form for={@form} id="item" phx-submit="add">
         <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
         <.input
@@ -848,7 +850,7 @@ defmodule RescordWeb.InventoryComponents do
   def supplier_form(assigns) do
     ~H"""
     <details id={"change-details-#{@supplier.id}"}>
-      <summary>Change</summary>
+      <summary><.icon name="pencil" /> Change</summary>
       <form id={"change-#{@supplier.id}"} phx-submit="revise">
         <input type="hidden" name="supplier_id" value={@supplier.id} />
         <.input
@@ -888,7 +890,7 @@ defmodule RescordWeb.InventoryComponents do
   def remove_supplier(assigns) do
     ~H"""
     <details id={"remove-details-#{@supplier.id}"}>
-      <summary>Remove</summary>
+      <summary><.icon name="trash" /> Remove</summary>
       <form id={"remove-#{@supplier.id}"} phx-submit="remove">
         <input type="hidden" name="supplier_id" value={@supplier.id} />
         <p>The lots that name this supplier keep their history.</p>
@@ -950,7 +952,7 @@ defmodule RescordWeb.InventoryComponents do
   def new_supplier(assigns) do
     ~H"""
     <details id="new-supplier">
-      <summary>New supplier</summary>
+      <summary><.icon name="plus" /> New supplier</summary>
       <.form for={@form} id="supplier" phx-submit="add">
         <.input field={@form[:name]} type="text" label="Name" maxlength="120" required />
         <.input

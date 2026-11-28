@@ -71,7 +71,8 @@ defmodule RescordWeb.AttentionComponents do
         aria-labelledby={"attention-#{part.part}-heading"}
       >
         <h3 id={"attention-#{part.part}-heading"}>
-          {title(part.part)} <small>{part.total}</small>
+          <.icon name={RescordWeb.Icons.section(part.part)} /> {title(part.part)}
+          <small>{part.total}</small>
         </h3>
         <ul data-attention>
           <.row
@@ -87,7 +88,9 @@ defmodule RescordWeb.AttentionComponents do
           <span :if={part.total > length(part.rows)}>
             These are the first {length(part.rows)} of {part.total}.
           </span>
-          <.link navigate={part_path(@organisation, part.part)}>{link_words(part.part)}</.link>
+          <.link navigate={part_path(@organisation, part.part)}>
+            {link_words(part.part)} <.icon name="chevron-right" />
+          </.link>
         </p>
       </section>
     </section>

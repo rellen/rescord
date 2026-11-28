@@ -32,7 +32,7 @@ defmodule RescordWeb.RubyComponents do
         </ol>
         <p>
           <.button navigate={~p"/root/ruby/new"} variant="primary">
-            Add a provider
+            <.icon name="plus" /> Add a provider
           </.button>
         </p>
       </div>
@@ -571,7 +571,7 @@ defmodule RescordWeb.RubyComponents do
     <section aria-labelledby="remove-heading">
       <h2 id="remove-heading">Remove</h2>
       <details id="provider-remove">
-        <summary>Remove this provider</summary>
+        <summary><.icon name="trash" /> Remove this provider</summary>
         <p>
           Ruby stops for each organisation that uses this provider. Rescord deletes the key.
           Rescord cannot revoke the key: do that at the service.

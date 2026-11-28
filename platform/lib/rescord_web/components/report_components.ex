@@ -93,13 +93,13 @@ defmodule RescordWeb.ReportComponents do
         <.input id="record-photos" name="photos" type="checkbox" label="With its photos" />
         <.paper_control id="record-paper" value={@organisation.paper_size} />
         <footer>
-          <button type="submit">Make the record (PDF)</button>
+          <button type="submit"><.icon name="document-text" /> Make the record (PDF)</button>
           <button
             id="cage-card"
             type="submit"
             formaction={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/card.pdf"}
           >
-            Make the cage card (PDF)
+            <.icon name="printer" /> Make the cage card (PDF)
           </button>
         </footer>
       </form>
@@ -110,11 +110,14 @@ defmodule RescordWeb.ReportComponents do
   @doc "A link to a report, for the actions of a header: `href` is a path of `RescordWeb.ReportController`."
   attr :href, :string, required: true
   attr :id, :string, default: nil
+  attr :icon, :string, default: "document-chart", doc: "the shape before the words"
   slot :inner_block, required: true
 
   def report_link(assigns) do
     ~H"""
-    <a id={@id} href={@href} data-variant="secondary">{render_slot(@inner_block)}</a>
+    <a id={@id} href={@href} data-variant="secondary">
+      <.icon name={@icon} /> {render_slot(@inner_block)}
+    </a>
     """
   end
 end

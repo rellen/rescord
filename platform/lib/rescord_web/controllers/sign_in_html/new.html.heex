@@ -1,5 +1,5 @@
 <Layouts.app flash={@flash} current_user={@current_user}>
-  <.header>
+  <.header icon="door-in">
     Sign in
     <:subtitle>Type your email address, and Rescord sends you a link to sign in.</:subtitle>
   </.header>
@@ -17,7 +17,7 @@
         autocomplete="email"
       />
       <footer>
-        <.button type="submit">Send me a link</.button>
+        <.button type="submit"><.icon name="envelope" /> Send me a link</.button>
       </footer>
     </form>
   </section>

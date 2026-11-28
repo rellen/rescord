@@ -50,7 +50,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={partnership.id}
                   aria-label={"Accept #{Transfers.other(partnership, @organisation).name} as a partner"}
                 >
-                  Accept
+                  <.icon name="check" /> Accept
                 </.button>
                 <.button
                   :if={
@@ -61,7 +61,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={partnership.id}
                   aria-label={"Decline #{Transfers.other(partnership, @organisation).name} as a partner"}
                 >
-                  Decline
+                  <.icon name="x-circle" /> Decline
                 </.button>
                 <.button
                   :if={@can_end? and partnership.state in [:asked, :accepted]}
@@ -69,7 +69,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={partnership.id}
                   aria-label={"End the partnership with #{Transfers.other(partnership, @organisation).name}"}
                 >
-                  End
+                  <.icon name="no-symbol" /> End
                 </.button>
               </td>
             </tr>
@@ -140,7 +140,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={partner.id}
                   aria-label={"End the partnership with #{partner.name}"}
                 >
-                  End
+                  <.icon name="no-symbol" /> End
                 </.button>
               </td>
             </tr>
@@ -245,7 +245,9 @@ defmodule RescordWeb.TransferComponents do
           value=""
           maxlength="2000"
         />
-        <footer><.button type="submit">Write the transfer file</.button></footer>
+        <footer>
+          <.button type="submit"><.icon name="arrow-down-tray" /> Write the transfer file</.button>
+        </footer>
       </.form>
     </section>
     """
@@ -270,7 +272,9 @@ defmodule RescordWeb.TransferComponents do
           {entry.client_name}
           <span :for={error <- upload_errors(@upload, entry)} role="alert">{import_words(error)}</span>
         </p>
-        <footer><.button type="submit">Import the file</.button></footer>
+        <footer>
+          <.button type="submit"><.icon name="arrow-up-tray" /> Import the file</.button>
+        </footer>
       </form>
     </section>
     """
@@ -356,7 +360,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={transfer.id}
                   aria-label={"Accept the transfer of #{transfer.resident_name}"}
                 >
-                  Accept
+                  <.icon name="check" /> Accept
                 </.button>
                 <.button
                   :if={@can_answer? and transfer.state == :sent}
@@ -364,7 +368,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={transfer.id}
                   aria-label={"Decline the transfer of #{transfer.resident_name}"}
                 >
-                  Decline
+                  <.icon name="x-circle" /> Decline
                 </.button>
                 <.button
                   :if={
@@ -383,7 +387,7 @@ defmodule RescordWeb.TransferComponents do
                   phx-value-id={transfer.id}
                   aria-label={"Withdraw the transfer of #{transfer.resident_name}"}
                 >
-                  Withdraw
+                  <.icon name="arrow-uturn-left" /> Withdraw
                 </.button>
               </td>
             </tr>
@@ -627,7 +631,10 @@ defmodule RescordWeb.TransferComponents do
       <p :if={@entries == []}>The copy has no such entry.</p>
       <article :for={entry <- @entries}>
         <header>
-          <strong>{TransferWords.value(entry["kind"])}</strong>
+          <strong>
+            <.icon :if={Icons.entry_kind(entry["kind"])} name={Icons.entry_kind(entry["kind"])} />
+            {TransferWords.value(entry["kind"])}
+          </strong>
           <small>{TransferWords.time(entry["at"], @zone)}</small>
         </header>
         <p :if={entry["about"]} data-about>About {entry["about"]}</p>
@@ -697,7 +704,7 @@ defmodule RescordWeb.TransferComponents do
             <figcaption>
               <span :if={card.caption}>{card.caption}</span>
               <small :if={card.date}><time datetime={card.taken_on}>{card.date}</time></small>
-              <.state :if={card.profile?} kind="info">Profile picture</.state>
+              <strong :if={card.profile?}><.icon name="star" /> Profile picture</strong>
               <small :if={card.albums != ""}>In {card.albums}</small>
             </figcaption>
           </figure>

@@ -122,7 +122,7 @@ defmodule RescordWeb.ConditionsLive do
         <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:conditions)}>
         Conditions
         <:subtitle>What the residents of {@organisation.name} have, and what they had</:subtitle>
       </.header>

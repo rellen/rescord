@@ -63,7 +63,7 @@ defmodule RescordWeb.CatalogueControllerTest do
   end
 
   test "each icon is in the catalogue" do
-    %{attrs: attrs} = RescordWeb.CoreComponents.__components__()[:icon]
+    %{attrs: attrs} = RescordWeb.Icons.__components__()[:icon]
     names = Enum.find(attrs, &(&1.name == :name)).opts[:values]
 
     icons = Enum.find(CatalogueHTML.examples(), &(&1.title == "Icons")).source

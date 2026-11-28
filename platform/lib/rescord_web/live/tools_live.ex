@@ -34,7 +34,7 @@ defmodule RescordWeb.ToolsLive do
       organisation={@organisation}
       section={:tools}
     >
-      <.header>
+      <.header icon={Icons.section(:tools)}>
         Tools
         <:subtitle>Aids for the work at {@organisation.name}. A tool stores nothing.</:subtitle>
       </.header>

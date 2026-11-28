@@ -143,12 +143,12 @@ defmodule RescordWeb.PartnersLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} organisation={@organisation}>
-      <.header>
+      <.header icon={Icons.section(:partners)}>
         Partner refuges
         <:subtitle>The refuges that {@organisation.name} transfers residents with</:subtitle>
         <:actions>
           <.link navigate={~p"/o/#{@organisation.short_name}/transfers"} data-variant="secondary">
-            The transfers
+            <.icon name="arrows-right-left" /> The transfers
           </.link>
         </:actions>
       </.header>

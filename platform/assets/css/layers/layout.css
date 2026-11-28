@@ -102,10 +102,12 @@ header > nav ul + ul {
   border-block-start: 1px solid var(--border);
 }
 
-/* A link of the site nav is a row that a finger presses. */
+/* A link of the site nav is a row that a finger presses, with the icon of
+   its part before the words. */
 header > nav > a:not(:first-child),
 header > nav ul a {
   display: flex;
+  gap: 0.5rem;
   align-items: center;
   min-block-size: var(--tap);
   padding: 0.25rem 0.75rem;
@@ -321,6 +323,11 @@ main > header {
 /* The title is never wider than the page: a long word in it breaks. */
 main > header > hgroup {
   min-inline-size: 0;
+}
+
+/* The shape of the part of the site, before the words of the title. */
+hgroup > h1 > svg {
+  color: var(--accent);
 }
 
 hgroup > :is(h1, h2, h3) {

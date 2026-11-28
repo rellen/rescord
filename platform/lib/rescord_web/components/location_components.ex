@@ -17,7 +17,7 @@ defmodule RescordWeb.LocationComponents do
   def new_location(assigns) do
     ~H"""
     <details id="new-location">
-      <summary>New location</summary>
+      <summary><.icon name="plus" /> New location</summary>
       <.form for={@form} id="location" phx-submit="add">
         <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
         <.input
@@ -106,7 +106,7 @@ defmodule RescordWeb.LocationComponents do
   def placement_form(assigns) do
     ~H"""
     <details id="put-here">
-      <summary>Put a resident or a group here</summary>
+      <summary><.icon name="plus" /> Put a resident or a group here</summary>
       <.form for={@place_form} id="placement" phx-submit="place">
         <.input
           field={@place_form[:resident_id]}
@@ -148,19 +148,22 @@ defmodule RescordWeb.LocationComponents do
       <p :if={@node.residents == [] and @node.groups == []}>Nobody has a placement here.</p>
       <ul :if={@node.residents != [] or @node.groups != []}>
         <li :for={placement <- @node.residents}>
-          <.link navigate={resident_path(@organisation, placement.resident_id)}>{placement.resident.name ||
-            "No name yet"}</.link>
+          <.link navigate={resident_path(@organisation, placement.resident_id)}>
+            <.icon name={Icons.section(:residents)} /> {placement.resident.name || "No name yet"}
+          </.link>
           <.button
             :if={can?(@role, :placement, :finish)}
             phx-click="finish"
             phx-value-id={placement.id}
             aria-label={"End the placement of #{placement.resident.name || "the resident with no name"}"}
           >
-            End the placement
+            <.icon name="no-symbol" /> End the placement
           </.button>
         </li>
         <li :for={{placement, group, members} <- @node.groups}>
-          <.link navigate={group_path(@organisation, group.id)}>{Residents.group_name(group)}</.link>
+          <.link navigate={group_path(@organisation, group.id)}>
+            <.icon name={Icons.section(:groups)} /> {Residents.group_name(group)}
+          </.link>
           <span>
             ({length(members)} of {length(group.members)} members here)
           </span>
@@ -170,7 +173,7 @@ defmodule RescordWeb.LocationComponents do
             phx-value-id={placement.id}
             aria-label={"End the placement of #{Residents.group_name(group)}"}
           >
-            End the placement
+            <.icon name="no-symbol" /> End the placement
           </.button>
         </li>
       </ul>
@@ -212,7 +215,7 @@ defmodule RescordWeb.LocationComponents do
   def location_form(assigns) do
     ~H"""
     <details id="change-location">
-      <summary>Change the location</summary>
+      <summary><.icon name="pencil" /> Change the location</summary>
       <.form for={@form} id="location" phx-submit="revise">
         <.input field={@form[:name]} type="text" label="Name" maxlength="80" required />
         <.input
@@ -261,7 +264,7 @@ defmodule RescordWeb.LocationComponents do
   def close_location(assigns) do
     ~H"""
     <details id="close-location">
-      <summary>Close this location</summary>
+      <summary><.icon name="no-symbol" /> Close this location</summary>
       <p>Close a location that the organisation uses no more. Its history stays.</p>
       <.button phx-click="close">Close the location</.button>
     </details>

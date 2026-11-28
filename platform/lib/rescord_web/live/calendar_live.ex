@@ -148,7 +148,7 @@ defmodule RescordWeb.CalendarLive do
       organisation={@organisation}
       section={:tasks}
     >
-      <.header>
+      <.header icon={Icons.section(:calendar)}>
         Calendar feeds
         <:subtitle>
           The tasks and the dates of {@organisation.name}, in your calendar app.

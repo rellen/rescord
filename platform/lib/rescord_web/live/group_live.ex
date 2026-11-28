@@ -172,7 +172,7 @@ defmodule RescordWeb.GroupLive do
             navigate={~p"/o/#{@organisation.short_name}/groups/#{@group.id}/measurements"}
             data-variant="secondary"
           >
-            Measurements
+            <.icon name="chart-line" /> Measurements
           </.link>
         </:actions>
       </.header>

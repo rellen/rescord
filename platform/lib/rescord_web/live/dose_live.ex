@@ -380,7 +380,7 @@ defmodule RescordWeb.DoseLive do
         <.link navigate={~p"/o/#{@organisation.short_name}/tools"}>Tools</.link>
       </nav>
 
-      <.header>
+      <.header icon={Icons.section(:dose)}>
         Dose calculator
         <:subtitle>A body weight times a dose rate, with each step of the arithmetic.</:subtitle>
       </.header>

@@ -337,7 +337,7 @@ defmodule RescordWeb.ItemLive do
         </:subtitle>
         <:actions>
           <.link navigate={~p"/o/#{@organisation.short_name}/inventory"} data-variant="secondary">
-            The inventory
+            <.icon name="archive-box" /> The inventory
           </.link>
         </:actions>
       </.header>

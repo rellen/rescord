@@ -57,7 +57,8 @@ defmodule RescordWeb.AccountComponents do
             options={@roles}
             value={member.role_id}
           />
-          <.button type="submit" aria-label={"Give the role to #{member.email}"}>Give the role</.button>
+          <.button type="submit" aria-label={"Give the role to #{member.email}"}><.icon name="key" />
+          Give the role</.button>
         </form>
         <.button
           :if={Accounts.role_can?(@role, :remove, member, @organisation)}
@@ -65,7 +66,7 @@ defmodule RescordWeb.AccountComponents do
           phx-value-id={member.id}
           aria-label={"Remove #{member.email} from #{@organisation.name}"}
         >
-          Remove
+          <.icon name="user-minus" /> Remove
         </.button>
       </:col>
     </Cinder.collection>
@@ -83,7 +84,7 @@ defmodule RescordWeb.AccountComponents do
   def invite_form(assigns) do
     ~H"""
     <section aria-labelledby="invite-heading">
-      <h2 id="invite-heading">Invite a person</h2>
+      <h2 id="invite-heading"><.icon name="user-plus" /> Invite a person</h2>
       <.form for={@invite_form} id="invite" phx-submit="invite">
         <.input field={@invite_form[:email]} type="email" label="Email address" required />
         <.input
@@ -94,7 +95,7 @@ defmodule RescordWeb.AccountComponents do
           options={@roles}
         />
         <footer>
-          <.button type="submit">Send the invitation</.button>
+          <.button type="submit"><.icon name="envelope" /> Send the invitation</.button>
         </footer>
       </.form>
     </section>
@@ -161,7 +162,7 @@ defmodule RescordWeb.AccountComponents do
           required
         />
         <footer>
-          <.button type="submit">Create the organisation</.button>
+          <.button type="submit"><.icon name="plus" /> Create the organisation</.button>
         </footer>
       </.form>
     </section>
@@ -213,7 +214,7 @@ defmodule RescordWeb.AccountComponents do
   def time_zone_setting(assigns) do
     ~H"""
     <section aria-labelledby="time-zone-heading">
-      <h2 id="time-zone-heading">Time zone</h2>
+      <h2 id="time-zone-heading"><.icon name="globe" /> Time zone</h2>
       <.list>
         <:item title="Time zone">{@organisation.time_zone}</:item>
         <:item title="Today here">{ResidentWords.date(@today)}</:item>
@@ -252,7 +253,7 @@ defmodule RescordWeb.AccountComponents do
   def locale_setting(assigns) do
     ~H"""
     <section aria-labelledby="locale-heading">
-      <h2 id="locale-heading">Language and region</h2>
+      <h2 id="locale-heading"><.icon name="globe" /> Language and region</h2>
       <.list>
         <:item title="Language and region">{Accounts.locale_name(@organisation.locale)}</:item>
         <:item title="A date">{RescordWeb.Locale.date(~D[2026-11-16])}</:item>

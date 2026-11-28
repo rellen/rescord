@@ -70,14 +70,14 @@ defmodule RescordWeb.TimelineLive do
       organisation={@organisation}
       section={:residents}
     >
-      <.header>
+      <.header icon={Icons.section(:timeline)}>
         Timeline of {name(@resident)}
         <:subtitle>
           The journal entries and the changes that Rescord recorded, the newest first
         </:subtitle>
         <:actions>
           <.link navigate={resident_path(@organisation, @resident)} data-variant="secondary">
-            The resident
+            <.icon name="chevron-left" /> The resident
           </.link>
           <.link
             navigate={resident_path(@organisation, @resident) <> "/journal"}

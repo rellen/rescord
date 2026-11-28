@@ -287,7 +287,7 @@ defmodule RescordWeb.RoutinesLive do
       organisation={@organisation}
       section={:tasks}
     >
-      <.header>
+      <.header icon={Icons.section(:routines)}>
         Routines
         <:subtitle>
           The tasks that repeat. Rescord makes the tasks of a routine {TaskWords.days(@days_ahead)} ahead.

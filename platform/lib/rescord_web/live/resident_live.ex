@@ -318,7 +318,9 @@ defmodule RescordWeb.ResidentLive do
       <.header>
         {@resident.name || "A resident with no name"}
         <:subtitle>
-          {@resident.species.label} · {ResidentWords.sex(@resident.sex)} ·
+          {@resident.species.label} ·
+          <.icon :if={Icons.sex(@resident.sex)} name={Icons.sex(@resident.sex)} />
+          {ResidentWords.sex(@resident.sex)} ·
           <.state kind={ResidentWords.status_kind(@resident.status)}>
             {ResidentWords.status(@resident.status)}
           </.state>
@@ -328,20 +330,20 @@ defmodule RescordWeb.ResidentLive do
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/photos"}
             data-variant="secondary"
           >
-            Photos
+            <.icon name="photo" /> Photos
           </.link>
           <.link
             navigate={~p"/o/#{@organisation.short_name}/expenses?resident=#{@resident.id}"}
             data-variant="secondary"
           >
-            Expenses
+            <.icon name="receipt" /> Expenses
           </.link>
           <.link
             :if={can?(@role, :resident, :revise)}
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/edit"}
             data-variant="secondary"
           >
-            Change the facts
+            <.icon name="pencil" /> Change the facts
           </.link>
         </:actions>
       </.header>

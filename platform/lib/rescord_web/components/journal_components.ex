@@ -30,7 +30,7 @@ defmodule RescordWeb.JournalComponents do
   def new_entry(assigns) do
     ~H"""
     <details id="new-entry" open={@open?}>
-      <summary>New journal entry</summary>
+      <summary><.icon name="plus" /> New journal entry</summary>
       <.form for={@form} id="entry" phx-change="choose" phx-submit="write">
         <.input
           field={@form[:kind]}
@@ -187,7 +187,7 @@ defmodule RescordWeb.JournalComponents do
   def correct_form(assigns) do
     ~H"""
     <details id={"correct-details-#{@entry.id}"}>
-      <summary>Correct this entry</summary>
+      <summary><.icon name="pencil" /> Correct this entry</summary>
       <p>Correct a mistake only. The history keeps the entry as it was.</p>
       <form id={"correct-#{@entry.id}"} phx-submit="correct">
         <input type="hidden" name="entry_id" value={@entry.id} />
@@ -233,7 +233,7 @@ defmodule RescordWeb.JournalComponents do
   def dose_form(assigns) do
     ~H"""
     <details id={"dose-details-#{@entry.id}"}>
-      <summary>Plan a dose</summary>
+      <summary><.icon name="pill" /> Plan a dose</summary>
       <p>The dose is a task. The member who completes it writes the dose to this journal.</p>
       <form id={"plan-dose-#{@entry.id}"} phx-submit="plan_dose">
         <input type="hidden" name="entry_id" value={@entry.id} />
@@ -290,7 +290,7 @@ defmodule RescordWeb.JournalComponents do
             phx-value-ref={entry.ref}
             aria-label={"Take out #{entry.client_name}"}
           >
-            Take out
+            <.icon name="x-mark" /> Take out
           </.button>
         </li>
       </ul>
@@ -329,7 +329,7 @@ defmodule RescordWeb.JournalComponents do
             phx-value-id={attachment.id}
             aria-label={"Take off #{attachment.name}"}
           >
-            Take off
+            <.icon name="x-mark" /> Take off
           </.button>
         </li>
       </ul>
@@ -343,7 +343,7 @@ defmodule RescordWeb.JournalComponents do
   def addendum_form(assigns) do
     ~H"""
     <details id={"add-details-#{@entry.id}"}>
-      <summary>Add to this entry</summary>
+      <summary><.icon name="arrow-turn-down-right" /> Add to this entry</summary>
       <form id={"add-#{@entry.id}"} phx-submit="write">
         <input type="hidden" name="entry[kind]" value={@entry.kind} />
         <input type="hidden" name="entry[follows_id]" value={@entry.id} />
@@ -381,7 +381,7 @@ defmodule RescordWeb.JournalComponents do
     ~H"""
     <article id={"entry-#{@entry.id}"}>
       <header>
-        <strong>{JournalWords.kind(@entry.kind)}</strong>
+        <strong><.icon name={Icons.entry_kind(@entry.kind)} /> {JournalWords.kind(@entry.kind)}</strong>
         <small>
           <time datetime={DateTime.to_iso8601(@entry.happened_at)}>
             {when_words(@organisation, @entry.happened_at)}
@@ -390,6 +390,7 @@ defmodule RescordWeb.JournalComponents do
         </small>
       </header>
       <p :if={@entry.follows}>
+        <.icon name="arrow-turn-down-right" />
         Adds to the entry of {when_words(@organisation, @entry.follows.happened_at)}.
       </p>
       <p :if={@entry.episode} data-about>
@@ -418,7 +419,7 @@ defmodule RescordWeb.JournalComponents do
       />
 
       <details :if={@can_track? and untracked?(@entry)} id={"track-details-#{@entry.id}"}>
-        <summary>Track this condition</summary>
+        <summary><.icon name="pulse" /> Track this condition</summary>
         <p>
           This diagnosis is from before Rescord recorded the conditions of a resident. Track it to
           start the condition on the day of this entry. Then mark the condition as resolved when

@@ -152,7 +152,7 @@ defmodule RescordWeb.UsageComponents do
             phx-click="forget_token"
             data-confirm="Delete the token? A send then has none."
           >
-            Delete the token
+            <.icon name="trash" /> Delete the token
           </.button>
         </footer>
       </form>
@@ -340,7 +340,7 @@ defmodule RescordWeb.UsageComponents do
           phx-click="forget_counts"
           data-confirm="Delete each count that this server stored?"
         >
-          Delete the counts
+          <.icon name="trash" /> Delete the counts
         </.button>
       </footer>
     </section>

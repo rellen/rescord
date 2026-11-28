@@ -221,7 +221,7 @@ defmodule RescordWeb.SettingsLive do
       organisation={@organisation}
       section={:settings}
     >
-      <.header>
+      <.header icon={Icons.section(:settings)}>
         Settings
         <:subtitle>The settings of {@organisation.name}</:subtitle>
       </.header>

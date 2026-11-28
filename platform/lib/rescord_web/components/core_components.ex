@@ -1,7 +1,7 @@
 defmodule RescordWeb.CoreComponents do
   @moduledoc """
   The core UI components: flash messages, buttons, form inputs, the page
-  header, tables, data lists and icons.
+  header, tables and data lists. The icons are in `RescordWeb.Icons`.
 
   The markup is semantic and classless (ADR 0004). The stylesheet under
   `assets/css/` styles the elements, their ARIA states and a few `data-`
@@ -16,6 +16,8 @@ defmodule RescordWeb.CoreComponents do
   """
   use Phoenix.Component
   use Gettext, backend: RescordWeb.Gettext
+
+  import RescordWeb.Icons, only: [icon: 1]
 
   alias Phoenix.LiveView.JS
 
@@ -333,6 +335,10 @@ defmodule RescordWeb.CoreComponents do
   Renders the header of a page: its title, an optional subtitle and
   optional actions.
   """
+  attr :icon, :string,
+    default: nil,
+    doc: "the shape of the part of the site that the page is (`RescordWeb.Icons.section/1`)"
+
   slot :inner_block, required: true
   slot :subtitle
   slot :actions
@@ -341,7 +347,7 @@ defmodule RescordWeb.CoreComponents do
     ~H"""
     <header>
       <hgroup>
-        <h1>{render_slot(@inner_block)}</h1>
+        <h1><.icon :if={@icon} name={@icon} /> {render_slot(@inner_block)}</h1>
         <p :if={@subtitle != []}>{render_slot(@subtitle)}</p>
       </hgroup>
       <div :if={@actions != []}>{render_slot(@actions)}</div>
@@ -478,165 +484,7 @@ defmodule RescordWeb.CoreComponents do
 
   def problems(assigns) do
     ~H"""
-    <p :for={problem <- @list} role="alert">{problem}</p>
-    """
-  end
-
-  @doc """
-  Renders one of our own icons as an inline SVG of 1em.
-
-  An icon is decoration: it is `aria-hidden`, and the text beside it, or
-  the `aria-label` of its button, says what it means. Add an icon here
-  when a page needs one; there is no icon library. An unknown literal
-  `name` gives a compile warning.
-
-  ## Examples
-
-      <.icon name="x-mark" />
-      <.icon name="arrow-path" spin />
-  """
-  attr :name, :string,
-    required: true,
-    values:
-      ~w(arrow-down arrow-path arrow-up bars check clock equals exclamation-circle exclamation-triangle
-         information-circle mark paper-clip x-mark)
-
-  attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
-  attr :rest, :global
-
-  def icon(%{name: "arrow-path"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4h-4" />
-    </.svg>
-    """
-  end
-
-  # A value that is more, less, or the same as the one before it: the shape
-  # beside the words of a change (ADR 0080).
-  def icon(%{name: "arrow-up"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M12 19V5M6 11l6-6 6 6" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "arrow-down"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M12 5v14M6 13l6 6 6-6" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "equals"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M6 9h12M6 15h12" />
-    </.svg>
-    """
-  end
-
-  # The three lines of a menu, beside the word Menu in the site bar.
-  def icon(%{name: "bars"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "check"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "clock"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "exclamation-triangle"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
-    </.svg>
-    """
-  end
-
-  # The mark of Rescord, beside its name in the site bar. The icon of a tab
-  # is the same mark, drawn again in `priv/static/images/favicon.svg`
-  # (ADR 0058).
-  def icon(%{name: "mark"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <rect x="3" y="3" width="18" height="18" rx="5" /><path d="M12 8v8M8 12h8" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "exclamation-circle"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "information-circle"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" />
-    </.svg>
-    """
-  end
-
-  # A file that goes with a record: the receipts of an expense.
-  def icon(%{name: "paper-clip"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7-7l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8" />
-    </.svg>
-    """
-  end
-
-  def icon(%{name: "x-mark"} = assigns) do
-    ~H"""
-    <.svg spin={@spin} {@rest}>
-      <path d="M6 6l12 12M18 6 6 18" />
-    </.svg>
-    """
-  end
-
-  attr :spin, :boolean, required: true
-  attr :rest, :global
-  slot :inner_block, required: true
-
-  defp svg(assigns) do
-    ~H"""
-    <svg
-      viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-      focusable="false"
-      data-spin={@spin}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </svg>
+    <p :for={problem <- @list} role="alert"><.icon name="exclamation-circle" /> {problem}</p>
     """
   end
 

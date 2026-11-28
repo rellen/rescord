@@ -36,7 +36,7 @@ defmodule RescordWeb.RoleComponents do
           id={"revise-details-#{role.id}"}
           open={refused_role?(@refused, role)}
         >
-          <summary>Change the role {role.name}</summary>
+          <summary><.icon name="pencil" /> Change the role {role.name}</summary>
           <.role_form
             id={"revise-#{role.id}"}
             event="revise"
@@ -53,7 +53,7 @@ defmodule RescordWeb.RoleComponents do
           phx-value-id={role.id}
           aria-label={"Remove the role #{role.name}"}
         >
-          Remove
+          <.icon name="trash" /> Remove
         </.button>
       </article>
     </section>
@@ -67,7 +67,7 @@ defmodule RescordWeb.RoleComponents do
   def new_role(assigns) do
     ~H"""
     <details id="new-role" open={match?({:define, _fields}, @refused)}>
-      <summary>New role</summary>
+      <summary><.icon name="plus" /> New role</summary>
       <.role_form
         id="define"
         event="define"

@@ -203,7 +203,7 @@ defmodule RescordWeb.ListsLive do
       organisation={assigns[:organisation]}
       section={if assigns[:organisation], do: :lists, else: :root}
     >
-      <.header>
+      <.header icon={Icons.section(:lists)}>
         {@page_title}
         <:subtitle :if={@shared?}>
           The values that each organisation can use. An organisation adds the ones that it needs to

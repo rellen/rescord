@@ -83,7 +83,7 @@ defmodule RescordWeb.ResidentsLive do
       organisation={@organisation}
       section={:residents}
     >
-      <.header>
+      <.header icon={Icons.section(:residents)}>
         Residents
         <:subtitle>The animals in the care of {@organisation.name}</:subtitle>
         <:actions>
@@ -91,14 +91,14 @@ defmodule RescordWeb.ResidentsLive do
             navigate={~p"/o/#{@organisation.short_name}/residents/conditions"}
             data-variant="secondary"
           >
-            Conditions
+            <.icon name="pulse" /> Conditions
           </.link>
           <.link
             :if={@can_register?}
             navigate={~p"/o/#{@organisation.short_name}/residents/new"}
             data-variant="primary"
           >
-            New resident
+            <.icon name="plus" /> New resident
           </.link>
           <RescordWeb.ReportComponents.report_link
             id="register-report"
@@ -151,6 +151,7 @@ defmodule RescordWeb.ResidentsLive do
           label="Sex"
           filter={[type: :select, prompt: "Any sex", options: ResidentWords.options(:sex)]}
         >
+          <.icon :if={Icons.sex(resident.sex)} name={Icons.sex(resident.sex)} />
           {ResidentWords.sex(resident.sex)}
         </:col>
         <:col

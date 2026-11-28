@@ -40,7 +40,7 @@ defmodule RescordWeb.CalendarComponents do
       />
       <p>
         <button type="button" data-copy="feed-address" data-copied="feed-address-copied">
-          Copy the address
+          <.icon name="document-duplicate" /> Copy the address
         </button>
         <span id="feed-address-copied" role="status"></span>
       </p>
@@ -130,7 +130,7 @@ defmodule RescordWeb.CalendarComponents do
             data-confirm={"Revoke the feed #{feed.name}? The calendar app that reads it gets nothing more."}
             aria-label={"Revoke the feed #{feed.name}"}
           >
-            Revoke
+            <.icon name="no-symbol" /> Revoke
           </button>
         </li>
       </ul>
@@ -160,7 +160,7 @@ defmodule RescordWeb.CalendarComponents do
             data-confirm={"Revoke the feed #{feed.name} of #{feed.member.email}?"}
             aria-label={"Revoke the feed #{feed.name} of #{feed.member.email}"}
           >
-            Revoke
+            <.icon name="no-symbol" /> Revoke
           </button>
         </li>
       </ul>
