@@ -17,6 +17,7 @@ defmodule RescordWeb.RoleWords do
     {"Tasks", [:tasks, :routines]},
     {"Calendar", [:calendar]},
     {"Inventory", [:stock, :inventory]},
+    {"Expenses", [:expenses, :manage_expenses]},
     {"Transfers", [:transfers]},
     {"Export", [:export]},
     {"Assistant", [:ruby]}
@@ -38,6 +39,9 @@ defmodule RescordWeb.RoleWords do
     calendar: "Subscribe to a calendar feed, which copies tasks and dates to a calendar app",
     stock: "Record deliveries, uses, moves, discards and counts of stock",
     inventory: "Keep the items, the suppliers and the reorder levels",
+    expenses: "Record an expense with its receipts, and change or withdraw their own",
+    manage_expenses:
+      "Read each expense, approve or decline one, and record that a member was paid back",
     transfers: "Agree partner refuges, send a resident to one, and answer a transfer",
     export: "Export the data of the organisation as files of CSV",
     ruby: "Ask Ruby, the assistant, when the organisation has it on"

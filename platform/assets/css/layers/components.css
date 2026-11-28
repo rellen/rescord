@@ -1417,3 +1417,162 @@ ul[data-multiples] svg[data-spark] {
     border-color: var(--accent);
   }
 }
+
+/* -------------------------------------------------------------- expenses */
+
+/* The `data-` attributes of the expenses (ADR 0082): `data-figures` (the
+   sums at the top of the list), `data-money` (an amount), `data-expense`
+   (the card of one expense), `data-receipts` (the files of an expense),
+   `data-file` (the tile of a file that is no photo), `data-history` (what
+   happened), and `data-downloads` (the links to the files of the list). */
+/* An amount: the digits of two rows are one below the other, and an
+   amount never breaks between its sign and its digits. */
+[data-money] {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The sums at the top of the list: a card each, side by side where they
+   fit. The number is the largest thing in the card. */
+dl[data-figures] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.75rem;
+  margin-block: 0 1.5rem;
+}
+
+dl[data-figures] > div {
+  display: grid;
+  gap: 0.125rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+dl[data-figures] dt {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+dl[data-figures] dd[data-money] {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+dl[data-figures] dd:not([data-money]) {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* The card of one expense, at the top of its page: the amount, then the
+   state, then the facts. */
+article[data-expense] > p:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+article[data-expense] > p:first-child > [data-money] {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* In a table on a wide screen the amounts are at the end of their
+   column, so that the digits line up. On a phone a row is a card, and
+   the amount is beside its label. */
+@media (width >= 40rem) {
+  :is(td, th):has(> [data-money]),
+  th[data-money] {
+    text-align: end;
+  }
+}
+
+/* The second line of the name of an expense: who was paid. */
+td > a + small {
+  display: block;
+  color: var(--muted);
+}
+
+/* The count of the files beside a name. */
+td small > svg {
+  vertical-align: -0.125em;
+}
+
+/* The files of an expense: a grid of tiles, as the photos are. */
+ul[data-receipts] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+ul[data-receipts] > li {
+  display: grid;
+  gap: 0.375rem;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+ul[data-receipts] a {
+  display: block;
+  border-radius: var(--radius);
+}
+
+ul[data-receipts] :is(img, [data-file]) {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--tint);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+ul[data-receipts] [data-file] {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+ul[data-receipts] small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+/* What happened to an expense, the newest first: plain lines. */
+ol[data-history] {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A long address of a person breaks, and does not make the page wider. */
+ol[data-history] > li {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+ol[data-history] > li > time {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* The links to the files of the list, below it. */
+p[data-downloads] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}

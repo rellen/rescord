@@ -93,6 +93,11 @@ defmodule Rescord.MixProject do
       # `Rescord.Vault`, and not the package `cloak`.
       {:ash_cloak, "~> 0.5"},
       {:mdex, "~> 0.14"},
+      # The amounts of the expenses (ADR 0082): a decimal with its currency, and
+      # its type in PostgreSQL. `ex_money` writes an amount with Localize.
+      {:ash_money, "~> 0.2.8"},
+      {:ex_money, "~> 6.3"},
+      {:ex_money_sql, "~> 2.2"},
       {:hammer, "~> 7.5"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:usage_rules, "~> 1.3", only: [:dev]},

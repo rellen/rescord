@@ -7,7 +7,8 @@ defmodule Rescord.Repo do
     # Add extensions here, and the migration generator will install them.
     # A temporal resource needs btree_gist for its primary key (ADR 0012).
     # The email address of a user compares without case, which needs citext.
-    ["ash-functions", "btree_gist", "citext"]
+    # An amount of an expense is the composite type of AshMoney (ADR 0082).
+    ["ash-functions", "btree_gist", "citext", AshMoney.AshPostgresExtension]
   end
 
   # Don't open unnecessary transactions

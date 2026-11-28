@@ -62,6 +62,8 @@ defmodule Rescord.Accounts do
         action: :set_transfer_parts,
         args: [:transfer_parts]
 
+      define :set_organisation_currency, action: :set_currency, args: [:currency]
+
       define :authorize_export, action: :export, args: [:organisation_id]
 
       define :organisation_by_short_name,
@@ -288,6 +290,69 @@ defmodule Rescord.Accounts do
     |> List.flatten()
     |> Enum.filter(&time_zone?/1)
   end
+
+  # Codes of ISO 4217 that are current and that nobody pays an expense with:
+  # the funds and the units of account of a state, and each code that
+  # starts with X but the five currencies of a union of states. The other
+  # X codes are metals, units of banks, the code for tests and the code for
+  # no currency. The data of the locales marks each of these as tender.
+  @not_money ~w(BOV CHE CHW CLF COU MXV USN UYI UYW)
+  @money_of_a_union ~w(XAF XCD XCG XOF XPF)
+
+  @doc """
+  The currencies that an organisation chooses from (ADR 0082): each
+  currency that people pay with now, as `{code, name}`, such as
+  `{"AUD", "Australian Dollar"}`, in the order of the names. The names are
+  English, as the words of the pages are. A fund, a metal and a unit of
+  account are not in the list.
+  """
+  @spec currencies() :: [{String.t(), String.t()}]
+  def currencies do
+    case Localize.Currency.currencies_for_locale(:en, only: :current) do
+      {:ok, currencies} ->
+        for {code, %{name: name}} <- currencies,
+            code = Atom.to_string(code),
+            code not in @not_money,
+            not String.starts_with?(code, "X") or code in @money_of_a_union do
+          {code, name}
+        end
+        |> Enum.sort_by(fn {code, name} -> {String.downcase(name), code} end)
+
+      {:error, _no_data} ->
+        []
+    end
+  end
+
+  @doc "Whether a text is the code of a currency of `currencies/0`, for example `AUD`."
+  @spec currency?(term) :: boolean
+  def currency?(code) when is_binary(code), do: List.keymember?(currencies(), code, 0)
+  def currency?(_code), do: false
+
+  @doc """
+  The number of decimal places of the amounts of a currency: 2 for `AUD`,
+  and 0 for `JPY`.
+
+      iex> Rescord.Accounts.currency_digits("AUD")
+      2
+
+      iex> Rescord.Accounts.currency_digits(:JPY)
+      0
+  """
+  @spec currency_digits(String.t() | atom) :: non_neg_integer
+  def currency_digits(code) do
+    case Localize.Currency.currency_for_code(code) do
+      {:ok, %{digits: digits}} -> digits
+      _unknown -> 2
+    end
+  end
+
+  @doc """
+  The code of the currency of an organisation, for example `"AUD"`. `tenant`
+  is the organisation, or the name of its schema, as an action has it.
+  """
+  @spec currency_of(Ash.Resource.record() | String.t()) :: String.t()
+  def currency_of(%Organisation{currency: currency}), do: currency
+  def currency_of("org_" <> _id = schema), do: organisation_of(schema).currency
 
   @doc """
   The time zone of an organisation. `tenant` is the organisation, or the

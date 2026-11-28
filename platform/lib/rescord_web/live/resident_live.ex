@@ -319,6 +319,12 @@ defmodule RescordWeb.ResidentLive do
             Photos
           </.link>
           <.link
+            navigate={~p"/o/#{@organisation.short_name}/expenses?resident=#{@resident.id}"}
+            data-variant="secondary"
+          >
+            Expenses
+          </.link>
+          <.link
             :if={can?(@role, :resident, :revise)}
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/edit"}
             data-variant="secondary"

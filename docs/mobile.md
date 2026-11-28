@@ -29,7 +29,9 @@ organisation, tasks, routines, residents, a resident, the form of a
 resident, the journal, the photos, the timeline, groups, a group, housing,
 a location, inventory, an item, suppliers, lists, members, roles, partner
 refuges, transfers, settings, export, and the root pages. The tools and the
-dose calculator came later (ADR 0072), and `PhoneTest` visits them too.
+dose calculator came later (ADR 0072), and `PhoneTest` visits them too. The
+expenses, the form of an expense and the page of an expense came with
+ADR 0082, and `PhoneTest` visits them too.
 
 ## What was found, and what was done
 

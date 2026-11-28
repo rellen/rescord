@@ -739,6 +739,34 @@ hand (ADR 0073). Read it before you write a migration. In short:
     scratch test.
   - A new version of `ash_typst` takes the new version and the new hashes
     in `nix/package.nix`, from the checksum file of the package.
+- **Expenses and money** (ADR 0082). Rescord is not an accounting system:
+  no ledger, no payment, no conversion.
+  - **An amount is an `AshMoney.Types.Money`**, never a float and never a
+    decimal beside a text. No action takes a currency: the argument
+    `amount` is a decimal, and `Rescord.Expenses.Changes.SetAmount` makes
+    the money in the currency of the organisation.
+  - **Never add two currencies.** A sum is `Rescord.Expenses.sum/1`, with
+    one amount for each currency, and a page writes each one.
+  - A page writes an amount with `RescordWeb.ExpenseWords.money/1`, which
+    is `RescordWeb.Locale.money/1`. A form and a CSV file hold a plain
+    number, and the code of the currency apart.
+  - **No action of an expense takes the state, the author, or the person
+    who decided or paid back.** An action that changes the state has the
+    filter on the state.
+  - **A validation that reads as the actor is `before_action?: true`**,
+    so the policy answers first: the category, the resident, the payer,
+    the expense of a receipt.
+  - A page asks `Rescord.Expenses.can?/4` about a button, and
+    `Rescord.Expenses.list_query/2` gives the query of the list. A member
+    reads only their own expenses, so a page, a file and a report read
+    with the options of the person, and never with `authorize?: false`.
+  - A new power goes at the end of `@power_keys` of
+    `Rescord.Accounts.Grants`, with a migration of the organisations whose
+    time is after each other one: the order of the keys is the order in
+    which the migrations add the powers.
+  - The list of the currencies is `Rescord.Accounts.currencies/0`. The
+    data of Localize marks each code as tender, so that function names
+    the codes that are no money.
 - **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
   time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
   for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
@@ -833,6 +861,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/priv/typst/` | the Typst templates of the reports, their shared look, and the fonts with their licence |
 | `platform/lib/rescord/log.ex`, `log/` | what the log holds and keeps out: the fields of a line, the safe text of a failure, the crash reports, the lines of the jobs (ADR 0077) |
 | `platform/lib/rescord/metrics.ex`, `platform/lib/rescord_web/telemetry.ex` | the metrics, and the endpoint that a collector reads (ADR 0077) |
+| `platform/lib/rescord/expenses.ex`, `expenses/` | the expenses, their receipts, their states and their grants (ADR 0082) |
+| `platform/lib/rescord/storage/upload.ex` | the check of a file that a person sends: its type from its bytes, its size, and a photo made safe (ADR 0041, ADR 0082) |
+| `platform/lib/rescord_web/expense_words.ex` | the words of the expenses: the states, the amounts, the rows of the CSV file |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |

@@ -154,6 +154,52 @@ defmodule RescordWeb.Locale do
     end
   end
 
+  @doc """
+  An amount of money, with the sign or the code of its currency as the
+  locale writes it (ADR 0082).
+
+      iex> RescordWeb.Locale.money(Money.new(:AUD, "1234.5"))
+      "$1,234.50"
+  """
+  @spec money(Money.t()) :: String.t()
+  def money(%Money{} = money) do
+    case Money.to_string(money, locale: current()) do
+      {:ok, words} ->
+        words
+
+      {:error, reason} ->
+        plain("#{Decimal.to_string(money.amount, :normal)} #{money.currency}", reason)
+    end
+  end
+
+  @doc """
+  The name of a currency, or its code when the locale has no name for it.
+
+      iex> RescordWeb.Locale.currency_name("AUD")
+      "Australian Dollar"
+  """
+  @spec currency_name(String.t() | atom) :: String.t()
+  def currency_name(code) do
+    case Localize.Currency.display_name(code, locale: current()) do
+      {:ok, name} -> name
+      {:error, _no_name} -> to_string(code)
+    end
+  end
+
+  @doc """
+  The name of a currency for more than one of it, or its code.
+
+      iex> RescordWeb.Locale.currency_plural("AUD")
+      "Australian dollars"
+  """
+  @spec currency_plural(String.t() | atom) :: String.t()
+  def currency_plural(code) do
+    case Localize.Currency.pluralize(2, code, locale: current()) do
+      {:ok, name} -> name
+      {:error, _no_name} -> to_string(code)
+    end
+  end
+
   defp plain(text, reason) do
     Logger.warning(
       "no form of the locale #{current()} for #{text}: #{Rescord.Log.reason(reason)}"

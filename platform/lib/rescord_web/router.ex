@@ -70,6 +70,12 @@ defmodule RescordWeb.Router do
     get "/o/:organisation/reports/stock.pdf", ReportController, :stock
     get "/o/:organisation/reports/housing.pdf", ReportController, :housing
 
+    # The files of the receipts of the expenses, and the expenses as a CSV
+    # file (ADR 0082).
+    get "/o/:organisation/receipts/:id", ReceiptController, :show
+    get "/o/:organisation/receipts/:id/thumbnail", ReceiptController, :thumbnail
+    get "/o/:organisation/expenses.csv", ExpenseFileController, :index
+
     # The export of the data of an organisation (ADR 0054).
     post "/o/:organisation/export", ExportController, :create
     post "/sign-in/link", SignInController, :confirm
@@ -108,6 +114,10 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/inventory/:id", ItemLive
       live "/o/:organisation/tools", ToolsLive
       live "/o/:organisation/tools/dose", DoseLive
+      live "/o/:organisation/expenses", ExpensesLive
+      live "/o/:organisation/expenses/new", ExpenseFormLive, :new
+      live "/o/:organisation/expenses/:id", ExpenseLive
+      live "/o/:organisation/expenses/:id/edit", ExpenseFormLive, :edit
       live "/o/:organisation/housing", HousingLive
       live "/o/:organisation/housing/:id", LocationLive
       live "/o/:organisation/groups", GroupsLive

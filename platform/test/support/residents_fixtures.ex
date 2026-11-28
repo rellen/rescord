@@ -28,7 +28,8 @@ defmodule Rescord.ResidentsFixtures do
           procedure_kind: ["Desexing"],
           unit: ["g", "kg", "bag"],
           task_kind: ["Feed", "Medicate", "Clean"],
-          item_category: ["Food", "Bedding", "Medication"]
+          item_category: ["Food", "Bedding", "Medication"],
+          expense_category: ["Veterinary", "Feed", "Transport"]
         ],
         into: %{} do
       values =

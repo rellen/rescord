@@ -18,6 +18,7 @@ defmodule RescordWeb.SettingsLive do
   use RescordWeb, :live_view
 
   import RescordWeb.AccountComponents
+  import RescordWeb.ExpenseComponents, only: [currency_setting: 1]
   import RescordWeb.RubyComponents, only: [settings_line: 1]
 
   alias Rescord.{Accounts, Ruby, Tasks}
@@ -36,6 +37,7 @@ defmodule RescordWeb.SettingsLive do
        ruby: Ruby.status(organisation),
        today: Accounts.today(organisation),
        time_zones: if(can_change?, do: Accounts.time_zones(), else: []),
+       currencies: if(can_change?, do: Accounts.currencies(), else: []),
        form: to_form(%{"time_zone" => organisation.time_zone}, as: :settings),
        locale_form: to_form(%{"locale" => organisation.locale}, as: :locale),
        ahead_form:
@@ -88,6 +90,24 @@ defmodule RescordWeb.SettingsLive do
            problems: Accounts.error_messages(error),
            locale_form: typed_form(params, as: :locale)
          )}
+    end
+  end
+
+  def handle_event("save_currency", %{"currency" => %{"code" => code}}, socket)
+      when is_binary(code) do
+    organisation = socket.assigns.organisation
+
+    case Accounts.set_organisation_currency(organisation, code,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, organisation} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "A new expense is in #{organisation.currency} now.")
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
     end
   end
 
@@ -176,6 +196,12 @@ defmodule RescordWeb.SettingsLive do
         organisation={@organisation}
         can_change?={@can_change?}
         locale_form={@locale_form}
+      />
+
+      <.currency_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        currencies={@currencies}
       />
 
       <.days_ahead_setting

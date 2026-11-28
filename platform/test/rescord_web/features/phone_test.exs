@@ -26,8 +26,9 @@ defmodule RescordWeb.Features.PhoneTest do
   use RescordWeb.FeatureCase, async: false
 
   import Rescord.ResidentsFixtures
+  import Rescord.StorageFixtures
 
-  alias Rescord.{Accounts, Inventory, Journal, Locations, Residents, Tasks}
+  alias Rescord.{Accounts, Expenses, Inventory, Journal, Locations, Residents, Tasks}
 
   @address "an.administrator.with.a.long.address@wattle-creek-refuge.example.org"
 
@@ -35,7 +36,11 @@ defmodule RescordWeb.Features.PhoneTest do
   @small [viewport: %{width: 320, height: 640}, has_touch: true]
   @phone [viewport: %{width: 360, height: 780}, has_touch: true]
 
-  setup do
+  # The receipts of an expense are files of the store.
+  @moduletag :tmp_dir
+
+  setup %{tmp_dir: tmp_dir} do
+    disk_store!(tmp_dir)
     root = root!()
     organisation = organisation!(root, "Wattle Creek Small Animal Refuge")
     {_member, user} = member!(organisation, :administrator, root, @address)
@@ -98,6 +103,49 @@ defmodule RescordWeb.Features.PhoneTest do
       options
     )
 
+    # An expense that waits, with a photo and a PDF, and one to pay back.
+    expense =
+      Expenses.submit_expense!(
+        %{
+          paid_by: :member,
+          amount: "1186.00",
+          incurred_on: Accounts.today(organisation),
+          payee: "Northside Veterinary Clinic and Animal Hospital",
+          description: "Consult after hours for Sir Reginald Fluffington the Third",
+          category_id: lists.expense_category.veterinary,
+          resident_id: resident.id,
+          note: "The fee for after hours is in the amount."
+        },
+        actor: user,
+        tenant: organisation
+      )
+
+    for {name, content} <- [
+          {"a-receipt-with-a-long-name-from-the-clinic.jpg", jpeg()},
+          {"invoice.pdf", pdf()}
+        ] do
+      Expenses.attach_receipt!(%{expense_id: expense.id, name: name, content: content},
+        actor: user,
+        tenant: organisation
+      )
+    end
+
+    owed =
+      Expenses.submit_expense!(
+        %{
+          paid_by: :member,
+          amount: "58.25",
+          incurred_on: Accounts.today(organisation),
+          payee: "Creekside Fuel",
+          description: "Fuel",
+          category_id: lists.expense_category.transport
+        },
+        actor: user,
+        tenant: organisation
+      )
+
+    Expenses.approve_expense!(owed, options)
+
     # The email of the invitation is not what the test looks at.
     flush_emails()
 
@@ -116,7 +164,8 @@ defmodule RescordWeb.Features.PhoneTest do
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
               reports lists members roles partners transfers settings settings/ruby export
-              calendar),
+              calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
+              expenses/#{owed.id}),
            &"#{home}/#{&1}"
          )}
   end

@@ -3,10 +3,10 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
   Gives a new attachment its type, its size and its key, and puts its file
   in the store after the write (ADR 0041).
 
-  The type comes from the first bytes of the file (`type_of/1`), and not
-  from its name or from what the browser says. The change refuses a file
-  of another type, an empty file, and a file of more than `max_size/0`
-  bytes. The key is `<organisation id>/attachments/<attachment id>`.
+  `Rescord.Storage.Upload.prepare/1` reads the type from the first bytes of
+  the file (`type_of/1`), and not from its name or from what the browser
+  says. It refuses a file of another type, an empty file, and a file of more
+  than `max_size/0` bytes. The key is `<organisation id>/attachments/<attachment id>`.
 
   A photo goes through `Rescord.Images.prepare/1` first (ADR 0055): it
   turns as its EXIF says and loses its metadata, the GPS position with the
@@ -22,44 +22,25 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
 
   use Ash.Resource.Change
 
-  alias Rescord.{Accounts, Images, Storage}
-
-  @max_size 20_000_000
+  alias Rescord.{Accounts, Storage}
+  alias Rescord.Storage.Upload
 
   @doc "The largest file, in bytes: 20 MB."
-  def max_size, do: @max_size
+  defdelegate max_size(), to: Upload
 
   @impl true
   def change(changeset, _opts, _context) do
     case Ash.Changeset.get_argument(changeset, :content) do
-      content when is_binary(content) -> shape(changeset, content)
-      _none -> changeset
-    end
-  end
-
-  defp shape(changeset, content) do
-    cond do
-      content == "" ->
-        error(changeset, "is an empty file")
-
-      byte_size(content) > @max_size ->
-        error(changeset, "is more than 20 MB")
-
-      type = type_of(content) ->
-        case prepare(content, type) do
+      content when is_binary(content) ->
+        case Upload.prepare(content) do
           {:ok, files} -> store(changeset, files)
           {:error, words} -> error(changeset, words)
         end
 
-      true ->
-        error(changeset, "is not a photo or a PDF: Rescord takes JPEG, PNG, GIF, WebP and PDF")
+      _none ->
+        changeset
     end
   end
-
-  defp prepare(content, "application/pdf"),
-    do: {:ok, %{bytes: content, content_type: "application/pdf", thumbnail: nil}}
-
-  defp prepare(content, _image), do: Images.prepare(content)
 
   defp store(changeset, files) do
     # The id is not set when a change runs, and the keys name it.
@@ -75,10 +56,10 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
     |> Ash.Changeset.force_change_attribute(:key, key)
     |> Ash.Changeset.force_change_attribute(:thumbnail_key, thumbnail_key)
     |> Ash.Changeset.after_action(fn _changeset, attachment ->
-      with :ok <- Storage.put(key, files.bytes, files.content_type),
-           :ok <- put_thumbnail(thumbnail_key, files.thumbnail) do
-        {:ok, attachment}
-      else
+      case Upload.put(key, thumbnail_key, files) do
+        :ok ->
+          {:ok, attachment}
+
         {:error, _reason} ->
           {:error,
            Ash.Error.Changes.InvalidArgument.exception(
@@ -88,9 +69,6 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
       end
     end)
   end
-
-  defp put_thumbnail(nil, _bytes), do: :ok
-  defp put_thumbnail(key, bytes), do: Storage.put(key, bytes, "image/webp")
 
   defp error(changeset, message),
     do: Ash.Changeset.add_error(changeset, field: :content, message: message)
@@ -106,6 +84,5 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
       nil
   """
   @spec type_of(binary) :: String.t() | nil
-  def type_of(<<"%PDF-", _rest::binary>>), do: "application/pdf"
-  def type_of(bytes), do: Images.type_of(bytes)
+  defdelegate type_of(bytes), to: Upload
 end

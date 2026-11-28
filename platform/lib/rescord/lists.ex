@@ -49,6 +49,7 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.Base.Unit
     resource Rescord.Lists.Base.TaskKind
     resource Rescord.Lists.Base.ItemCategory
+    resource Rescord.Lists.Base.ExpenseCategory
 
     # Another domain names a list of an organisation in a relationship, so
     # each one is public: the `define` exports it (ADR 0066). A page reads a
@@ -112,6 +113,10 @@ defmodule Rescord.Lists do
     resource Rescord.Lists.ItemCategory do
       define :item_category_values, action: :read
     end
+
+    resource Rescord.Lists.ExpenseCategory do
+      define :expense_category_values, action: :read
+    end
   end
 
   # The key of each dimension, its name for a person, and its two resources.
@@ -130,7 +135,8 @@ defmodule Rescord.Lists do
     {:procedure_kind, "Procedure kind", Base.ProcedureKind, Rescord.Lists.ProcedureKind},
     {:unit, "Unit", Base.Unit, Rescord.Lists.Unit},
     {:task_kind, "Task kind", Base.TaskKind, Rescord.Lists.TaskKind},
-    {:item_category, "Item category", Base.ItemCategory, Rescord.Lists.ItemCategory}
+    {:item_category, "Item category", Base.ItemCategory, Rescord.Lists.ItemCategory},
+    {:expense_category, "Expense category", Base.ExpenseCategory, Rescord.Lists.ExpenseCategory}
   ]
 
   @doc "The dimensions, each as `{key, name}`, in the order of a page."

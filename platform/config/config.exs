@@ -27,6 +27,10 @@ config :req_llm,
 # change only reads the record and runs the listeners through Ash, as of the
 # instant of the action (ADR 0067). Ash reads this when it compiles. Take it
 # out when Ash declares the change temporal safe.
+# The amounts of the expenses are money (ADR 0082). Rescord converts no
+# amount, so the service of ex_money that fetches exchange rates stays off.
+config :ex_money, auto_start_exchange_rate_service: false
+
 config :ash, :temporal_safe_modules, [Ash.Resource.Change.EmitSignal]
 
 config :rescord, Oban,
@@ -60,7 +64,7 @@ config :ash,
   default_string_length_count: :codepoints,
   infer_generic_action_reactors?: false,
   many_to_many_destroy_destination_on_match?: true,
-  known_types: [AshPostgres.Timestamptz, AshPostgres.TimestamptzUsec]
+  known_types: [AshPostgres.Timestamptz, AshPostgres.TimestamptzUsec, AshMoney.Types.Money]
 
 config :spark,
   formatter: [
@@ -152,6 +156,7 @@ config :rescord,
     Rescord.Transfers,
     Rescord.Ruby,
     Rescord.Calendars,
+    Rescord.Expenses,
     Rescord.Reports
   ],
   # The module of the web layer that words the reports (ADR 0076).
@@ -167,6 +172,7 @@ config :rescord,
     Rescord.Inventory.Grants,
     Rescord.Transfers.Grants,
     Rescord.Calendars.Grants,
+    Rescord.Expenses.Grants,
     Rescord.Reports.Grants,
     Rescord.Ruby.Grants
   ]

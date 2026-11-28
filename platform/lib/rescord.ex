@@ -33,6 +33,7 @@ defmodule Rescord do
       Resource.VersionPolicies,
       Storage,
       Storage.Move,
+      Storage.Upload,
       Units,
       Units.Quantity,
       Units.Types.Quantity,

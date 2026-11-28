@@ -235,6 +235,12 @@ _Boundary declarations for Ash domains, built on top of `boundary`._
 
 [ash_boundary usage rules](deps/ash_boundary/usage-rules.md)
 <!-- ash_boundary-end -->
+<!-- ash_money-start -->
+## ash_money usage
+_The extension for working with money types in Ash._
+
+[ash_money usage rules](deps/ash_money/usage-rules.md)
+<!-- ash_money-end -->
 <!-- ash_oban-start -->
 ## ash_oban usage
 _The extension for integrating Ash resources with Oban._

@@ -610,6 +610,23 @@ photos as virtual files. No text of a record is markup of Typst. Each role
 can make each report, and a person makes 30 in a minute at most.
 `RescordWeb.ReportController` sends a report for a `GET`.
 
+### Expenses
+
+**An organisation records its expenses, and Rescord is not its accounting
+system** (ADR 0082). `Rescord.Expenses` has two resources in the schema of
+each organisation: `Expense`, with a state machine and a paper trail, and
+`Receipt`, a file of an expense that `Rescord.Storage.Upload` checks as it
+checks an attachment of the journal. An amount is an
+`AshMoney.Types.Money`, which PostgreSQL stores as the composite type
+`money_with_currency` of the schema `public`. A new expense is in the
+currency of its organisation, an attribute that an administrator sets, and
+no action takes a currency. Rescord converts no amount, so a sum is a list
+with one amount for each currency (`Rescord.Expenses.sum/1`). A member
+reads their own expenses, and the power `manage_expenses` reads and
+decides each one. `RescordWeb.Locale.money/1` writes an amount for a
+person. The list of the page goes out as a CSV file
+(`RescordWeb.ExpenseFileController`), with the filters of the address.
+
 ### What needs attention
 
 **The first page of an organisation says what needs attention now**

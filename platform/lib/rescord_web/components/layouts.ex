@@ -33,7 +33,7 @@ defmodule RescordWeb.Layouts do
   attr :section, :atom,
     default: nil,
     values:
-      [nil, :home, :tasks, :residents, :groups, :housing, :inventory, :tools, :reports] ++
+      [nil, :home, :tasks, :residents, :groups, :housing, :inventory, :expenses, :tools, :reports] ++
         [:lists, :members, :settings, :root],
     doc: "the part of the site that the page is in, which the site nav marks"
 
@@ -95,6 +95,14 @@ defmodule RescordWeb.Layouts do
                 aria-current={current(@section, :inventory)}
               >
                 {gettext("Inventory")}
+              </a>
+            </li>
+            <li>
+              <a
+                href={~p"/o/#{@organisation.short_name}/expenses"}
+                aria-current={current(@section, :expenses)}
+              >
+                {gettext("Expenses")}
               </a>
             </li>
             <li>

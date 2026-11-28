@@ -33,8 +33,11 @@ defmodule Rescord.Export do
       Rescord.Journal,
       Rescord.Photos,
       Rescord.Tasks,
-      Rescord.Inventory
-    ]
+      Rescord.Inventory,
+      Rescord.Expenses
+    ],
+    # A page that sends one table as a file writes it with the same CSV.
+    exports: [CSV]
 
   require Logger
 
@@ -49,7 +52,8 @@ defmodule Rescord.Export do
     Rescord.Journal,
     Rescord.Photos,
     Rescord.Tasks,
-    Rescord.Inventory
+    Rescord.Inventory,
+    Rescord.Expenses
   ]
 
   # Columns that are calculations, after the attributes.
@@ -161,8 +165,11 @@ defmodule Rescord.Export do
       case rows(resource, organisation, actor, instant) do
         {:ok, records} ->
           columns = columns(resource)
-          rows = for record <- records, do: Enum.map(columns, &Map.get(record, &1))
-          header = Enum.map(columns, &Atom.to_string/1)
+
+          rows =
+            for record <- records, do: Enum.map(columns, fn {_name, read} -> read.(record) end)
+
+          header = Enum.map(columns, fn {name, _read} -> name end)
           {:cont, {:ok, [{file(resource), resource, header, rows} | tables]}}
 
         {:error, error} ->
@@ -181,10 +188,29 @@ defmodule Rescord.Export do
     end
   end
 
+  # The columns of a resource, each as its name and the function that reads
+  # its cell from a record. An amount of money is two columns: the number,
+  # and the code of its currency (ADR 0082).
   defp columns(resource) do
-    Enum.map(Ash.Resource.Info.public_attributes(resource), & &1.name) ++
-      Map.get(@calculations, resource, [])
+    attributes =
+      Enum.flat_map(Ash.Resource.Info.public_attributes(resource), fn
+        %{name: name, type: AshMoney.Types.Money} ->
+          [
+            {Atom.to_string(name), &money_part(Map.get(&1, name), :amount)},
+            {"#{name}_currency", &money_part(Map.get(&1, name), :currency)}
+          ]
+
+        %{name: name} ->
+          [{Atom.to_string(name), &Map.get(&1, name)}]
+      end)
+
+    attributes ++
+      for name <- Map.get(@calculations, resource, []),
+          do: {Atom.to_string(name), &Map.get(&1, name)}
   end
+
+  defp money_part(%Money{} = money, part), do: Map.fetch!(money, part)
+  defp money_part(_no_money, _part), do: nil
 
   # Only a root user reads an organisation through its actions; the export
   # is already allowed, and holds the one row of this organisation.
@@ -225,7 +251,9 @@ defmodule Rescord.Export do
     row, and CRLF at the end of each row. A date and a time are in ISO 8601,
     a time in UTC. A list has "; " between its values, and a map is JSON. A
     text that starts with =, +, -, @, a tab or a carriage return has a ' before
-    it, so that a spreadsheet does not run it as a formula.
+    it, so that a spreadsheet does not run it as a formula. An amount of money
+    is two columns: the number, and the code of its currency in the column
+    with the same name and _currency at its end.
 
     These files are as they stood at that time:
 
@@ -243,6 +271,9 @@ defmodule Rescord.Export do
 
     - The photos and the PDFs of the journal. journal_attachments.csv lists
       each one, and the person who exports can open each one in Rescord.
+    - The files of the receipts of the expenses. expense_receipts.csv lists
+      each one. expenses.csv holds the expenses that the person who exports
+      can read: each one for a person who manages the expenses.
     #{Enum.map_join(@excluded, "\n", fn {resource, why} -> "- #{inspect(resource)}: #{why}" end)}
     """
   end

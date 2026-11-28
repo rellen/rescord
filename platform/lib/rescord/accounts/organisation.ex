@@ -78,6 +78,14 @@ defmodule Rescord.Accounts.Organisation do
       accept [:transfer_parts]
     end
 
+    update :set_currency do
+      description "Changes the currency of the amounts of new expenses"
+      # The validation reads the code of the currency in Elixir.
+      require_atomic? false
+      accept [:currency]
+      validate Rescord.Accounts.Validations.KnownCurrency
+    end
+
     update :rename do
       accept [:name]
     end
@@ -105,6 +113,7 @@ defmodule Rescord.Accounts.Organisation do
              :set_locale,
              :set_task_days_ahead,
              :set_transfer_parts,
+             :set_currency,
              :export
            ]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
@@ -150,6 +159,15 @@ defmodule Rescord.Accounts.Organisation do
       public? true
       constraints min: 1, max: 400
       description "How many days ahead the tasks of the routines exist"
+    end
+
+    attribute :currency, :string do
+      allow_nil? false
+      default "AUD"
+      public? true
+      constraints min_length: 3, max_length: 3
+
+      description "The ISO 4217 code of the currency of the amounts of new expenses, for example AUD (ADR 0082)"
     end
 
     attribute :transfer_parts, {:array, :atom} do

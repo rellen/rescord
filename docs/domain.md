@@ -584,6 +584,47 @@ each report, and a report holds what that member can read.
 - The housing report lists each location with the residents that live
   there.
 
+### 5.14 Expenses
+
+An organisation records its expenses (ADR 0082): what a member paid for
+it, and what it paid itself. Rescord is not an accounting system. It has
+no ledger and no accounts, it sends no money, and it converts no amount.
+It records an expense, keeps its receipts, gets a decision, and remembers
+that the member was paid back. Then it gives the list to the system that
+does the accounts.
+
+An expense has a number that counts up in the organisation, the amount,
+the date of the payment, who was paid, what it was for, a category, and
+who paid: a member, or the organisation. It can name the resident that it
+was for, and it can have a note. An expense has receipts, each a photo or
+a PDF. Rescord removes the metadata of a photo of a receipt.
+
+The category is a value of a list of the organisation, as the category of
+an item is.
+
+An amount is money in one currency. Each organisation has a currency,
+which an administrator sets, and a new expense is in that currency. An
+expense keeps its currency when the setting changes. A sum is of one
+currency: expenses in two currencies have two sums.
+
+A new expense waits for a decision. A person who manages the expenses
+approves it, or declines it with a reason. After a refusal, the member
+can change the expense and send it again. When a member paid an approved
+expense, the organisation owes that amount to the member, and the same
+person records the day and the reference of the payment back. An expense
+that the organisation paid, recorded by a person who manages the
+expenses, is approved at once.
+
+The power `expenses` records an expense, and changes or withdraws an own
+one while it waits or after a refusal. The power `manage_expenses` reads
+each expense, decides, records a payment back, and opens a decision
+again. A member reads their own expenses: those that they recorded, and
+those that name them as the person who paid. A member does not read what
+another member spent.
+
+The list of the expenses downloads as a CSV file. The report of the
+expenses of a period is a PDF (section 5.13).
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.
@@ -633,10 +674,12 @@ This section applies the answers of section 4 and the proposals of sections
 
 ### 7.2 The dimensions that an organisation can extend
 
-There are 15: `Species`, `Breed`, `Colour`, `SizeClass`, `Coat`,
-`Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`, `Condition`,
-`MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`, and `Unit`.
-Rescord has each one.
+There are 15 in this estimate: `Species`, `Breed`, `Colour`, `SizeClass`,
+`Coat`, `Temperament`, `IdentifierKind`, `GroupKind`, `LocationKind`,
+`Condition`, `MeasureKind`, `ProcedureKind`, `TaskKind`, `ItemCategory`,
+and `Unit`. Rescord has each one. Rescord also has a sixteenth,
+`ExpenseCategory`, which came with the expenses (ADR 0082), after this
+estimate: the counts of this section do not hold it.
 
 The maintainer decided that each has shared values and local values, and
 that a local value is in the schema of its organisation (ADR 0016). Each

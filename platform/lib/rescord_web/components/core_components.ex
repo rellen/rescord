@@ -499,7 +499,7 @@ defmodule RescordWeb.CoreComponents do
     required: true,
     values:
       ~w(arrow-down arrow-path arrow-up bars check clock equals exclamation-circle exclamation-triangle
-         information-circle mark x-mark)
+         information-circle mark paper-clip x-mark)
 
   attr :spin, :boolean, default: false, doc: "turns the icon, for a pending action"
   attr :rest, :global
@@ -594,6 +594,15 @@ defmodule RescordWeb.CoreComponents do
     ~H"""
     <.svg spin={@spin} {@rest}>
       <circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" />
+    </.svg>
+    """
+  end
+
+  # A file that goes with a record: the receipts of an expense.
+  def icon(%{name: "paper-clip"} = assigns) do
+    ~H"""
+    <.svg spin={@spin} {@rest}>
+      <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7-7l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8" />
     </.svg>
     """
   end

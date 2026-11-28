@@ -72,11 +72,14 @@ defmodule Rescord.Accounts.Grants do
     :transfers,
     :export,
     :calendar,
-    :ruby
+    :ruby,
+    :expenses,
+    :manage_expenses
   ]
 
-  # The powers of a member of ADR 0021, and the calendar feed of ADR 0074.
-  @member_powers [:residents, :placements, :journal, :tasks, :stock, :calendar]
+  # The powers of a member of ADR 0021, the calendar feed of ADR 0074, and
+  # the power to record an expense (ADR 0082).
+  @member_powers [:residents, :placements, :journal, :tasks, :stock, :calendar, :expenses]
 
   @reads [{Member, :read, :all}, {Role, :read, :all}]
 
@@ -94,7 +97,8 @@ defmodule Rescord.Accounts.Grants do
       {Organisation, :set_time_zone, :all},
       {Organisation, :set_locale, :all},
       {Organisation, :set_task_days_ahead, :all},
-      {Organisation, :set_transfer_parts, :all}
+      {Organisation, :set_transfer_parts, :all},
+      {Organisation, :set_currency, :all}
     ],
     # The export of the data of the organisation (ADR 0054).
     export: [{Organisation, :export, :all}]

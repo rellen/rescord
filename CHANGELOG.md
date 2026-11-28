@@ -53,6 +53,30 @@ release (ADR 0047).
     its one row. It is empty after the upgrade, so the assistant is off
     in each organisation until a person there turns it on. It changes no
     row.
+  - `20261128054245_install_ash_money_v6_extension`, in the database:
+    adds the type of an amount of money, `money_with_currency`, to the
+    schema `public`, with its functions, operators and aggregates. It is
+    no extension of PostgreSQL. It changes no row.
+  - `20261128054252_add_expenses`, in the database: adds the table of
+    the shared expense categories, which is empty until a root user adds
+    a category. It changes no row.
+  - `20261128055627_add_the_currency_of_an_organisation`, in the
+    database: adds the currency to the organisations. Each organisation
+    that is there gets Australian dollars (`AUD`), and no other value of
+    a row changes.
+  - `20261128054246_add_expenses`, in each organisation: adds the tables
+    of the expense categories, the expenses and their receipts, and the
+    two tables of the history of the expenses and the receipts. Each is
+    empty. It changes no row.
+  - `20261128062000_give_roles_the_expenses`, in each organisation:
+    gives the new power "Record an expense with its receipts, and change
+    or withdraw their own" to the role with the key `administrator` and
+    to the role with the key `member`, and the new power "Read each
+    expense, approve or decline one, and record that a member was paid
+    back" to the role with the key `administrator`. Those are the roles
+    Administrator and Member that each organisation starts with. No
+    other row changes: a role that an administrator defined gets neither
+    power by itself.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -94,6 +118,23 @@ release (ADR 0047).
   again and an error after the last try. A tool that reads the log of
   Rescord may need its pattern changed. Two new settings are optional:
   `RESCORD_LOG_LEVEL` and `RESCORD_METRICS_PORT`.
+- The role of the database that runs the migrations now makes a type,
+  functions, operators and aggregates in the schema `public`, for the
+  amounts of money. The owner of the database has that right, so an
+  install by `docs/self-hosting.md` needs no step. A server whose role
+  does not own the database gives that role `CREATE` on the schema
+  `public` before the upgrade.
+- Each organisation has the currency Australian dollars after the
+  upgrade. An administrator of a refuge with another currency changes it
+  on the settings page before the first expense: an expense keeps the
+  currency that it was recorded in.
+- After the upgrade, each person with the role Administrator or Member
+  can record an expense with its receipts, and each administrator reads
+  and decides each expense. To keep that off, an administrator unticks
+  the powers of the area "Expenses" on the page of the roles.
+- The receipts of the expenses are files in the store of the server,
+  beside the photos and the attachments, 20 MB each at most. The backup
+  of the files holds them.
 
 ### Added
 
@@ -243,6 +284,38 @@ release (ADR 0047).
   the try of a background job. A background job that fails writes a
   line. `docs/self-hosting.md`, "The log", says what a line holds and
   what it never holds.
+- An organisation now records its expenses (ADR 0082). Rescord is not an
+  accounting system: it records what was paid, keeps the receipt, gets a
+  decision, and remembers that a member was paid back. The new page
+  Expenses, in the site menu, has the list with a search and filters, and
+  three sums at its top: what waits for a decision, what is to pay back,
+  and what was spent this month.
+- A member records an expense that they paid, or that the organisation
+  paid: the amount, the date, who was paid, what it was for, a category,
+  the resident that it was for, a note, and its receipts, each a photo
+  or a PDF. Rescord removes the metadata of a photo of a receipt, the
+  place with the rest.
+- A person with the new power to manage expenses approves an expense or
+  declines it with a reason, records the day and the reference of the
+  payment back to the member, and can open a decision again. A member
+  reads only their own expenses, changes one until somebody decides, and
+  sends a declined one again. The page of an expense shows what happened
+  to it, the newest first.
+- An organisation has a currency, Australian dollars at first, that an
+  administrator changes on the settings page. A page writes an amount in
+  the language and region of the organisation, such as `$1,234.50`.
+  Rescord converts no amount: expenses in two currencies have two sums.
+- The list of the expenses downloads as a CSV file, with the filters of
+  the page, for a spreadsheet or for the import of an accounting system.
+  The amount is a plain number with the code of its currency beside it.
+- The lists page has a new list, "Expense category", and the page of the
+  roles has a new area, "Expenses", with two powers. The page of a
+  resident links to its expenses.
+- The export of the data has three new files: `expenses.csv`,
+  `expense_receipts.csv` and `expense_categories.csv`. An amount of money
+  is two columns, the number and the code of its currency. A person who
+  cannot manage the expenses exports only their own. The files of the
+  receipts are not in the ZIP.
 
 ### Changed
 
