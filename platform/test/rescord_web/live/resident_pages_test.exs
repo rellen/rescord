@@ -330,6 +330,111 @@ defmodule RescordWeb.ResidentPagesTest do
       assert html =~ "Expected"
       assert html =~ "New resident"
     end
+
+    test "reads the search, the filters and the sort from the address (ADR 0084)", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+
+      resident!(lists, context.options, %{
+        name: "Clover",
+        species_id: lists.species.rabbit,
+        sex: :female
+      })
+
+      residents = context.base <> "/residents"
+
+      for {parameters, shown, hidden} <- [
+            {"?search=clo", "Clover", "Biscuit"},
+            {"?sex=male", "Biscuit", "Clover"},
+            {"?species_id=#{lists.species.rabbit}", "Clover", "Biscuit"},
+            {"?species_id=#{lists.species.rabbit}&sex=female&tab=kept", "Clover", "Biscuit"}
+          ] do
+        {_view, html} = open(context.conn, residents <> parameters)
+        rows = rows(html)
+
+        assert rows =~ shown
+        refute rows =~ hidden
+      end
+
+      # The sort: the name from Z to A.
+      {_view, html} = open(context.conn, residents <> "?sort=-name")
+      rows = rows(html)
+      assert :binary.match(rows, "Clover") < :binary.match(rows, "Biscuit")
+
+      # A parameter that names no field, and a value that is no choice, change
+      # nothing and make no fault.
+      {_view, html} = open(context.conn, residents <> "?colour=tan&sex=nothing&page=x&sort=,")
+      assert rows(html) =~ "Biscuit"
+    end
+
+    test "writes a filter into the address, and keeps a parameter of another kind", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+      resident!(lists, context.options, %{name: "Clover", sex: :female})
+
+      {view, _html} = open(context.conn, context.base <> "/residents?tab=kept")
+
+      view
+      |> element("#residents-filter-form")
+      |> render_change(%{"filters" => %{"sex" => "female"}})
+
+      path = assert_patch(view)
+      assert path =~ "sex=female"
+      assert path =~ "tab=kept"
+
+      rows = view |> render_async() |> rows()
+      assert rows =~ "Clover"
+      refute rows =~ "Biscuit"
+    end
+
+    test "says that the register is empty, or that nothing matches", context do
+      lists = lists!(context.organisation, context.root)
+
+      {_view, html} = open(context.conn, context.base <> "/residents")
+      assert html =~ "The register has no resident yet."
+
+      resident!(lists, context.options)
+
+      {_view, html} = open(context.conn, context.base <> "/residents?search=nobody")
+      assert html =~ "No resident matches the search and the filters."
+      refute html =~ "The register has no resident yet."
+    end
+
+    test "offers each species of the organisation as a filter", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+
+      {view, _html} = open(context.conn, context.base <> "/residents")
+
+      assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.rabbit}"]))
+      assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.guinea_pig}"]))
+    end
+
+    test "finds a resident by its name or by its markings", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options, %{name: "Biscuit", markings: "Torn left ear"})
+      resident!(lists, context.options, %{name: "Pepper"})
+      residents = context.base <> "/residents"
+
+      {_view, html} = open(context.conn, residents)
+      assert html =~ ~s(placeholder="Name or markings")
+      assert rows(html) =~ "Biscuit"
+      assert rows(html) =~ "Pepper"
+
+      for {text, shown, hidden} <- [{"TORN", "Biscuit", "Pepper"}, {"pep", "Pepper", "Biscuit"}] do
+        {_view, html} = open(context.conn, residents <> "?search=#{text}")
+        rows = rows(html)
+
+        assert rows =~ shown
+        refute rows =~ hidden
+      end
+    end
+  end
+
+  # The rows of the table of a collection, without its filters, which name
+  # each choice.
+  defp rows(html) do
+    html |> LazyHTML.from_fragment() |> LazyHTML.query("tbody") |> LazyHTML.to_html()
   end
 
   describe "the form of a resident" do
@@ -434,6 +539,50 @@ defmodule RescordWeb.ResidentPagesTest do
       refute html =~ "Rex"
       assert html =~ "Names"
       assert html =~ "Biscuit, from"
+    end
+
+    test "takes the markings, and the page has their row only when there are some", context do
+      lists = lists!(context.organisation, context.root)
+      resident = resident!(lists, context.options)
+      path = context.base <> "/residents/#{resident.id}"
+
+      {view, html} = open(context.conn, path)
+      refute has_element?(view, "dt", "Markings")
+      refute html =~ "Markings"
+
+      {view, _html} = open(context.conn, path <> "/edit")
+      assert has_element?(view, ~s(textarea#resident_markings[maxlength="300"]))
+      assert has_element?(view, ~s(label[for="resident_markings"]), "Markings")
+
+      {view, html} =
+        submit(view, context.conn, "#resident", resident: %{markings: " Torn left ear "})
+
+      assert has_element?(view, "dt", "Markings")
+      assert has_element?(view, "dd", "Torn left ear")
+      # No other fact changed.
+      assert html =~ "Biscuit"
+
+      # The form has the markings, and a form with none takes them away.
+      {view, _html} = open(context.conn, path <> "/edit")
+      assert has_element?(view, "textarea#resident_markings", "Torn left ear")
+      {view, _html} = submit(view, context.conn, "#resident", resident: %{markings: ""})
+      refute has_element?(view, "dt", "Markings")
+    end
+
+    test "of a new resident takes the markings too", context do
+      lists = lists!(context.organisation, context.root)
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+
+      {view, _html} =
+        submit(view, context.conn, "#resident",
+          resident: %{
+            name: "Pepper",
+            species_id: lists.species.guinea_pig,
+            markings: "White blaze on the nose"
+          }
+        )
+
+      assert has_element?(view, "dd", "White blaze on the nose")
     end
 
     test "does not open for a resident that is not there", context do

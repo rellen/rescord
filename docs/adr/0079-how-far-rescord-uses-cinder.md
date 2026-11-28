@@ -1,8 +1,9 @@
 # ADR 0079: How far Rescord uses Cinder, and where it should use more
 
 Status: proposed (the maintainer asked on 28 November 2026: "are we making
-full use of Cinder?"). This is an assessment. It changes no code. Each
-proposal below waits for the maintainer.
+full use of Cinder?"). This is an assessment. It changes no code. The
+maintainer chose proposals U1, U2, U3, M1, M2 and M3 on 28 November 2026:
+ADR 0084 is U1 to U3 and M1. M4 and M5 wait for the maintainer.
 
 ## Context
 

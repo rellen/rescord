@@ -4,8 +4,9 @@ Status: proposed (the maintainer asked on 28 November 2026: "are we making
 good use of Ash signals and AshWorkflow? AshEvents? AshPaperTrail?", and
 then "what about AshBoundary?"). This is an assessment. It changes no code.
 The maintainer chose proposals B1, S1 and S3 on 28 November 2026: ADR 0066
-is B1, and ADR 0067 is S1 and S3. The other proposals wait for the
-maintainer.
+is B1, and ADR 0067 is S1 and S3. The maintainer chose S2 on the same day,
+as "the same as a removal", and ADR 0067 has it too. The other proposals
+wait for the maintainer.
 
 ## Context
 

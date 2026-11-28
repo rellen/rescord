@@ -59,7 +59,7 @@ defmodule Rescord.Journal.JournalEntry do
       argument :onset_on, :date
       argument :chronic, :boolean
 
-      change Journal.Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Journal.Changes.HappenedAt
       validate Journal.Validations.KindHasItsFacts
       validate Journal.Validations.SameResident, before_action?: true

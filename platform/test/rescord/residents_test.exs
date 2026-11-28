@@ -327,6 +327,67 @@ defmodule Rescord.ResidentsTest do
       assert labels(resident.resident_colours, :colour) == ["Tan"]
     end
 
+    test "has markings, as free text that a resident can be without", context do
+      %{lists: lists, options: options} = context
+
+      resident = resident!(lists, options, %{markings: "  Torn left ear, white blaze  "})
+      assert facts(resident, options).markings == "Torn left ear, white blaze"
+
+      # Text with no character is no markings.
+      pepper = resident!(lists, options, %{name: "Pepper", markings: "   "})
+      assert facts(pepper, options).markings == nil
+
+      # A change with no markings takes them away, as the form sends it.
+      {:ok, _} = Residents.revise_resident(resident, %{markings: nil}, options)
+      assert facts(resident, options).markings == nil
+
+      # A change that does not name the markings keeps them.
+      resident = facts(resident, options)
+      {:ok, _} = Residents.revise_resident(resident, %{markings: "Rosette on the hip"}, options)
+      resident = facts(resident, options)
+      {:ok, _} = Residents.revise_resident(resident, %{sex: :female}, options)
+      resident = facts(resident, options)
+      assert resident.markings == "Rosette on the hip"
+      assert resident.sex == :female
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Residents.revise_resident(
+                 resident,
+                 %{markings: String.duplicate("a", 301)},
+                 options
+               )
+
+      assert {:ok, _} =
+               Residents.revise_resident(
+                 resident,
+                 %{markings: String.duplicate("a", 300)},
+                 options
+               )
+    end
+
+    test "is found by a part of its name or of its markings, in any case", context do
+      %{lists: lists, options: options} = context
+      resident!(lists, options, %{name: "Biscuit", markings: "Torn left ear"})
+      resident!(lists, options, %{name: "Pepper", markings: "White blaze on the nose"})
+      resident!(lists, options, %{name: "Blaze"})
+
+      found = fn text ->
+        Residents.Resident
+        |> Residents.with_text(text)
+        |> Ash.Query.load(:name)
+        |> Ash.read!(options)
+        |> Enum.map(& &1.name)
+        |> Enum.sort()
+      end
+
+      assert found.("torn") == ["Biscuit"]
+      assert found.("BLAZE") == ["Blaze", "Pepper"]
+      assert found.("pep") == ["Pepper"]
+      assert found.("zebra") == []
+      # The text is text, and not a pattern.
+      assert found.("%") == []
+    end
+
     test "keeps the history of the desex status", context do
       resident = resident!(context.lists, context.options)
       before = DateTime.utc_now()

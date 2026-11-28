@@ -27,6 +27,29 @@ defmodule Rescord.Ruby.LLM do
     with {:ok, provider} <- open(provider), do: Profile.from_provider(provider)
   end
 
+  @doc """
+  The profile of the provider of an organisation, with its key, for a
+  reply. The caller checked who asks.
+
+  It gives a profile only while Ruby is on there: the settings say so, the
+  server offers their provider, and its place is the one that a person of
+  the organisation agreed to. Each other case is `:key_refused`, the
+  reason of a server where Ruby is not set up: no request can go.
+  """
+  @spec profile(term) :: {:ok, Profile.t()} | {:error, :key_refused}
+  def profile(tenant) do
+    with %{enabled: true, provider_id: id} = settings when is_binary(id) <-
+           Rescord.Ruby.settings(tenant),
+         {:ok, %Provider{offered: true} = provider} <-
+           Ash.get(Provider, id, authorize?: false, not_found_error?: false),
+         true <- Profile.agreed?(provider, settings.agreed_destination),
+         {:ok, %Profile{} = profile} <- profile_of(provider) do
+      {:ok, profile}
+    else
+      _no_profile -> {:error, :key_refused}
+    end
+  end
+
   defp open(%Provider{} = provider) do
     case Ash.load(provider, :api_key, authorize?: false, context: %{rescord_vault: :open}) do
       # A key is a text, or nothing for a kind that takes none.

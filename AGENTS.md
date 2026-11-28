@@ -293,6 +293,25 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - Do not pass `theme`, and do not pass `class` to a slot. The theme is
     `RescordWeb.CinderTheme`, from the configuration, and the look is in
     `assets/css/layers/vendor.css`, which selects the `data-key` of a part.
+  - **A collection that is the page keeps its state in the address**
+    (ADR 0084): the LiveView has `use Cinder.UrlSync` after
+    `use RescordWeb, :live_view`, and the collection gets
+    `url_state={@url_state}`. One collection of a page takes it, because
+    the parameters have no prefix. A collection that is a part of a page,
+    such as the stock history of an item, does not. The page reads none of
+    those parameters itself.
+  - Give a collection an `<:empty :let={found}>` slot with two sentences:
+    one for `found.filtered?`, and one for a collection with nothing yet.
+  - What a row shows is a load of the query, or a thing that the page reads
+    once for the organisation: the page does not see the rows of Cinder.
+    A field that Elixir calculates takes no sort and no filter of Cinder.
+    For a search on one, the domain narrows the query, as
+    `Rescord.Accounts.members_with_email/2` does.
+  - When the query needs a filter that the web layer cannot write, the
+    domain has a function that returns the query, as
+    `Rescord.Inventory.query_to_history/2` does.
+  - A short list with no filter, no sort and no pages stays a table by
+    hand (ADR 0079).
   - Cinder has a LiveComponent inside. That does not change "No
     LiveComponents":
     we write none.
@@ -307,6 +326,13 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `RescordWeb.CinderTest` holds the two together. Do not take the two
     `dom` callbacks out of `assets/js/app.js`: without them a sort control
     loses the focus.
+  - The same module names the controls of a collection for a screen reader
+    and keeps the list of a choice filter open under the arrow keys
+    (ADR 0087). Do not take `watchCinderLists()` or `holdCinderListsOpen()`
+    out of `app.js`. It names a table by the heading of its
+    `section[aria-labelledby]`, or by the `h1` of the page: put a
+    collection that is a part of a page in such a section.
+    `RescordWeb.Features.CollectionsTest` holds this in a browser.
 - **An email is MJML, with a text part** (ADR 0070). `Rescord.Mail` builds
   each email, and the caller delivers it with `Rescord.Mailer`.
   - A new email is a template `lib/rescord/mail/<name>.mjml.eex` with the
@@ -391,6 +417,20 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A change, validation or preparation for a temporal resource is a module
     that declares `temporal_safe?/1`. Pass `as_of:` as an action option, and
     use `now()` in an expression, never the wall clock.
+  - A group of changes and validations that actions of one resource must
+    keep the same goes in a pipeline (ADR 0086): `pipelines do pipeline
+    :name do ... end end` before `actions`, and `pipe_through [:name]` in
+    each action. Write one when the group has three lines or more, or when
+    three actions or more take it; a smaller group stays in its actions.
+    Inside a pipeline Ash runs each change before each validation, so a
+    group with a validation before a change is not one pipeline. A pipeline
+    holds no argument, no `accept` and no `emit`. `Rescord.Expenses.Expense`
+    is the example.
+  - A record that a person writes gets its author with
+    `Rescord.Accounts.Changes.SetAuthor`, and a date of a thing that
+    happened is checked with
+    `{Rescord.Accounts.Validations.NotAfterToday, attribute: :the_date}`
+    (ADR 0086). Do not write another one in a domain.
   - A request for a sign-in link answers at once (ADR 0019). It starts a
     supervised task and gives the same answer in each case: a known address,
     an address that Rescord does not know, and a fault. Do no work that
@@ -521,6 +561,22 @@ hand (ADR 0073). Read it before you write a migration. In short:
     options of `Rescord.Ruby.LLM.Profile`. The system prompt is one
     constant text with no value in it. Inside a conversation the tools,
     the prompt and the stored turns never change: the messages only grow.
+  - **A job writes each reply**, and `Rescord.Ruby.say/3` is the one way
+    to start it: the trigger `respond` of `Rescord.Ruby.Message`, in the
+    queue `ruby`. The job holds the id of the message, the organisation
+    and the id of the member, and no word. It runs one time: do not raise
+    `max_attempts`, the provider bills each try.
+    `Rescord.Ruby.Changes.Respond` checks the member again
+    (`available?/2`), and then `Rescord.Ruby.Replies` writes the rows with
+    no policy. A reply always gets an end: a state, and a reason of
+    `Rescord.Ruby.Reason` when it failed. The job raises only
+    `Rescord.Ruby.Fault`, which has the shape of an error and none of its
+    words, because Oban keeps the error of a job in its row. Keep
+    `log_errors? false` on the trigger.
+  - **The header of a message is stored, and sent again as it was.**
+    `Rescord.Ruby.Changes.Say` makes it with `Rescord.Ruby.Prompt`, from
+    the rescue, the role, the day and the time zone. It is never an input,
+    and holds no name, no address and no id of a person.
   - **No test calls a provider.** Use `Rescord.Ruby.ScriptedModel`, or
     `Rescord.FakeAnthropic` on `127.0.0.1`. The evaluation run is a Mix
     task, outside `mix test` and CI. `config/test.exs` names the scripted
@@ -882,7 +938,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
-| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, and the conversations (ADR 0069) |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt and the job that writes a reply (ADR 0069) |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |

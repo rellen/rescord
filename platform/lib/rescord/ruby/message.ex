@@ -10,7 +10,23 @@ defmodule Rescord.Ruby.Message do
   the actor and refuses a conversation of another person, so the grant of
   a member is a filter on one column.
 
-  The actions of the job that writes a reply come with that job.
+  ## The reply
+
+  `say` puts a job in the queue `ruby` of Oban, with the trigger `respond`
+  of AshOban: the job holds the id of the message, the organisation and
+  the id of the member, and no word of the message. It runs the action
+  `respond` as that member (`Rescord.Ruby.ActorPersister`), which writes
+  the reply (`Rescord.Ruby.Changes.Respond`). A job runs one time: the
+  provider bills each try, so a reply that failed stays failed, and the
+  member asks again.
+
+  A message has one reply at most (the identity `one_reply`), and the
+  trigger takes a message of a member that has none. So a job that runs a
+  second time writes nothing.
+
+  `respond`, `open_reply`, `grow` and `close` are in no grant: the job and
+  `Rescord.Ruby.Replies` run them. The bypass of the policy holds only
+  inside a call that AshOban makes.
 
   Never log the text, the header or the parts of a message.
   """
@@ -20,9 +36,10 @@ defmodule Rescord.Ruby.Message do
     temporal?: false,
     paper_trail?: false,
     archive?: false,
+    extensions: [AshOban],
     authorizers: [Ash.Policy.Authorizer]
 
-  alias Rescord.Ruby.{Changes, Rating, Reason, ReplyState, Source}
+  alias Rescord.Ruby.{Changes, Rating, Reason, ReplyState, Source, Validations}
 
   @type t :: %__MODULE__{}
 
@@ -39,14 +56,89 @@ defmodule Rescord.Ruby.Message do
     end
   end
 
+  oban do
+    triggers do
+      trigger :respond do
+        action :respond
+        queue :ruby
+        where expr(needs_reply)
+        # No scheduler: `say` starts the job of its message.
+        scheduler_cron false
+        # The provider bills each try.
+        max_attempts 1
+        # The action runs for as long as the model writes, and holds no
+        # transaction and no lock for that time.
+        lock_for_update? false
+        actor_persister Rescord.Ruby.ActorPersister
+        # AshOban would write the error with its message. The lines of a
+        # job that failed are those of `Rescord.Log.Jobs`.
+        log_errors? false
+        log_final_error? false
+        worker_module_name Rescord.Ruby.Message.Workers.Respond
+        scheduler_module_name Rescord.Ruby.Message.Schedulers.Respond
+      end
+    end
+  end
+
   actions do
     defaults [:read]
 
+    read :of_conversation do
+      description "The messages of one conversation, in the order of the talk"
+      argument :conversation_id, :uuid, allow_nil?: false
+      filter expr(conversation_id == ^arg(:conversation_id))
+      # The id of a message holds its time.
+      prepare build(sort: [id: :asc])
+    end
+
     create :say do
-      description "The member says a thing to Ruby, in a conversation of their own"
+      description "The member says a thing to Ruby, in a conversation of their own. A job then writes the reply"
       accept [:conversation_id, :text]
+      # Ruby is on here, for this person. No key is decrypted.
+      validate Validations.RubyOn
       change Changes.SetOwner
       change Changes.Say
+      change run_oban_trigger(:respond)
+    end
+
+    update :respond do
+      description "Writes the reply to this message. Only the job runs it"
+      accept []
+      require_atomic? false
+      # The model writes for a long time: no transaction is open meanwhile.
+      transaction? false
+      change Changes.Respond
+    end
+
+    create :open_reply do
+      description "Makes the reply to a message of a member, with no word yet. Only Ruby runs it"
+      accept [:conversation_id]
+      argument :owner_id, :uuid, allow_nil?: false
+      argument :response_to_id, :uuid, allow_nil?: false
+      change set_attribute(:owner_id, arg(:owner_id))
+      change set_attribute(:response_to_id, arg(:response_to_id))
+      change set_attribute(:source, :ruby)
+      change set_attribute(:state, :streaming)
+    end
+
+    update :grow do
+      description "Saves the words and the parts of a reply so far. Only Ruby runs it"
+      accept [:text, :parts]
+    end
+
+    update :close do
+      description "Writes the end of a reply: its words, its state and reason, the model, the tokens and their price. Only Ruby runs it"
+
+      accept [
+        :text,
+        :parts,
+        :state,
+        :reason,
+        :model,
+        :usage,
+        :cost_microdollars,
+        :prompt_fingerprint
+      ]
     end
 
     update :rate do
@@ -64,6 +156,13 @@ defmodule Rescord.Ruby.Message do
   end
 
   policies do
+    # AshOban asks the policy for the read and for the action of a trigger,
+    # and `respond` is in no grant. This check is true only inside a call
+    # that AshOban makes.
+    bypass AshOban.Checks.AshObanInteraction do
+      authorize_if always()
+    end
+
     # No bypass for a root user (ADR 0069).
     policy always() do
       authorize_if Rescord.Accounts.Checks.Granted
@@ -99,6 +198,8 @@ defmodule Rescord.Ruby.Message do
 
     attribute :header, :string do
       sensitive? true
+      # It ends with an empty line, which stays.
+      constraints trim?: false
 
       description "For a message of a member: what the model gets before the text, and the page hides"
     end
@@ -178,6 +279,11 @@ defmodule Rescord.Ruby.Message do
     has_one :reply, __MODULE__ do
       destination_attribute :response_to_id
     end
+  end
+
+  calculations do
+    # A message of a member needs a reply while it has none.
+    calculate :needs_reply, :boolean, expr(source == :user and not exists(reply))
   end
 
   identities do

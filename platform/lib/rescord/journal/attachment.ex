@@ -50,7 +50,7 @@ defmodule Rescord.Journal.Attachment do
       description "Attaches a file to a journal entry"
       accept [:entry_id, :name]
       argument :content, :binary, allow_nil?: false, sensitive?: true
-      change Journal.Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Journal.Changes.StoreAttachment
       validate Journal.Validations.EntryOfOrganisation, before_action?: true
     end

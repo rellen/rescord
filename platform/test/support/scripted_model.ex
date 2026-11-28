@@ -12,7 +12,9 @@ defmodule Rescord.Ruby.ScriptedModel do
       ])
 
   A step is `{:text, text}`, `{:tool, name, arguments}`, `{:refusal, text}`,
-  `{:cut, text}` (the limit of tokens cut the answer) or `{:error, reason}`.
+  `{:cut, text}` (the limit of tokens cut the answer), `{:error, reason}`
+  or `{:raise, message}` (a fault in the middle of the loop, in the process
+  that asked). A request with no step left raises there too.
   `requests/0` gives what the loop sent, so that a test reads the prompt.
 
   The script is in the process that runs the test, so tests run `async`.
@@ -42,13 +44,17 @@ defmodule Rescord.Ruby.ScriptedModel do
 
         case state.steps do
           [step | rest] -> {step, %{state | steps: rest, requests: [request | state.requests]}}
-          [] -> raise "the script of the model has no step for this request"
+          [] -> {:none, state}
         end
       end)
 
     respond(step, model, messages)
   end
 
+  defp respond(:none, _model, _messages),
+    do: raise("the script of the model has no step for this request")
+
+  defp respond({:raise, message}, _model, _messages), do: raise(message)
   defp respond({:error, reason}, _model, _messages), do: {:error, reason}
 
   defp respond({:text, text}, model, messages),

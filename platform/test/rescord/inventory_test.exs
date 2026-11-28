@@ -109,7 +109,7 @@ defmodule Rescord.InventoryTest do
       assert to_string(tablets.unit) == "mg/tablet"
 
       # The history has the strength of each time.
-      {:ok, history} = Inventory.history(meloxicam.id, context.options)
+      {:ok, history} = meloxicam.id |> Inventory.query_to_history(context.options) |> Ash.read()
       assert is_list(history)
 
       assert {:ok, %{strength: nil}} =
@@ -172,7 +172,9 @@ defmodule Rescord.InventoryTest do
       assert id == lot.id
       assert places(lot_stock) == %{context.shed.id => "10"}
 
-      {:ok, [movement]} = Inventory.history(context.hay.id, context.options)
+      {:ok, [movement]} =
+        context.hay.id |> Inventory.query_to_history(context.options) |> Ash.read()
+
       assert movement.kind == :received
       assert movement.author_id == context.member.id
       assert movement.lot.code == "B-4471"
@@ -241,7 +243,7 @@ defmodule Rescord.InventoryTest do
       assert number(stock.level) == "10.5"
       assert places(hd(stock.lots)) == %{context.shed.id => "10.5"}
 
-      {:ok, history} = Inventory.history(context.hay.id, context.options)
+      {:ok, history} = context.hay.id |> Inventory.query_to_history(context.options) |> Ash.read()
       assert Enum.map(history, & &1.kind) == [:discarded, :used, :received, :received]
     end
 
@@ -381,7 +383,7 @@ defmodule Rescord.InventoryTest do
       assert number(stock.level) == "10"
       assert places(hd(stock.lots)) == %{context.shed.id => "6", context.clinic.id => "4"}
 
-      {:ok, history} = Inventory.history(context.hay.id, context.options)
+      {:ok, history} = context.hay.id |> Inventory.query_to_history(context.options) |> Ash.read()
       moved = Enum.filter(history, &(&1.kind == :moved))
 
       assert moved |> Enum.map(&{&1.location_id, number(&1.quantity)}) |> Enum.sort() ==
@@ -403,7 +405,7 @@ defmodule Rescord.InventoryTest do
 
       assert Exception.message(error) =~ "is the place that the stock is in"
 
-      {:ok, history} = Inventory.history(context.hay.id, context.options)
+      {:ok, history} = context.hay.id |> Inventory.query_to_history(context.options) |> Ash.read()
       assert Enum.map(history, & &1.kind) == [:received]
     end
 
@@ -443,7 +445,7 @@ defmodule Rescord.InventoryTest do
       assert Exception.message(error) =~ "cannot be after now"
 
       # The history is in the order of the times that the things happened.
-      {:ok, history} = Inventory.history(context.hay.id, context.options)
+      {:ok, history} = context.hay.id |> Inventory.query_to_history(context.options) |> Ash.read()
       assert Enum.map(history, & &1.kind) == [:received, :used]
     end
   end
@@ -617,7 +619,7 @@ defmodule Rescord.InventoryTest do
 
         assert {:ok, []} = Inventory.stock(options)
         assert {:ok, nil} = Inventory.item_stock(context.hay.id, options)
-        assert {:ok, []} = Inventory.history(context.hay.id, options)
+        assert {:ok, []} = context.hay.id |> Inventory.query_to_history(options) |> Ash.read()
         assert {:ok, []} = Inventory.suppliers(options)
 
         assert {:error, %Ash.Error.Forbidden{}} = Inventory.add_item(%{name: "X"}, options)

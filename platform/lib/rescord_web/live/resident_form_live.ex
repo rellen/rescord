@@ -96,6 +96,7 @@ defmodule RescordWeb.ResidentFormLive do
       "born_on_estimated" => to_string(resident.born_on_estimated),
       "size_class_id" => resident.size_class_id || "",
       "coat_id" => resident.coat_id || "",
+      "markings" => resident.markings || "",
       "breed_ids" => Enum.map(resident.resident_breeds, & &1.breed_id),
       "colour_ids" => Enum.map(resident.resident_colours, & &1.colour_id),
       "temperament_ids" => Enum.map(resident.resident_temperaments, & &1.temperament_id)
@@ -147,6 +148,7 @@ defmodule RescordWeb.ResidentFormLive do
       born_on_estimated: fields["born_on_estimated"] == "true",
       size_class_id: non_blank(fields["size_class_id"]),
       coat_id: non_blank(fields["coat_id"]),
+      markings: non_blank(fields["markings"]),
       breed_ids: ids(fields["breed_ids"]),
       colour_ids: ids(fields["colour_ids"]),
       temperament_ids: ids(fields["temperament_ids"])

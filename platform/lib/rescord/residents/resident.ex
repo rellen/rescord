@@ -3,8 +3,8 @@ defmodule Rescord.Residents.Resident do
   An animal in the care of an organisation (`docs/domain.md`, section 5.2).
 
   The resident holds what it has one of and what needs no table of its own:
-  the species, the sex, the date of birth, the size class and the coat. Each
-  other fact is a resource about the resident:
+  the species, the sex, the date of birth, the size class, the coat and the
+  markings. Each other fact is a resource about the resident:
 
     * the name and the desex status, each in a table of its own, so that each
       has a history (design rule 2);
@@ -58,7 +58,16 @@ defmodule Rescord.Residents.Resident do
 
     create :register do
       description "Records a new resident, with its facts"
-      accept [:species_id, :sex, :born_on, :born_on_estimated, :size_class_id, :coat_id]
+
+      accept [
+        :species_id,
+        :sex,
+        :born_on,
+        :born_on_estimated,
+        :size_class_id,
+        :coat_id,
+        :markings
+      ]
 
       argument :name, :string, constraints: [max_length: 80]
       argument :desex_status, Residents.DesexStatus, default: :unknown
@@ -78,7 +87,16 @@ defmodule Rescord.Residents.Resident do
       description "Changes the facts of a resident. An argument that is not given changes nothing"
       # The change writes other resources after the update.
       require_atomic? false
-      accept [:species_id, :sex, :born_on, :born_on_estimated, :size_class_id, :coat_id]
+
+      accept [
+        :species_id,
+        :sex,
+        :born_on,
+        :born_on_estimated,
+        :size_class_id,
+        :coat_id,
+        :markings
+      ]
 
       argument :name, :string, constraints: [max_length: 80]
       argument :desex_status, Residents.DesexStatus
@@ -119,6 +137,15 @@ defmodule Rescord.Residents.Resident do
       allow_nil? false
       default false
       public? true
+    end
+
+    # Free text, because a mark belongs to one animal and no list holds it.
+    # Ash trims it, and text with no character is no value.
+    attribute :markings, :string do
+      public? true
+      constraints max_length: 300
+
+      description "What tells this resident apart and is in no list, such as a torn ear"
     end
   end
 

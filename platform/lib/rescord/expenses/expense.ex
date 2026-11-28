@@ -89,6 +89,25 @@ defmodule Rescord.Expenses.Expense do
     belongs_to_actor :user, Rescord.Accounts.User, domain: Rescord.Accounts
   end
 
+  # What several actions share, written one time (ADR 0086). An action
+  # takes a pipeline with `pipe_through`, and Ash puts its lines in the
+  # action at that place.
+  pipelines do
+    pipeline :new_expense do
+      description "What each new expense gets: its author, its amount and the person who paid"
+      change Rescord.Accounts.Changes.SetAuthor
+      change Changes.SetAmount
+      change Changes.SetPayer
+    end
+
+    pipeline :checked_facts do
+      description "What holds for the facts of an expense, each time a person writes them"
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :incurred_on}
+      validate Validations.CategoryOfOrganisation, before_action?: true
+      validate Validations.ResidentOfOrganisation, before_action?: true
+    end
+  end
+
   actions do
     defaults [:read]
 
@@ -96,12 +115,7 @@ defmodule Rescord.Expenses.Expense do
       description "Records an expense that the actor or the organisation paid. It waits for a decision"
       accept [:paid_by, :incurred_on, :payee, :description, :category_id, :resident_id, :note]
       argument :amount, :decimal, allow_nil?: false
-      change Changes.SetAuthor
-      change Changes.SetAmount
-      change Changes.SetPayer
-      validate {Validations.NotAfterToday, attribute: :incurred_on}
-      validate Validations.CategoryOfOrganisation, before_action?: true
-      validate Validations.ResidentOfOrganisation, before_action?: true
+      pipe_through [:new_expense, :checked_facts]
     end
 
     create :record do
@@ -110,13 +124,9 @@ defmodule Rescord.Expenses.Expense do
       accept [:paid_by, :incurred_on, :payee, :description, :category_id, :resident_id, :note]
       argument :amount, :decimal, allow_nil?: false
       argument :payer_id, :uuid
-      change Changes.SetAuthor
-      change Changes.SetAmount
-      change Changes.SetPayer
+      pipe_through [:new_expense]
       change Changes.ApproveWhatTheOrganisationPaid
-      validate {Validations.NotAfterToday, attribute: :incurred_on}
-      validate Validations.CategoryOfOrganisation, before_action?: true
-      validate Validations.ResidentOfOrganisation, before_action?: true
+      pipe_through [:checked_facts]
       validate Validations.PayerIsMember, before_action?: true
     end
 
@@ -129,9 +139,7 @@ defmodule Rescord.Expenses.Expense do
       change transition_state(:submitted)
       change Changes.SetAmount
       change Changes.ClearDecision
-      validate {Validations.NotAfterToday, attribute: :incurred_on}
-      validate Validations.CategoryOfOrganisation, before_action?: true
-      validate Validations.ResidentOfOrganisation, before_action?: true
+      pipe_through [:checked_facts]
     end
 
     update :approve do
@@ -160,7 +168,7 @@ defmodule Rescord.Expenses.Expense do
       change filter(expr(state == :approved and paid_by == :member))
       change transition_state(:reimbursed)
       change Changes.PayBack
-      validate {Validations.NotAfterToday, attribute: :reimbursed_on}
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :reimbursed_on}
     end
 
     update :reopen do

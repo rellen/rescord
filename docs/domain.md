@@ -118,6 +118,7 @@ These subjects are out of scope for now:
 | In which order does the project build the other parts? | Families and groups, locations, the journal, tasks, and then the inventory. |
 | Must a resident have a breed, a colour, a size class and a coat? | No. An organisation that wants `not known` adds it to its list. |
 | Who removes a resident that was recorded by mistake? | An administrator. The removal archives the record, and ends its ties to groups, families and relatives (ADR 0036). It ends its placement too, and takes the resident out of each task and each routine. A task that is due and named only that resident is skipped, with a reason, and a member can open it again (ADR 0067). |
+| What does the departure of a resident end? | Its placement. The departure also takes the resident out of each routine and of each task that is due, and a task that named only that resident is skipped, with a reason. A task that is done keeps the resident. A departure that a member withdraws restores none of this (ADR 0067). |
 | How does an organisation remove a value from a list? | It retires the value. A resident that has the value keeps it, and no form offers it for a new choice. The organisation can bring it back. |
 | Must a parent be a resident of the organisation? | Yes. A parent that did not live there is a resident with no arrival. |
 | Can a resident be in more than one group at one time? | Yes. Each membership has its own start and end. |
@@ -224,6 +225,7 @@ dimensions:
 | temperament | shy, reactive to dogs, needs an experienced handler | zero or more |
 | desex status | entire, desexed, not known | one, with a history |
 | identifier kind | microchip, ear tag, leg band, tattoo | one for each identifier |
+| markings | "torn left ear", "white blaze on the nose" | zero or one, as free text |
 
 - Rescord keeps a history of the name, the status, and the desex status of a
   resident. The name and the desex status are each a temporal resource in
@@ -232,6 +234,9 @@ dimensions:
 - The species, the breed, the colour, the size class, the coat, the
   temperament and the identifier kind are lists that an organisation can
   extend. The sex and the desex status are fixed lists.
+- A resident needs no identifier: many species carry no microchip and no
+  ear tag. The markings are free text for what tells a resident apart and
+  is in no list (ADR 0085). A resident needs none.
 - The weight is a measurement in the journal, so it has a history already.
 - An arrival records how and when a resident came to the organisation. A
   departure records how and when a resident left.
@@ -261,7 +266,8 @@ time zone of the organisation.
 
 Rescord has these parts of this section (ADR 0025): the resident and each of
 its dimensions, the name and the desex status with their history, the
-identifiers, the arrival, the departure and the absence, and pages for them.
+identifiers, the markings, the arrival, the departure and the absence, and
+pages for them.
 
 ### 5.3 Families of residents
 

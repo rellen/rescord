@@ -12,7 +12,7 @@ defmodule RescordWeb.InventoryComponents do
 
   import RescordWeb.ToolComponents, only: [strength_controls: 1]
 
-  alias Rescord.{Accounts, Dosage}
+  alias Rescord.{Accounts, Dosage, Inventory}
   alias RescordWeb.{InventoryWords, ResidentWords, TaskWords, ToolWords}
 
   @doc "The stock of an item: its level, its state, and each lot in each place."
@@ -407,9 +407,12 @@ defmodule RescordWeb.InventoryComponents do
     """
   end
 
-  @doc "What happened to the stock of an item, the newest first."
-  attr :history, :list, required: true
+  @doc """
+  What happened to the stock of an item, the newest first: each movement,
+  in pages, with a filter on the date, the kind and the lot (ADR 0084).
+  """
   attr :item, :map, required: true
+  attr :lots, :list, required: true, doc: "each lot of the item, as the choices of a filter"
   attr :organisation, :map, required: true
   attr :members, :map, required: true
   attr :user, :map, required: true
@@ -417,37 +420,59 @@ defmodule RescordWeb.InventoryComponents do
 
   def stock_history(assigns) do
     ~H"""
-    <section aria-labelledby="history-heading">
+    <section id="history" aria-labelledby="history-heading">
       <h2 id="history-heading">What happened</h2>
-      <p :if={@history == []}>Nothing happened to the stock of this item yet.</p>
-      <div :if={@history != []} data-scroll>
-        <table id="history">
-          <thead>
-            <tr>
-              <th scope="col">When</th>
-              <th scope="col">What</th>
-              <th scope="col">Change</th>
-              <th scope="col">Lot</th>
-              <th scope="col">Where</th>
-              <th scope="col">Who</th>
-              <th scope="col">Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={movement <- @history} id={"movement-#{movement.id}"}>
-              <td>{when_words(movement.happened_at, @organisation)}</td>
-              <td data-label="What">{InventoryWords.movement(movement)}</td>
-              <td data-label="Change">{InventoryWords.change(movement.quantity)}</td>
-              <td data-label="Lot">{InventoryWords.lot(movement.lot)}</td>
-              <td data-label="Where">
-                {String.capitalize(place_words(movement.location_id, @place_names))}
-              </td>
-              <td data-label="Who">{author(@members, movement, @user)}</td>
-              <td data-label="Note">{movement.note}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <Cinder.collection
+        id="history"
+        query={Inventory.query_to_history(@item.id, actor: @user, tenant: @organisation)}
+        actor={@user}
+        tenant={@organisation}
+        page_size={[default: 25, options: [25, 50, 100]]}
+      >
+        <:empty :let={found}>
+          <p :if={found.filtered?}>No movement matches the filters.</p>
+          <p :if={not found.filtered?}>Nothing happened to the stock of this item yet.</p>
+        </:empty>
+        <:col
+          :let={movement}
+          field="happened_at"
+          label="When"
+          sort={[cycle: [:desc, :asc]]}
+          filter={[type: :date_range]}
+        >
+          {when_words(movement.happened_at, @organisation)}
+        </:col>
+        <:col
+          :let={movement}
+          field="kind"
+          label="What"
+          filter={[type: :select, prompt: "Any kind", options: InventoryWords.movement_options()]}
+        >
+          <span data-label="What">{InventoryWords.movement(movement)}</span>
+        </:col>
+        <:col :let={movement} field="quantity" label="Change">
+          <span data-label="Change">{InventoryWords.change(movement.quantity)}</span>
+        </:col>
+        <:col
+          :let={movement}
+          field="lot_id"
+          label="Lot"
+          filter={[type: :select, prompt: "Any lot", options: @lots]}
+        >
+          <span data-label="Lot">{InventoryWords.lot(movement.lot)}</span>
+        </:col>
+        <:col :let={movement} field="location_id" label="Where">
+          <span data-label="Where">
+            {String.capitalize(place_words(movement.location_id, @place_names))}
+          </span>
+        </:col>
+        <:col :let={movement} field="author_id" label="Who">
+          <span data-label="Who">{author(@members, movement, @user)}</span>
+        </:col>
+        <:col :let={movement} field="note" label="Note">
+          <span :if={movement.note} data-label="Note">{movement.note}</span>
+        </:col>
+      </Cinder.collection>
     </section>
     """
   end

@@ -12,7 +12,7 @@ defmodule Rescord.Tasks.Task do
 
       due --complete--> done
       due --skip------> skipped
-      due --skip_left_alone--> skipped   (the removal of its only resident)
+      due --skip_left_alone--> skipped   (its only resident was removed, or left)
       done, skipped --reopen--> due
 
   AshStateMachine holds the states, so this resource is not temporal
@@ -38,7 +38,8 @@ defmodule Rescord.Tasks.Task do
 
   When an administrator removes a resident, a task that is due and named
   only that resident is skipped, with the reason "The resident was
-  removed" (ADR 0067). A member can open it again. It does not make the
+  removed" (ADR 0067). When a resident leaves, such a task is skipped with
+  the reason "The resident left". A member can open it again. It does not make the
   next tasks of a routine: the routine has lost the resident too, and the
   job of each hour makes its tasks.
   """
@@ -147,13 +148,14 @@ defmodule Rescord.Tasks.Task do
     end
 
     update :skip_left_alone do
-      description "Skips a task that lost its only subject, with a reason that says so. The removal of a resident runs this, and no role has a grant for it"
+      description "Skips a task that lost its only subject, with a reason that says so. The removal and the departure of a resident run this, and no role has a grant for it"
 
       accept []
       require_atomic? false
+      argument :reason, :string, allow_nil?: false
       change filter(expr(state == :due))
       change transition_state(:skipped)
-      change set_attribute(:skip_reason, "The resident was removed")
+      change set_attribute(:skip_reason, arg(:reason))
       change Tasks.Changes.Finish
     end
 

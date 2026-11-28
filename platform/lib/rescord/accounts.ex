@@ -30,7 +30,13 @@ defmodule Rescord.Accounts do
     check aliases: true
     deps [Rescord, Rescord.Mail]
     # Another domain holds its own grants, and uses the check (ADR 0024).
-    exports [Rescord.Accounts.Grants, Rescord.Accounts.Checks.Granted]
+    exports [
+      Rescord.Accounts.Grants,
+      Rescord.Accounts.Checks.Granted,
+      # A change and a validation that each domain uses (ADR 0086).
+      Rescord.Accounts.Changes.SetAuthor,
+      Rescord.Accounts.Validations.NotAfterToday
+    ]
   end
 
   paper_trail do
@@ -128,6 +134,21 @@ defmodule Rescord.Accounts do
   """
   @spec all_organisations() :: [Ash.Resource.record()]
   def all_organisations, do: Organisation |> Ash.Query.sort(:name) |> Ash.read!(authorize?: false)
+
+  @doc """
+  The user with this id, or `nil`, for a job that works for a person: the
+  job holds the id, and reads the user when it runs. It asks no policy: no
+  person is there. What the user can do is the question of the job.
+  """
+  @spec user_for_job(term) :: User.t() | nil
+  def user_for_job(id) when is_binary(id) do
+    case Ash.get(User, id, authorize?: false, not_found_error?: false) do
+      {:ok, user} -> user
+      {:error, _not_an_id} -> nil
+    end
+  end
+
+  def user_for_job(_other), do: nil
 
   @doc """
   The organisation of a tenant: the organisation itself, or the name of its
@@ -455,6 +476,29 @@ defmodule Rescord.Accounts do
       {:gap, _before, later} -> later
     end
     |> DateTime.shift_zone!("Etc/UTC", Tz.TimeZoneDatabase)
+  end
+
+  @doc """
+  Narrows a query of members to those whose email address has `text` in
+  it, in any case of its letters. The members table searches with this
+  (ADR 0084).
+
+  The email address is of the user, who is in no schema of an
+  organisation, and a user reads only their own record. So this reads the
+  users with no policy, as `Rescord.Accounts.Calculations.MemberEmail` does,
+  and gives back only a filter on the members: the query still answers
+  with the members that its actor can read, in its organisation.
+  """
+  @spec members_with_email(Ash.Query.t(), String.t()) :: Ash.Query.t()
+  def members_with_email(%Ash.Query{} = query, text) when is_binary(text) do
+    user_ids =
+      User
+      |> Ash.Query.filter(contains(email, ^%Ash.CiString{string: text}))
+      |> Ash.Query.select([:id])
+      |> Ash.read!(authorize?: false)
+      |> Enum.map(& &1.id)
+
+    Ash.Query.filter(query, user_id in ^user_ids)
   end
 
   @doc "The date in an organisation now."

@@ -82,6 +82,10 @@ release (ADR 0047).
     a column to the journal entries, for the condition that an entry is
     about. The table is empty and the column is empty for each entry
     that is there. It changes no row.
+  - `20261128065227_add_the_markings_of_a_resident`, in each
+    organisation: adds a column to the residents, for the markings of a
+    resident. The column is empty for each resident that is there. It
+    changes no row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -350,9 +354,28 @@ release (ADR 0047).
   is two columns, the number and the code of its currency. A person who
   cannot manage the expenses exports only their own. The files of the
   receipts are not in the ZIP.
+- A resident can have markings: free text, at most 300 characters, for
+  what tells it apart and is in no list, such as a torn ear or a white
+  blaze on the nose (ADR 0085). It is for the many residents that carry no
+  microchip and no ear tag. The form of a resident has the field, and no
+  resident needs it. The page of a resident, the cage card, the record of
+  a resident and the copy of a transfer show the markings when a resident
+  has them, and have no row for them when it has none. The search of the
+  residents page finds a resident by its name or by its markings.
+  `residents.csv` of the export has the new column `markings`.
 
 ### Changed
 
+- When a member records that a resident left, Rescord now ends the
+  placement of the resident, and takes it out of each routine and of each
+  task that is due. A task that named only that resident is skipped, with
+  the reason "The resident left", and a member can open it again. A task
+  that is done keeps the resident. Before, a resident that left kept its
+  place in the housing, its tasks stayed due, and its routines made more.
+  A departure that a member withdraws restores none of this: place the
+  resident again, and add it to its routines again. A resident that left
+  before this version keeps its place and its tasks until a member clears
+  them.
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,
@@ -390,6 +413,20 @@ release (ADR 0047).
   and the section then shows only on a resident that has one. The register
   on paper has its column of identifiers only when a resident of the
   register has one.
+- The list of the residents, the members of an organisation and the
+  organisations of the root page now keep their search, their filters,
+  their sort and their page in the address. A person who opens a record
+  and goes back finds the list as it was, and the address of a filtered
+  list can be kept or sent. The residents also have a filter on the
+  species and a choice of 25, 50 or 100 on a page. The members have a
+  search on the email address and a filter on the role. Each list says
+  when nothing matches the filters, and when there is nothing yet
+  (ADR 0084).
+- The page of an item of the inventory now shows each stock movement of
+  the item, in pages of 25, 50 or 100, with a filter on the date, on the
+  kind of movement and on the lot, and a sort on the time. Before, it
+  showed the newest 100 movements and had no way to the older ones
+  (ADR 0084).
 
 ### Fixed
 
@@ -400,6 +437,14 @@ release (ADR 0047).
   skipped, with the reason "The resident was removed", and a member can
   open it again. A task with another resident, a group or a location
   stays due, and a routine goes on for its other residents.
+- The filters and the pages of a list now work with a keyboard and a
+  screen reader. The button of a filter with choices says its choice
+  and if its list is open. The arrow keys move through the choices, and
+  Enter or Escape closes the list. Before, the list closed at each
+  press and the focus went to the top of the page. The buttons that
+  clear a filter and that change the page have words for their names,
+  the pages are a landmark, a table has a name, and a screen reader
+  says the new count after a filter or a search (ADR 0087).
 
 ### Security
 

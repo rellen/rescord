@@ -11,6 +11,9 @@ defmodule Rescord.Tasks.TaskSubject do
   archived. The task stays for its other subjects. A task that is due and
   has no subject left is skipped, with a reason
   (`Rescord.Tasks.Changes.SkipTaskLeftAlone`).
+
+  When a resident leaves, the same happens for the tasks that are due. A
+  task that is done or skipped keeps the resident: it is its history.
   """
 
   use Rescord.Resource,
@@ -47,6 +50,13 @@ defmodule Rescord.Tasks.TaskSubject do
       pagination keyset?: true, required?: false
     end
 
+    read :of_resident_in_due_tasks do
+      description "The subjects that name a resident, in the tasks that are due"
+      argument :resident_id, :uuid, allow_nil?: false
+      filter expr(resident_id == ^arg(:resident_id) and task.state == :due)
+      pagination keyset?: true, required?: false
+    end
+
     create :add do
       accept [:task_id, :resident_id, :group_id, :location_id]
     end
@@ -56,7 +66,14 @@ defmodule Rescord.Tasks.TaskSubject do
 
       # A task that is due, and has no subject left, is skipped.
       require_atomic? false
-      change Rescord.Tasks.Changes.SkipTaskLeftAlone
+      change {Rescord.Tasks.Changes.SkipTaskLeftAlone, reason: "The resident was removed"}
+    end
+
+    destroy :drop_departed do
+      description "Takes a resident that left out of a task that is due. A listener runs this, and no role has a grant for it"
+
+      require_atomic? false
+      change {Rescord.Tasks.Changes.SkipTaskLeftAlone, reason: "The resident left"}
     end
   end
 
@@ -68,6 +85,7 @@ defmodule Rescord.Tasks.TaskSubject do
     policy always() do
       # The removal of a resident is the decision (ADR 0067).
       authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_departed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -112,6 +130,13 @@ defmodule Rescord.Tasks.TaskSubject do
       on :resident_removed, :drop_of_removed_resident,
         action: :drop,
         read_action: :of_resident,
+        args: [:resident_id]
+
+      # A resident that left stays in the tasks that are done or skipped:
+      # they are its history. It goes out of the tasks that are due.
+      on :resident_departed, :drop_of_departed_resident,
+        action: :drop_departed,
+        read_action: :of_resident_in_due_tasks,
         args: [:resident_id]
     end
   end

@@ -7,9 +7,9 @@ defmodule Rescord.Transfers.Snapshot do
   with the options of the caller, and returns a map:
 
     * `"facts"` - always: the name, the species, the sex, the date of
-      birth, the desex status, the size class, the coat, the breeds, the
-      colours, the temperaments, the identifiers, the arrival date and the
-      status;
+      birth, the desex status, the size class, the coat, the markings, the
+      breeds, the colours, the temperaments, the identifiers, the arrival
+      date and the status;
     * `"medical"` - always: each entry of a medical kind, the newest first,
       with its kind, its time, its note, its facts and its files (ADR 0043),
       and under `"about"` the name of the condition that it is about;
@@ -133,6 +133,7 @@ defmodule Rescord.Transfers.Snapshot do
       "desex_status" => text(resident.desex_status),
       "size_class" => label(resident.size_class),
       "coat" => label(resident.coat),
+      "markings" => resident.markings,
       "breeds" => Enum.map(resident.resident_breeds, &label(&1.breed)),
       "colours" => Enum.map(resident.resident_colours, &label(&1.colour)),
       "temperaments" => Enum.map(resident.resident_temperaments, &label(&1.temperament)),
@@ -390,7 +391,7 @@ defmodule Rescord.Transfers.Snapshot do
 
   defp clean_facts(facts) do
     facts
-    |> pick(~w(name species sex desex_status size_class coat status),
+    |> pick(~w(name species sex desex_status size_class coat markings status),
       dates: ~w(born_on arrived_on)
     )
     |> Map.merge(%{

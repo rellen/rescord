@@ -50,16 +50,16 @@ defmodule Rescord.Photos.Photo do
       description "Adds a photo of a resident"
       accept [:resident_id, :caption, :taken_on]
       argument :content, :binary, allow_nil?: false, sensitive?: true
-      change Photos.Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Photos.Changes.StorePhoto
-      validate Photos.Validations.NotAfterToday
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :taken_on}
     end
 
     create :adopt do
       description "Uses a photo of a journal entry as a photo of its resident"
       accept [:caption]
       argument :attachment_id, :uuid, allow_nil?: false
-      change Photos.Changes.SetAuthor
+      change Rescord.Accounts.Changes.SetAuthor
       change Photos.Changes.AdoptAttachment
     end
 
@@ -67,7 +67,7 @@ defmodule Rescord.Photos.Photo do
       description "Changes the caption and the date of a photo"
       accept [:caption, :taken_on]
       require_atomic? false
-      validate Photos.Validations.NotAfterToday
+      validate {Rescord.Accounts.Validations.NotAfterToday, attribute: :taken_on}
     end
 
     destroy :remove do

@@ -8,8 +8,16 @@ defmodule Rescord.Ruby do
   (`Rescord.Ruby.LLM`), and the conversations of the members with their
   messages (`Rescord.Ruby.Conversation`, `Rescord.Ruby.Message`) and how
   an organisation uses Ruby (`Rescord.Ruby.Settings`), in the schema of
-  each organisation. The job that writes a reply comes with a later step
-  of the work.
+  each organisation.
+
+  ## A reply
+
+  `say/3` saves the message of a member and puts a job in the queue
+  `ruby`. The job runs the tool loop of `AshAi` as that member, and writes
+  the reply as it arrives (`Rescord.Ruby.Changes.Respond`): a message with
+  a state, and a reason when it failed. `messages/2` reads the talk, and
+  `stop_reply/2` stops the reply to a message. No page waits for Ruby: the
+  job answers also when the member has closed the page.
 
   ## The tools
 
@@ -94,6 +102,8 @@ defmodule Rescord.Ruby do
 
     resource Message do
       define :say, action: :say, args: [:conversation_id, :text]
+      define :messages, action: :of_conversation, args: [:conversation_id]
+      define :message, action: :read, get_by: [:id], not_found_error?: false
       define :rate_reply, action: :rate, args: [:rating]
       define :stop_reply, action: :stop
     end

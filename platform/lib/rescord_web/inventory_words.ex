@@ -78,6 +78,9 @@ defmodule RescordWeb.InventoryWords do
   @doc "The kinds of movement that have words, for the test that holds them."
   def movements, do: Keyword.keys(@movements)
 
+  @doc "The kinds of movement as the choices of a filter: the words, then the kind."
+  def movement_options, do: for({kind, words} <- @movements, do: {words, kind})
+
   @doc "The change of a stock movement with its sign: `+5`, `−4`, `0`."
   def change(%Decimal{} = quantity) do
     cond do

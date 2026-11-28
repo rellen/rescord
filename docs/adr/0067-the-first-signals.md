@@ -6,6 +6,8 @@ ADR 0032 and ADR 0033 (the tasks and the routines), and to ADR 0010 (Oban).
 It changes how ADR 0022 sent the email of an invitation. Changed on
 28 November 2026: a task that named only the removed resident is skipped.
 The first text said that it stays due, and the maintainer chose otherwise.
+Added on the same day: the departure of a resident, proposal S2 of
+ADR 0062, which the maintainer chose to be "the same as a removal".
 
 ## Context
 
@@ -74,6 +76,33 @@ inside the residents.
   migration of each organisation adds the column `archived_at`.
 - The journal, the photos, the inventory and the transfers do not listen.
   They hold the history of the resident, which stays.
+
+### The departure of a resident
+
+The maintainer chose on 28 November 2026 that a departure ends what a
+removal ends. `Rescord.Residents.Signals` declares `:resident_departed`,
+with the id of the resident, and `Departure.record` emits it.
+
+| Listener | What it does |
+| --- | --- |
+| `Rescord.Locations.Placement` | Finishes the placement of the resident, with `:finish`. |
+| `Rescord.Tasks.TaskSubject` | Archives each subject that names the resident in a task that is due, with the action `:drop_departed`. Then it skips a task that is due and has no subject left, with the reason "The resident left". |
+| `Rescord.Tasks.Routine` | Takes the resident out of each routine, with `:forget_resident`. |
+
+- **A task that is done or skipped keeps the resident.** A resident that
+  left was a real resident, and those tasks are its history. A removal
+  takes the resident out of each task, because the resident was a mistake.
+- **A withdrawal restores nothing.** A member who withdraws a departure
+  places the resident again and adds it to its routines again. A listener
+  does not undo itself, and Rescord does not know which of the records the
+  member wants back.
+- **The listeners run at the instant of the action**, and not at the date
+  of the departure. A departure of last week ends the placement now.
+- A correction of a departure sends no signal.
+- A departure that was recorded before this change ended nothing. Rescord
+  does not go back to those residents.
+- The person who records a departure needs the power `residents`, and no
+  power for the housing or for the tasks.
 
 ### The email of an invitation
 
@@ -165,6 +194,3 @@ end
   closed to each person until a grant says otherwise. The sweep passes with
   the listener actions of this ADR.
 - The fault of rule 2 is worth a report to the Ash project.
-- Proposal S2 of ADR 0062, the departure of a resident, waits for the
-  maintainer: a departure can be withdrawn, and a listener does not undo
-  itself.

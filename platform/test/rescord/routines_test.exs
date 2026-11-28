@@ -85,11 +85,14 @@ defmodule Rescord.RoutinesTest do
 
   describe "a routine" do
     test "makes a task for each of its times, 14 days ahead", context do
-      second = Time.add(context.time, 60 * 60)
+      # A second time of the same day, one hour away: the hour before when
+      # the first is in the last hour of the day.
+      second = Time.add(context.time, if(context.time.hour == 23, do: -1, else: 1) * 60 * 60)
+      [early, late] = Enum.sort([context.time, second], Time)
 
       routine =
         start!(context, %{
-          times: [second, context.time],
+          times: [late, early],
           kind_id: context.lists.task_kind.feed,
           assignee_ids: [context.member.id, context.administrator.id],
           note: "Two scoops",
@@ -97,7 +100,7 @@ defmodule Rescord.RoutinesTest do
         })
 
       # The times are in order.
-      assert routine.times == [context.time, second]
+      assert routine.times == [early, late]
 
       tasks = tasks(routine, context)
 

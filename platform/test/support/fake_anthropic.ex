@@ -17,6 +17,11 @@ defmodule Rescord.FakeAnthropic do
 
   A request to another path gets 404, and is kept too: a test reads what
   ReqLLM sends to a server of another kind.
+
+  A provider of a hosted kind takes an address with TLS only, so a test of
+  a whole reply cannot save the address of the fake. `via/1` sends each
+  request of `Rescord.Ruby.LLM.Client` to the fake until the test ends:
+  the real ReqLLM, with one option changed.
   """
 
   use Agent
@@ -36,6 +41,29 @@ defmodule Rescord.FakeAnthropic do
     {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
     Agent.update(agent, &%{&1 | port: port})
     {:ok, agent}
+  end
+
+  @doc """
+  Sends each request of the assistant to this fake, with the real ReqLLM,
+  until the test ends. A test that calls this does not run beside others.
+  """
+  def via(agent) do
+    before = Application.get_env(:rescord, :ruby_llm)
+    Application.put_env(:rescord, :fake_anthropic_url, url(agent))
+    Application.put_env(:rescord, :ruby_llm, __MODULE__.Via)
+
+    ExUnit.Callbacks.on_exit(fn ->
+      Application.put_env(:rescord, :ruby_llm, before)
+      Application.delete_env(:rescord, :fake_anthropic_url)
+    end)
+  end
+
+  defmodule Via do
+    @moduledoc false
+    def stream_text(model, messages, opts) do
+      url = Application.fetch_env!(:rescord, :fake_anthropic_url)
+      ReqLLM.stream_text(model, messages, Keyword.put(opts, :base_url, url))
+    end
   end
 
   # The base of Anthropic has no "/v1": ReqLLM adds the path.

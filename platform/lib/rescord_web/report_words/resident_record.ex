@@ -54,6 +54,7 @@ defmodule RescordWeb.ReportWords.ResidentRecord do
       {"Colour", labels(resident.resident_colours, :colour)},
       {"Size class", label(resident.size_class)},
       {"Coat", label(resident.coat)},
+      {"Markings", resident.markings},
       {"Temperament", labels(resident.resident_temperaments, :temperament)}
     ])
   end

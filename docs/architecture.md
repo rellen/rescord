@@ -102,10 +102,19 @@ We do not write those by hand.
 - A widget that shows a collection tells Cinder to load again with
   `Cinder.Refresh.refresh_table/2`, when the notification of the resource
   arrives.
+- A collection that is the page keeps its search, its filters, its sort
+  and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
+  residents, the members, the organisations. A collection that is a part
+  of a page does not: the stock history of an item.
+- Cinder is for a collection that needs a filter, a sort or pages. A
+  short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
   work around the first one (ADR 0017): `assets/js/cinder_tables.ts` makes
   the sort of a table column a button for the keyboard, and gives the header
-  cell `aria-sort`. The other gaps stay for now.
+  cell `aria-sort`. The same module closes the others (ADR 0087): the
+  state and the name of a choice filter and its arrow keys, the pages as
+  a landmark, the names of the buttons and of a table, and a status
+  region that says the new count of a result.
 
 ### Markup and CSS
 
@@ -201,6 +210,14 @@ their members (ADR 0022). For each domain:
 - once there is authentication, every Ash call from a LiveView passes the
   actor explicitly.
 
+**Lines that actions of one resource share go in a pipeline** (ADR 0086),
+when the group has three lines or more, or three actions or more take it.
+Ash puts the lines of the pipeline in each action at compile time, so the
+action is the same as one with the lines written in it. A pipeline keeps
+the order of the lines: it runs each change before each validation, and a
+group with another order stays in its actions. `Rescord.Expenses.Expense`
+has the first two.
+
 ### Signals and workflows
 
 **We use Ash signals and AshWorkflow where they fit**, before we write the
@@ -231,11 +248,12 @@ workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 
 **A signal module is in the domain that emits it**, as
 `Rescord.<Domain>.Signals`, and that domain exports it when another domain
-listens (ADR 0067). There are two signals:
+listens (ADR 0067). There are three signals:
 
 | Signal | Emitted by | Listeners |
 | --- | --- | --- |
 | `:resident_removed` of `Rescord.Residents.Signals` | `Resident.remove` | `Placement` finishes the placement, `TaskSubject` archives the subjects and skips a due task that has none left, and `Routine` takes the resident out. They run in the transaction of the removal. |
+| `:resident_departed` of `Rescord.Residents.Signals` | `Departure.record` | The same three resources: the placement ends, the resident goes out of each routine and of each task that is due, and a due task that has no subject left is skipped. A task that is done keeps the resident. A withdrawal restores nothing. |
 | `:member_invited` of `Rescord.Accounts.Signals` | the two invite actions of `Member` | `Member` sends the email in a job of Oban, which runs after the commit, and again after a fault of the mail server. |
 
 A listener action has the line `authorize_if signal_in(Module, :signal)` in
@@ -702,6 +720,22 @@ code does not have yet is what its phase lands.
   `Rescord.Ruby.Gate` turns a write into a proposal, and
   `Rescord.Ruby.confirm_proposal/2` runs it in the request of the member,
   through the action of the domain that the form uses.
+- `Rescord.Ruby.say/3` saves the message of a member and starts the job
+  of its reply, in the queue `ruby`, which runs five replies at a time: a
+  busy hour of Ruby cannot fill the other queues. The job is the trigger
+  `respond` of AshOban on `Rescord.Ruby.Message`. It holds the id of the
+  message, the organisation and the id of the member, and no word of the
+  message. It runs the tool loop as that member
+  (`Rescord.Ruby.Changes.Respond`), saves the reply as it arrives, and
+  ends it with a state and, when it failed, a reason of
+  `Rescord.Ruby.Reason`. A job runs one time, because the provider bills
+  each try. No page waits for it: the reply is written also when the
+  member has closed the page.
+- The system prompt is one text for the whole server
+  (`Rescord.Ruby.Prompt`). What differs is in the header of the first
+  message of a member: the rescue, the role, the day and the time zone.
+  The header is stored with the message and sent again as it was, so the
+  start of a conversation never changes and the provider can cache it.
 - A tool is a line of `Rescord.Ruby.Catalogue`. A read that is a function
   of a domain is a digest in `Rescord.Ruby.Digests`. A tool names each
   record with a reference, and the page makes each link and each card
@@ -811,13 +845,12 @@ from GitHub, pinned to a commit (ADR 0005).
 - The open points of `docs/domain.md`, and so the domains and the pages
   that come after the residents.
 - The design of the grants: see "Policies and roles".
-- The proposals of ADR 0062 that wait for the maintainer: what the
-  departure of a resident ends, the operation id of a version, and the
-  first workflow.
+- The proposals of ADR 0062 that wait for the maintainer: the operation id
+  of a version, and the first workflow.
 - How a cloud session (which runs as root, where devenv's PostgreSQL cannot
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
-- The gaps in the accessibility of Cinder that ADR 0017 leaves: the choice
-  filter and the pages.
+- Nobody has listened to a collection with a screen reader. ADR 0087
+  closed the gaps of the markup of Cinder that a browser can show.
 - Whether a hook that a component writes next to its markup
   (`Phoenix.LiveView.ColocatedHook`) can be TypeScript, or whether every hook
   is a file under `assets/js/`. Nobody has checked.

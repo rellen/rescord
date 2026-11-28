@@ -20,6 +20,7 @@ defmodule RescordWeb.ReportWords.CageCard do
           {"Sex", sex(resident)},
           {"Age", ResidentWords.age(resident.born_on, facts.today)},
           {"Colour", labels(resident.resident_colours, :colour)},
+          {"Markings", resident.markings},
           {"Temperament", labels(resident.resident_temperaments, :temperament)},
           {"Lives in", homes(facts.homes)},
           {"Arrived", resident.arrival && ResidentWords.date(resident.arrival.arrived_on)}

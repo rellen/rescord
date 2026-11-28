@@ -198,6 +198,114 @@ defmodule RescordWeb.CinderTest do
     end
   end
 
+  describe "the other controls of a collection" do
+    # `assets/js/cinder_tables.ts` also says what a button that opens a list
+    # is, names the buttons and the table, and says the count of a result
+    # (ADR 0087). It finds each part by the markup of Cinder. Each selector
+    # here is in the module, word for word.
+    @parts [
+      # A choice filter: the button, then its list of radio buttons.
+      ~s([data-key="filter_select_input_class"]),
+      ~s([data-key="filter_select_dropdown_class"]),
+      # The size of a page: the button, then its list, between the words.
+      ~s([data-key="page_size_dropdown_class"]),
+      ~s([data-key="page_size_dropdown_container_class"]),
+      ~s([data-key="page_size_container_class"]),
+      ~s([data-key="page_size_label_class"]),
+      # The pages.
+      ~s([data-key="pagination_nav_class"]),
+      ~s([data-key="pagination_current_class"]),
+      ~s([data-key="pagination_info_class"]),
+      # The collection, a filter, and the button that clears it.
+      ~s([data-key="container_class"]),
+      ~s([data-key="filter_input_wrapper_class"]),
+      ~s([data-key="filter_clear_button_class"])
+    ]
+
+    defp count(markup, selector), do: markup |> LazyHTML.query(selector) |> Enum.count()
+
+    test "are the elements that cinder_tables.ts reads" do
+      markup = markup("table")
+
+      for part <- @parts do
+        assert count(markup, part) > 0, "Cinder renders no #{part}"
+      end
+
+      # The list of a button is the next element, and has an id.
+      for {button, list} <- [
+            {"filter_select_input_class", "filter_select_dropdown_class"},
+            {"page_size_dropdown_class", "page_size_dropdown_container_class"}
+          ] do
+        assert count(markup, ~s([data-key="#{button}"])) ==
+                 count(markup, ~s([data-key="#{button}"] + [id][data-key="#{list}"]))
+      end
+
+      # A choice filter: its button has an id, a label names that id, and
+      # its choices are radio buttons.
+      [id | _] =
+        markup
+        |> LazyHTML.query(~s([data-key="filter_select_input_class"]))
+        |> LazyHTML.attribute("id")
+
+      assert count(markup, ~s(label[for="#{id}"])) == 1
+      assert count(markup, ~s([data-key="filter_select_dropdown_class"] input[type="radio"])) > 1
+
+      # The words of a button with a sign are in its title.
+      assert count(markup, ~s|[data-key="filter_clear_button_class"]:not([title])|) == 0
+      assert count(markup, ~s|[data-key="pagination_nav_class"] button:not([title])|) == 0
+
+      # A filter has a label, which says what its clear button clears.
+      assert count(markup, ~s([data-key="filter_input_wrapper_class"] label)) > 0
+
+      # A row has the id of its record, which the count of a result reads.
+      assert count(markup, "tbody tr[data-item-id]") == 2
+    end
+
+    test "say that a collection loads, and that it has nothing" do
+      # A test reads with no task (`disable_async?`), so no page of a test
+      # shows the overlay. The theme of Cinder has its key, and the renderers
+      # write the key of a part as its `data-key`.
+      assert Map.has_key?(Cinder.Theme.complete_default(), :loading_overlay_class)
+
+      {:ok, view, _html} = live_isolated(build_conn(), Live, session: %{"shape" => "table"})
+      render_async(view)
+
+      view
+      |> element("#rows-filter-form")
+      |> render_change(%{"filters" => %{"name" => "no row has this name"}})
+
+      nothing = view |> render_async() |> LazyHTML.from_fragment()
+      assert count(nothing, ~s([data-key="empty_class"])) == 1
+      assert count(nothing, "tbody tr[data-item-id]") == 0
+    end
+
+    test "cinder_tables.ts names each part, app.js starts it, and vendor.css hides the status" do
+      module = File.read!("assets/js/cinder_tables.ts")
+
+      for part <-
+            @parts ++
+              [
+                ~s([data-key="loading_overlay_class"]),
+                ~s([data-key="empty_class"]),
+                "[data-item-id]",
+                ~s(input[type="radio"]),
+                "button[title]"
+              ] do
+        assert module =~ part, "cinder_tables.ts does not name #{part}"
+      end
+
+      app = File.read!("assets/js/app.js")
+
+      # Without the first, a button does not say that its list opened. Without
+      # the second, an arrow key closes the list of a choice filter.
+      assert app =~ "\nwatchCinderLists()\n"
+      assert app =~ "\nholdCinderListsOpen()\n"
+
+      assert module =~ "[data-cinder-status]"
+      assert vendor_css() =~ "[data-cinder-status] {"
+    end
+  end
+
   describe "vendor.css" do
     test "has a rule for each class of Cinder that carries behaviour, and for each icon" do
       css = vendor_css()

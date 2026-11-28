@@ -15,6 +15,7 @@ defmodule RescordWeb.MembersLive do
   """
 
   use RescordWeb, :live_view
+  use Cinder.UrlSync
 
   import RescordWeb.AccountComponents
 
@@ -30,6 +31,7 @@ defmodule RescordWeb.MembersLive do
      |> assign(page_title: "Members", problems: [])
      |> assign(can_invite?: Accounts.role_can?(role, :invite_member))
      |> assign(roles: for(r <- roles, givable?(role, r), do: {to_string(r.name), r.id}))
+     |> assign(all_roles: for(r <- roles, do: {to_string(r.name), r.id}))
      |> assign(member_role_id: Enum.find_value(roles, &(&1.key == :member && &1.id)))
      |> assign_invite_form()}
   end
@@ -144,6 +146,8 @@ defmodule RescordWeb.MembersLive do
         organisation={@organisation}
         role={@role}
         roles={@roles}
+        all_roles={@all_roles}
+        url_state={@url_state}
       />
 
       <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />

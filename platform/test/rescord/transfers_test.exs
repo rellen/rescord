@@ -25,7 +25,9 @@ defmodule Rescord.TransfersTest do
     {_, banksia_admin} = member!(banksia, :administrator, root)
     {_, banksia_member} = member!(banksia, :member, banksia_admin)
     lists = lists!(wattle, root)
-    biscuit = resident!(lists, actor: wattle_admin, tenant: wattle)
+
+    biscuit =
+      resident!(lists, [actor: wattle_admin, tenant: wattle], %{markings: "Torn left ear"})
 
     {:ok,
      root: root,
@@ -188,6 +190,7 @@ defmodule Rescord.TransfersTest do
       assert plain.parts == []
       assert plain.resident_name == "Biscuit"
       assert plain.snapshot["facts"]["name"] == "Biscuit"
+      assert plain.snapshot["facts"]["markings"] == "Torn left ear"
 
       assert [%{"kind" => "measurement", "facts" => %{"value" => "1095", "unit" => "g"}}] =
                plain.snapshot["medical"]

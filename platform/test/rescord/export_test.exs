@@ -102,7 +102,7 @@ defmodule Rescord.ExportTest do
     assert {:ok, export} = Export.export(context.wattle, long_ago, actor: context.administrator)
 
     assert files(export)["residents.csv"] ==
-             "﻿id,sex,born_on,born_on_estimated,species_id,size_class_id,coat_id\r\n"
+             "﻿id,sex,born_on,born_on_estimated,markings,species_id,size_class_id,coat_id\r\n"
   end
 
   test "holds the data of its own organisation alone", context do

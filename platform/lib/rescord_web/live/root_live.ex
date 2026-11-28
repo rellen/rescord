@@ -8,6 +8,7 @@ defmodule RescordWeb.RootLive do
   """
 
   use RescordWeb, :live_view
+  use Cinder.UrlSync
 
   import RescordWeb.AccountComponents
   import RescordWeb.RubyComponents, only: [root_line: 1]
@@ -126,6 +127,7 @@ defmodule RescordWeb.RootLive do
         current_user={@current_user}
         organisation_form={@organisation_form}
         time_zones={@time_zones}
+        url_state={@url_state}
       />
 
       <.root_users roots={@roots} current_user={@current_user} root_form={@root_form} />

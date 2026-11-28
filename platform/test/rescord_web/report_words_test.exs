@@ -73,6 +73,7 @@ defmodule RescordWeb.ReportWordsTest do
     assert value(record.about, "Species") == "Guinea pig"
     assert value(record.about, "Desex status") == "Desexed"
     assert value(record.about, "Colour") == "Tan, White"
+    assert value(record.about, "Markings") == "Torn left ear"
     assert value(record.stay, "Lives in") == "Main shed › Pen 3"
     assert value(record.stay, "Arrival") == "Surrender by an owner, #{date(context, 64)}"
     assert value(record.relations, "Group") == "Biscuit and Pepper"
@@ -103,6 +104,7 @@ defmodule RescordWeb.ReportWordsTest do
     assert card.species == "Guinea pig"
     assert card.away == nil
     assert value(card.about, "Lives in") == "Main shed › Pen 3"
+    assert value(card.about, "Markings") == "Torn left ear"
     assert card.measurements == ["Weight: 950 g"]
 
     assert [%{title: "Feed hay and pellets", when: "Each day at 8:00 am and 5:30 pm"}] =
@@ -113,6 +115,13 @@ defmodule RescordWeb.ReportWordsTest do
     assert is_binary(away.away)
     assert away.photo == nil
     assert away.routines == []
+    # A resident with no markings has no row for them, on the card and in
+    # the record.
+    refute "Markings" in Enum.map(away.about, & &1.label)
+
+    arguments = %{resident_id: context.residents.juniper.id, journal: :none, photos: false}
+    plain = data(context, :resident_record, arguments)
+    refute "Markings" in Enum.map(plain.about, & &1.label)
   end
 
   test "the register", context do

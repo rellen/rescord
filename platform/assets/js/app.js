@@ -25,8 +25,15 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/rescord"
 // The hooks that Cinder writes next to its markup (ADR 0014).
 import {hooks as cinderHooks} from "phoenix-colocated/cinder"
-// The sort of a table column of Cinder, for a keyboard (ADR 0017).
-import {enhance as enhanceCinderTables, keep as keepCinderTables, listen as listenToCinderTables} from "./cinder_tables"
+// The controls of a collection of Cinder, for a keyboard and a screen
+// reader (ADR 0017 and ADR 0087).
+import {
+  enhance as enhanceCinderTables,
+  holdOpen as holdCinderListsOpen,
+  keep as keepCinderTables,
+  listen as listenToCinderTables,
+  watch as watchCinderLists,
+} from "./cinder_tables"
 import {keepOpen as keepDetailsOpen} from "./details"
 // The button that copies the address of a calendar feed (ADR 0074).
 import {listen as listenForCopies} from "./copy"
@@ -48,6 +55,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
 })
 
 listenToCinderTables()
+watchCinderLists()
+holdCinderListsOpen()
 enhanceCinderTables()
 listenForCopies()
 
