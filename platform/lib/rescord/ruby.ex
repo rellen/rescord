@@ -72,7 +72,7 @@ defmodule Rescord.Ruby do
 
   alias Rescord.Accounts.Checks.Granted
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Conversation, Message, Provider, Settings, Usage}
+  alias Rescord.Ruby.{Conversation, Events, Message, Provider, Settings, Usage}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -245,6 +245,43 @@ defmodule Rescord.Ruby do
   end
 
   def available?(_nobody, _tenant), do: false
+
+  @doc """
+  Whether Ruby reads with the tool of this name for the person: the tool
+  is in the catalogue, and its `available?/2` says yes for the actor of
+  the person. A read action tool is for each member: its policy decides
+  at the call. A write tool is no read. The page asks it for the things to ask, so that a member who
+  cannot read the inventory does not get "What is running low?".
+  """
+  @spec reads?(term, term, String.t()) :: boolean
+  def reads?(%User{} = user, tenant, name) when is_binary(name) do
+    case Rescord.Ruby.Catalogue.entry(name) do
+      %{source: {:extra, module}} -> module.available?(Rescord.Ruby.Actor.for(user), tenant)
+      %{source: :action, kind: :read} -> true
+      _write_or_none -> false
+    end
+  end
+
+  def reads?(_nobody, _tenant, _name), do: false
+
+  @doc """
+  Puts the process of a page on the topic of a conversation of the person
+  of `opts`, to hear its replies as they are written
+  (`Rescord.Ruby.Events`). A conversation of another member, or one that
+  is not there, gives `{:error, :forbidden}` and no topic.
+  """
+  @spec subscribe(String.t(), keyword) :: :ok | {:error, :forbidden}
+  def subscribe(conversation_id, opts) when is_binary(conversation_id) do
+    case conversation(conversation_id, opts) do
+      {:ok, %Conversation{id: id}} -> Events.listen(id)
+      _not_theirs -> {:error, :forbidden}
+    end
+  end
+
+  @doc "Takes the process of a page off the topic of a conversation."
+  @spec unsubscribe(String.t()) :: :ok
+  def unsubscribe(conversation_id) when is_binary(conversation_id),
+    do: Events.leave(conversation_id)
 
   @doc "The number of organisations that have Ruby on with this provider, for the page of a root user."
   @spec organisations_with(Provider.t()) :: non_neg_integer

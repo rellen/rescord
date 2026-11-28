@@ -162,6 +162,23 @@ defmodule RescordWeb.PagesFixtures do
 
     Expenses.approve_expense!(owed, options)
 
+    # Ruby is on, and the administrator has a conversation with an answer of
+    # a list and a table, from the scripted model (ADR 0069).
+    as_user = [actor: user, tenant: organisation]
+    Rescord.RubyFixtures.ruby_on!(root, as_user)
+    conversation = Rescord.Ruby.start_conversation!(%{}, as_user)
+    Rescord.Ruby.say!(conversation.id, "Who is on medication today?", as_user)
+
+    Rescord.Ruby.ScriptedModel.script([
+      {:text,
+       "Two residents are on **medication** today:\n\n" <>
+         "- Sir Reginald Fluffington the Third, a sample antibiotic, 0.3 mL by mouth\n" <>
+         "- Clover, a cream\n\n" <>
+         "| Resident | Last weight |\n| --- | --- |\n| Clover | 985 g |\n"}
+    ])
+
+    Oban.drain_queue(queue: :ruby, with_safety: false)
+
     home = "/o/#{organisation.short_name}"
 
     %{
@@ -177,7 +194,8 @@ defmodule RescordWeb.PagesFixtures do
               residents/#{resident.id}/photos residents/#{resident.id}/timeline
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
-              reports lists members roles partners transfers settings settings/ruby export
+              reports lists members roles partners transfers settings settings/ruby export ruby
+              ruby/#{conversation.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
               expenses/#{owed.id}),
             &"#{home}/#{&1}"

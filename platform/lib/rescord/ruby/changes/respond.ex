@@ -67,7 +67,7 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   alias AshAi.Transcript
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Allowance, Fault, LLM, Message, Prompt, Reason, Replies, Toolbox}
+  alias Rescord.Ruby.{Allowance, Events, Fault, LLM, Message, Prompt, Reason, Replies, Toolbox}
   alias Rescord.Ruby.LLM.{Client, Cost}
 
   # The words so far go to the row at most this often. The parts go when
@@ -76,6 +76,11 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   # The row of the message is read for a stop at most this often.
   @stop_ms 1_000
+
+  # The pages of the conversation hear the whole text so far at most this
+  # often (`Rescord.Ruby.Events`): a fast model costs a phone no more
+  # renders than a slow one.
+  @tell_ms 150
 
   # A failure that is a fault of the setup or of Rescord is an error in
   # the log. A busy or a slow provider is a warning.
@@ -93,8 +98,12 @@ defmodule Rescord.Ruby.Changes.Respond do
 
   defp answer(%Message{source: :user} = message, actor, tenant) do
     case Replies.open(message, tenant) do
-      {:ok, reply} -> write(message, reply, actor, tenant)
-      :taken -> :ok
+      {:ok, reply} ->
+        Events.reply(reply, :streaming)
+        write(message, reply, actor, tenant)
+
+      :taken ->
+        :ok
     end
   end
 
@@ -118,6 +127,7 @@ defmodule Rescord.Ruby.Changes.Respond do
         parts: [],
         saved_at: now(),
         checked_at: now(),
+        told_at: now(),
         result: nil,
         error: nil,
         stopped?: false
@@ -142,6 +152,7 @@ defmodule Rescord.Ruby.Changes.Respond do
       {:error, reason} ->
         log(:failed, reason)
         Replies.close(reply, %{state: :failed, reason: reason}, tenant)
+        Events.reply(reply, :failed)
         tell(:failed, reason, 0, Cost.sum([]), 0)
     end
   end
@@ -236,7 +247,9 @@ defmodule Rescord.Ruby.Changes.Respond do
   # -- the events of the loop ------------------------------------------------
 
   defp handle({:content, piece}, acc) when is_binary(piece) and piece != "" do
-    save(%{acc | text: acc.text <> piece, unfinished: acc.unfinished <> piece}, false)
+    %{acc | text: acc.text <> piece, unfinished: acc.unfinished <> piece}
+    |> save(false)
+    |> tell_text(false)
   end
 
   # Each turn of the model and each result of a tool, whole, as the model
@@ -246,7 +259,10 @@ defmodule Rescord.Ruby.Changes.Respond do
   # prompt, with each tool result so far.
   defp handle({:message, %{role: :assistant} = turn}, acc) do
     parts = acc.parts ++ Transcript.to_parts([turn], reasoning: true)
-    save(%{acc | parts: parts, unfinished: "", added: 0}, true)
+
+    %{acc | parts: parts, unfinished: "", added: 0}
+    |> save(true)
+    |> tell_text(true)
   end
 
   # A result of a tool is what the next request adds to the last one. When
@@ -298,6 +314,17 @@ defmodule Rescord.Ruby.Changes.Respond do
     end
   end
 
+  defp tell_text(acc, now?) do
+    now = now()
+
+    if acc.text != "" and (now? or now - acc.told_at >= @tell_ms) do
+      Events.text(acc.reply, acc.text)
+      %{acc | told_at: now}
+    else
+      acc
+    end
+  end
+
   defp now, do: System.monotonic_time(:millisecond)
 
   # -- how it ended ----------------------------------------------------------
@@ -331,6 +358,11 @@ defmodule Rescord.Ruby.Changes.Respond do
       },
       acc.tenant
     )
+
+    # The pages of the conversation: the last words, if there are any, then the
+    # end. A page reads the reply again for its end.
+    if acc.text != "", do: Events.text(acc.reply, acc.text)
+    Events.reply(acc.reply, state)
 
     # The use of the month, whatever the end: a reply that failed or that
     # the member stopped is billed too. It has no word in it, and it stays

@@ -148,8 +148,7 @@ defmodule RescordWeb.RubySettingsPagesTest do
       # The allowance starts at the amount of the provider, and the days at 90.
       assert has_element?(view, ~s(#ruby_allowance[value="20"]))
       assert has_element?(view, ~s(#ruby_retention_days[value="90"]))
-      # The page says that no member can ask yet.
-      assert has_element?(view, "#ruby-no-page", "no page where a member asks Ruby yet")
+      refute has_element?(view, "#ruby-no-page")
       assert has_element?(view, ~s(a[href="/o/#{context.organisation.short_name}/roles"]))
       # Nothing of the provider but its place: no name of a model, no key.
       refute html =~ context.provider.model

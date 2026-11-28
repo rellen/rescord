@@ -1,0 +1,302 @@
+defmodule RescordWeb.RubyLive do
+  @moduledoc """
+  The page of Ruby (ADR 0069): the start of a new conversation, at
+  `/o/<short name>/ruby`, and one conversation, at
+  `/o/<short name>/ruby/<id>`. One LiveView holds both, so the first
+  message of a new conversation patches the page and does not mount it
+  again.
+
+  The page is there only for a person whom `Rescord.Ruby.available?/2`
+  lets ask Ruby. For anybody else the address answers as a page that is
+  not there (`RescordWeb.NotFound`).
+
+  The answer runs in a job of the server, and not in the page: a page
+  that closes and opens again misses nothing. The page hears the reply on
+  the topic of the conversation (`Rescord.Ruby.subscribe/2`): the whole
+  text so far, which it turns into blocks of safe HTML, and the state of
+  the reply. When the state changes, the page reads the conversation
+  again, so it draws what the database holds, and two tabs of one member
+  show the same thing.
+
+  The messages are an assign, with a key for each: a conversation has a
+  limit, and the page reads it whole. One `role="status"` says each change
+  of the answer once.
+  """
+
+  use RescordWeb, :live_view
+
+  alias Rescord.Ruby
+  alias RescordWeb.{NotFound, RubyChatComponents, RubyMarkdown, RubyWords}
+
+  # The last conversations that the start shows.
+  @recent 3
+  # The things to ask that the start shows.
+  @asks 4
+
+  @impl true
+  def mount(_params, _session, socket) do
+    %{current_user: user, organisation: organisation} = socket.assigns
+    unless Ruby.available?(user, organisation), do: raise(NotFound)
+
+    asks = for {tool, words} <- RubyWords.asks(), Ruby.reads?(user, organisation, tool), do: words
+
+    {:ok,
+     socket
+     |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
+     |> assign(problems: [], recent: [], asks: Enum.take(asks, @asks))
+     |> assign_form("")}
+  end
+
+  @impl true
+  def handle_params(%{"conversation_id" => id}, _uri, socket) do
+    case Ruby.conversation(id, scope(socket)) do
+      {:ok, %{} = conversation} ->
+        {:noreply, open(socket, conversation)}
+
+      _not_theirs ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "There is no such conversation.")
+         |> push_navigate(to: start_path(socket))}
+    end
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply,
+     socket
+     |> leave()
+     |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
+     |> assign(problems: [], recent: recent(socket))}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      organisation={@organisation}
+      section={:ruby}
+      data-ruby
+      phx-disconnected={
+        JS.remove_attribute("hidden", to: "#ruby-offline")
+        |> JS.set_attribute({"disabled", ""}, to: "#ruby-send")
+      }
+      phx-connected={
+        JS.set_attribute({"hidden", ""}, to: "#ruby-offline")
+        |> JS.remove_attribute("disabled", to: "#ruby-send")
+      }
+    >
+      <nav :if={@conversation} aria-label="Breadcrumb">
+        <.link patch={~p"/o/#{@organisation.short_name}/ruby"}>Ruby</.link>
+      </nav>
+
+      <.header icon={Icons.section(:ruby)}>
+        {if @conversation, do: RubyWords.title(@conversation), else: "Ruby"}
+        <:subtitle :if={!@conversation}>The assistant of {@organisation.name}</:subtitle>
+        <:actions :if={@conversation}>
+          <.link patch={~p"/o/#{@organisation.short_name}/ruby"} data-variant="secondary">
+            <.icon name="plus" /> New conversation
+          </.link>
+        </:actions>
+      </.header>
+
+      <RubyChatComponents.start
+        :if={!@conversation}
+        organisation={@organisation}
+        asks={@asks}
+        recent={@recent}
+      />
+
+      <section :if={@conversation} data-log aria-label="Conversation">
+        <ol id="ruby-messages" data-chat>
+          <li :for={message <- @messages} :key={message.id} id={"message-#{message.id}"}>
+            <RubyChatComponents.message message={message} organisation={@organisation} />
+          </li>
+        </ol>
+
+        <RubyChatComponents.answer :if={@answer} answer={@answer} />
+
+        <div id="newest" data-end></div>
+      </section>
+
+      <%!-- In the page from the start, so that a screen reader hears its first change. --%>
+      <p role="status" data-quiet>{@said}</p>
+
+      <.problems list={@problems} />
+
+      <RubyChatComponents.composer form={@form} answering?={@answer != nil} />
+    </Layouts.app>
+    """
+  end
+
+  @impl true
+  def handle_event("draft", %{"message" => %{"text" => text}}, socket) when is_binary(text),
+    do: {:noreply, assign_form(socket, text)}
+
+  def handle_event("send", %{"message" => %{"text" => text}}, socket),
+    do: {:noreply, say(socket, non_blank(text))}
+
+  # A thing to ask: the button sends its words.
+  def handle_event("ask", %{"text" => text}, socket), do: {:noreply, say(socket, non_blank(text))}
+
+  # Stop names the message of the member, so it works before the reply
+  # has a row. The page changes when the topic says that the reply stopped.
+  def handle_event("stop", _params, %{assigns: %{answer: %{asked: id}}} = socket) do
+    with {:ok, %{} = message} <- Ruby.message(id, scope(socket)) do
+      Ruby.stop_reply(message, scope(socket))
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # The reply has a row, or it ended: the page reads the conversation
+  # again, and the status says the state once.
+  @impl true
+  def handle_info({:ruby, :reply, _id, state}, %{assigns: %{conversation: %{}}} = socket) do
+    said = if state == :streaming, do: RubyWords.said(:working), else: RubyWords.said(state)
+    {:noreply, socket |> read() |> assign(:said, said)}
+  end
+
+  # The whole text of the reply so far, for the answer that the page shows:
+  # a late message of an earlier reply changes nothing.
+  def handle_info({:ruby, :text, id, text}, %{assigns: %{answer: %{} = answer}} = socket)
+      when is_binary(text) and text != "" and (is_nil(answer.id) or answer.id == id) do
+    said = if answer.blocks == [], do: RubyWords.said(:writing), else: socket.assigns.said
+    answer = %{answer | id: id, blocks: RubyMarkdown.blocks(text)}
+    {:noreply, assign(socket, answer: answer, said: said)}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
+
+  # Ruby takes one message at a time, and no blank one. The first message
+  # makes the conversation, and the page goes to its path, where `open/2`
+  # takes up the topic and reads the message.
+  defp say(%{assigns: %{answer: nil, conversation: nil}} = socket, text) when is_binary(text) do
+    with {:ok, conversation} <- Ruby.start_conversation(%{}, scope(socket)),
+         {:ok, _message} <- said(conversation, text, socket) do
+      socket
+      |> assign_form("")
+      |> push_patch(to: conversation_path(socket, conversation.id))
+      |> push_event("ruby:newest", %{})
+    else
+      {:error, error} -> assign(socket, :problems, Ruby.problems(error))
+    end
+  end
+
+  defp say(%{assigns: %{answer: nil, conversation: %{id: id}}} = socket, text)
+       when is_binary(text) do
+    case Ruby.say(id, text, scope(socket)) do
+      {:ok, message} ->
+        socket
+        |> assign(messages: socket.assigns.messages ++ [message], answer: new_answer(message.id))
+        |> assign(said: RubyWords.said(:working), problems: [])
+        |> assign_form("")
+        |> push_event("ruby:newest", %{})
+
+      {:error, error} ->
+        assign(socket, :problems, Ruby.problems(error))
+    end
+  end
+
+  defp say(socket, _text), do: socket
+
+  # A first message that Ruby refused, past the allowance for one, leaves
+  # no empty conversation behind.
+  defp said(conversation, text, socket) do
+    case Ruby.say(conversation.id, text, scope(socket)) do
+      {:ok, message} ->
+        {:ok, message}
+
+      {:error, error} ->
+        Ruby.remove_conversation(conversation, scope(socket))
+        {:error, error}
+    end
+  end
+
+  # First the topic, then the messages: a change between the two is in the
+  # messages, and one after them is on the topic.
+  defp open(socket, conversation) do
+    socket = leave(socket)
+    if connected?(socket), do: Ruby.subscribe(conversation.id, scope(socket))
+
+    socket = socket |> assign(conversation: conversation, problems: []) |> read()
+
+    # A page that opens while Ruby answers says so once.
+    said =
+      case socket.assigns.answer do
+        nil -> nil
+        %{blocks: []} -> RubyWords.said(:working)
+        _writing -> RubyWords.said(:writing)
+      end
+
+    assign(socket, :said, said)
+  end
+
+  # The conversation as the database has it: its title, which Ruby gives
+  # after the first answer, and its messages. A reply that is still
+  # written is the answer below the list, with its words so far.
+  defp read(%{assigns: %{conversation: %{id: id}}} = socket) do
+    with {:ok, %{} = conversation} <- Ruby.conversation(id, scope(socket)),
+         {:ok, messages} <- Ruby.messages(id, scope(socket)) do
+      {messages, answer} = split(messages)
+
+      assign(socket,
+        conversation: conversation,
+        page_title: RubyWords.title(conversation),
+        messages: messages,
+        answer: answer
+      )
+    else
+      _gone -> push_navigate(socket, to: start_path(socket))
+    end
+  end
+
+  defp split(messages) do
+    case List.last(messages) do
+      %{source: :ruby, state: :streaming} = reply ->
+        answer = %{new_answer(reply.response_to_id) | id: reply.id}
+        {Enum.drop(messages, -1), %{answer | blocks: RubyMarkdown.blocks(reply.text)}}
+
+      # The job has not made the reply yet.
+      %{source: :user} = message ->
+        {messages, new_answer(message.id)}
+
+      _whole_reply_or_nothing ->
+        {messages, nil}
+    end
+  end
+
+  # A page that moves to another conversation, or to the start, leaves the
+  # topic of the one before.
+  defp leave(%{assigns: %{conversation: %{id: id}}} = socket) do
+    if connected?(socket), do: Ruby.unsubscribe(id)
+    socket
+  end
+
+  defp leave(socket), do: socket
+
+  defp recent(socket) do
+    case Ruby.conversations(scope(socket)) do
+      {:ok, conversations} -> Enum.take(conversations, @recent)
+      _none -> []
+    end
+  end
+
+  # `asked` is the message of the member that the answer is for: Stop
+  # names it.
+  defp new_answer(asked), do: %{id: nil, asked: asked, blocks: []}
+
+  defp assign_form(socket, text),
+    do: assign(socket, :form, to_form(%{"text" => text}, as: :message))
+
+  defp scope(socket),
+    do: [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
+
+  defp start_path(socket), do: ~p"/o/#{socket.assigns.organisation.short_name}/ruby"
+
+  defp conversation_path(socket, id),
+    do: ~p"/o/#{socket.assigns.organisation.short_name}/ruby/#{id}"
+end

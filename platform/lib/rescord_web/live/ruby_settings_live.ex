@@ -189,12 +189,6 @@ defmodule RescordWeb.RubySettingsLive do
       </p>
 
       <%= if @allowed? do %>
-        <p id="ruby-no-page">
-          This version of Rescord has no page where a member asks Ruby yet, so no record goes
-          to the service, whatever you set here. You can set Ruby up now for the version that
-          has it.
-        </p>
-
         <.problems list={general(@problems)} />
 
         <section :if={@offers == []} aria-labelledby="none-heading">

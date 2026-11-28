@@ -108,6 +108,8 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/transfers/:id", TransfersLive
       live "/o/:organisation/settings", SettingsLive
       live "/o/:organisation/settings/ruby", RubySettingsLive
+      live "/o/:organisation/ruby", RubyLive, :start
+      live "/o/:organisation/ruby/:conversation_id", RubyLive, :conversation
       live "/o/:organisation/export", ExportLive
       live "/o/:organisation/reports", ReportsLive
       live "/o/:organisation/lists", ListsLive, :organisation

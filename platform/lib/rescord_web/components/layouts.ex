@@ -56,8 +56,10 @@ defmodule RescordWeb.Layouts do
     default: nil,
     values:
       [nil, :home, :tasks, :residents, :groups, :housing, :inventory, :expenses, :tools, :reports] ++
-        [:lists, :members, :settings, :root],
+        [:lists, :members, :settings, :ruby, :root],
     doc: "the part of the site that the page is in, which the site nav marks"
+
+  attr :rest, :global, doc: "the attributes of `<main>`, such as the `data-` attribute of a page"
 
   slot :inner_block, required: true
 
@@ -190,7 +192,7 @@ defmodule RescordWeb.Layouts do
       </nav>
     </header>
 
-    <main id="main">
+    <main id="main" {@rest}>
       {render_slot(@inner_block)}
     </main>
 

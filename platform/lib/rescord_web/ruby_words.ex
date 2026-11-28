@@ -202,6 +202,56 @@ defmodule RescordWeb.RubyWords do
   @doc "The millionths of a US dollar of an amount that a person typed, or `:error`."
   def millionths(text), do: scaled(text, 1_000_000)
 
+  # The things to ask on the start of a conversation, each with the tool
+  # that answers it: the page offers a thing only to a person who gets
+  # that tool (`Rescord.Ruby.reads?/3`).
+  @asks [
+    {"tasks_for_day", "What is still to do today?"},
+    {"care_overview", "Who is on medication today?"},
+    {"stock_levels", "What is running low?"},
+    {"overdue_tasks", "Which tasks are late?"},
+    {"care_overview", "Who has not been weighed this month?"}
+  ]
+
+  @doc "The things to ask, each as `{tool, words}`, in the order of the start page."
+  def asks, do: @asks
+
+  @doc """
+  When a message was written, in the time zone of the organisation: the
+  time alone for today, and the date and the time before.
+  """
+  def moment(%DateTime{} = instant, organisation) do
+    local = Rescord.Accounts.local_time(organisation, instant)
+
+    if Rescord.Accounts.local_date(organisation, instant) == Rescord.Accounts.today(organisation),
+      do: RescordWeb.Locale.time(local),
+      else: RescordWeb.Locale.date_time(local)
+  end
+
+  @doc "The title of a conversation, also before Ruby gave it one."
+  def title(%{title: title}) when is_binary(title) and title != "", do: title
+  def title(_conversation), do: "A new conversation"
+
+  @doc """
+  What the one `role="status"` of the page of a conversation says once,
+  for a state of the answer.
+  """
+  def said(:working), do: "Ruby is working."
+  def said(:writing), do: "Ruby is writing the answer."
+  def said(:complete), do: "Ruby answered."
+  def said(:awaiting), do: "Ruby waits for you."
+  def said(:stopped), do: "You stopped the answer."
+  def said(:failed), do: "Ruby could not answer."
+  def said(_other), do: nil
+
+  @doc """
+  What went wrong with a reply, in place of the answer: the one sentence
+  that is true for each reason. Nothing was recorded, since Ruby writes no
+  record.
+  """
+  def problem(_reason),
+    do: "Ruby could not answer. Nothing was recorded. The pages of Rescord work as before."
+
   # An amount with more digits than the unit holds is refused, and not
   # rounded: the person sees what Rescord keeps.
   defp scaled(text, unit) when is_binary(text) do

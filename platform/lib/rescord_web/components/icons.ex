@@ -134,6 +134,7 @@ defmodule RescordWeb.Icons do
     "shield" => ~S|<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8-7.5 9.5-4.3-1.5-7.5-4.9-7.5-9.5V6z"/>|,
     "star" =>
       ~S|<path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/>|,
+    "stop" => ~S|<rect x="7" y="7" width="10" height="10" rx="1.5"/>|,
     "stethoscope" =>
       ~S|<path d="M6 3.5H5v5a4 4 0 0 0 8 0v-5h-1M9 12.5V15a5 5 0 0 0 10 0v-2.5"/><circle cx="19" cy="10.5" r="2"/>|,
     "syringe" =>
