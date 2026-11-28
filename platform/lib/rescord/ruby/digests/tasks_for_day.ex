@@ -114,7 +114,8 @@ defmodule Rescord.Ruby.Digests.TasksForDay do
     for phase <- [:overdue, :due, :done, :skipped], into: %{}, do: {phase, counted[phase] || 0}
   end
 
-  defp task(task, now, tenant) do
+  @doc false
+  def task(task, now, tenant) do
     phase = Tasks.phase(task, now)
 
     Shoddy.Maps.compact(%{

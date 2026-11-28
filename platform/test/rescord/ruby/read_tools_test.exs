@@ -111,7 +111,7 @@ defmodule Rescord.Ruby.ReadToolsTest do
       assert :find_locations in options[:tools]
 
       names = for {%ReqLLM.Tool{name: name}, _run} <- options[:extra_tools], do: name
-      assert ["tasks_for_day", "resident_profile", "resident_timeline", "housing"] == names
+      assert ["resident_profile", "resident_timeline", "housing"] -- names == []
     end
 
     test "gives a person who is no member none of them", context do

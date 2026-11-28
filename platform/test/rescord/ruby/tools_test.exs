@@ -83,10 +83,11 @@ defmodule Rescord.Ruby.ToolsTest do
     test "gives a member the tools of the catalogue, by name", context do
       options = Toolbox.options(context.member, context.organisation, context.profile)
 
-      assert options[:tools] == [:find_residents, :get_task, :find_locations]
+      assert options[:tools] == [:find_residents, :get_task, :find_locations, :find_items]
 
       assert Enum.map(options[:extra_tools], fn {tool, _run} -> tool.name end) ==
-               ["tasks_for_day", "resident_profile", "resident_timeline", "housing"]
+               ["tasks_for_day", "resident_profile", "resident_timeline", "housing"] ++
+                 ["overdue_tasks", "stock_levels"]
 
       for {_tool, run} <- options[:extra_tools], do: assert(is_function(run, 2))
       assert options[:req_llm] == Client
@@ -122,8 +123,9 @@ defmodule Rescord.Ruby.ToolsTest do
 
       # The tools of the actions first, then the digests.
       assert Enum.map(request.opts[:tools], & &1.name) ==
-               ["find_residents", "find_locations", "get_task"] ++
-                 ["tasks_for_day", "resident_profile", "resident_timeline", "housing"]
+               ["find_residents", "find_locations", "get_task", "find_items"] ++
+                 ["tasks_for_day", "resident_profile", "resident_timeline", "housing"] ++
+                 ["overdue_tasks", "stock_levels"]
 
       assert %{provider: :anthropic, id: "claude-opus-5-5"} = request.model
       assert request.opts[:max_tokens] == 4_096

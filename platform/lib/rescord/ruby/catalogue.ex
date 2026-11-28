@@ -35,7 +35,10 @@ defmodule Rescord.Ruby.Catalogue do
     %{name: :resident_profile, kind: :read, source: {:extra, Digests.ResidentProfile}},
     %{name: :resident_timeline, kind: :read, source: {:extra, Digests.ResidentTimeline}},
     %{name: :housing, kind: :read, source: {:extra, Digests.Housing}},
-    %{name: :find_locations, kind: :read, source: :action}
+    %{name: :find_locations, kind: :read, source: :action},
+    %{name: :overdue_tasks, kind: :read, source: {:extra, Digests.OverdueTasks}},
+    %{name: :stock_levels, kind: :read, source: {:extra, Digests.StockLevels}},
+    %{name: :find_items, kind: :read, source: :action}
   ]
 
   @doc "Each tool of Ruby."
