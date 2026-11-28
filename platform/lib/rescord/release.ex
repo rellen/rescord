@@ -27,7 +27,7 @@ defmodule Rescord.Release do
   `bin/move-storage` runs it.
   """
 
-  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts]
+  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, Rescord.Mail]
 
   alias Rescord.Storage.Move
 

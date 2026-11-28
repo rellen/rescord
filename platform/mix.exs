@@ -116,6 +116,9 @@ defmodule Rescord.MixProject do
       {:swoosh, "~> 1.16"},
       # SMTP for the adapter of Swoosh: each operator names a mail server (ADR 0044).
       {:gen_smtp, "~> 1.2"},
+      # The HTML part of an email: MJML with EEx, through the Rust NIF of mrml
+      # (ADR 0070).
+      {:mjml_eex, "~> 0.13.0"},
       {:req, "~> 0.5"},
       # The store of the attachments, compatible with S3 (ADR 0038).
       {:req_s3, "~> 0.2.5"},

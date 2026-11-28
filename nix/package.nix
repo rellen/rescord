@@ -60,10 +60,29 @@ let
     };
   };
 
+  # The emails (ADR 0070): `mjml` has a native library too, the MJML
+  # compiler, and the build of a template runs it. It comes here in the same
+  # way. The version is the one of `mjml` in `platform/mix.lock`, and each
+  # hash is the one that `checksum-Elixir.Mjml.Native.exs` of that package
+  # gives for the name.
+  mjmlNative = rec {
+    version = "5.3.1";
+    name = "libmjml_nif-v${version}-nif-2.16-${mdexNative.target}.so.tar.gz";
+    file = fetchurl {
+      url = "https://github.com/adoptoposs/mjml_nif/releases/download/v${version}/${name}";
+      hash =
+        {
+          x86_64-linux = "sha256-VV/ZTNHkhc0A6umjl+KRS99Mv6Jrs1KNyLjeWMVyLfA=";
+          aarch64-linux = "sha256-cFfmHBFTmK67PNx6eKJ/REHrO3i63c15Iu1AxLy410Q=";
+        }
+        .${stdenv.hostPlatform.system};
+    };
+  };
+
   mixFodDeps = beamPackages.fetchMixDeps {
     pname = "rescord-deps";
     inherit version src;
-    hash = "sha256-d2Tt72+7TXQfFGhWe4cSyf2/6kN45kwDNFN6mAQD2Bs=";
+    hash = "sha256-WaCPSwKnldTvMj6bewObQCGXFWNtE1ZfhyFnpcKssX8=";
   };
 in
 beamPackages.mixRelease {
@@ -88,6 +107,7 @@ beamPackages.mixRelease {
     export RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH="$TMPDIR/rustler"
     mkdir -p "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH"
     cp ${mdexNative.file} "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH/${mdexNative.name}"
+    cp ${mjmlNative.file} "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH/${mjmlNative.name}"
   '';
 
   # The assets go into the release, with their digests.
@@ -96,10 +116,18 @@ beamPackages.mixRelease {
   '';
 
   # The library of MDEx was built for a system with its C library in a
-  # usual place. Here it gets the path of the C library of the package.
+  # usual place. Here it gets the path of the C library of the package. The
+  # library of mjml also names `libgcc_s`, which is beside the C++ library.
   postInstall = ''
     patchelf --set-rpath ${lib.makeLibraryPath [ stdenv.cc.libc ]} \
       $out/lib/mdex_native-*/priv/native/*.so
+    patchelf --set-rpath ${
+      lib.makeLibraryPath [
+        stdenv.cc.libc
+        stdenv.cc.cc.lib
+      ]
+    } \
+      $out/lib/mjml-*/priv/native/*.so
   '';
 
   meta = {

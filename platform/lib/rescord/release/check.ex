@@ -179,16 +179,7 @@ defmodule Rescord.Release.Check do
   @doc "Sends a short email to `address`, through the mailer of the settings."
   @spec test_email(String.t()) :: result
   def test_email(address) do
-    email =
-      Swoosh.Email.new()
-      |> Swoosh.Email.to(address)
-      |> Swoosh.Email.from(Application.fetch_env!(:rescord, :mail_from))
-      |> Swoosh.Email.subject("Rescord can send mail")
-      |> Swoosh.Email.text_body(
-        "This email comes from bin/check. Rescord can send the sign-in links and the invitations.\n"
-      )
-
-    case Mailer.deliver(email) do
+    case address |> Rescord.Mail.mail_works() |> Mailer.deliver() do
       {:ok, _receipt} ->
         {:ok, "email", "sent to #{address}: look for it in that inbox, and in its spam"}
 

@@ -33,6 +33,9 @@ RUN --mount=type=secret,id=extra_ca,required=false \
 # GitHub, with checksums that its package holds, and the release carries
 # both in the priv of vix: the image and the tarball need no libvips of
 # the system (ADR 0055).
+#
+# mjml, the compiler of the emails (ADR 0070), and MDEx take their native
+# library from their release on GitHub in the same way, when they compile.
 ENV MIX_ENV=prod \
   HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt \
   VIX_COMPILATION_MODE=PRECOMPILED_NIF_AND_LIBVIPS

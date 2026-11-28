@@ -32,6 +32,13 @@ its GitHub release (ADR 0047).
   the email again, with a longer wait before each try, for about 18 hours.
   Before, a fault of the mail server lost the email, and only the log said
   so. The person who invites sees the new member at once, as before.
+- The emails of Rescord now have an HTML part with the look of the
+  application: the email with a sign-in link, the invitation to an
+  organisation, and the test email of `bin/check`. Each one follows the
+  light or the dark scheme of a mail program that states it, has a button
+  for its one action, and loads no image and no font, so a mail program
+  has nothing to block. Each one keeps a text part with the same words,
+  for a program that shows plain text. The mail settings do not change.
 
 ### Fixed
 

@@ -28,7 +28,7 @@ defmodule Rescord.Accounts do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord]
+    deps [Rescord, Rescord.Mail]
     # Another domain holds its own grants, and uses the check (ADR 0024).
     exports [Rescord.Accounts.Grants, Rescord.Accounts.Checks.Granted]
   end

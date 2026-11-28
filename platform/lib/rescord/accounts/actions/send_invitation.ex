@@ -16,8 +16,6 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
 
   use Ash.Resource.Actions.Implementation
 
-  import Swoosh.Email
-
   require Logger
 
   alias Rescord.Accounts.Organisation
@@ -44,23 +42,13 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
   defp email(organisation, signal) do
     {module, function} = Application.fetch_env!(:rescord, :sign_in_page_url)
 
-    new()
-    |> from(Application.fetch_env!(:rescord, :mail_from))
-    |> to(to_string(signal.email))
-    |> subject("You are invited to #{organisation.name} on Rescord")
-    |> text_body("""
-    #{inviter_name(signal.invited_by)} invited you to #{organisation.name} on Rescord.
-
-    To sign in, open this page and type this email address:
-
-    #{apply(module, function, [])}
-
-    Rescord then sends you a link to sign in. You need no password.
-    """)
+    Rescord.Mail.invitation(
+      to_string(signal.email),
+      organisation.name,
+      signal.invited_by && to_string(signal.invited_by),
+      apply(module, function, [])
+    )
   end
-
-  defp inviter_name(nil), do: "Somebody"
-  defp inviter_name(address), do: to_string(address)
 
   defp organisation(%Organisation{} = organisation), do: organisation
   defp organisation("org_" <> id), do: Ash.get!(Organisation, id, authorize?: false)

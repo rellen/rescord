@@ -51,7 +51,8 @@ scripts/upgrade-test.sh OLD_IMAGE NEW_IMAGE  # an upgrade with its data, as the 
 After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
 `nix/package.nix` again: `nix build` prints the new one. When the version
 of `mdex_native` changes there, set `mdexNative` in the same file too: its
-version, and the two hashes of its native library.
+version, and the two hashes of its native library. The same holds for
+`mjml` and `mjmlNative` (ADR 0070).
 
 CI runs the checks of each push in the devenv shell (`.github/workflows/ci.yml`,
 ADR 0047).
@@ -234,6 +235,23 @@ for Rescord.
     `RescordWeb.CinderTest` holds the two together. Do not take the two
     `dom` callbacks out of `assets/js/app.js`: without them a sort control
     loses the focus.
+- **An email is MJML, with a text part** (ADR 0070). `Rescord.Mail` builds
+  each email, and the caller delivers it with `Rescord.Mailer`.
+  - A new email is a template `lib/rescord/mail/<name>.mjml.eex` with the
+    content of the card, a module beside it with `text/1`, a function in
+    `Rescord.Mail`, and an entry in `previews/0`. `Rescord.MailTest` then
+    holds it. With `dev_routes`, `/dev/mail` shows each one.
+  - The build compiles the MJML, so a template uses a value as text or as
+    the value of an HTML attribute, and no `if` or `for` around an MJML
+    element. Each value is escaped. Write the text part by hand, with the
+    same words.
+  - The markup of an email has tables, inline styles and classes: the rule
+    of classless markup is for the pages. A template still writes no
+    colour but a value of `tokens.css`: the light value inline, and the
+    dark value in the media query of the layout.
+  - An email loads nothing: no image, no font and no stylesheet of any
+    host. Do not name Ubuntu, Roboto, Lato, Open Sans or Droid Sans in a
+    font stack: MJML then fetches the font from Google Fonts.
 - **Boundaries** (ADR 0009). The `:boundary` compiler checks which module
   may use which, and a broken rule fails `mix precommit`.
   - A new domain uses `use Ash.Domain, extensions: [AshBoundary]`, and names

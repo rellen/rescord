@@ -48,6 +48,7 @@ compiles with warnings as errors.
 | `Rescord` | the core: the repo, the mailer, plain modules | no Phoenix, no `shoddy_phoenix`, not the web layer |
 | each Ash domain | its resources; those with a `define` on the domain are public | the boundaries in the `deps` of its `boundary` block |
 | `RescordWeb` | the web layer | the core's exports, and the public part of each domain in its `deps`; not `Ash` itself |
+| `Rescord.Mail` | the emails: a layout and a template for each one, in MJML | no other boundary; it may use `Phoenix.HTML`, which escapes each value |
 | `Rescord.Application` | the supervision tree | the core and the web layer |
 
 Each domain uses `extensions: [AshBoundary]`, which declares its boundary
@@ -287,6 +288,12 @@ The first resource in the schema of an organisation needs
   the environment at run time, and never from a file in the repository.
   `Rescord.Mailer.smtp_options/1` turns them into the options of the
   adapter, and with TLS the client checks the certificate of the server.
+- **`Rescord.Mail` builds each email** (ADR 0070): the sign-in link, the
+  invitation and the test email of `bin/check`. Each has an HTML part,
+  written in MJML with EEx and compiled by the build, and a text part
+  written by hand. The HTML part has the look of the application in a light
+  and in a dark scheme, and loads no file of any host. The caller delivers
+  the email with `Rescord.Mailer`.
 - **A page names its organisation in the path** (the maintainer, 15
   November 2026), and not in a subdomain. One host and one certificate serve
   each organisation.

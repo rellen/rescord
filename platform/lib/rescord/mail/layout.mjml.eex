@@ -1,0 +1,90 @@
+<%!--
+  The layout of each email (ADR 0070): the head, the mark and the name of
+  the site bar, a card with the content of one email, and a note below it.
+
+  The inline values are the light scheme of `assets/css/layers/tokens.css`,
+  and the media query holds the dark scheme. `Rescord.MailTest` holds both
+  to the tokens. Nothing here loads a file from another host: the mark is a
+  table and not an image, and the font stack names no font that MJML would
+  fetch from Google Fonts (Ubuntu, Roboto, Lato, Open Sans, Droid Sans).
+--%>
+<mjml lang="en">
+  <mj-head>
+    <mj-title><%= @subject %></mj-title>
+    <mj-preview><%= @preview %></mj-preview>
+    <mj-raw>
+      <meta name="color-scheme" content="light dark" />
+      <meta name="supported-color-schemes" content="light dark" />
+    </mj-raw>
+    <mj-attributes>
+      <mj-all font-family="'Atkinson Hyperlegible', Seravek, 'Gill Sans Nova', Calibri, 'Helvetica Neue', Helvetica, Arial, sans-serif" />
+      <mj-section padding="0 16px" />
+      <mj-text color="#0f2520" font-size="16px" line-height="24px" padding="0 0 16px" />
+      <mj-button background-color="#0a6a5c" color="#ffffff" font-size="16px" font-weight="700" line-height="24px" inner-padding="12px 28px" border-radius="999px" align="left" padding="8px 0 24px" />
+      <mj-divider border-color="#c8dbd5" border-width="1px" padding="8px 0 24px" />
+      <mj-class name="small" color="#47615a" font-size="14px" line-height="21px" />
+    </mj-attributes>
+    <mj-style>
+      :root { color-scheme: light dark; supported-color-schemes: light dark; }
+      .rs-card > table { border-collapse: separate !important; }
+      @media (prefers-color-scheme: dark) {
+        body, .rs-ground { background-color: #0b1916 !important; }
+        .rs-card > table > tbody > tr > td { background-color: #11231f !important; border-color: #26403a !important; }
+        .rs-text div, .rs-text h1, .rs-name { color: #e3f0ec !important; }
+        .rs-small div { color: #9db7af !important; }
+        .rs-text a, .rs-small a { color: #8bbcf7 !important; }
+        .rs-button td, .rs-button a { background-color: #62d2bd !important; color: #04211c !important; }
+        .rs-rule p { border-top-color: #26403a !important; }
+        .rs-mark { border-color: #62d2bd !important; }
+        .rs-mark-bar { background-color: #62d2bd !important; }
+        .rs-state span { background-color: #12301a !important; color: #80dc8c !important; }
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="rs-ground" background-color="#f1f7f5" width="600px">
+    <mj-section padding="32px 16px 16px">
+      <mj-column>
+        <mj-text padding="0">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td aria-hidden="true" style="vertical-align: middle; padding: 0 10px 0 0;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="rs-mark" style="width: 30px; height: 30px; border: 3px solid #0a6a5c; border-radius: 9px; border-collapse: separate;">
+                  <tr>
+                    <td align="center" valign="middle" style="padding: 0; font-size: 0; line-height: 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto;">
+                        <tr>
+                          <td style="width: 5px; height: 5px; padding: 0;"></td>
+                          <td class="rs-mark-bar" style="width: 3px; height: 5px; padding: 0; background-color: #0a6a5c; border-radius: 2px 2px 0 0;"></td>
+                          <td style="width: 5px; height: 5px; padding: 0;"></td>
+                        </tr>
+                        <tr>
+                          <td class="rs-mark-bar" colspan="3" style="height: 3px; padding: 0; background-color: #0a6a5c; border-radius: 2px;"></td>
+                        </tr>
+                        <tr>
+                          <td style="width: 5px; height: 5px; padding: 0;"></td>
+                          <td class="rs-mark-bar" style="width: 3px; height: 5px; padding: 0; background-color: #0a6a5c; border-radius: 0 0 2px 2px;"></td>
+                          <td style="width: 5px; height: 5px; padding: 0;"></td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td class="rs-name" style="vertical-align: middle; padding: 0; font-size: 20px; line-height: 30px; font-weight: 700; color: #0f2520;">Rescord</td>
+            </tr>
+          </table>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section>
+      <mj-column css-class="rs-card" background-color="#ffffff" border="1px solid #c8dbd5" border-radius="12px" padding="28px 24px 12px">
+        <%= @inner_content %>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="20px 16px 40px">
+      <mj-column padding="0 24px">
+        <mj-text css-class="rs-small" mj-class="small" padding="0"><%= @note %></mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

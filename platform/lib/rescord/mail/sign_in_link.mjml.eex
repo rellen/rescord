@@ -1,0 +1,5 @@
+<mj-text css-class="rs-text"><h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700;">Sign in to Rescord</h1></mj-text>
+<mj-text css-class="rs-text">Somebody asked for a link to sign in to Rescord with this address. The link works one time, for 15 minutes.</mj-text>
+<mj-button css-class="rs-button" href="<%= @url %>">Sign in</mj-button>
+<mj-divider css-class="rs-rule" />
+<mj-text css-class="rs-small" mj-class="small">If the button does not work, copy this address into your browser:<br /><a href="<%= @url %>" style="color: #1a5aa3; word-break: break-all;"><%= @url %></a></mj-text>

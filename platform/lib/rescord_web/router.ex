@@ -117,6 +117,10 @@ defmodule RescordWeb.Router do
 
       live_dashboard "/dashboard", metrics: RescordWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+
+      # Each email with example values (ADR 0070).
+      get "/mail", RescordWeb.MailPreviewController, :index
+      get "/mail/:name/:part", RescordWeb.MailPreviewController, :show
     end
   end
 end

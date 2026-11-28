@@ -1,0 +1,3 @@
+<mj-text css-class="rs-state" padding="0 0 12px"><span style="display: inline-block; padding: 2px 12px; border-radius: 999px; background-color: #e3f3e4; color: #22722b; font-size: 14px; line-height: 22px; font-weight: 700;"><span aria-hidden="true">&#10003;</span> Mail works</span></mj-text>
+<mj-text css-class="rs-text"><h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 700;">Rescord can send mail</h1></mj-text>
+<mj-text css-class="rs-text" padding="0 0 16px">This email comes from <code style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 15px;">bin/check</code>. Rescord can send the sign-in links and the invitations.</mj-text>

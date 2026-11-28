@@ -1,0 +1,17 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    The emails of Rescord
+    <:subtitle>
+      Each email with example values. The HTML part follows the colour scheme of the browser.
+    </:subtitle>
+  </.header>
+
+  <%!-- Plain addresses: the router has these pages with `dev_routes` alone,
+  so `~p` cannot check them in each environment. --%>
+  <ul>
+    <li :for={{name, email} <- @previews}>
+      {email.subject}: <a href={"/dev/mail/#{name}/html"}>the HTML part</a>,
+      <a href={"/dev/mail/#{name}/text"}>the text part</a>
+    </li>
+  </ul>
+</Layouts.app>
