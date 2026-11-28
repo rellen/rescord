@@ -83,6 +83,7 @@ defmodule Rescord.Ruby do
       Rescord.Accounts,
       Rescord.Inventory,
       Rescord.Journal,
+      Rescord.Lists,
       Rescord.Locations,
       Rescord.Residents,
       Rescord.Tasks,

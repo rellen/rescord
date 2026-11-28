@@ -550,6 +550,118 @@ defmodule Rescord.Journal do
   end
 
   @doc """
+  Whether a prescription runs on a day: from its first day, or the day it
+  was written when it names none, to its last day, or with no end. The
+  entry is that of the prescription, for the day it was written.
+  """
+  @spec running?(map, map, Date.t(), term) :: boolean
+  def running?(prescription, entry, day, tenant) do
+    first = prescription.starts_on || Rescord.Accounts.local_date(tenant, entry.happened_at)
+
+    Date.compare(first, day) != :gt and
+      (is_nil(prescription.ends_on) or Date.compare(prescription.ends_on, day) != :lt)
+  end
+
+  @typedoc """
+  A row of `care_overview/1`: a resident in care, the entries of its
+  prescriptions that run today, the newest first, and the instant of its
+  newest measurement of the kinds that were asked, or `nil` for none.
+  """
+  @type care_row :: %{
+          resident: Ash.Resource.record(),
+          prescriptions: [Ash.Resource.record()],
+          last_measured_at: DateTime.t() | nil
+        }
+
+  @doc """
+  Each resident in care (in care or away for a time), in the order of the
+  names, with what a carer asks about all of them at once: the
+  prescriptions that run today, and when it was last measured with one of
+  the measure kinds of `measure_kind_ids:`, a weight for example.
+
+  It reads the residents, the prescriptions that can run today and the
+  measurements of those kinds: three reads for all the residents, and no
+  read for each one. Each read is as the actor of `opts`. `today:` is the
+  day of the organisation by default.
+  """
+  @spec care_overview(keyword) :: {:ok, [care_row]} | {:error, term}
+  def care_overview(opts \\ []) do
+    {kind_ids, opts} = Keyword.pop(opts, :measure_kind_ids, [])
+
+    {today, opts} =
+      Keyword.pop_lazy(opts, :today, fn -> Rescord.Accounts.today(opts[:tenant]) end)
+
+    with {:ok, residents} <-
+           Rescord.Residents.residents(Keyword.put(opts, :load, Rescord.Residents.summary())),
+         residents = Enum.filter(residents, &(&1.status in [:in_care, :away])),
+         ids = Enum.map(residents, & &1.id),
+         {:ok, prescribed} <- running_prescriptions(ids, today, opts),
+         {:ok, measured} <- last_measured(ids, kind_ids, opts) do
+      by_resident = Enum.group_by(prescribed, & &1.resident_id)
+
+      {:ok,
+       residents
+       |> Enum.sort_by(&{String.downcase(to_string(&1.name || "")), &1.id})
+       |> Enum.map(fn resident ->
+         %{
+           resident: resident,
+           prescriptions: Map.get(by_resident, resident.id, []),
+           last_measured_at: Map.get(measured, resident.id)
+         }
+       end)}
+    end
+  end
+
+  # A prescription whose dates can include today: the rule of `running?/4`
+  # decides for one with no first day.
+  defp running_prescriptions([], _today, _opts), do: {:ok, []}
+
+  defp running_prescriptions(ids, today, opts) do
+    JournalEntry
+    |> Ash.Query.filter(
+      resident_id in ^ids and
+        exists(
+          prescription,
+          (is_nil(starts_on) or starts_on <= ^today) and
+            (is_nil(ends_on) or ends_on >= ^today)
+        )
+    )
+    |> Ash.Query.sort(happened_at: :desc)
+    |> Ash.Query.load(prescription: [])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, entries} ->
+        {:ok, Enum.filter(entries, &running?(&1.prescription, &1, today, opts[:tenant]))}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp last_measured(_ids, [], _opts), do: {:ok, %{}}
+  defp last_measured([], _kind_ids, _opts), do: {:ok, %{}}
+
+  defp last_measured(ids, kind_ids, opts) do
+    JournalEntry
+    |> Ash.Query.filter(
+      resident_id in ^ids and kind == :measurement and
+        exists(measurement, measure_kind_id in ^kind_ids)
+    )
+    |> Ash.Query.select([:id, :resident_id, :happened_at])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, entries} ->
+        {:ok,
+         entries
+         |> Enum.group_by(& &1.resident_id, & &1.happened_at)
+         |> Map.new(fn {id, instants} -> {id, Enum.max(instants, DateTime)} end)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
   The journal entry of a prescription, or `nil`. A task that gives a dose
   finds the resident of its prescription with it.
   """
