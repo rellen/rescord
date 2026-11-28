@@ -211,5 +211,14 @@ defmodule Rescord.Journal.JournalEntry do
       destination_attribute :entry_id
       temporal_keys {:valid_at, :valid_at}
     end
+
+    # The files of the entry, in the order of their upload (ADR 0092). An
+    # attachment is not temporal, and names the entry by a plain id.
+    has_many :attachments, Journal.Attachment do
+      public? true
+      destination_attribute :entry_id
+      temporal_keys {:valid_at, nil}
+      sort inserted_at: :asc, id: :asc
+    end
   end
 end

@@ -2,10 +2,16 @@ defmodule RescordWeb.JournalLive do
   @moduledoc """
   The journal of one resident, at `/o/<short name>/residents/<id>/journal`.
 
-  The page lists the entries, the newest first, and `?only=medical` gives
-  the medical history. A member writes an entry: the form shows the fields
-  of the kind that the member chooses. The author of an entry, and an
-  administrator, correct it. Each member adds to an entry with an addendum.
+  The entries are a collection (ADR 0092), the newest first, in pages: a
+  search in the words of the entries, and a filter on the kind and on the
+  date. `?only=medical` is the filter that gives the medical history. The
+  address holds the search, the filters and the page (ADR 0084), and
+  Cinder reads those parameters. `?entry=<id>` gives one entry, with each
+  entry that adds to it: a link from another page to one entry uses it.
+
+  A member writes an entry: the form shows the fields of the kind that
+  the member chooses. The author of an entry, and an administrator,
+  correct it. Each member adds to an entry with an addendum.
 
   A person who writes an entry attaches files to it: up to five photos or
   PDFs of 20 MB each (ADR 0041). The page writes the entry and its files in
@@ -16,13 +22,18 @@ defmodule RescordWeb.JournalLive do
   The page shows the conditions of the resident (ADR 0083): `?episode=<id>`
   gives the entries about one condition, with the card of that condition.
   A diagnosis starts a condition, and each other entry can name one.
-  `?kind=diagnosis` opens the form of a new entry with that kind.
+  `?new=diagnosis` opens the form of a new entry with that kind.
+
+  The page does not hold the entries: Cinder reads them. An event that
+  names an entry or a file by its id reads that record again, as the
+  person, and only from the journal of this resident.
 
   The page reads only the fields that it knows from what the browser sends,
   and makes no atom from it.
   """
 
   use RescordWeb, :live_view
+  use Cinder.UrlSync
 
   import RescordWeb.ConditionComponents
   import RescordWeb.JournalComponents
@@ -62,7 +73,8 @@ defmodule RescordWeb.JournalLive do
        )
        |> allow_files()
        |> assign_episodes()
-       |> assign(episode: nil, open_form?: false)
+       |> assign_prescriptions()
+       |> assign(episode: nil, entry: nil, query: %{}, open_form?: false)
        |> assign_form(%{"kind" => "general"})}
     else
       _no_resident ->
@@ -86,18 +98,40 @@ defmodule RescordWeb.JournalLive do
   defp allow_files(socket), do: socket
 
   @impl true
-  def handle_params(params, _uri, socket) do
-    only = if params["only"] == "medical", do: :medical
+  def handle_params(params, uri, socket) do
     # Only a condition of this resident: the page has them in hand.
     episode = Enum.find(socket.assigns.episodes, &(&1.id == params["episode"]))
-    kind = if params["kind"] == "diagnosis", do: "diagnosis", else: "general"
+    kind = if params["new"] == "diagnosis", do: "diagnosis", else: "general"
 
     {:noreply,
      socket
-     |> assign(only: only, episode: episode, open_form?: params["kind"] == "diagnosis")
-     |> assign_entries()
+     |> assign(
+       episode: episode,
+       entry: one_entry(socket, params["entry"]),
+       query: query_of(uri),
+       open_form?: params["new"] == "diagnosis"
+     )
      |> assign_form(%{"kind" => kind, "episode_id" => (episode && episode.id) || ""})}
   end
+
+  # The one entry that the address names, when it is an entry of this
+  # journal that the person can read.
+  defp one_entry(socket, id) when is_binary(id), do: entry(socket, id)
+  defp one_entry(_socket, _id), do: nil
+
+  # An entry of this journal by its id, as the person, or nil. The id comes
+  # from the browser, so a text that is no id gives nil too.
+  defp entry(socket, id) do
+    case Journal.entry_of(socket.assigns.resident.id, id, options(socket)) do
+      {:ok, %{} = entry} -> entry
+      _nothing -> nil
+    end
+  end
+
+  # The parameters of the address, as the browser sent them. The page reads
+  # none of the parameters of Cinder: it gives them back in a link, so a
+  # person who chooses a condition keeps the search and the filters.
+  defp query_of(uri) when is_binary(uri), do: URI.decode_query(URI.parse(uri).query || "")
 
   defp options(socket) do
     [actor: socket.assigns.current_user, tenant: socket.assigns.organisation]
@@ -138,25 +172,21 @@ defmodule RescordWeb.JournalLive do
     )
   end
 
-  defp assign_entries(socket) do
-    options = options(socket)
-    episode = socket.assigns.episode
-
-    {:ok, entries} =
-      Journal.entries(
-        socket.assigns.resident.id,
-        [only: socket.assigns.only, episode: episode && episode.id] ++ options
-      )
-
-    {:ok, prescriptions} = Journal.prescriptions(socket.assigns.resident.id, options)
-    {:ok, attachments} = Journal.attachments_of(Enum.map(entries, & &1.id), options)
+  # The prescriptions of the resident, as the options of the form of a dose.
+  defp assign_prescriptions(socket) do
+    {:ok, prescriptions} = Journal.prescriptions(socket.assigns.resident.id, options(socket))
 
     assign(socket,
-      entries: entries,
-      attachments: attachments,
       prescriptions: Enum.map(prescriptions, &{&1.prescription.medication, &1.prescription.id})
     )
   end
+
+  # The filter that gives the medical history, and the search: Cinder
+  # calls each with the query of the entries.
+  defp only(query, %{value: "medical"}), do: Journal.medical(query)
+  defp only(query, _filter), do: query
+
+  defp search(query, _columns, text), do: Journal.with_text(query, text)
 
   defp assign_form(socket, fields) do
     fields = typed_fields(fields)
@@ -197,7 +227,7 @@ defmodule RescordWeb.JournalLive do
              chronic: fields["chronic"] == "true"
            }),
          {:ok, _entry} <- Journal.write_entry_with_files(facts, files(socket), options(socket)) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply, push_navigate(socket, to: here(socket))}
     else
       {:error, words} when is_binary(words) ->
         {:noreply, socket |> assign(problems: [words]) |> assign_form(fields)}
@@ -212,9 +242,7 @@ defmodule RescordWeb.JournalLive do
   # who completes that task writes the dose to the journal.
   def handle_event("plan_dose", %{"entry_id" => id, "dose" => fields}, socket)
       when is_binary(id) and is_map(fields) do
-    entry = Enum.find(socket.assigns.entries, &(&1.id == id and &1.prescription))
-
-    with %{} <- entry,
+    with %{prescription: %{}} = entry <- entry(socket, id),
          {:ok, due_at} <-
            Accounts.local_instant(
              socket.assigns.organisation,
@@ -234,18 +262,19 @@ defmodule RescordWeb.JournalLive do
       {:noreply,
        socket
        |> put_flash(:info, "The dose is in the tasks of that day.")
-       |> push_navigate(to: path(socket))}
+       |> push_navigate(to: here(socket))}
     else
-      nil -> {:noreply, socket}
       {:error, words} when is_binary(words) -> {:noreply, assign(socket, problems: [words])}
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+      # No such prescription in this journal.
+      _nothing -> {:noreply, socket}
     end
   end
 
   def handle_event("correct", %{"entry_id" => id, "entry" => fields}, socket)
       when is_binary(id) and is_map(fields) do
-    # Only an entry of this journal: the page has them in hand.
-    case Enum.find(socket.assigns.entries, &(&1.id == id)) do
+    # Only an entry of this journal.
+    case entry(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -257,7 +286,7 @@ defmodule RescordWeb.JournalLive do
           |> put_about(fields)
 
         case Journal.correct_entry(entry, changes, options(socket)) do
-          {:ok, _entry} -> {:noreply, push_navigate(socket, to: path(socket))}
+          {:ok, _entry} -> {:noreply, push_navigate(socket, to: here(socket))}
           {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
         end
     end
@@ -266,7 +295,7 @@ defmodule RescordWeb.JournalLive do
   # Starts the condition of a diagnosis from before Rescord recorded the
   # conditions of a resident (ADR 0083).
   def handle_event("track", %{"entry_id" => id}, socket) when is_binary(id) do
-    case Enum.find(socket.assigns.entries, &(&1.id == id)) do
+    case entry(socket, id) do
       nil -> {:noreply, socket}
       entry -> entry |> Journal.track_entry(options(socket)) |> after_episode(socket)
     end
@@ -315,7 +344,7 @@ defmodule RescordWeb.JournalLive do
             {:noreply,
              socket
              |> put_flash(:info, "The condition is removed.")
-             |> push_navigate(to: path(assign(socket, episode: nil)))}
+             |> push_navigate(to: here(socket, ["episode"]))}
 
           {:error, error} ->
             {:noreply, assign(socket, problems: Accounts.error_messages(error))}
@@ -328,17 +357,17 @@ defmodule RescordWeb.JournalLive do
   end
 
   def handle_event("remove_attachment", %{"id" => id}, socket) when is_binary(id) do
-    # Only a file of this journal: the page has them in hand.
-    with %{} = attachment <-
-           socket.assigns.attachments
-           |> Map.values()
-           |> List.flatten()
-           |> Enum.find(&(&1.id == id)),
+    # Only a file of this journal.
+    with {:ok, %{} = attachment} <-
+           Journal.attachment_of(socket.assigns.resident.id, id, options(socket)),
          :ok <- Journal.remove_attachment(attachment, options(socket)) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply, push_navigate(socket, to: here(socket))}
     else
-      nil -> {:noreply, socket}
-      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+      {:error, %{} = error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+
+      _nothing ->
+        {:noreply, socket}
     end
   end
 
@@ -356,7 +385,7 @@ defmodule RescordWeb.JournalLive do
 
   defp after_episode(result, socket) do
     case result do
-      {:ok, _record} -> {:noreply, push_navigate(socket, to: path(socket))}
+      {:ok, _record} -> {:noreply, push_navigate(socket, to: here(socket))}
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
     end
   end
@@ -402,10 +431,17 @@ defmodule RescordWeb.JournalLive do
     end
   end
 
-  defp path(socket) do
-    journal_path(socket.assigns.organisation, socket.assigns.resident.id,
-      only: if(socket.assigns.only == :medical, do: "medical"),
-      episode: socket.assigns.episode && socket.assigns.episode.id
+  # The address of the page as it is, with its search, its filters and its
+  # page, and with no parameter that opens a form. The page opens again
+  # there after a write.
+  defp here(socket_or_assigns, without \\ [])
+  defp here(%Phoenix.LiveView.Socket{assigns: assigns}, without), do: here(assigns, without)
+
+  defp here(assigns, without) do
+    journal_path(
+      assigns.organisation,
+      assigns.resident.id,
+      Map.drop(assigns.query, ["new" | without])
     )
   end
 
@@ -428,27 +464,8 @@ defmodule RescordWeb.JournalLive do
 
       <.header>
         Journal of {name(@resident)}
-        <:subtitle>{subtitle(@only, @episode)}, the newest first</:subtitle>
+        <:subtitle>{subtitle(@episode)}, the newest first</:subtitle>
         <:actions>
-          <.link
-            :if={@only == :medical}
-            patch={journal_path(@organisation, @resident.id, episode: @episode && @episode.id)}
-            data-variant="secondary"
-          >
-            Show each kind of entry
-          </.link>
-          <.link
-            :if={@only != :medical}
-            patch={
-              journal_path(@organisation, @resident.id,
-                only: "medical",
-                episode: @episode && @episode.id
-              )
-            }
-            data-variant="secondary"
-          >
-            Show the medical history
-          </.link>
           <.link
             navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/timeline"}
             data-variant="secondary"
@@ -463,7 +480,7 @@ defmodule RescordWeb.JournalLive do
       <.condition_nav
         episodes={@episodes}
         current={@episode}
-        only={if @only == :medical, do: "medical"}
+        query={@query}
         organisation={@organisation}
         resident={@resident}
       />
@@ -484,33 +501,78 @@ defmodule RescordWeb.JournalLive do
         open?={@open_form?}
       />
 
-      <p :if={@entries == [] and is_nil(@episode)}>The journal has no entry yet.</p>
-      <p :if={@entries == [] and @episode}>No entry of this kind is about this condition.</p>
+      <p :if={@entry} id="one-entry">
+        This is one entry of the journal, with what a member added to it.
+        <.link patch={here(assigns, ["entry", "page"])}>Show each entry</.link>
+      </p>
 
-      <.entry_card
-        :for={entry <- @entries}
-        entry={entry}
-        organisation={@organisation}
-        authors={@authors}
-        current_user={@current_user}
-        role={@role}
-        can_plan?={@can_plan?}
-        can_start_routine?={@can_start_routine?}
-        today={@today}
-        can_write?={@can_write?}
-        attachments={Map.get(@attachments, entry.id, [])}
-        conditions={@conditions}
-        can_track?={@can_track?}
-      />
+      <section id="entries" aria-label="Entries">
+        <Cinder.collection
+          id="journal"
+          layout={:list}
+          query={
+            Journal.query_to_journal(@resident.id,
+              episode: @episode && @episode.id,
+              entry: @entry && @entry.id,
+              actor: @current_user,
+              tenant: @organisation
+            )
+          }
+          actor={@current_user}
+          tenant={@organisation}
+          url_state={@url_state}
+          page_size={[default: 25, options: [25, 50, 100]]}
+          show_sort={false}
+          search={[
+            label: "Search",
+            placeholder: "A word of an entry",
+            fn: &search/3
+          ]}
+        >
+          <:col field="note" search />
+          <:filter
+            field="only"
+            type="select"
+            label="Show"
+            prompt="Each kind of entry"
+            options={[{"The medical history", "medical"}]}
+            fn={&only/2}
+          />
+          <:filter
+            field="kind"
+            type="select"
+            label="Kind"
+            prompt="Any kind"
+            options={JournalWords.options(:kind)}
+          />
+          <:filter field="happened_at" type="date_range" label="Date" />
+          <:empty :let={found}>
+            <p :if={found.filtered?}>No entry matches the search and the filters.</p>
+            <p :if={not found.filtered? and is_nil(@episode)}>The journal has no entry yet.</p>
+            <p :if={not found.filtered? and @episode}>No entry is about this condition.</p>
+          </:empty>
+          <:item :let={entry}>
+            <.entry_card
+              entry={entry}
+              organisation={@organisation}
+              authors={@authors}
+              current_user={@current_user}
+              role={@role}
+              can_plan?={@can_plan?}
+              can_start_routine?={@can_start_routine?}
+              today={@today}
+              can_write?={@can_write?}
+              attachments={entry.attachments}
+              conditions={@conditions}
+              can_track?={@can_track?}
+            />
+          </:item>
+        </Cinder.collection>
+      </section>
     </Layouts.app>
     """
   end
 
-  defp subtitle(only, nil),
-    do: if(only == :medical, do: "The medical history", else: "Each entry")
-
-  defp subtitle(only, episode) do
-    start = if only == :medical, do: "The medical history", else: "The entries"
-    "#{start} about #{episode.condition.label}"
-  end
+  defp subtitle(nil), do: "Each entry"
+  defp subtitle(episode), do: "The entries about #{episode.condition.label}"
 end

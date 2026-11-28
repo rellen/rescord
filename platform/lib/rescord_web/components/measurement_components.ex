@@ -229,7 +229,7 @@ defmodule RescordWeb.MeasurementComponents do
   defp name(resident), do: resident.name || "a resident with no name"
 
   defp entry_path(organisation, resident, entry_id),
-    do: ~p"/o/#{organisation.short_name}/residents/#{resident.id}/journal" <> "#entry-#{entry_id}"
+    do: ~p"/o/#{organisation.short_name}/residents/#{resident.id}/journal?#{[entry: entry_id]}"
 
   @doc """
   The form that records a measurement, for a person who can write to the

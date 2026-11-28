@@ -184,7 +184,7 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       assert has_element?(
                view,
-               "#{row} a[href='#{context.base}/residents/#{context.biscuit.id}/journal#entry-#{first.id}']"
+               "#{row} a[href='#{context.base}/residents/#{context.biscuit.id}/journal?entry=#{first.id}']"
              )
 
       assert has_element?(view, "#{row} td[data-label=Value]", "690 g")
@@ -336,7 +336,7 @@ defmodule RescordWeb.MeasurementPagesTest do
 
       assert has_element?(
                view,
-               "p[data-picked] a[href='#{context.base}/residents/#{context.biscuit.id}/journal#entry-#{second.id}']",
+               "p[data-picked] a[href='#{context.base}/residents/#{context.biscuit.id}/journal?entry=#{second.id}']",
                "Open the entry"
              )
 

@@ -104,6 +104,87 @@ defmodule Rescord.Journal do
     |> Ash.read(opts)
   end
 
+  @doc """
+  The query that reads the journal of a resident for a page (ADR 0092):
+  its entries with their facts and their files, the newest first. A
+  collection of a page reads with it, and adds its filters, its search
+  and its page.
+
+  `episode: id` gives the entries about one condition of the resident.
+  `entry: id` gives one entry, with each entry that adds to it.
+  """
+  @spec query_to_journal(String.t(), keyword) :: Ash.Query.t()
+  def query_to_journal(resident_id, opts \\ []) do
+    {episode_id, opts} = Keyword.pop(opts, :episode)
+    {entry_id, opts} = Keyword.pop(opts, :entry)
+
+    JournalEntry
+    |> Ash.Query.for_read(:read, %{}, opts)
+    |> Ash.Query.filter(resident_id == ^resident_id)
+    |> about(episode_id)
+    |> around(entry_id)
+    |> Ash.Query.sort(happened_at: :desc, id: :desc)
+    |> Ash.Query.load([:attachments | @facts])
+  end
+
+  defp about(query, nil), do: query
+  defp about(query, episode_id), do: Ash.Query.filter(query, episode_id == ^episode_id)
+
+  defp around(query, nil), do: query
+
+  defp around(query, entry_id),
+    do: Ash.Query.filter(query, id == ^entry_id or follows_id == ^entry_id)
+
+  @doc "Narrows a query of entries to the medical history: the entries of a medical kind."
+  @spec medical(Ash.Query.t()) :: Ash.Query.t()
+  def medical(%Ash.Query{} = query), do: Ash.Query.filter(query, kind in ^EntryKind.medical())
+
+  @doc """
+  Narrows a query of entries to those with the text, in any case of the
+  letters: in the note, in the name of a medication or of a vaccine, or in
+  the dose of a prescription. It is the search of the journal of a
+  resident.
+  """
+  @spec with_text(Ash.Query.t(), String.t()) :: Ash.Query.t()
+  def with_text(%Ash.Query{} = query, text) when is_binary(text) do
+    text = Ash.CiString.new(text)
+
+    Ash.Query.filter(
+      query,
+      contains(note, ^text) or contains(prescription.medication, ^text) or
+        contains(prescription.dose, ^text) or contains(vaccination.vaccine, ^text)
+    )
+  end
+
+  @doc """
+  One entry of the journal of a resident, with its facts, or `nil`: when
+  there is no such entry, when it is of another resident, and when the
+  actor cannot read it. A page that gets the id of an entry from the
+  browser finds the entry with this.
+  """
+  @spec entry_of(String.t(), String.t(), keyword) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, term}
+  def entry_of(resident_id, entry_id, opts \\ []) do
+    JournalEntry
+    |> Ash.Query.filter(resident_id == ^resident_id and id == ^entry_id)
+    |> Ash.Query.load(@facts)
+    |> Ash.read_one(opts)
+  end
+
+  @doc """
+  One file of the journal of a resident, or `nil`: when there is no such
+  file, when its entry is of another resident, and when the actor cannot
+  read it.
+  """
+  @spec attachment_of(String.t(), String.t(), keyword) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, term}
+  def attachment_of(resident_id, attachment_id, opts \\ []) do
+    with {:ok, %{} = attachment} <- attachment(attachment_id, opts),
+         {:ok, %{}} <- entry_of(resident_id, attachment.entry_id, opts) do
+      {:ok, attachment}
+    end
+  end
+
   # The order of two events at one instant: the name of a new resident is
   # before its arrival.
   @order [:name, :arrival, :placement, :group_member, :absence, :departure, :entry, :episode]
@@ -450,9 +531,11 @@ defmodule Rescord.Journal do
   with its prescription, the newest first.
   """
   def prescriptions(resident_id, opts \\ []) do
-    with {:ok, entries} <- entries(resident_id, opts) do
-      {:ok, Enum.filter(entries, & &1.prescription)}
-    end
+    JournalEntry
+    |> Ash.Query.filter(resident_id == ^resident_id and exists(prescription, true))
+    |> Ash.Query.sort(happened_at: :desc)
+    |> Ash.Query.load(@facts)
+    |> Ash.read(opts)
   end
 
   @doc """

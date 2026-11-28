@@ -889,6 +889,18 @@ hand (ADR 0073). Read it before you write a migration. In short:
     tax (`tax_name`), and writes that name with
     `RescordWeb.ExpenseWords.tax_name/1`. A sum of the tax is
     `Rescord.Expenses.tax_sum/1`.
+- **The journal page** (ADR 0092). The entries are a collection of
+  Cinder, so the page does not hold them.
+  - An event that names an entry or a file by its id reads it with
+    `Rescord.Journal.entry_of/3` or `attachment_of/3`: as the person,
+    and only from the journal of this resident. Never read it by the id
+    alone.
+  - A link from another page to one entry is `journal?entry=<id>`, never
+    `journal#entry-<id>`: the entry can be on a later page.
+  - The parameters `episode`, `entry` and `new` are of the page. Each
+    other parameter is of Cinder: the page gives it back in a link, and
+    does not read it. A new parameter of the page must not have the name
+    of a field of a filter.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through

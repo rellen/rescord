@@ -173,6 +173,34 @@ defmodule Rescord.Journal.AttachmentsTest do
       # The file stays in the store: the history can name it.
       assert File.exists?(Path.join(context.tmp_dir, own.key))
     end
+
+    test "is a relationship of its entry, in the order of the upload (ADR 0092)", context do
+      resident_id = context.entry.resident_id
+      {:ok, first} = attach(context, jpeg(), %{name: "first.jpg"})
+      {:ok, second} = attach(context, pdf(), %{name: "second.pdf"})
+
+      files = fn options ->
+        [entry] = resident_id |> Journal.query_to_journal(options) |> Ash.read!()
+        Enum.map(entry.attachments, & &1.name)
+      end
+
+      assert files.(context.options) == ["first.jpg", "second.pdf"]
+
+      # One file of the journal of the resident, by its id.
+      assert {:ok, %{name: "first.jpg"}} =
+               Journal.attachment_of(resident_id, first.id, context.options)
+
+      assert {:ok, nil} =
+               Journal.attachment_of(Ash.UUID.generate(), first.id, context.options)
+
+      assert {:ok, nil} =
+               Journal.attachment_of(resident_id, Ash.UUID.generate(), context.options)
+
+      # A file that is removed is not there.
+      assert :ok = Journal.remove_attachment(second, context.options)
+      assert files.(context.options) == ["first.jpg"]
+      assert {:ok, nil} = Journal.attachment_of(resident_id, second.id, context.options)
+    end
   end
 
   defmodule DownStore do

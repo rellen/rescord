@@ -104,9 +104,9 @@ We do not write those by hand.
   arrives.
 - A collection that is the page keeps its search, its filters, its sort
   and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
-  residents, the members, the organisations, the items of the inventory.
-  A collection that is a part of a page does not: the stock history of
-  an item.
+  residents, the members, the organisations, the items of the inventory,
+  the journal of a resident (in the list layout, ADR 0092). A collection
+  that is a part of a page does not: the stock history of an item.
 - Cinder is for a collection that needs a filter, a sort or pages. A
   short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
@@ -373,7 +373,10 @@ table (ADR 0025).
 - **The journal** (ADR 0030). `Rescord.Journal` has the entry and the facts
   of each medical kind. The time that a thing happened is an attribute of
   the entry. The author and an administrator correct an entry, through a
-  grant with the scope `own`.
+  grant with the scope `own`. The journal page reads the entries in
+  pages, with `Rescord.Journal.query_to_journal/2` (ADR 0092), and an
+  event of the page finds an entry again with
+  `Rescord.Journal.entry_of/3`.
 - **A task** (ADR 0032) is due, done or skipped. It is not temporal, and it
   names a resident, a group or a location by a plain id. A task that names a
   prescription writes the dose to the journal when a member completes it.

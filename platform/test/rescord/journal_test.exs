@@ -288,6 +288,116 @@ defmodule Rescord.JournalTest do
     end
   end
 
+  describe "the journal of a page (ADR 0092)" do
+    setup context do
+      at = fn days -> DateTime.add(DateTime.utc_now(), -days, :day) end
+
+      general = write!(context, %{kind: :general, note: "Ate well.", happened_at: at.(3)})
+
+      prescription =
+        write!(context, %{
+          kind: :prescription,
+          medication: "A sample antibiotic",
+          dose: "0.2 mL two times each day",
+          route: :oral,
+          starts_on: ~D[2026-11-12],
+          happened_at: at.(2)
+        })
+
+      vaccination =
+        write!(context, %{kind: :vaccination, vaccine: "A sample vaccine", happened_at: at.(1)})
+
+      addendum =
+        Journal.write_entry!(
+          %{
+            resident_id: context.biscuit.id,
+            kind: :general,
+            note: "And drank well.",
+            follows_id: general.id
+          },
+          actor: context.other,
+          tenant: context.organisation
+        )
+
+      {:ok,
+       general: general, prescription: prescription, vaccination: vaccination, addendum: addendum}
+    end
+
+    defp page(context, extra \\ [], narrow \\ & &1) do
+      context.biscuit.id
+      |> Journal.query_to_journal(extra ++ context.options)
+      |> narrow.()
+      |> Ash.read!()
+      |> Enum.map(& &1.id)
+    end
+
+    test "is a query: each entry with its facts, the newest first", context do
+      assert page(context) == [
+               context.addendum.id,
+               context.vaccination.id,
+               context.prescription.id,
+               context.general.id
+             ]
+
+      [addendum, _vaccination, prescription, general] =
+        context.biscuit.id |> Journal.query_to_journal(context.options) |> Ash.read!()
+
+      assert addendum.follows.id == general.id
+      assert prescription.prescription.medication == "A sample antibiotic"
+      assert general.attachments == []
+    end
+
+    test "can be one entry, with each entry that adds to it", context do
+      assert page(context, entry: context.general.id) == [context.addendum.id, context.general.id]
+      assert page(context, entry: context.vaccination.id) == [context.vaccination.id]
+      assert page(context, entry: Ash.UUID.generate()) == []
+    end
+
+    test "narrows to the medical history, and to a text", context do
+      assert page(context, [], &Journal.medical/1) == [
+               context.vaccination.id,
+               context.prescription.id
+             ]
+
+      for {text, found} <- [
+            {"WELL", [context.addendum.id, context.general.id]},
+            {"antibiotic", [context.prescription.id]},
+            {"two times", [context.prescription.id]},
+            {"sample vac", [context.vaccination.id]},
+            {"nothing such", []}
+          ] do
+        assert page(context, [], &Journal.with_text(&1, text)) == found, text
+      end
+    end
+
+    test "gives one entry of the resident by its id, and no entry of another", context do
+      assert {:ok, %{prescription: %{medication: "A sample antibiotic"}}} =
+               Journal.entry_of(context.biscuit.id, context.prescription.id, context.options)
+
+      clover = resident!(context.lists, context.options, %{name: "Clover"})
+      assert {:ok, nil} = Journal.entry_of(clover.id, context.general.id, context.options)
+
+      assert {:ok, nil} =
+               Journal.entry_of(context.biscuit.id, Ash.UUID.generate(), context.options)
+
+      outside = organisation!(context.root, "Other")
+      {_, outsider} = member!(outside, :administrator, context.root)
+
+      for actor <- [outsider, nil] do
+        options = [actor: actor, tenant: context.organisation]
+        assert {:ok, nil} = Journal.entry_of(context.biscuit.id, context.general.id, options)
+        assert page(%{context | options: options}) == []
+      end
+    end
+
+    test "gives the prescriptions of the resident, the newest first", context do
+      assert {:ok, [%{id: id, prescription: %{medication: "A sample antibiotic"}}]} =
+               Journal.prescriptions(context.biscuit.id, context.options)
+
+      assert id == context.prescription.id
+    end
+  end
+
   describe "the unit of a measurement" do
     test "is one of the units of its kind, when the kind names units", context do
       lists = context.lists

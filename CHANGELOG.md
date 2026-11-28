@@ -489,6 +489,16 @@ release (ADR 0047).
   is the list of what to order. The page also reads less: the stock
   movements of the items that it shows, and not of each item
   (ADR 0088).
+- The journal of a resident now shows 25, 50 or 100 entries on a page,
+  the newest first, with a search and filters: a text of a note, of a
+  medication, of a vaccine or of a dose; the kind of the entry; and the
+  dates between which a thing happened. "The medical history" is one of
+  the filters, and its address, which ends in `?only=medical`, is the
+  same as before. The two links in the header that did this are gone.
+  The address holds the search and the filters, and a link to another
+  condition keeps them. A link from the measurements or from a photo to
+  its entry now opens that one entry, with what a member added to it
+  (ADR 0092).
 
 ### Fixed
 

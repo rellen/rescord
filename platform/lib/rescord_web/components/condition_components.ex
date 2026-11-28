@@ -15,7 +15,7 @@ defmodule RescordWeb.ConditionComponents do
 
   @doc "The address of the journal of a resident, with the parameters of its filters."
   def journal_path(organisation, resident_id, params \\ []) do
-    params = Enum.reject(params, fn {_key, value} -> is_nil(value) end)
+    params = params |> Enum.reject(fn {_key, value} -> is_nil(value) end) |> Enum.sort()
     ~p"/o/#{organisation.short_name}/residents/#{resident_id}/journal?#{params}"
   end
 
@@ -73,7 +73,11 @@ defmodule RescordWeb.ConditionComponents do
   """
   attr :episodes, :list, required: true
   attr :current, :any, required: true, doc: "the condition that the page shows, or nil"
-  attr :only, :any, required: true
+
+  attr :query, :map,
+    required: true,
+    doc: "the parameters of the address: a link keeps the search and the filters"
+
   attr :organisation, :any, required: true
   attr :resident, :any, required: true
 
@@ -83,7 +87,7 @@ defmodule RescordWeb.ConditionComponents do
       <ul>
         <li>
           <.link
-            patch={journal_path(@organisation, @resident.id, only: @only)}
+            patch={journal_path(@organisation, @resident.id, about(@query, nil))}
             aria-current={is_nil(@current) && "true"}
           >
             Each entry
@@ -91,7 +95,7 @@ defmodule RescordWeb.ConditionComponents do
         </li>
         <li :for={episode <- @episodes}>
           <.link
-            patch={journal_path(@organisation, @resident.id, only: @only, episode: episode.id)}
+            patch={journal_path(@organisation, @resident.id, about(@query, episode.id))}
             aria-current={@current && @current.id == episode.id && "true"}
           >
             {choice(episode)}
@@ -100,6 +104,12 @@ defmodule RescordWeb.ConditionComponents do
       </ul>
     </nav>
     """
+  end
+
+  # The parameters of the address for another condition: the search and
+  # the filters stay, and the list starts at its first page.
+  defp about(query, episode_id) do
+    query |> Map.drop(["new", "entry", "page", "episode"]) |> Map.put("episode", episode_id)
   end
 
   # A resolved condition says its last day: a resident can have had one
@@ -142,7 +152,7 @@ defmodule RescordWeb.ConditionComponents do
       <p>
         <.link
           :if={@can_write?}
-          navigate={journal_path(@organisation, @resident.id, kind: "diagnosis")}
+          navigate={journal_path(@organisation, @resident.id, new: "diagnosis")}
           data-variant="secondary"
         >
           Record a diagnosis

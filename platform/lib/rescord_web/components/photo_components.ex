@@ -275,8 +275,7 @@ defmodule RescordWeb.PhotoComponents do
           <.link
             :if={@item.entry_id}
             navigate={
-              ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal" <>
-                "#entry-#{@item.entry_id}"
+              ~p"/o/#{@organisation.short_name}/residents/#{@resident.id}/journal?#{[entry: @item.entry_id]}"
             }
           >
             From the journal
