@@ -190,6 +190,51 @@ defmodule RescordWeb.Chart do
     |> then(&("M" <> &1))
   end
 
+  @doc """
+  The steps through some marks, for a count that holds its value until the
+  next mark (ADR 0117): across to the next mark, then up or down to it.
+  An empty text for no mark.
+
+      iex> marks = [%RescordWeb.Chart.Mark{id: 1, x: 0.0, y: 80.0}, %RescordWeb.Chart.Mark{id: 2, x: 50.0, y: 40.0}]
+      iex> RescordWeb.Chart.step_path(marks)
+      "M0 80H50V40"
+  """
+  @spec step_path([Mark.t()]) :: String.t()
+  def step_path([]), do: ""
+
+  def step_path([first | rest]) do
+    Enum.reduce(rest, "M#{number(first.x)} #{number(first.y)}", fn mark, path ->
+      path <> "H#{number(mark.x)}V#{number(mark.y)}"
+    end)
+  end
+
+  @doc """
+  The places of bars above and below a middle line (ADR 0117), one pair for
+  each `{up, down}` count: `x` and `width` of the bar from the left, and
+  `up` and `down`, the height of each bar as a share of the half of the
+  plot, in percent of the whole plot. The greatest count of all fills its
+  half.
+
+      iex> RescordWeb.Chart.bars([{2, 0}, {1, 4}])
+      [%{x: 7.5, width: 35.0, up: 25.0, down: 0.0}, %{x: 57.5, width: 35.0, up: 12.5, down: 50.0}]
+  """
+  @spec bars([{non_neg_integer, non_neg_integer}]) :: [map]
+  def bars([]), do: []
+
+  def bars(pairs) do
+    slot = 100 / length(pairs)
+    greatest = pairs |> Enum.flat_map(fn {up, down} -> [up, down] end) |> Enum.max() |> max(1)
+
+    for {{up, down}, index} <- Enum.with_index(pairs) do
+      %{
+        x: Float.round(index * slot + slot * 0.15, 2),
+        width: Float.round(slot * 0.7, 2),
+        up: Float.round(up / greatest * 50, 2),
+        down: Float.round(down / greatest * 50, 2)
+      }
+    end
+  end
+
   @doc "The place of an instant from left to right, as a percentage."
   @spec x(DateTime.t(), Scale.t()) :: float
   def x(%DateTime{} = at, %Scale{from: from, to: to}) do

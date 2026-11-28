@@ -1192,6 +1192,36 @@ figure[data-chart] > figcaption {
   color: var(--muted);
 }
 
+/* A rule across the plot at a value, such as the room of the housing
+   (ADR 0117): dashed, so it is apart from the line of the values. */
+[data-plot] line[data-rule] {
+  stroke: var(--field);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+/* Bars above and below a line (ADR 0117): the count above is the lead
+   colour, and the count below the colour of an edge, with the key in
+   words beside them. */
+svg[data-bars] {
+  display: block;
+  inline-size: 100%;
+  block-size: 4rem;
+  overflow: visible;
+}
+
+svg[data-bars] rect[data-up] {
+  fill: var(--accent);
+}
+
+svg[data-bars] rect[data-down] {
+  fill: var(--field);
+}
+
+svg[data-bars] line {
+  stroke: var(--border);
+}
+
 /* A sparkline: the line alone, beside a value that the page writes. */
 svg[data-spark] {
   flex: none;
@@ -1496,6 +1526,28 @@ p[data-key] [data-swatch="mark"]::after {
   border-radius: 50%;
 }
 
+p[data-key] [data-swatch="line"],
+p[data-key] [data-swatch="rule"] {
+  block-size: 0;
+  border: 0;
+  border-block-start: 2px solid var(--accent);
+  border-radius: 0;
+}
+
+p[data-key] [data-swatch="rule"] {
+  border-block-start: 2px dashed var(--field);
+}
+
+p[data-key] [data-swatch="up"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+p[data-key] [data-swatch="down"] {
+  background: var(--field);
+  border-color: var(--field);
+}
+
 /* The day that the person chose, below the key. */
 p[data-key] + p[data-picked] {
   margin-block-start: 0.75rem;
@@ -1755,13 +1807,13 @@ dl[data-figures] dt {
   color: var(--muted);
 }
 
-dl[data-figures] dd[data-money] {
+dl[data-figures] dd:is([data-money], [data-value]) {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
-dl[data-figures] dd:not([data-money]) {
+dl[data-figures] dd:not([data-money], [data-value]) {
   font-size: 0.875rem;
   color: var(--muted);
 }

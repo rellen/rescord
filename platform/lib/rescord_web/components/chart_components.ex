@@ -73,6 +73,12 @@ defmodule RescordWeb.ChartComponents do
   attr :tick, :any, default: &JournalWords.number/1, doc: "writes the number of a tick"
   attr :pick, :string, default: nil, doc: "the event of a press on a point"
   attr :selected, :any, default: nil, doc: "the id of the point that the person chose"
+  attr :step, :boolean, default: false, doc: "a count that holds until the next point (ADR 0117)"
+
+  attr :rules, :list,
+    default: [],
+    doc:
+      "values drawn as a dashed rule across the plot, such as a capacity; give a scale that holds them"
 
   def line_chart(assigns) do
     scale = assigns.scale || Chart.scale(assigns.points)
@@ -85,7 +91,8 @@ defmodule RescordWeb.ChartComponents do
         marks: marks,
         labels: Map.new(assigns.points, &{&1.id, &1.label}),
         newest: List.last(marks),
-        line: Chart.path(marks),
+        line: if(assigns.step, do: Chart.step_path(marks), else: Chart.path(marks)),
+        rule_places: for(value <- assigns.rules, do: Chart.y(value, scale)),
         behind: Enum.map(assigns.context, &(&1 |> Chart.marks(scale) |> Chart.path())),
         grid: for(tick <- scale.ticks, do: Chart.y(tick, scale)),
         dots?: count <= @dots,
@@ -102,6 +109,14 @@ defmodule RescordWeb.ChartComponents do
           <g data-grid>
             <line :for={y <- @grid} x1="0" x2="100%" y1={"#{y}%"} y2={"#{y}%"} />
           </g>
+          <line
+            :for={y <- @rule_places}
+            data-rule
+            x1="0"
+            x2="100%"
+            y1={"#{y}%"}
+            y2={"#{y}%"}
+          />
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%">
             <path :for={path <- @behind} data-context d={path} />
             <path data-line d={@line} />
@@ -168,6 +183,72 @@ defmodule RescordWeb.ChartComponents do
       </svg>
       <circle :if={@newest} cx={"#{@newest.x}%"} cy={"#{@newest.y}%"} r="3" />
     </svg>
+    """
+  end
+
+  @doc """
+  Bars above and below a line (ADR 0117): for each period, a bar up for one
+  count and a bar down for another, such as the arrivals and the
+  departures of each week. It is one image with a name and a description,
+  and the page gives its values as a table too.
+
+  ## Examples
+
+      <.updown_bars
+        id="moves"
+        title="Arrivals and departures of each week"
+        summary="31 arrivals and 27 departures in 52 weeks."
+        pairs={[{2, 0}, {1, 3}]}
+        from="1 December 2025"
+        to="23 November 2026"
+      />
+  """
+  attr :id, :string, required: true
+  attr :title, :string, required: true, doc: "the name of the image"
+  attr :summary, :string, required: true, doc: "what the bars show, in a sentence or two"
+
+  attr :pairs, :list,
+    required: true,
+    doc: "a `{up, down}` count for each period, the oldest first"
+
+  attr :from, :string, required: true, doc: "the words below the left end"
+  attr :to, :string, required: true, doc: "the words below the right end"
+
+  def updown_bars(assigns) do
+    assigns = assign(assigns, :bars, Chart.bars(assigns.pairs))
+
+    ~H"""
+    <figure data-chart id={@id}>
+      <svg
+        data-bars
+        role="img"
+        aria-label={@title}
+        aria-describedby={"#{@id}-summary"}
+        focusable="false"
+      >
+        <g :for={bar <- @bars}>
+          <rect
+            :if={bar.up > 0}
+            data-up
+            x={"#{bar.x}%"}
+            y={"#{50 - bar.up}%"}
+            width={"#{bar.width}%"}
+            height={"#{bar.up}%"}
+          />
+          <rect
+            :if={bar.down > 0}
+            data-down
+            x={"#{bar.x}%"}
+            y="50%"
+            width={"#{bar.width}%"}
+            height={"#{bar.down}%"}
+          />
+        </g>
+        <line x1="0" x2="100%" y1="50%" y2="50%" />
+      </svg>
+      <p data-span aria-hidden="true"><span>{@from}</span><span>{@to}</span></p>
+      <figcaption id={"#{@id}-summary"}>{@summary}</figcaption>
+    </figure>
     """
   end
 

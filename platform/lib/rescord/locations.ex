@@ -249,6 +249,39 @@ defmodule Rescord.Locations do
   end
 
   @doc """
+  The room of the housing (ADR 0117): how many residents the locations
+  hold, by their capacities. A location with a capacity counts with it,
+  and the locations inside it do not count again; a location with none
+  counts the room of the locations inside it. `nil` when no location has a
+  capacity.
+  """
+  @spec room(keyword) :: {:ok, non_neg_integer | nil} | {:error, term}
+  def room(opts \\ []) do
+    with {:ok, locations} <- locations([query: [select: [:id, :capacity]]] ++ opts),
+         {:ok, ties} <- location_parents(opts) do
+      ids = MapSet.new(locations, & &1.id)
+
+      parent_of =
+        for tie <- ties, tie.parent_id in ids, into: %{}, do: {tie.location_id, tie.parent_id}
+
+      children = Enum.group_by(locations, &Map.get(parent_of, &1.id))
+      {:ok, children |> Map.get(nil, []) |> Enum.map(&room_of(&1, children)) |> sum_room()}
+    end
+  end
+
+  defp room_of(%{capacity: capacity}, _children) when is_integer(capacity), do: capacity
+
+  defp room_of(location, children),
+    do: children |> Map.get(location.id, []) |> Enum.map(&room_of(&1, children)) |> sum_room()
+
+  defp sum_room(rooms) do
+    case Enum.reject(rooms, &is_nil/1) do
+      [] -> nil
+      known -> Enum.sum(known)
+    end
+  end
+
+  @doc """
   The locations that need somebody now (ADR 0065): each location with more
   residents in it than its capacity, as `tree/1` counts them, the outer
   location before the ones inside it.

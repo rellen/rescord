@@ -79,4 +79,28 @@ defmodule RescordWeb.InsightWords do
   @spec tasks(non_neg_integer) :: String.t()
   def tasks(1), do: "1 task"
   def tasks(count), do: "#{JournalWords.number(count)} tasks"
+
+  @doc "A count of residents: `1 resident`, `24 residents`."
+  @spec residents(non_neg_integer) :: String.t()
+  def residents(1), do: "1 resident"
+  def residents(count), do: "#{JournalWords.number(count)} residents"
+
+  @doc """
+  How many residents are in care, as the start of a sentence.
+
+      iex> RescordWeb.InsightWords.in_care(1)
+      "1 resident is in care"
+
+      iex> RescordWeb.InsightWords.in_care(0)
+      "No resident is in care"
+  """
+  @spec in_care(non_neg_integer) :: String.t()
+  def in_care(0), do: "No resident is in care"
+  def in_care(1), do: "1 resident is in care"
+  def in_care(count), do: "#{JournalWords.number(count)} residents are in care"
+
+  @doc "A count of days: `1 day`, `12 days`."
+  @spec days(non_neg_integer) :: String.t()
+  def days(1), do: "1 day"
+  def days(count), do: "#{JournalWords.number(count)} days"
 end

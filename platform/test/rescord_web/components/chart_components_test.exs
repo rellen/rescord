@@ -299,4 +299,44 @@ defmodule RescordWeb.ChartComponentsTest do
       refute html =~ ~r/\sstyle=/
     end
   end
+
+  describe "a count over time (ADR 0117)" do
+    test "draws steps, and a dashed rule at a value that the scale holds" do
+      points = points(3)
+      scale = RescordWeb.Chart.scale([%{hd(points) | value: Decimal.new(400)} | points])
+
+      doc =
+        chart(points, step: true, scale: scale, rules: [Decimal.new(400)])
+        |> parse()
+
+      [line] = attribute(doc, "path[data-line]", "d")
+      assert line =~ ~r/^M0 [\d.]+H50V[\d.]+H100V[\d.]+$/
+      assert attribute(doc, "line[data-rule]", "y1") == ["0.0%"]
+    end
+  end
+
+  describe "bars above and below a line (ADR 0117)" do
+    test "are one image with a name and a description, and a bar for each count" do
+      doc =
+        render_component(&updown_bars/1,
+          id: "moves",
+          title: "Arrivals and departures of each week",
+          summary: "3 arrivals and 3 departures.",
+          pairs: [{2, 0}, {1, 3}],
+          from: "Week of 16 November 2026",
+          to: "Week of 23 November 2026"
+        )
+        |> parse()
+
+      assert attribute(doc, "svg[role=img]", "aria-label") == [
+               "Arrivals and departures of each week"
+             ]
+
+      assert attribute(doc, "svg[role=img]", "aria-describedby") == ["moves-summary"]
+      assert doc |> LazyHTML.query("#moves-summary") |> LazyHTML.text() =~ "3 arrivals"
+      assert count(doc, "rect[data-up]") == 2
+      assert count(doc, "rect[data-down]") == 1
+      assert attribute(doc, "rect[data-down]", "height") == ["50.0%"]
+    end
+  end
 end

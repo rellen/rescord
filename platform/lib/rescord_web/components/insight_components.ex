@@ -25,7 +25,38 @@ defmodule RescordWeb.InsightComponents do
           and the tasks of the next two weeks.
         </small>
       </li>
+      <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/residents"}>
+          Residents in care
+        </.link>
+        <small>
+          How full is the refuge, against its room? The residents in care each day of the last
+          year, and the arrivals and departures of each week.
+        </small>
+      </li>
     </ul>
+    """
+  end
+
+  @doc """
+  The key of a chart: a swatch of each mark with its words. A swatch is
+  `"line"`, `"rule"`, `"up"`, `"down"` or a step of the ramp, `1` to `4`.
+  The swatches are decoration: the words say what each mark is.
+
+  ## Examples
+
+      <.key items={[{"line", "In care"}, {"rule", "Room"}]} />
+  """
+  attr :items, :list, required: true, doc: "a `{swatch, words}` for each mark"
+  attr :rest, :global
+
+  def key(assigns) do
+    ~H"""
+    <p data-key {@rest}>
+      <span :for={{swatch, words} <- @items}>
+        <span data-swatch={swatch} aria-hidden="true"></span> {words}
+      </span>
+    </p>
     """
   end
 

@@ -157,6 +157,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/tools", ToolsLive
       live "/o/:organisation/tools/dose", DoseLive
       live "/o/:organisation/insights/care", CareInsightsLive
+      live "/o/:organisation/insights/residents", ResidentsInsightsLive
       live "/o/:organisation/expenses", ExpensesLive
       live "/o/:organisation/expenses/new", ExpenseFormLive, :new
       live "/o/:organisation/expenses/:id", ExpenseLive

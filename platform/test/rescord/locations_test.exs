@@ -332,4 +332,25 @@ defmodule Rescord.LocationsTest do
                ["The time is not a date and a time of this time zone"]
     end
   end
+
+  describe "the room of the housing (ADR 0117)" do
+    test "counts a capacity once: an outer one, or else the ones inside", context do
+      assert Locations.room(context.options) == {:ok, 4}
+
+      Locations.revise_location!(context.room, %{capacity: 3}, context.admin)
+      assert Locations.room(context.options) == {:ok, 3}
+
+      Locations.add_location!(%{name: "Barn", capacity: 5}, context.admin)
+      assert Locations.room(context.options) == {:ok, 8}
+    end
+
+    test "is nil when no location has a capacity", context do
+      other = organisation!(context.root, "Other")
+      {_, administrator} = member!(other, :administrator, context.root)
+      options = [actor: administrator, tenant: other]
+      Locations.add_location!(%{name: "Yard"}, options)
+
+      assert Locations.room(options) == {:ok, nil}
+    end
+  end
 end

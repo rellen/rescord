@@ -377,6 +377,14 @@ release (ADR 0047).
   both, and a press on a day says its counts with a link to its tasks.
   Each member can open it. It counts the tasks of the refuge, and never
   the work of one person.
+- The second insight, "Residents in care" (issue 36, ADR 0117): the
+  residents in care at the end of each day of the last year as a line,
+  with a dashed line at the room that the capacities of the locations
+  give, the arrivals and departures of each week as bars above and below
+  a line, the counts of each week as a table, and four figures: in care
+  today, the arrivals and the departures of the year, and the days on
+  which the refuge had more residents than room. A species narrows them.
+  Each member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

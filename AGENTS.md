@@ -972,6 +972,17 @@ hand (ADR 0073). Read it before you write a migration. In short:
   `Rescord.Tasks.days/3` does. No chart counts the work of a named
   person. "On time" is done by the due time plus one hour, and a week
   starts on a Monday.
+  - The residents in care on a day are those that arrived on that day or
+    before and had not left by then (ADR 0117): count with
+    `Rescord.Residents.stays/1` and `Rescord.Residents.Census`, never
+    with a rule of your own. The room of the housing is
+    `Rescord.Locations.room/1`.
+  - A line that holds its value to the next day is `line_chart/1` with
+    `step`, a value to compare with is a `rules` line, and two counts of
+    one column are `updown_bars/1`: the first above the middle line, the
+    second below it.
+  - An insight page passes `ruby={@ruby?}` and has its way back as a
+    `<:crumb>` of the header, as each page does.
 - **Tools** (ADR 0072). A tool is a page below `/o/:organisation/tools`
   that helps with a piece of work and stores nothing: a card in
   `RescordWeb.ToolComponents.tools/1`, a route, and a LiveView with

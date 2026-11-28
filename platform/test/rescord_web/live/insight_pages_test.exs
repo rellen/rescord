@@ -36,6 +36,7 @@ defmodule RescordWeb.InsightPagesTest do
      root: root,
      organisation: organisation,
      member: member,
+     administrator: administrator,
      lists: lists,
      options: [actor: member, tenant: organisation],
      today: today,
@@ -165,6 +166,58 @@ defmodule RescordWeb.InsightPagesTest do
       context.conn
       |> visit(context.care)
       |> assert_has(coming(), text: "No task is due in the next 14 days.")
+    end
+  end
+
+  describe "residents in care (ADR 0117)" do
+    setup context do
+      admin = [actor: context.administrator, tenant: context.organisation]
+      Rescord.Locations.add_location!(%{name: "Hutch row", capacity: 1}, admin)
+
+      biscuit =
+        resident!(context.lists, context.options, %{arrived_on: Date.add(context.today, -20)})
+
+      sage =
+        resident!(context.lists, context.options, %{
+          name: "Sage",
+          arrived_on: Date.add(context.today, -10),
+          species_id: context.lists.species.rabbit
+        })
+
+      {:ok, _} =
+        Rescord.Residents.record_departure(
+          %{resident_id: biscuit.id, kind: :release, departed_on: Date.add(context.today, -2)},
+          context.options
+        )
+
+      {:ok, sage: sage, residents: ~p"/o/#{context.organisation.short_name}/insights/residents"}
+    end
+
+    test "has the figures, the line against the room, and the counts of each week", context do
+      context.conn
+      |> visit(context.residents)
+      |> assert_has(heading("Residents in care", level: 1))
+      |> assert_has(main(), text: "In care today 1 room for 1")
+      |> assert_has(main(), text: "Arrivals 2 in 12 months")
+      |> assert_has(main(), text: "Days over room 8 in 12 months")
+      |> assert_has(
+        region("Residents in care each day"),
+        text:
+          "1 resident is in care today, and the housing has room for 1. It had more than 1 on 8 days of the last 12 months, the first on #{Locale.date(Date.add(context.today, -10))}."
+      )
+      |> assert_has(region("Arrivals and departures"), text: "2 arrivals and 1 departure")
+      |> assert_has(
+        region("Arrivals and departures") |> table(~r/arrivals and departures/),
+        text: Locale.date(Date.beginning_of_week(context.today))
+      )
+    end
+
+    test "narrows to a species, but not the room", context do
+      context.conn
+      |> visit(context.residents)
+      |> select("Species", option: "Rabbit")
+      |> assert_has(main(), text: "Arrivals 1 in 12 months")
+      |> assert_has(main(), text: "Days over room 0")
     end
   end
 end
