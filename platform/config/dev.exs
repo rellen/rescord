@@ -67,6 +67,9 @@ config :rescord, RescordWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :rescord, dev_routes: true
 
+# The catalogue of the components, at /dev/components (ADR 00XX).
+config :rescord, catalogue: true
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

@@ -169,7 +169,7 @@ defmodule RescordWeb.PagesFixtures do
       root: root,
       organisation: organisation,
       pages:
-        ["/", "/colophon", home] ++
+        ["/", "/colophon", "/dev/components", home] ++
           Enum.map(
             ~w(tasks routines residents residents/new residents/#{resident.id}
               residents/#{resident.id}/edit residents/#{resident.id}/journal

@@ -35,6 +35,10 @@ config :rescord, RescordWeb.Endpoint,
   # A browser test needs a real server (ADR 0023).
   server: true
 
+# The catalogue of the components, at /dev/components: a browser test holds
+# each example to the rules of a page (ADR 00XX).
+config :rescord, catalogue: true
+
 # In test we don't send emails
 config :rescord, Rescord.Mailer, adapter: Swoosh.Adapters.Test
 
