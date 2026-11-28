@@ -1164,6 +1164,14 @@ release (ADR 0047).
 
 ### Fixed
 
+- `bin/backup` no longer leaves a partial dump in the directory of the
+  backups when pg_dump fails or the backup stops, and deletes one that a
+  crash left a day ago or more (issue 38, F5).
+- Web Push no longer forgets a device when the server cannot open its
+  secret, as after a change of `RESCORD_KEY_SECRET` without
+  `bin/rotate-vault`: the device stays, the message tries again, and the
+  check `vault` at `/root/health` names the fault (issue 38, F6).
+
 - A routine of a prescription now ends with the prescription: it takes
   the last day of the prescription when it starts or changes, and makes
   no task after that day, though the prescription ended earlier after the

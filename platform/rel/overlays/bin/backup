@@ -41,6 +41,11 @@ stamp=$(date -u +%Y%m%dT%H%M%SZ)
 umask 077
 mkdir -p "$dest/database"
 dump="$dest/database/rescord-$stamp.dump"
+# A dump that fails or stops leaves no partial file (issue 38, F5). A
+# partial file of a run that a crash stopped, a day old or more, goes too.
+trap 'rm -f "$dump.partial"' EXIT
+trap 'exit 1' HUP INT TERM
+find "$dest/database" -name 'rescord-*.dump.partial' -mmin +1440 -exec rm -f {} +
 pg_dump --format=custom --file="$dump.partial" "$url"
 mv "$dump.partial" "$dump"
 echo "The database is in $dump."

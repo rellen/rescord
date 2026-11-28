@@ -8,6 +8,10 @@ defmodule Rescord.Notifications.Channels.WebPush do
   for a device that is gone, which the channel then forgets. 429, a 5xx and
   a fault of the network try again; another answer drops the message for
   that device, with a warning in the log.
+
+  A device whose secret the server cannot open now stays, and the message
+  tries again: the device is not at fault (issue 38, F6). A device with a
+  key that is wrong goes, and the person turns notifications on again.
   """
 
   @behaviour Rescord.Notifications.Channel
@@ -72,8 +76,13 @@ defmodule Rescord.Notifications.Channels.WebPush do
       |> Req.post()
       |> answer(subscription)
     else
+      # The secret of the server does not open the device now, as after a
+      # change of RESCORD_KEY_SECRET with no bin/rotate-vault: the device is
+      # fine, so it stays, and the check `vault` names the fault (issue 38,
+      # F6).
+      :sealed -> {:retry, :sealed}
       # A device that this server cannot write to: ask the person again.
-      _sealed_or_wrong -> forget(subscription)
+      _wrong -> forget(subscription)
     end
   end
 
