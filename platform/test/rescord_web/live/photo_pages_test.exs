@@ -304,7 +304,7 @@ defmodule RescordWeb.PhotoPagesTest do
     |> fill_in("New name of the album", with: "After surgery")
     |> click_button("Rename")
     |> assert_has(main() |> region("After surgery"))
-    |> click(button("Remove the album"))
+    |> click(button("Remove the album After surgery"))
     |> assert_has(region("Albums"), text: "No album yet.")
   end
 
