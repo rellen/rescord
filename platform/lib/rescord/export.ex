@@ -68,7 +68,12 @@ defmodule Rescord.Export do
     Rescord.Calendars.Feed =>
       "A calendar feed is a setting of one member, and its row holds the hash of the secret of its address.",
     Rescord.Reports.Report =>
-      "A report is a document that an action writes from the other records. It has no table."
+      "A report is a document that an action writes from the other records. It has no table.",
+    Rescord.Ruby.Conversation =>
+      "A conversation with the assistant is the working notes of one member, and no record " <>
+        "of the rescue. Each thing that the assistant helped to write is in its own file.",
+    Rescord.Ruby.Message =>
+      "A message of a conversation with the assistant: see ruby_conversations."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."

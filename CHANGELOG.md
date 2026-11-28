@@ -35,6 +35,15 @@ release (ADR 0047).
     adds the language and region to the organisations. Each organisation
     that is there gets English (Australia), and no other value of a row
     changes.
+  - `20261128054817_add_ruby_conversations`, in each organisation: adds
+    the two tables of the conversations with the assistant and of their
+    messages. Both stay empty, because no member can ask the assistant
+    yet. It changes no row.
+  - `20261128055500_give_administrators_the_assistant`, in each
+    organisation: gives the new power "Ask Ruby, the assistant, when the
+    organisation has it on" to the role with the key `administrator`,
+    which is the role Administrator that each organisation starts with.
+    No other row changes. The power does nothing in this version.
 - `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
   the database, such as the key of a provider of the assistant. It did so
   for the private keys of the transfers already, so the rule is the same:
@@ -75,6 +84,10 @@ release (ADR 0047).
   only its last four characters and the day that it was set. The history
   of a provider holds each change, without the key. The assistant reads no
   variable of the environment.
+- The page of the roles has a new area, "Assistant", with one power: "Ask
+  Ruby, the assistant, when the organisation has it on". The role
+  Administrator has it after the upgrade. It does nothing in this
+  version: it is there for the version in which a member can ask Ruby.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

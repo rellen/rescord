@@ -4,9 +4,20 @@ defmodule Rescord.Ruby do
   no provider has no Ruby.
 
   This domain holds the providers of the server, which a root user sets on
-  a page (`Rescord.Ruby.Provider`), and the code that reaches a provider
-  (`Rescord.Ruby.LLM`). The conversations, the tools and the settings of
-  an organisation come with the later steps of the work.
+  a page (`Rescord.Ruby.Provider`), the code that reaches a provider
+  (`Rescord.Ruby.LLM`), and the conversations of the members with their
+  messages (`Rescord.Ruby.Conversation`, `Rescord.Ruby.Message`), in the
+  schema of each organisation. The tools, the settings of an organisation
+  and the job that writes a reply come with the later steps of the work.
+
+  ## Who reads a conversation
+
+  A conversation belongs to the member who started it. `conversations/1`
+  and `conversation/2` are the reads of the pages of that member, and hold
+  only what the actor owns. A member with the power `settings` reads the
+  conversations of each member with `conversations_of/2` and
+  `conversation_of/3`, and changes none. A root user who is no member of
+  the organisation reads nothing: these resources have no bypass.
 
   No setting of Ruby is in the environment or in the application config
   (ADR 0068). The key of a provider is encrypted in `Rescord.Vault`, and
@@ -19,7 +30,7 @@ defmodule Rescord.Ruby do
 
   alias Rescord.Ruby.LLM
   alias Rescord.Ruby.LLM.{Ping, Profile}
-  alias Rescord.Ruby.Provider
+  alias Rescord.Ruby.{Conversation, Message, Provider}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -39,6 +50,27 @@ defmodule Rescord.Ruby do
       define :change_provider, action: :change
       define :set_provider_key, action: :set_key, args: [:api_key]
       define :remove_provider, action: :remove
+    end
+
+    resource Conversation do
+      define :start_conversation, action: :start
+      define :conversations, action: :mine
+      define :conversation, action: :mine, get_by: [:id], not_found_error?: false
+      define :rename_conversation, action: :rename, args: [:title]
+      define :remove_conversation, action: :remove
+      define :conversations_of, action: :of_member, args: [:owner_id]
+
+      define :conversation_of,
+        action: :of_member,
+        args: [:owner_id],
+        get_by: [:id],
+        not_found_error?: false
+    end
+
+    resource Message do
+      define :say, action: :say, args: [:conversation_id, :text]
+      define :rate_reply, action: :rate, args: [:rating]
+      define :stop_reply, action: :stop
     end
   end
 

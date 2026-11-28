@@ -42,6 +42,7 @@ defmodule Rescord.PolicySweepTest do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Grants, Member, Organisation, Token, User}
   alias Rescord.Lists
+  alias Rescord.Ruby.{Conversation, Message}
   alias Rescord.Transfers.{Partnership, RefugeKey, RemotePartner, Transfer}
 
   # The actions that are open on purpose, each as
@@ -82,6 +83,12 @@ defmodule Rescord.PolicySweepTest do
   # included: the code of Rescord and of AshAuthentication runs their
   # actions. Each version resource is closed too (ADR 0063).
   @closed_to_all [Token, RefugeKey]
+
+  # The resources with no bypass for a root user (ADR 0069): a conversation
+  # with the assistant and its messages. A root user reaches them as a
+  # member of the refuge, with the grants of the role, and in no other way.
+  # The root user of this test is no member of Wattle Creek.
+  @members_alone [Conversation, Message]
 
   # Two reads of the sign-in that return nothing without the token of a
   # link, whoever asks: AshAuthentication builds them so.
@@ -297,6 +304,7 @@ defmodule Rescord.PolicySweepTest do
       refused =
         for {resource, action} = pair <- actions(),
             not closed_to_all?(resource),
+            resource not in @members_alone,
             {resource, action.name} not in @return_nothing,
             not open?(pair, context.root, context),
             do: pair
@@ -312,6 +320,19 @@ defmodule Rescord.PolicySweepTest do
             do: pair
 
       assert open == [], "a root user can run:\n\n#{listed(open)}"
+    end
+
+    test "a root user who is no member runs no action of a resource of the members alone",
+         context do
+      assert Accounts.Checks.Granted.role_of(context.root, context.wattle) == nil
+
+      open =
+        for {resource, _action} = pair <- actions(),
+            resource in @members_alone,
+            open?(pair, context.root, context),
+            do: pair
+
+      assert open == [], "a root user who is no member can run:\n\n#{listed(open)}"
     end
 
     test "the sweep holds the version resources", _context do

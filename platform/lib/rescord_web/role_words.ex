@@ -18,7 +18,8 @@ defmodule RescordWeb.RoleWords do
     {"Calendar", [:calendar]},
     {"Inventory", [:stock, :inventory]},
     {"Transfers", [:transfers]},
-    {"Export", [:export]}
+    {"Export", [:export]},
+    {"Assistant", [:ruby]}
   ]
 
   @words %{
@@ -38,7 +39,8 @@ defmodule RescordWeb.RoleWords do
     stock: "Record deliveries, uses, moves, discards and counts of stock",
     inventory: "Keep the items, the suppliers and the reorder levels",
     transfers: "Agree partner refuges, send a resident to one, and answer a transfer",
-    export: "Export the data of the organisation as files of CSV"
+    export: "Export the data of the organisation as files of CSV",
+    ruby: "Ask Ruby, the assistant, when the organisation has it on"
   }
 
   @doc "The areas of work, each with its powers, in the order of the page."

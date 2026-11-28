@@ -167,7 +167,8 @@ config :rescord,
     Rescord.Inventory.Grants,
     Rescord.Transfers.Grants,
     Rescord.Calendars.Grants,
-    Rescord.Reports.Grants
+    Rescord.Reports.Grants,
+    Rescord.Ruby.Grants
   ]
 
 # Configure the endpoint

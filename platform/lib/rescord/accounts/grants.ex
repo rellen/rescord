@@ -71,7 +71,8 @@ defmodule Rescord.Accounts.Grants do
     :inventory,
     :transfers,
     :export,
-    :calendar
+    :calendar,
+    :ruby
   ]
 
   # The powers of a member of ADR 0021, and the calendar feed of ADR 0074.
