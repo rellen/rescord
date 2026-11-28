@@ -366,6 +366,16 @@ release (ADR 0047).
 
 ### Changed
 
+- When a member records that a resident left, Rescord now ends the
+  placement of the resident, and takes it out of each routine and of each
+  task that is due. A task that named only that resident is skipped, with
+  the reason "The resident left", and a member can open it again. A task
+  that is done keeps the resident. Before, a resident that left kept its
+  place in the housing, its tasks stayed due, and its routines made more.
+  A departure that a member withdraws restores none of this: place the
+  resident again, and add it to its routines again. A resident that left
+  before this version keeps its place and its tasks until a member clears
+  them.
 - The upgrade notes of a release now name each migration that the first
   start runs: whether it runs in the database or in each organisation,
   what it does to the rows that are there, and each step by hand in full,

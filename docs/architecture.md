@@ -248,11 +248,12 @@ workflow yet. Both ship usage rules, which `platform/AGENTS.md` links:
 
 **A signal module is in the domain that emits it**, as
 `Rescord.<Domain>.Signals`, and that domain exports it when another domain
-listens (ADR 0067). There are two signals:
+listens (ADR 0067). There are three signals:
 
 | Signal | Emitted by | Listeners |
 | --- | --- | --- |
 | `:resident_removed` of `Rescord.Residents.Signals` | `Resident.remove` | `Placement` finishes the placement, `TaskSubject` archives the subjects and skips a due task that has none left, and `Routine` takes the resident out. They run in the transaction of the removal. |
+| `:resident_departed` of `Rescord.Residents.Signals` | `Departure.record` | The same three resources: the placement ends, the resident goes out of each routine and of each task that is due, and a due task that has no subject left is skipped. A task that is done keeps the resident. A withdrawal restores nothing. |
 | `:member_invited` of `Rescord.Accounts.Signals` | the two invite actions of `Member` | `Member` sends the email in a job of Oban, which runs after the commit, and again after a fault of the mail server. |
 
 A listener action has the line `authorize_if signal_in(Module, :signal)` in
@@ -828,9 +829,8 @@ from GitHub, pinned to a commit (ADR 0005).
 - The open points of `docs/domain.md`, and so the domains and the pages
   that come after the residents.
 - The design of the grants: see "Policies and roles".
-- The proposals of ADR 0062 that wait for the maintainer: what the
-  departure of a resident ends, the operation id of a version, and the
-  first workflow.
+- The proposals of ADR 0062 that wait for the maintainer: the operation id
+  of a version, and the first workflow.
 - How a cloud session (which runs as root, where devenv's PostgreSQL cannot
   start) gets a toolchain and a database. CI runs in devenv (ADR 0047).
 - Nobody has listened to a collection with a screen reader. ADR 0087

@@ -55,6 +55,8 @@ defmodule Rescord.Locations.Placement do
       # The person who removes a resident needs no grant for its placement:
       # the removal is the decision (ADR 0067).
       authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
+      # And so is the departure of a resident.
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_departed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -86,6 +88,11 @@ defmodule Rescord.Locations.Placement do
   signals_in do
     from Rescord.Residents.Signals do
       on :resident_removed, :finish_of_removed_resident,
+        action: :finish,
+        get_by: [resident_id: :resident_id]
+
+      # A resident that left needs no place.
+      on :resident_departed, :finish_of_departed_resident,
         action: :finish,
         get_by: [resident_id: :resident_id]
     end

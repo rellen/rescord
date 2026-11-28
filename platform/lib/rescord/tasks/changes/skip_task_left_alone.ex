@@ -1,16 +1,17 @@
 defmodule Rescord.Tasks.Changes.SkipTaskLeftAlone do
   @moduledoc """
   Skips a task that lost its only subject (ADR 0067): after a subject is
-  taken out because its resident was removed, a task that is due and has no
-  subject left is skipped, with a reason that says so.
+  taken out because its resident was removed or left, a task that is due
+  and has no subject left is skipped, with the reason of the option
+  `reason`.
 
   A task that has another resident, a group or a location stays due. A task
   that is done or skipped stays as it is. A member can open the task again.
 
   The change runs after the subject is archived, in the transaction of the
-  removal. The removal was the decision, so the task is read and skipped
-  with no authorization. The person who removed the resident is the person
-  who finished the task.
+  removal or of the departure. That action was the decision, so the task is
+  read and skipped with no authorization. The person who acted is the
+  person who finished the task.
   """
 
   use Ash.Resource.Change
@@ -20,7 +21,9 @@ defmodule Rescord.Tasks.Changes.SkipTaskLeftAlone do
   alias Rescord.Tasks.{Task, TaskSubject}
 
   @impl true
-  def change(changeset, _opts, context) do
+  def change(changeset, opts, context) do
+    reason = Keyword.fetch!(opts, :reason)
+
     Ash.Changeset.after_action(changeset, fn changeset, subject ->
       internal = [tenant: changeset.tenant, authorize?: false]
 
@@ -32,7 +35,7 @@ defmodule Rescord.Tasks.Changes.SkipTaskLeftAlone do
              task
              |> Ash.Changeset.for_update(
                :skip_left_alone,
-               %{},
+               %{reason: reason},
                [actor: context.actor] ++ internal
              )
              |> Ash.update() do

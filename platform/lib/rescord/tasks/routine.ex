@@ -156,6 +156,7 @@ defmodule Rescord.Tasks.Routine do
     policy always() do
       # The removal of a resident is the decision (ADR 0067).
       authorize_if signal_in(Rescord.Residents.Signals, :resident_removed)
+      authorize_if signal_in(Rescord.Residents.Signals, :resident_departed)
       authorize_if Rescord.Accounts.Checks.Granted
     end
   end
@@ -267,6 +268,13 @@ defmodule Rescord.Tasks.Routine do
   signals_in do
     from Rescord.Residents.Signals do
       on :resident_removed, :forget_resident,
+        read_action: :for_resident,
+        args: [:resident_id],
+        inputs: [:resident_id]
+
+      # And not a resident that left.
+      on :resident_departed, :forget_departed_resident,
+        action: :forget_resident,
         read_action: :for_resident,
         args: [:resident_id],
         inputs: [:resident_id]

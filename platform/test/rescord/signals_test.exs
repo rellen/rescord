@@ -1,8 +1,9 @@
 defmodule Rescord.SignalsTest do
   @moduledoc """
-  Holds what the other domains do when a resident is removed (ADR 0067):
-  the residents emit `:resident_removed`, and the locations and the tasks
-  listen. The residents do not know them.
+  Holds what the other domains do when a resident is removed, and when a
+  resident leaves (ADR 0067): the residents emit `:resident_removed` and
+  `:resident_departed`, and the locations and the tasks listen. The
+  residents do not know them.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
@@ -74,6 +75,13 @@ defmodule Rescord.SignalsTest do
         more
       ),
       context.admin
+    )
+  end
+
+  defp depart!(context, resident, options \\ nil) do
+    Residents.record_departure!(
+      %{resident_id: resident.id, kind: :release, departed_on: Date.utc_today()},
+      options || context.admin
     )
   end
 
@@ -251,6 +259,102 @@ defmodule Rescord.SignalsTest do
     end
   end
 
+  describe "the departure of a resident" do
+    test "emits the signal, with the resident", context do
+      fern_id = context.fern.id
+
+      assert_emits_signal(Signals, :resident_departed, %{resident_id: ^fern_id}, fn ->
+        depart!(context, context.fern)
+      end)
+    end
+
+    test "ends the placement of the resident, and no other", context do
+      before = DateTime.utc_now()
+
+      depart!(context, context.fern)
+
+      assert placed(context) == [context.sage.id]
+      assert context.fern.id in placed(context, as_of: before)
+    end
+
+    test "takes the resident out of each routine", context do
+      routine = start!(context, [context.fern.id, context.sage.id])
+
+      depart!(context, context.fern)
+
+      assert {:ok, %Routine{resident_ids: ids}} = Tasks.routine(routine.id, context.admin)
+      assert ids == [context.sage.id]
+    end
+
+    test "takes the resident out of each task that is due, and skips a task left alone",
+         context do
+      both = plan!(context, [context.fern.id, context.sage.id])
+      alone = plan!(context, [context.fern.id])
+      administrator_id = context.administrator.id
+
+      depart!(context, context.fern)
+
+      assert subjects(context, both) == [context.sage.id]
+      assert %{state: :due, skip_reason: nil} = task!(context, both)
+
+      assert subjects(context, alone) == []
+
+      assert %{
+               state: :skipped,
+               skip_reason: "The resident left",
+               finished_by_id: ^administrator_id,
+               finished_at: %DateTime{}
+             } = task!(context, alone)
+
+      # A member opens the task again.
+      assert {:ok, %{state: :due, skip_reason: nil}} =
+               Tasks.reopen_task(task!(context, alone), context.admin)
+    end
+
+    test "leaves the resident in a task that is done: it is its history", context do
+      task = plan!(context, [context.fern.id])
+      {:ok, _done} = Tasks.complete_task(task, %{}, context.admin)
+
+      depart!(context, context.fern)
+
+      assert subjects(context, task) == [context.fern.id]
+      assert %{state: :done, skip_reason: nil} = task!(context, task)
+    end
+
+    test "needs no grant for the placements, the tasks or the routines", context do
+      # A role that has the care of the residents, and does nothing else.
+      {:ok, role} = Accounts.define_role(%{name: "Carer", powers: [:residents]}, context.admin)
+
+      {member, carer} = member!(context.organisation, :member, context.administrator)
+      {:ok, _member} = Accounts.set_member_role(member, role.id, context.admin)
+      options = [actor: carer, tenant: context.organisation]
+      carer_id = carer.id
+
+      task = plan!(context, [context.fern.id])
+      routine = start!(context, [context.fern.id])
+
+      depart!(context, context.fern, options)
+
+      assert placed(context) == [context.sage.id]
+      assert subjects(context, task) == []
+      assert %{state: :skipped, finished_by_id: ^carer_id} = task!(context, task)
+      assert {:ok, %Routine{resident_ids: []}} = Tasks.routine(routine.id, context.admin)
+    end
+
+    test "restores nothing when a member withdraws the departure", context do
+      task = plan!(context, [context.fern.id])
+      routine = start!(context, [context.fern.id])
+
+      departure = depart!(context, context.fern)
+      assert :ok = Residents.withdraw_departure(departure, context.admin)
+
+      assert placed(context) == [context.sage.id]
+      assert subjects(context, task) == []
+      assert %{state: :skipped, skip_reason: "The resident left"} = task!(context, task)
+      assert {:ok, %Routine{resident_ids: []}} = Tasks.routine(routine.id, context.admin)
+    end
+  end
+
   describe "an action that only a listener runs" do
     test "does not skip a task that a member finished a moment before", context do
       stale = plan!(context, [context.fern.id])
@@ -260,7 +364,7 @@ defmodule Rescord.SignalsTest do
       # task stays". The record in hand says `due`, and the database `done`.
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
                stale
-               |> Ash.Changeset.for_update(:skip_left_alone, %{},
+               |> Ash.Changeset.for_update(:skip_left_alone, %{reason: "None"},
                  tenant: context.organisation,
                  authorize?: false
                )
@@ -282,6 +386,9 @@ defmodule Rescord.SignalsTest do
                Ash.destroy(subject, [action: :drop] ++ context.admin)
 
       assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.destroy(subject, [action: :drop_departed] ++ context.admin)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
                routine
                |> Ash.Changeset.for_update(
                  :forget_resident,
@@ -292,7 +399,7 @@ defmodule Rescord.SignalsTest do
 
       assert {:error, %Ash.Error.Forbidden{}} =
                task
-               |> Ash.Changeset.for_update(:skip_left_alone, %{}, context.admin)
+               |> Ash.Changeset.for_update(:skip_left_alone, %{reason: "None"}, context.admin)
                |> Ash.update()
 
       assert subjects(context, task) == [context.fern.id]
