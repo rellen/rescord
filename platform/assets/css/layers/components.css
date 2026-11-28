@@ -1446,6 +1446,7 @@ table[data-heat="numbers"] thead th {
   padding-block-end: 0.25rem;
   line-height: 1.2;
   white-space: normal;
+  overflow-wrap: normal;
   text-align: center;
 }
 
@@ -1454,11 +1455,31 @@ table[data-heat="numbers"] tbody th {
   line-height: 1.2;
   color: var(--text);
   white-space: normal;
+  hyphens: auto;
   text-align: start;
 }
 
 table[data-heat="numbers"] thead :is(td, th):first-child {
   inline-size: 3.5rem;
+}
+
+/* A wider screen has room for the whole name of a row. */
+@media (min-width: 40rem) {
+  table[data-heat="numbers"] tbody th,
+  table[data-heat="numbers"] thead :is(td, th):first-child {
+    inline-size: 8rem;
+  }
+}
+
+/* A count that is no step of the ramp, such as a total (ADR 0119), has no
+   ground and no edge, and its number is strong. A count of none is quiet. */
+table[data-heat="numbers"] td[data-level="total"] {
+  font-weight: 700;
+  box-shadow: none;
+}
+
+table[data-heat="numbers"] td[data-level="0"] {
+  color: var(--muted);
 }
 
 /* The day of the month, small in the corner of the cell of a count. Its

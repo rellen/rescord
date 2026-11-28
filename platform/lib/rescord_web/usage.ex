@@ -54,6 +54,7 @@ defmodule RescordWeb.Usage do
     RescordWeb.ReportsLive => :reports,
     RescordWeb.CareInsightsLive => :reports,
     RescordWeb.ResidentsInsightsLive => :reports,
+    RescordWeb.ConditionsInsightsLive => :reports,
     RescordWeb.TransfersLive => :transfers,
     RescordWeb.PartnersLive => :transfers,
     RescordWeb.ExportLive => :export,

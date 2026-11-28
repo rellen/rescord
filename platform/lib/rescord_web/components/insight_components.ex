@@ -34,6 +34,15 @@ defmodule RescordWeb.InsightComponents do
           year, and the arrivals and departures of each week.
         </small>
       </li>
+      <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/conditions"}>
+          Conditions by week
+        </.link>
+        <small>
+          Is something spreading? The new cases of each condition in each of the last 12 weeks,
+          and the cases that go on now.
+        </small>
+      </li>
     </ul>
     """
   end

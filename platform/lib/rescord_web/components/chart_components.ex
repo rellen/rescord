@@ -263,7 +263,9 @@ defmodule RescordWeb.ChartComponents do
   says it all. A row has `cells`, one for each column, each a map with:
 
     * `level`: `0` for nothing to count, `1` to `4` for the steps of the
-      ramp, or `:none` for a cell with no value, such as a day to come
+      ramp, `:total` for a count that is no step, such as a total
+      (ADR 0119), or `:none` for a cell with no value, such as a day to
+      come
     * `words`: the value in words
     * `mark`: a dot, for a cell that needs a look (optional)
     * `today`: an outline, for the cell of today (optional)

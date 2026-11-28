@@ -394,6 +394,10 @@ release (ADR 0047).
   today, the arrivals and the departures of the year, and the days on
   which the refuge had more residents than room. A species narrows them.
   Each member can open it.
+- The third insight, "Conditions by week" (issue 36, ADR 0119): a table
+  with a row for each condition and a column for each of the last 12
+  weeks, with the new cases of the week, stronger in colour for more, the
+  cases that go on now, and the totals. Each member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

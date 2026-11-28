@@ -19,7 +19,7 @@ defmodule RescordWeb.InsightPagesTest do
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
-  alias Rescord.{Accounts, Tasks}
+  alias Rescord.{Accounts, Journal, Tasks}
   alias RescordWeb.Locale
 
   doctest RescordWeb.InsightWords
@@ -219,5 +219,67 @@ defmodule RescordWeb.InsightPagesTest do
       |> assert_has(main(), text: "Arrivals 1 in 12 months")
       |> assert_has(main(), text: "Days over room 0")
     end
+  end
+
+  describe "conditions by week (ADR 0119)" do
+    setup context do
+      diagnose = fn resident, onset_on ->
+        Journal.write_entry!(
+          %{
+            resident_id: resident.id,
+            kind: :diagnosis,
+            condition_id: context.lists.condition.respiratory_infection,
+            onset_on: onset_on
+          },
+          context.options
+        )
+      end
+
+      sage = resident!(context.lists, context.options, %{name: "Sage"})
+
+      pip =
+        resident!(context.lists, context.options, %{
+          name: "Pip",
+          arrived_on: Date.add(context.today, -30)
+        })
+
+      diagnose.(resident!(context.lists, context.options), context.today)
+      diagnose.(sage, context.today)
+      diagnose.(pip, Date.add(context.today, -21))
+
+      {:ok, conditions: ~p"/o/#{context.organisation.short_name}/insights/conditions"}
+    end
+
+    test "has the new cases of each week, the cases that go on, and the most in words",
+         context do
+      monday = Date.beginning_of_week(context.today)
+
+      context.conn
+      |> visit(context.conditions)
+      |> assert_has(heading("Conditions by week", level: 1))
+      |> assert_has(
+        region("New cases of each condition") |> table(~r/3 new cases in the last 12 weeks/),
+        text: "Respiratory infection 0 0 0 0 0 0 0 0 1 0 0 2 3"
+      )
+      |> assert_has(region("New cases of each condition"),
+        text:
+          "3 new cases in the last 12 weeks, and 3 cases go on now. The most in one week was 2 new cases of Respiratory infection, in the week of #{Locale.date(monday)}."
+      )
+    end
+
+    test "the reports link to it", context do
+      context.conn
+      |> visit(context.reports)
+      |> within(region("Insights"), &click_link(&1, "Conditions by week"))
+      |> assert_path(context.conditions)
+    end
+  end
+
+  test "the conditions by week say when there is no case", context do
+    context.conn
+    |> visit(~p"/o/#{context.organisation.short_name}/insights/conditions")
+    |> assert_has(region("New cases of each condition"),
+      text: "No condition started in the last 12 weeks, and none goes on now."
+    )
   end
 end

@@ -977,6 +977,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
     `Rescord.Residents.stays/1` and `Rescord.Residents.Census`, never
     with a rule of your own. The room of the housing is
     `Rescord.Locations.room/1`.
+  - A table of counts is `heat_table/1` with the variant `"numbers"`; a
+    count that is no step of the ramp, such as a total, has the level
+    `:total` (ADR 0119).
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the
