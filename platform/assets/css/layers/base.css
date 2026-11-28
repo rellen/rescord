@@ -55,7 +55,7 @@ body {
 }
 
 /*
- * The skip link gives the focus to the main part of the page (ADR 0110), so
+ * The skip link gives the focus to the main part of the page (ADR 0111), so
  * that a screen reader reads on from there. It is no control, and a ring
  * around the whole page tells nothing.
  */

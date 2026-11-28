@@ -101,7 +101,7 @@ the page.
 
 So a row, a card and a list item that hold a button need an `id` that
 stays the same from one render to the next. The streams have one. The
-Cinder rows have none: ADR 0110 finds them by their `data-item-id`.
+Cinder rows have none: ADR 0111 finds them by their `data-item-id`.
 
 ### The test
 

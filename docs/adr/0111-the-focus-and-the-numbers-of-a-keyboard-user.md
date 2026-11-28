@@ -1,4 +1,4 @@
-# ADR 0110: The focus and the numbers of a person who uses the keyboard
+# ADR 0111: The focus and the numbers of a person who uses the keyboard
 
 Status: accepted. An assessment of the keyboard navigation and the data
 entry (28 November 2026, in a real browser with the keyboard only) found

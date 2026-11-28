@@ -123,7 +123,7 @@ defmodule RescordWeb.CoreComponents do
 
     * `type="decimal"` is a number with a part, such as a weight or a
       quantity: a text field with the keyboard of a phone for a decimal
-      (ADR 0110). A field of `type="number"` drops a comma that a person
+      (ADR 0111). A field of `type="number"` drops a comma that a person
       types, so "1,2" became 12, and an arrow key changed the number.
 
     * For live file uploads, see `Phoenix.Component.live_file_input/1`
@@ -303,7 +303,7 @@ defmodule RescordWeb.CoreComponents do
   end
 
   # A decimal is text that the browser does not change: no arrow key, no
-  # spelling, and no list of what was typed before (ADR 0110). A page that
+  # spelling, and no list of what was typed before (ADR 0111). A page that
   # states one of these keeps it. A step and a limit are for a number field
   # only: the action checks the limits.
   defp keyboard("decimal", rest) do

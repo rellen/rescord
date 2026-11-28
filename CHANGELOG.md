@@ -929,13 +929,13 @@ release (ADR 0047).
   The focus goes to the heading of the list. After a measurement, a
   journal entry, a movement of stock, the button Clear of a filter and
   the links to another day, the focus now stays near, and no longer goes
-  to the top of the page (ADR 0110).
+  to the top of the page (ADR 0111).
 - A weight, a measurement or a quantity of stock typed with a comma, such
   as "1,2", is now refused. Before, the browser dropped the comma and the
-  value was 12. An arrow key no longer changes such a number (ADR 0110).
+  value was 12. An arrow key no longer changes such a number (ADR 0111).
 - The skip link now gives the focus to the content, and the menu of a
   phone closes when the Tab key leaves it. Before, the open menu hid the
-  link that had the focus (ADR 0110).
+  link that had the focus (ADR 0111).
 - The table "Owed to members" of the expense report put every person who
   had left in one row "A person who left". Each payer has their own row
   now (ADR 0105).

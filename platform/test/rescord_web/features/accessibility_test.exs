@@ -210,7 +210,7 @@ defmodule RescordWeb.Features.AccessibilityTest do
 
   # A task of an earlier day that is still open is in the list of today,
   # and leaves it when it is done. LiveView then puts the next task in its
-  # row, so a second press would act on that task (ADR 0110).
+  # row, so a second press would act on that task (ADR 0111).
   @tag browser_context_opts: [viewport: @phone]
   test "the focus goes to the heading of the list when the row of its button leaves it",
        %{conn: session, home: home, organisation: organisation, root: root} = context do
