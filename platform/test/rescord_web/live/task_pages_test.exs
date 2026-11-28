@@ -214,7 +214,7 @@ defmodule RescordWeb.TaskPagesTest do
       session = visit(context.conn, context.path <> "?state=due")
       assert "Weigh Biscuit" in titles(session)
 
-      session = click(session, tasks() |> button("Mark the task Weigh Biscuit as done"))
+      session = click(session, tasks() |> button("Done with the task Weigh Biscuit"))
 
       refute "Weigh Biscuit" in titles(session)
       assert {:ok, %{state: :done}} = Tasks.task(context.open.id, context.options)
@@ -254,9 +254,9 @@ defmodule RescordWeb.TaskPagesTest do
       |> assert_has(task_row(title), text: to_string(context.member.email))
       # The member has it, so the page does not offer it to them again.
       |> refute_has(tasks() |> button("Take the task #{title}"))
-      |> click(tasks() |> button("Mark the task #{title} as done"))
+      |> click(tasks() |> button("Done with the task #{title}"))
       |> within(task_row(title), &assert_has(&1, "[data-state=ok]", text: "Done"))
-      |> refute_has(tasks() |> button("Mark the task #{title} as done"))
+      |> refute_has(tasks() |> button("Done with the task #{title}"))
       |> click(tasks() |> button("Open again the task #{title}"))
       |> within(task_row(title), &assert_has(&1, "[data-state=info]", text: "Due"))
     end
@@ -284,7 +284,7 @@ defmodule RescordWeb.TaskPagesTest do
       {:ok, _done} = Tasks.complete_task(context.task, %{}, other)
 
       session
-      |> click(tasks() |> button("Mark the task #{context.task.title} as done"))
+      |> click(tasks() |> button("Done with the task #{context.task.title}"))
       |> assert_has(main() |> alert(), text: "Somebody changed this a moment ago")
       # The page shows the task as it is now.
       |> within(task_row(context.task.title), &assert_has(&1, "[data-state=ok]", text: "Done"))
@@ -392,7 +392,7 @@ defmodule RescordWeb.TaskPagesTest do
       build_conn()
       |> sign_in(context.other)
       |> visit(context.path)
-      |> click(tasks() |> button("Mark the task #{task.title} as done"))
+      |> click(tasks() |> button("Done with the task #{task.title}"))
 
       {:ok, [dose, _prescription]} = Journal.entries(context.biscuit.id, context.options)
       assert dose.kind == :dose

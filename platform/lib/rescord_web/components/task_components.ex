@@ -179,7 +179,7 @@ defmodule RescordWeb.TaskComponents do
       :if={@task.state == :due and Tasks.role_can?(@role, :complete)}
       phx-click="complete"
       phx-value-id={@task.id}
-      aria-label={"Mark the task #{@task.title} as done"}
+      aria-label={"Done with the task #{@task.title}"}
     >
       <.icon name="check" /> Done
     </.button>

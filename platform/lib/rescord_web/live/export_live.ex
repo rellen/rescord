@@ -20,7 +20,7 @@ defmodule RescordWeb.ExportLive do
 
     {:ok,
      assign(socket,
-       page_title: "Export",
+       page_title: "Export the data",
        can_export?: Accounts.role_can_export?(socket.assigns.role),
        today: Date.to_iso8601(today)
      )}

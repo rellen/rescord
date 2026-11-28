@@ -232,7 +232,7 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> visit("#{home}/tasks")
     |> assert_connected()
     |> evaluate("""
-    document.querySelector("button[aria-label='Mark the task Clean the water bottles as done']").focus()
+    document.querySelector("button[aria-label='Done with the task Clean the water bottles']").focus()
     """)
     |> press("tbody button:focus", "Enter")
     |> assert_has("#day-heading:focus")
