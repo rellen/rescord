@@ -464,6 +464,12 @@ release (ADR 0047).
   as a link and how the stay began, its days and how it ended. A species
   narrows it, and the rows come in the order of the arrivals or of the
   lengths. Each member can open it.
+- The sixth insight, "Medication courses" (issue 36, ADR 0122): a bar for
+  each course of medication that runs in the two weeks before today and
+  the week after, with a tick for each dose given, a ring for each dose
+  that a task asked for and that was skipped or is overdue, and a line at
+  now. Each course links to its prescription in the journal. Each member
+  can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

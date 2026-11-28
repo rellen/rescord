@@ -503,6 +503,73 @@ defmodule Rescord.Journal do
         episode.resident.status in [:in_care, :away]
 
   @doc """
+  The courses of medication that run on a day from `first` to `last`, both
+  in, with the doses given in those days (ADR 0122). A course is a
+  prescription: it starts on its first day, or on the day of its entry
+  when it names none, and ends on its last day. A course with no last day
+  goes on while its resident is in care or away.
+
+  Returns a list of maps with `id` (of the prescription), `entry_id`,
+  `resident_id`, `resident` (the name), `medication`, `dose`, `route`,
+  `starts_on`, `ends_on` and `given`, the instants of the doses given in
+  those days; in the order of the names of the residents and the
+  medications. The reads are as the actor of `opts`.
+  """
+  @spec courses(Date.t(), Date.t(), keyword) :: {:ok, [map]} | {:error, term}
+  def courses(%Date{} = first, %Date{} = last, opts \\ []) do
+    {from, _} = Rescord.Accounts.day_range(opts[:tenant], first)
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+
+    with {:ok, prescriptions} <-
+           Rescord.Journal.Prescription
+           |> Ash.Query.filter(is_nil(ends_on) or ends_on >= ^first)
+           |> Ash.Query.load(entry: [resident: [:name, :status]])
+           |> Ash.read(opts),
+         courses = running(prescriptions, last, opts[:tenant]),
+         ids = Enum.map(courses, & &1.id),
+         {:ok, doses} <-
+           Rescord.Journal.Dose
+           |> Ash.Query.filter(
+             prescription_id in ^ids and entry.happened_at >= ^from and
+               entry.happened_at < ^to
+           )
+           |> Ash.Query.load(:entry)
+           |> Ash.read(opts) do
+      given =
+        doses
+        |> Enum.filter(& &1.entry)
+        |> Enum.group_by(& &1.prescription_id, & &1.entry.happened_at)
+
+      {:ok,
+       for course <- courses do
+         Map.put(course, :given, given |> Map.get(course.id, []) |> Enum.sort(DateTime))
+       end}
+    end
+  end
+
+  defp running(prescriptions, last, tenant) do
+    for prescription <- prescriptions,
+        %{resident: %{} = resident} = entry <- [prescription.entry],
+        starts_on =
+          prescription.starts_on || Rescord.Accounts.local_date(tenant, entry.happened_at),
+        Date.compare(starts_on, last) != :gt,
+        prescription.ends_on || resident.status in [:in_care, :away] do
+      %{
+        id: prescription.id,
+        entry_id: entry.id,
+        resident_id: entry.resident_id,
+        resident: resident.name && to_string(resident.name),
+        medication: prescription.medication,
+        dose: prescription.dose,
+        route: prescription.route,
+        starts_on: starts_on,
+        ends_on: prescription.ends_on
+      }
+    end
+    |> Enum.sort_by(&{String.downcase(&1.resident || ""), String.downcase(&1.medication), &1.id})
+  end
+
+  @doc """
   The ongoing episode of a condition that a resident has, or `nil`: the one
   that a new diagnosis of that condition joins.
   """

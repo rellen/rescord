@@ -369,4 +369,83 @@ defmodule RescordWeb.InsightPagesTest do
       |> then(&assert ["Sage", "Biscuit"] = names(&1, list("The stays") |> link(nil)))
     end
   end
+
+  describe "medication courses (ADR 0122)" do
+    test "has a row for each course of the three weeks, with its doses in words", context do
+      today = context.today
+
+      biscuit =
+        resident!(context.lists, context.options, %{
+          name: "Biscuit",
+          arrived_on: Date.add(today, -40)
+        })
+
+      sage =
+        resident!(context.lists, context.options, %{
+          name: "Sage",
+          arrived_on: Date.add(today, -40)
+        })
+
+      write = fn resident, facts ->
+        entry = Journal.write_entry!(Map.put(facts, :resident_id, resident.id), context.options)
+        {:ok, with_facts} = Journal.entry_with_facts(entry.id, context.options)
+        with_facts
+      end
+
+      meloxicam =
+        write.(biscuit, %{
+          kind: :prescription,
+          medication: "Meloxicam",
+          dose: "0.2 mL each day",
+          route: :oral,
+          starts_on: Date.add(today, -5),
+          ends_on: Date.add(today, 2)
+        })
+
+      write.(biscuit, %{
+        kind: :prescription,
+        medication: "Old drops",
+        starts_on: Date.add(today, -40),
+        ends_on: Date.add(today, -30)
+      })
+
+      write.(sage, %{kind: :prescription, medication: "Eye ointment"})
+
+      write.(biscuit, %{
+        kind: :dose,
+        prescription_id: meloxicam.prescription.id,
+        happened_at: DateTime.add(DateTime.utc_now(), -1, :day)
+      })
+
+      task =
+        Tasks.plan_task!(
+          %{
+            title: "Meloxicam",
+            due_at: at(context, Date.add(today, -2), "08:00"),
+            prescription_id: meloxicam.prescription.id
+          },
+          context.options
+        )
+
+      {:ok, _} = Tasks.skip_task(task, %{skip_reason: "Would not take it"}, context.options)
+
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/medication")
+      |> assert_has(heading("Medication courses", level: 1))
+      |> assert_has(list("The courses") |> link("Meloxicam for Biscuit"))
+      |> assert_has(list("The courses") |> link("Eye ointment for Sage"))
+      |> refute_has(list("The courses") |> link("Old drops for Biscuit"))
+      |> assert_has(list("The courses"),
+        text:
+          "0.2 mL each day, by mouth, #{Locale.date(Date.add(today, -5))} to #{Locale.date(Date.add(today, 2))}. 1 dose given, 1 dose due and not given in these weeks."
+      )
+      |> assert_has(list("The courses"),
+        text: "from #{Locale.date(today)}, with no last day. No dose given in these weeks."
+      )
+      |> assert_has(region("Courses of three weeks"),
+        text:
+          "2 courses run in these three weeks, for 2 residents. 1 dose was given, and 1 dose was due and not given."
+      )
+    end
+  end
 end

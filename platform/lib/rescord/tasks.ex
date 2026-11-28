@@ -336,6 +336,39 @@ defmodule Rescord.Tasks do
     end
   end
 
+  @doc """
+  The doses that were due and not given (ADR 0122): the tasks of the
+  prescriptions of `prescription_ids`, due from `first` to `last`, both
+  in, that were skipped, or are still due after their time (`:now` of
+  `opts`). A map from the id of each prescription to the instants at which
+  its doses were due. The read is as the actor of `opts`.
+  """
+  @spec missed_doses([Ecto.UUID.t()], Date.t(), Date.t(), keyword) ::
+          {:ok, %{Ecto.UUID.t() => [DateTime.t()]}} | {:error, term}
+  def missed_doses(prescription_ids, %Date{} = first, %Date{} = last, opts \\ []) do
+    {now, opts} = Keyword.pop(opts, :now, DateTime.utc_now())
+    {from, _} = Rescord.Accounts.day_range(opts[:tenant], first)
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+
+    Task
+    |> Ash.Query.filter(
+      prescription_id in ^prescription_ids and due_at >= ^from and due_at < ^to and
+        (state == :skipped or (state == :due and due_at < ^now))
+    )
+    |> Ash.Query.select([:prescription_id, :due_at, :state])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, tasks} ->
+        {:ok,
+         tasks
+         |> Enum.sort_by(& &1.due_at, DateTime)
+         |> Enum.group_by(& &1.prescription_id, & &1.due_at)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   defp by_hour(tasks, zone) do
     blank = %{
       done: Map.new(for(day <- 1..7, hour <- 0..23, do: {{day, hour}, 0})),

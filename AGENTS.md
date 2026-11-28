@@ -986,6 +986,8 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A time line is `timeline/1` (ADR 0121): a list with a link and a note
     in words for each row, and bars that are decoration, placed with
     `Chart.span/4` on a scale of days.
+    A row can have `marks`, a tick or a ring, and the line `now`
+    (ADR 0122): shapes, never the colour of a state.
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the
