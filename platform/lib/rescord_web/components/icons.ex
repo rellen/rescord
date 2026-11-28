@@ -237,6 +237,7 @@ defmodule RescordWeb.Icons do
   def section(:export), do: "arrow-down-tray"
   def section(:root), do: "shield"
   def section(:privacy), do: "lock"
+  def section(:health), do: "pulse"
   def section(:notifications), do: "bell"
   def section(:journal), do: "book-open"
   def section(:measurements), do: "chart-line"

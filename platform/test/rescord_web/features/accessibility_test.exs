@@ -95,11 +95,16 @@ defmodule RescordWeb.Features.AccessibilityTest do
       address = "root.#{unquote(scheme)}.#{unquote(viewport.width)}@wattle-creek.example.org"
       root = root!(address)
       Rescord.UsageFixtures.usage!(root)
+      # A result of each scope, so that the page of the checks has its tables.
+      Rescord.Health.run_check(Rescord.Health.Checks.Clock)
 
       session = sign_in_with_link(session, address)
 
       found =
-        Enum.flat_map(~w(/root /root/ruby /root/usage), &problems(visit(session, &1), &1))
+        Enum.flat_map(
+          ~w(/root /root/ruby /root/usage /root/health),
+          &problems(visit(session, &1), &1)
+        )
 
       assert found == [], Enum.join(found, "\n\n")
     end

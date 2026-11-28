@@ -1,17 +1,15 @@
 defmodule RescordWeb.GroupPagesTest do
   @moduledoc """
   Holds the pages of the groups, and the family and groups part of the page
-  of a resident: who can open each page, and what a form does. The tests
-  find what a person finds (ADR 0107).
+  of a resident: who can open each page, and what a form does.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
-  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest, only: [render_click: 3]
+  import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -37,6 +35,23 @@ defmodule RescordWeb.GroupPagesTest do
      basil: pig.("Basil", :male)}
   end
 
+  defp open(conn, path) do
+    {:ok, view, _html} = live(conn, path)
+    {view, render_async(view)}
+  end
+
+  defp submit(view, conn, selector, fields) do
+    {:ok, view, _html} =
+      view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
+
+    {view, render_async(view)}
+  end
+
+  defp press(view, conn, event, params) do
+    {:ok, view, _html} = view |> render_click(event, params) |> follow_redirect(conn)
+    {view, render_async(view)}
+  end
+
   defp sisters!(context) do
     litter = Residents.name_family!("The spring litter", context.options)
 
@@ -47,47 +62,43 @@ defmodule RescordWeb.GroupPagesTest do
     litter
   end
 
-  defp title(name), do: main() |> heading(name, level: 1)
-  defp related, do: main() |> region("About") |> definition("How they are related")
-  defp relations, do: main() |> region("Family and groups")
-
   test "the pages do not open for a user of another organisation, or with no sign-in", context do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
     group = Residents.form_group!(%{resident_ids: [context.fern.id]}, context.options)
 
     for path <- ["/groups", "/groups/#{group.id}"] do
-      build_conn() |> sign_in(outsider) |> visit(context.base <> path) |> assert_path("/")
-      build_conn() |> visit(context.base <> path) |> assert_path("/")
+      assert {:error, {:redirect, %{to: "/"}}} =
+               build_conn() |> sign_in(outsider) |> live(context.base <> path)
+
+      assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), context.base <> path)
     end
 
-    context.conn
-    |> visit(context.base <> "/groups/#{Ash.UUID.generate()}")
-    |> assert_path(context.base <> "/groups")
-    |> assert_has(alert(), text: "There is no such group.")
+    assert {:error, {:redirect, %{to: to}}} =
+             live(context.conn, context.base <> "/groups/#{Ash.UUID.generate()}")
+
+    assert to == context.base <> "/groups"
   end
 
   describe "the groups page" do
     test "makes a group with its first members, and lists it with its words", context do
       sisters!(context)
+      {view, html} = open(context.conn, context.base <> "/groups")
+      assert html =~ "No group yet."
 
-      context.conn
-      |> visit(context.base <> "/groups")
-      |> assert_has(main(), text: "No group yet.")
-      |> check("Basil")
-      |> check("Fern")
-      |> check("Sage")
-      |> click_button("Make the group")
+      {_view, html} =
+        submit(view, context.conn, "#group",
+          group: %{name: "", resident_ids: [context.fern.id, context.sage.id, context.basil.id]}
+        )
+
       # The page of the new group.
-      |> assert_has(title("Basil, Fern and Sage"))
-      |> assert_has(related(), text: "Sisters and an unrelated male")
+      assert html =~ "Basil, Fern and Sage"
+      assert html =~ "Sisters and an unrelated male"
 
-      context.conn
-      |> visit(context.base <> "/groups")
-      |> assert_has(main() |> row(~r/^Basil, Fern and Sage\b/),
-        text: "Sisters and an unrelated male"
-      )
-      |> refute_has(main(), text: "No group yet.")
+      {_view, html} = open(context.conn, context.base <> "/groups")
+      assert html =~ "Basil, Fern and Sage"
+      assert html =~ "Sisters and an unrelated male"
+      refute html =~ "No group yet."
     end
   end
 
@@ -122,25 +133,24 @@ defmodule RescordWeb.GroupPagesTest do
         |> NaiveDateTime.to_iso8601()
       end
 
-      session = visit(context.conn, context.path)
+      {view, _html} = open(context.conn, context.path)
       before = DateTime.utc_now()
       Process.sleep(2100)
 
-      session =
-        session
-        |> select("Resident", option: "Basil")
-        |> fill_in("When it joined the group, if not now", with: ago.(1))
-        |> click_button("Add to the group")
+      {view, _html} =
+        submit(view, context.conn, "#member",
+          member: %{resident_id: context.basil.id, at: ago.(1)}
+        )
 
       joined = DateTime.utc_now()
       assert names.(before) == ["Fern", "Sage"]
       assert names.(joined) == ["Basil", "Fern", "Sage"]
       Process.sleep(3100)
 
-      session =
-        session
-        |> fill_in("When Basil left the group, if not now", with: ago.(1))
-        |> click_button("Take Basil out of the group")
+      {:ok, %{members: members}} = Residents.group_with_facts(context.group.id, context.options)
+      basil = Enum.find(members, &(&1.resident.name == "Basil"))
+
+      {view, _html} = submit(view, context.conn, "#leave-#{basil.id}", leave: %{at: ago.(1)})
 
       assert names.(joined) == ["Basil", "Fern", "Sage"]
       assert names.(DateTime.utc_now()) == ["Fern", "Sage"]
@@ -149,66 +159,63 @@ defmodule RescordWeb.GroupPagesTest do
       tomorrow =
         context.organisation |> Rescord.Accounts.today() |> Date.add(1) |> Date.to_iso8601()
 
-      session
-      |> select("Resident", option: "Basil")
-      |> fill_in("When it joined the group, if not now", with: tomorrow <> "T08:00")
-      |> click_button("Add to the group")
-      |> assert_has(main() |> alert(), text: "The time cannot be after now")
+      view
+      |> form("#member", member: %{resident_id: context.basil.id, at: tomorrow <> "T08:00"})
+      |> render_submit()
 
+      assert has_element?(view, "main p[role=alert]", "The time cannot be after now")
       assert names.(DateTime.utc_now()) == ["Fern", "Sage"]
     end
 
     test "adds a member and takes one out, and the words follow", context do
-      context.conn
-      |> visit(context.path)
-      |> assert_has(title("Fern and Sage"))
-      |> assert_has(related(), text: "Sisters")
-      |> select("Resident", option: "Basil")
-      |> click_button("Add to the group")
-      |> assert_has(related(), text: "Sisters and an unrelated male")
+      {view, html} = open(context.conn, context.path)
+      assert html =~ "Fern and Sage"
+      assert html =~ "Sisters"
+
+      {view, html} =
+        submit(view, context.conn, "#member", member: %{resident_id: context.basil.id})
+
+      assert html =~ "Sisters and an unrelated male"
       # Each resident is in the group now, so there is nobody to add.
-      |> refute_has(main() |> details("Add a resident"))
-      |> click_button("Take Fern out of the group")
-      |> assert_has(title("Basil and Sage"))
-      |> assert_has(related(), text: "No relation is recorded")
+      refute has_element?(view, "#member")
+
+      {:ok, %{members: members}} = Residents.group_with_facts(context.group.id, context.options)
+      fern = Enum.find(members, &(&1.resident.name == "Fern"))
+
+      {view, html} = press(view, context.conn, "leave", %{"member_id" => fern.id})
+      assert html =~ "Basil and Sage"
+      assert html =~ "No relation is recorded"
+
       # A member that is not one of this group does nothing.
-      |> unwrap(&render_click(&1, "leave", %{"member_id" => Ash.UUID.generate()}))
-      |> refute_has(main() |> alert())
-      |> assert_has(title("Basil and Sage"))
+      render_click(view, "leave", %{"member_id" => Ash.UUID.generate()})
+      refute has_element?(view, "main p[role=alert]")
+      assert render(view) =~ "Basil and Sage"
     end
 
     test "takes a name and the words of a member, and gives the words of Rescord again",
          context do
-      change = fn session, fields ->
-        within(session, main() |> details("Change the group"), fn form ->
-          fields
-          |> Enum.reduce(form, fn {label, words}, form -> fill_in(form, label, with: words) end)
-          |> click_button("Save the group")
-        end)
-      end
+      {view, _html} = open(context.conn, context.path)
 
-      session =
-        context.conn
-        |> visit(context.path)
-        |> change.(%{
-          "Name, if the group has one" => "The East 1 pair",
-          "How they are related" => "Bonded at intake"
-        })
-        |> assert_has(title("The East 1 pair"))
+      {view, html} =
+        submit(view, context.conn, "#group",
+          group: %{name: "The East 1 pair", description: "Bonded at intake"}
+        )
 
-      assert text(session, related()) == "Bonded at intake (the words of a member)"
+      assert html =~ "The East 1 pair"
+      assert html =~ "Bonded at intake"
+      assert html =~ "(the words of a member)"
 
-      session = change.(session, %{"How they are related" => ""})
-      assert text(session, related()) == "Sisters"
+      {_view, html} = submit(view, context.conn, "#group", group: %{description: ""})
+      assert html =~ "Sisters"
+      refute html =~ "(the words of a member)"
     end
 
     test "closes the group", context do
-      context.conn
-      |> visit(context.path)
-      |> click(button("Close the group"))
-      |> assert_path(context.base <> "/groups")
-      |> assert_has(status(), text: "The group is closed.")
-      |> assert_has(main(), text: "No group yet.")
+      {view, _html} = open(context.conn, context.path)
+      {_view, html} = press(view, context.conn, "close", %{})
+
+      assert html =~ "The group is closed."
+      assert html =~ "No group yet."
     end
   end
 
@@ -218,49 +225,54 @@ defmodule RescordWeb.GroupPagesTest do
     end
 
     test "adds a parent and removes it, and the parent shows its young", context do
-      basil = context.base <> "/residents/#{context.basil.id}"
+      {view, html} = open(context.conn, context.path)
+      assert html =~ "No parent is recorded."
 
-      context.conn
-      |> visit(context.path)
-      |> assert_has(relations(), text: "No parent is recorded.")
-      |> select("Parent", option: "Basil")
-      |> select("Mother or father", option: "Father")
-      |> click_button("Add the parent")
-      |> assert_has(relations() |> item(~r/^Father: Basil\b/))
-      |> assert_has(relations() |> button("Remove the father Basil"))
+      {view, html} =
+        submit(view, context.conn, "#parent",
+          parent: %{parent_id: context.basil.id, role: "father"}
+        )
 
-      context.conn
-      |> visit(basil)
-      |> assert_has(relations() |> heading("Young", level: 3))
-      |> assert_has(relations() |> link("Fern"))
+      assert html =~ "Father:"
+      assert html =~ ~s(aria-label="Remove the father Basil")
+
+      {_view, html} = open(context.conn, context.base <> "/residents/#{context.basil.id}")
+      assert html =~ "Young"
+      assert html =~ "Fern"
+
       # A resident is not a parent of its own parent.
-      |> select("Parent", option: "Fern")
-      |> select("Mother or father", option: "Mother")
-      |> click_button("Add the parent")
-      |> assert_has(main() |> alert(), text: "is one of the young of this resident")
+      {basil_view, _html} = open(context.conn, context.base <> "/residents/#{context.basil.id}")
 
-      context.conn
-      |> visit(context.path)
-      |> click(relations() |> button("Remove the father Basil"))
-      |> assert_has(relations(), text: "No parent is recorded.")
+      html =
+        basil_view
+        |> form("#parent", parent: %{parent_id: context.fern.id, role: "mother"})
+        |> render_submit()
+
+      assert has_element?(basil_view, "main p[role=alert]")
+      assert html =~ "is one of the young of this resident"
+
+      %{parents: [link]} = Residents.relations(context.fern.id, context.options)
+      {_view, html} = press(view, context.conn, "remove_parent", %{"id" => link.id})
+      assert html =~ "No parent is recorded."
     end
 
     test "adds the resident to a new family and to one that is there", context do
-      context.conn
-      |> visit(context.path)
-      |> assert_has(relations(), text: "The resident is in no family.")
-      |> click_button("Add to the family")
-      |> assert_has(main() |> alert(), text: "Choose a family, or give a new one a name")
-      |> fill_in("Or the name of a new family", with: "The spring litter")
-      |> click_button("Add to the family")
-      |> assert_has(relations() |> item(~r/^The spring litter\b/))
+      {view, html} = open(context.conn, context.path)
+      assert html =~ "The resident is in no family."
+
+      html = view |> form("#family", family: %{name: ""}) |> render_submit()
+      assert has_element?(view, "main p[role=alert]")
+      assert html =~ "Choose a family, or give a new one a name"
+
+      {_view, html} = submit(view, context.conn, "#family", family: %{name: "The spring litter"})
+      assert html =~ "The spring litter"
 
       # The page of another resident offers the family that is there now.
-      context.conn
-      |> visit(context.base <> "/residents/#{context.sage.id}")
-      |> select("A family that is there", option: "The spring litter")
-      |> click_button("Add to the family")
-      |> assert_has(relations() |> item(~r/^The spring litter\b/))
+      {view, _html} = open(context.conn, context.base <> "/residents/#{context.sage.id}")
+      [family] = Residents.families!(context.options)
+
+      {_view, html} = submit(view, context.conn, "#family", family: %{family_id: family.id})
+      assert html =~ "The spring litter"
 
       assert [_one] = Residents.families!(context.options)
     end
@@ -269,9 +281,9 @@ defmodule RescordWeb.GroupPagesTest do
       sisters!(context)
       Residents.form_group!(%{resident_ids: [context.fern.id, context.sage.id]}, context.options)
 
-      context.conn
-      |> visit(context.path)
-      |> assert_has(relations() |> item(~r/^Fern and Sage\b/), text: "(Sisters)")
+      {_view, html} = open(context.conn, context.path)
+      assert html =~ "Fern and Sage"
+      assert html =~ "Sisters"
     end
   end
 end

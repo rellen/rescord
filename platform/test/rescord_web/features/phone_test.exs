@@ -84,6 +84,7 @@ defmodule RescordWeb.Features.PhoneTest do
       "/root",
       "/root/ruby",
       "/root/usage",
+      "/root/health",
       "/root/ruby/new",
       "/root/ruby/new?kind=openai_compatible",
       "/root/ruby/#{provider.id}"

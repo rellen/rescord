@@ -99,8 +99,7 @@ defmodule RescordWeb.Usage do
     RescordWeb.PhotoController => "the pictures of a page",
     RescordWeb.ReceiptController => "a file of a record: the page that links it counts",
     RescordWeb.MailPreviewController => "the emails in development",
-    RescordWeb.CatalogueController => "the catalogue of the components, in development",
-    Oban.Web.Assets => "the stylesheet, the script and the font of Oban Web (ADR 0110)"
+    RescordWeb.CatalogueController => "the catalogue of the components, in development"
   }
 
   @doc "Starts to listen to the pages and the requests. A second call changes nothing."

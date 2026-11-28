@@ -110,6 +110,8 @@ defmodule RescordWeb.Router do
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
       live "/root/privacy", RootPrivacyLive
+      # The sanity checks of the server (ADR 0114).
+      live "/root/health", RootHealthLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
     end

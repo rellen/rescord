@@ -201,6 +201,13 @@ release (ADR 0047).
     adds the function `oban_count_estimate`, with which the new page of
     the jobs for a root user estimates how many jobs wait in a queue. It
     changes no row.
+  - `20261128132658_add_the_health_results`, in the database: adds the
+    table of what each sanity check found at its last run (ADR 0114). It
+    is empty until the first run, an hour or less after the start. It
+    changes no row.
+- After the upgrade, the sanity checks run by themselves each hour
+  (issue 38, ADR 0114). Their first run can find faults that were there
+  before the upgrade: read them at `/root/health`.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -342,6 +349,17 @@ release (ADR 0047).
 
 ### Added
 
+- Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
+  the server each hour, in transactions that cannot write, and keeps what
+  each found: a level, a count and some ids, never a value of a row. A
+  root user reads them at `/root/health`, `/root` has a line for them,
+  `bin/check` fails when one fails or when they stopped running, and the
+  metric `rescord.health.level` gives the level of each. The first checks
+  are of the server: the vault, secrets that a setting says are set and
+  are not, organisations where nobody can manage the members, a server
+  with no root user, stuck and failed jobs, hourly jobs that stopped,
+  migrations that have not run, and the clock of the server against the
+  clock of the database.
 - `bin/check` names the version of libvips that reads the photos, and the
   colophon shows it to a person who is signed in, so an operator can
   compare it with an advisory. A weekly workflow of the repository,

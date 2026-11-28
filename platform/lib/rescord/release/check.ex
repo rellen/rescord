@@ -15,6 +15,8 @@ defmodule Rescord.Release.Check do
       This check reads the database, sends no request and decrypts no key;
     * what the server does with its usage counts, and what the last send
       found (ADR 0098). It sends nothing;
+    * what the sanity checks found at their last run, and whether they still
+      run (ADR 0114). It runs no check;
     * with an address, a short email reaches that address.
 
   `Rescord.Release.check/1` runs the checks and prints them, and
@@ -26,7 +28,7 @@ defmodule Rescord.Release.Check do
   start before a check could name it.
   """
 
-  alias Rescord.{Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
+  alias Rescord.{Health, Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
 
   @typedoc """
   The result of a check: `:ok`, `:note` for something to know that is not a
@@ -50,7 +52,7 @@ defmodule Rescord.Release.Check do
     # the next start runs them.
     of_the_database =
       if match?({:ok, _name, _words}, migrations),
-        do: [vault() | assistant()] ++ [usage()],
+        do: [vault() | assistant()] ++ [usage(), health()],
         else: []
 
     [database(), migrations, store(), libvips(), smtp()] ++
@@ -276,6 +278,41 @@ defmodule Rescord.Release.Check do
     end
   rescue
     _error -> {:fail, "usage", "cannot read the settings of the usage counts"}
+  end
+
+  @stale_hours 3
+
+  @doc """
+  What the sanity checks found at their last run (ADR 0114): a check that
+  fails is a fault, and so is a newest run older than 3 hours, since the job
+  of the checks has then stopped. No run yet is a note: a new server runs
+  them in its first hour. It reads the results, and runs no check.
+  """
+  @spec health() :: result
+  def health do
+    summary = Health.summary(authorize?: false)
+
+    cond do
+      is_nil(summary.checked_at) ->
+        {:note, "checks", "no sanity check has run yet: the server runs them each hour"}
+
+      DateTime.diff(DateTime.utc_now(), summary.checked_at, :hour) >= @stale_hours ->
+        {:fail, "checks",
+         "the newest run of the sanity checks was on #{day(summary.checked_at)}: " <>
+           "the job of the checks has stopped"}
+
+      summary.fail > 0 ->
+        titles = Enum.map_join(summary.failing, "; ", &Health.describe(&1).title)
+        {:fail, "checks", "#{summary.fail} fail: #{titles}. See /root/health"}
+
+      summary.unknown > 0 ->
+        {:note, "checks", "#{summary.unknown} could not run. See /root/health"}
+
+      true ->
+        {:ok, "checks", "each sanity check passes"}
+    end
+  rescue
+    _error -> {:fail, "checks", "cannot read the results of the sanity checks"}
   end
 
   @doc """

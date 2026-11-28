@@ -112,6 +112,13 @@ defmodule Rescord.Metrics do
         event_name: [:rescord, :photos, :refused],
         description: "The photos that waited too long for a slot of libvips"
       ),
+      last_value("rescord.health.level",
+        event_name: [:rescord, :health, :check],
+        measurement: :level,
+        tags: [:check],
+        description:
+          "The worst level of a sanity check at its last run: 0 passes, 1 note, 2 fails, 3 could not run (ADR 0114)"
+      ),
       last_value("rescord.vm.memory.bytes",
         event_name: [:vm, :memory],
         measurement: :total,

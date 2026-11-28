@@ -220,6 +220,7 @@ ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and th
 ok    vault      each of the 3 encrypted values opens with the secret of this server
 note  assistant  no provider yet. A root user adds one at /root/ruby
 ok    usage      kept on this server, and sent nowhere
+ok    checks     each sanity check passes
 ok    email      sent to you@example.org: look for it in that inbox, and in its spam
 
 Rescord is ready.
@@ -251,11 +252,52 @@ Rescord is ready.
 - **usage**: what the server does with its usage counts (see "Usage
   counts"): a note when they are off, and a fault when the last send
   failed. The line names no address, and the check sends nothing.
+- **checks**: what the sanity checks found at their last run (see "The
+  sanity checks"): a fault when a check fails, or when the newest run is
+  older than 3 hours, which means that the job of the checks has stopped.
+  A note on a new server, before the first run. It runs no check.
 - **email**: with an address, Rescord sends a short email to it. When the
   email does not arrive, ask the provider of the SMTP server, and check
   the SPF and DKIM records of the domain of `RESCORD_MAIL_FROM`.
 
 No line shows a password or a key.
+
+## The sanity checks
+
+Each hour, at minute 47, Rescord runs the sanity checks that are due
+(ADR 0114): checks of its data and of the server that look for drift, a
+state that nothing should leave behind. A root user reads what they found
+at `/root/health`, and can run each of them now from there. Each check
+runs in a transaction that PostgreSQL holds read-only, with a limit of 10
+seconds for each statement, so a check changes nothing, and a slow one
+stops. A check keeps a level, a count and at most 20 ids: never a name, an
+address or a note.
+
+- **Passes**: nothing found.
+- **Note**: something to know, that is not a fault.
+- **Fails**: somebody must act. The page says what the fault means, and
+  what to do.
+- **Could not run**: the check raised, or ran out of time. Three runs in
+  a row that could not run are a fault.
+
+A change of the level of a check writes one line in the log, such as
+`The check jobs is fail with a count of 3`. With the metrics on (see "The
+metrics"), `rescord_health_level{check="jobs"}` is 0 when a check passes,
+1 for a note, 2 for a fault and 3 when it could not run: an alert of
+Prometheus or Grafana can watch it. `bin/check` fails when a check fails.
+
+The checks of the server:
+
+| Check | How often | What a fault means |
+|---|---|---|
+| `vault` | each day | A value that no secret of the server opens (see "Change the secret of the keys") |
+| `secrets_set` | each day | A setting says that it has a key or a token, and has none |
+| `managers` | each day, for each organisation | Nobody in the organisation can manage its members |
+| `root_users` | each day | The server has no root user |
+| `jobs` | each hour | A job waits to start for more than 15 minutes, or runs for more than 30 |
+| `cron` | each hour | An hourly job has not ended well for 2 hours |
+| `migrations` | each hour | A schema has a migration that has not run, while the server runs |
+| `clock` | each hour | The clocks of the server and of the database differ by more than 30 seconds (a note from 2) |
 
 ## The settings
 

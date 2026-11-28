@@ -84,7 +84,9 @@ defmodule Rescord.Usage.Features do
   # The domains whose actions are never counted, with the reason.
   @left_out %{
     # Its own writes: a count of the counts.
-    usage: "the usage counts themselves"
+    usage: "the usage counts themselves",
+    # It reads the database with SQL, and runs no action of a person.
+    health: "the sanity checks of the server, which run on their own"
   }
 
   @doc "Each feature, in the order of the page."

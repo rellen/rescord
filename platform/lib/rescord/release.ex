@@ -52,6 +52,7 @@ defmodule Rescord.Release do
       Rescord,
       Rescord.Accounts,
       Rescord.Expenses,
+      Rescord.Health,
       Rescord.Images.Workers.Complete,
       Rescord.Journal,
       Rescord.Mail,

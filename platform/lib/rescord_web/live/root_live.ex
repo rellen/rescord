@@ -24,6 +24,7 @@ defmodule RescordWeb.RootLive do
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
      |> assign(providers: Ruby.providers!(actor: socket.assigns.current_user))
      |> assign(usage_mode: Rescord.Usage.settings(actor: socket.assigns.current_user).mode)
+     |> assign(health: Rescord.Health.summary(actor: socket.assigns.current_user))
      |> assign_roots()}
   end
 
@@ -131,6 +132,9 @@ defmodule RescordWeb.RootLive do
       <.root_line providers={@providers} />
       <p id="usage-line">
         Usage counts: {RescordWeb.UsageWords.mode(@usage_mode)}. <a href={~p"/root/usage"}>See the counts, and where they go</a>.
+      </p>
+      <p id="health-line">
+        Sanity checks: {RescordWeb.HealthWords.summary(@health)}. <a href={~p"/root/health"}>See what the checks found</a>.
       </p>
 
       <.organisations
