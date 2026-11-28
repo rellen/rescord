@@ -33,10 +33,12 @@ on:
       files:
         description: >-
           The files to mutate: a directory, a file or a glob, relative to
-          platform/. Leave it empty to mutate the lines that changed since
-          the ref below.
+          platform/, such as lib/rescord/units. Leave it empty to mutate the
+          lines that changed since the ref below.
         required: false
-        default: lib/rescord/units
+        # Empty, because GitHub gives an input its default when a dispatch
+        # sends it empty: with a default here, a run could never use `since`.
+        default: ""
       since:
         description: >-
           Only when the files are empty: mutate the lines that changed since
