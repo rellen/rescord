@@ -124,6 +124,14 @@ defmodule RescordWeb.Features.PhoneTest do
       |> Rescord.Ruby.change_provider!(%{offered: true}, actor: root)
     end
 
+    # The refuge has Ruby on for its own pages: this test starts from a
+    # server that offers nothing.
+    {:ok, _settings} =
+      Rescord.Ruby.save_settings(%{enabled: false}, actor: root, tenant: organisation)
+
+    for provider <- Rescord.Ruby.providers!(actor: root),
+        do: Rescord.Ruby.change_provider!(provider, %{offered: false}, actor: root)
+
     # An address of its own: an address gets few sign-in links in a while.
     address = "another.administrator.with.a.long.address@wattle-creek-refuge.example.org"
     member!(organisation, :administrator, root, address)

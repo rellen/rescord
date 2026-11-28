@@ -687,7 +687,8 @@ Ruby is an optional assistant for the members of a rescue (ADR 0069).
 Rescord works in full without it, and a server sends nothing to any
 service of a language model until a root user sets one up. The work comes
 in steps: this version has the settings of the server and of an
-organisation, and no member can ask Ruby anything yet.
+organisation, and the page where a member asks Ruby,
+`/o/<organisation>/ruby`, which the menu does not link to yet.
 
 **Ruby has no setting in the environment**, and none in a file of the
 server. A root user of Rescord sets it on the page `/root/ruby`:

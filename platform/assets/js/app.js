@@ -40,6 +40,8 @@ import {keepDetailsOpen} from "shoddy_phoenix/priv/static/shoddy_phoenix.js"
 import {listen as listenForNewPages, restore as restoreFocus, watch as watchFocus} from "./focus"
 // The button that copies the address of a calendar feed (ADR 0074).
 import {listen as listenForCopies} from "./copy"
+// The form of the message to Ruby: Enter sends, and a send goes to the newest message (ADR 0069).
+import {listen as listenToRuby} from "./ruby"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -65,6 +67,7 @@ watchCinderLists()
 holdCinderListsOpen()
 enhanceCinderTables()
 listenForCopies()
+listenToRuby()
 watchFocus()
 listenForNewPages()
 

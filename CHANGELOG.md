@@ -247,6 +247,12 @@ release (ADR 0047).
   arrive, it shows "Not sent" and why, with the new button "Send again"
   beside "Withdraw". A transfer that is sending or not sent can be
   withdrawn too (ADR 0100).
+- For a person who changes Rescord: mutation testing with muex (ADR 0104).
+  `mix test.mutation` and the new workflow "Mutation testing" make copies
+  of the code with one small change each, and report each change that no
+  test notices. The workflow runs each Monday on the lines that changed
+  since the last release, and by hand. It never makes a check fail, and the
+  release holds none of it: an operator has nothing to do.
 - Usage counts (ADR 0098): Rescord counts, for each day, how often each
   feature of the server is used: the pages that open, the actions that
   people run and the files that it sends, with no person, organisation or
@@ -338,11 +344,11 @@ release (ADR 0047).
 - The charts are drawn by the server, with no script and no service of
   another host. Each chart has a description for a screen reader, and its
   values as a table.
-- The groundwork of an assistant with the code name Ruby (ADR 0069). No
-  member can use it yet: this version has only the page where a root user
-  says which service would answer. Rescord sends nothing to any service
-  until a root user adds a provider, and then only the one small question
-  of the button "Test", with no record of a rescue in it.
+- An assistant with the code name Ruby (ADR 0069), which a member asks
+  about the records of the rescue. Rescord sends nothing to any service
+  until a root user adds a provider: then the one small question of the
+  button "Test", with no record of a rescue in it, and the questions of
+  the members of an organisation that turned Ruby on.
 - A root user has a new page, `/root/ruby`, with the providers of the
   assistant: Anthropic, Amazon Bedrock, Ollama, or a server that speaks
   the chat API of OpenAI. A provider has a name, a model, a key and
@@ -361,14 +367,19 @@ release (ADR 0047).
   address or the region of a provider, or stops offering it, Ruby is off
   for each organisation that agreed to the old place, until a person
   there reads the new one and agrees. A server with no offered provider
-  shows no switch. No member can ask Ruby in this version, so the switch
-  sends nothing anywhere yet, and the allowance counts nothing yet.
+  shows no switch. The allowance counts the cost of each answer.
 - The page of a provider, for a root user, now says how many
   organisations have Ruby on with it.
 - The page of the roles has a new area, "Assistant", with one power: "Ask
   Ruby, the assistant, when the organisation has it on". The role
-  Administrator has it after the upgrade. It does nothing in this
-  version: it is there for the version in which a member can ask Ruby.
+  Administrator has it after the upgrade.
+- A member whose role has the power "Ask Ruby" asks Ruby on a new page,
+  `/o/<organisation>/ruby`, while the organisation has Ruby on. The page
+  offers a few things to ask, keeps the conversations of the member, and
+  shows the words of the answer as they arrive, with a button Stop. Ruby
+  reads only what the member can read, and records nothing. The page has
+  no link in the menu yet: that comes in a later version. For anybody
+  else, or while Ruby is off, the address is a page that is not there.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

@@ -70,6 +70,15 @@ defmodule Rescord.Ruby.RepliesTest do
   # Runs the jobs of the queue in this process. A fault fails the test.
   defp work!, do: Oban.drain_queue(queue: :ruby, with_safety: false)
 
+  # Each message in the mailbox, which it empties.
+  defp heard do
+    receive do
+      message -> [message | heard()]
+    after
+      0 -> []
+    end
+  end
+
   defp jobs, do: Rescord.Repo.all(from(job in Oban.Job, where: job.queue == "ruby"))
 
   defp talk(context, conversation), do: Ruby.messages!(conversation.id, context.as_ana)
@@ -270,6 +279,63 @@ defmodule Rescord.Ruby.RepliesTest do
 
       same_day = Ruby.say!(conversation.id, "One more", context.as_ana)
       assert same_day.header == nil
+    end
+  end
+
+  describe "the pages of a conversation" do
+    test "hear the reply as it is written: the state, the whole text so far, the end", context do
+      ScriptedModel.script([{:tool, "find_residents", %{}}, {:text, "Biscuit is in your care."}])
+      conversation = Ruby.start_conversation!(%{}, context.as_ana)
+      assert :ok = Ruby.subscribe(conversation.id, context.as_ana)
+
+      Ruby.say!(conversation.id, "Who is in our care?", context.as_ana)
+      work!()
+      reply = reply_of(context, conversation)
+      id = reply.id
+
+      assert_received {:ruby, :reply, ^id, :streaming}
+      assert_received {:ruby, :text, ^id, "Biscuit is in your care."}
+      assert_received {:ruby, :reply, ^id, :complete}
+
+      # Each message holds the words or the state, and no tool result.
+      heard = heard()
+      assert Enum.all?(heard, &match?({:ruby, kind, ^id, _} when kind in [:text, :reply], &1))
+      refute {:ruby, :text, id, ""} in heard
+
+      # A page that left hears nothing more.
+      :ok = Ruby.unsubscribe(conversation.id)
+      ScriptedModel.script([{:text, "Still Biscuit."}])
+      Ruby.say!(conversation.id, "And now?", context.as_ana)
+      work!()
+      refute_received {:ruby, _kind, _id, _what}
+    end
+
+    test "hear a reply that failed before it sent anything", context do
+      conversation = Ruby.start_conversation!(%{}, context.as_ana)
+      :ok = Ruby.subscribe(conversation.id, context.as_ana)
+      Ruby.say!(conversation.id, "Who is in our care?", context.as_ana)
+
+      # Ruby is off by the time the job runs.
+      Ruby.save_settings(%{enabled: false}, context.admin)
+      work!()
+
+      id = reply_of(context, conversation).id
+      assert_received {:ruby, :reply, ^id, :streaming}
+      assert_received {:ruby, :reply, ^id, :failed}
+    end
+
+    test "are only for the member of the conversation", context do
+      conversation = Ruby.start_conversation!(%{}, context.as_ana)
+
+      for options <- [
+            [actor: context.administrator, tenant: context.organisation],
+            [actor: context.root, tenant: context.organisation],
+            [actor: user!(), tenant: context.organisation]
+          ] do
+        assert Ruby.subscribe(conversation.id, options) == {:error, :forbidden}
+      end
+
+      assert Ruby.subscribe(Ash.UUID.generate(), context.as_ana) == {:error, :forbidden}
     end
   end
 

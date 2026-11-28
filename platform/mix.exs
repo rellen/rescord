@@ -39,7 +39,7 @@ defmodule Rescord.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [precommit: :test, "test.mutation": :test]
     ]
   end
 
@@ -115,6 +115,8 @@ defmodule Rescord.MixProject do
       # The rules of axe-core, which a browser test holds each page to
       # (ADR 0090). The package carries the script of axe-core.
       {:a11y_audit, "~> 0.6.0", only: :test},
+      # Mutation testing, with `mix test.mutation` (ADR 0104).
+      {:muex, "~> 0.13", only: [:dev, :test], runtime: false},
       {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       # Not on Hex, so pinned to a commit (ADR 0005).
@@ -173,14 +175,57 @@ defmodule Rescord.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       # A browser test loads app.js and app.css, so the tests build them first.
-      test: ["ash.setup --quiet", "assets.build", "test"],
+      # A run of muex skips both: see `muex_command/0`.
+      test: test_setup() ++ ["test"],
       "assets.setup": ["esbuild.install --if-missing"],
       "assets.build": ["compile", "esbuild rescord"],
       "assets.deploy": [
         "esbuild rescord --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"],
+      # Mutation testing with muex (ADR 0104). `mix precommit` and CI do not
+      # run it, and with --fail-at 0 a low score does not make it fail. Give
+      # it what to mutate: `mix test.mutation --files lib/rescord/units`.
+      "test.mutation": [&mark_mutation_run/1, muex_command()]
     ]
+  end
+
+  # muex runs `mix test` for each mutant, in a copy of the project (a
+  # sandbox) that has no `assets/`. The set-up of the alias `test` would then
+  # fail, and it would cost seconds for each mutant. So `mix test.mutation`
+  # sets RESCORD_MUTATION_RUN, each `mix test` of muex inherits it, and its
+  # alias `test` skips the set-up. The workflow and a person set up the test
+  # database and the assets once, before the run.
+  @mutation_run "RESCORD_MUTATION_RUN"
+
+  defp test_setup do
+    if System.get_env(@mutation_run) == "1",
+      do: [],
+      else: ["ash.setup --quiet", "assets.build"]
+  end
+
+  defp mark_mutation_run(_args), do: System.put_env(@mutation_run, "1")
+
+  # muex chooses, for each mutant, the test files that name the mutated
+  # module. The browser tests are left out: each starts a browser, which
+  # costs seconds for each mutant. A mutant of a page takes the LiveView
+  # tests.
+  #
+  # --no-tce: the check of muex 0.13.1 for a mutant that compiles to the
+  # same code compares the first module that the file compiles. For a module
+  # with a `defimpl` or a module inside it, that is the inner module, so it
+  # calls nearly each mutant of the outer module equivalent and runs no test
+  # (ADR 0104). --timeout is the time with no output from `mix test`: a
+  # mutant of a domain recompiles hundreds of files, and at 60 seconds four
+  # such mutants timed out on 4 cores.
+  defp muex_command do
+    test_files =
+      Path.wildcard("test/**/*_test.exs") -- Path.wildcard("test/rescord_web/features/**")
+
+    Enum.join(
+      ["muex --fail-at 0 --timeout 180000 --no-tce --test-paths", Enum.join(test_files, ",")],
+      " "
+    )
   end
 end

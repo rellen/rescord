@@ -1,0 +1,170 @@
+# Mutation testing with muex (ADR 0104, issue 27). muex makes many copies of
+# the code, each with one small change (a mutant), and runs the tests on each
+# copy. A mutant that no test kills shows a gap in the tests.
+#
+# This workflow reports the result only. A low score, a crash or a hang of
+# muex never makes it fail; a fault of the set-up, such as a compile error,
+# does:
+#
+# - `mix test.mutation` gives muex `--fail-at 0`, so a low score does not fail.
+# - muex has a time budget (`--deadline-minutes`): after it, muex starts no
+#   new mutant and reports the mutants that ran. The step also has
+#   continue-on-error and a time limit below the limit of the job, so a crash
+#   or a hang of muex does not fail the job.
+# - The summary script always exits with the status 0.
+#
+# muex runs `mix test` again for each mutant, so a run over all of `lib/`
+# would take days. Thus no push starts this workflow, and `ci.yml` does not
+# run it. It runs:
+#
+# - by hand, from the Actions page or the API, on the files that you give it;
+# - each Monday at 16:00 UTC, on the lines that changed since the last tag of
+#   a release.
+#
+# The summary of the job shows the counts and each mutant that survived or
+# that no test runs. Each of them also gets a warning on its line, and GitHub
+# shows the first ten. The artifact `mutation-report` holds the JSON report
+# of muex, with the change and the test files of each mutant.
+name: Mutation testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: >-
+          The files to mutate: a directory, a file or a glob, relative to
+          platform/. Leave it empty to mutate the lines that changed since
+          the ref below.
+        required: false
+        default: lib/rescord/units
+      since:
+        description: >-
+          Only when the files are empty: mutate the lines that changed since
+          this ref (a tag, a branch or a commit). Empty means the last tag of
+          a release.
+        required: false
+        default: ""
+      preset:
+        description: >-
+          The preset of muex that skips the declarations of a framework: ash
+          for the resources, phoenix for the components and the pages.
+        type: choice
+        options: [none, ash, phoenix]
+        default: none
+      minutes:
+        description: The time budget of muex, in minutes, from the first mutant.
+        required: false
+        default: "60"
+  schedule:
+    - cron: "0 16 * * 1"
+
+permissions:
+  contents: read
+
+# One run at a time. A second run waits for the first. GitHub keeps one
+# waiting run, so a third run takes the place of the second.
+concurrency:
+  group: mutation
+  cancel-in-progress: false
+
+jobs:
+  mutation:
+    name: Mutation testing (report only)
+    runs-on: ubuntu-24.04
+    # The set-up, the time budget, and room for the mutants that still run
+    # at the end of the budget.
+    timeout-minutes: 200
+    env:
+      FILES: ${{ github.event_name == 'workflow_dispatch' && inputs.files || '' }}
+      SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || '' }}
+      PRESET: ${{ github.event_name == 'workflow_dispatch' && inputs.preset || 'none' }}
+      MINUTES: ${{ github.event_name == 'workflow_dispatch' && inputs.minutes || '90' }}
+    steps:
+      # The whole history and the tags, for `--since`.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: cachix/install-nix-action@v32
+
+      - uses: cachix/cachix-action@v17
+        with:
+          name: devenv
+
+      - name: Install devenv
+        run: nix profile install nixpkgs#devenv
+
+      # A cache of its own: muex compiles in the environment test, as the
+      # job of `ci.yml` does, but each mutant leaves no change in `_build`.
+      - name: Restore the dependencies and the build
+        uses: actions/cache@v6
+        with:
+          path: |
+            platform/deps
+            platform/_build
+          key: mutation-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-${{ github.sha }}
+          restore-keys: |
+            mutation-${{ hashFiles('devenv.lock', 'platform/mix.lock') }}-
+
+      - name: Build the devenv shell
+        run: devenv shell -- elixir --version
+
+      - name: Start PostgreSQL
+        timeout-minutes: 5
+        run: |
+          devenv processes up -d
+          devenv shell -- bash -c 'until pg_isready -h 127.0.0.1 -p 5432; do sleep 1; done'
+
+      - name: Fetch the dependencies
+        run: devenv shell -- bash -c 'cd platform && mix deps.get'
+
+      # A `mix test` of muex skips the set-up of the alias `test` (see
+      # `platform/mix.exs`), so the test database and the assets are ready
+      # before the first mutant.
+      - name: Compile, and set up the test database and the assets
+        run: devenv shell -- bash -c 'cd platform && MIX_ENV=test mix do compile + ash.setup --quiet + assets.build'
+
+      # The flag and its value are two outputs, and the step below quotes
+      # each one, so the shell does not expand a glob such as lib/**/*.ex.
+      - name: Choose what to mutate
+        id: scope
+        run: |
+          if [ -n "$FILES" ]; then
+            echo "flag=--files" >> "$GITHUB_OUTPUT"
+            echo "value=$FILES" >> "$GITHUB_OUTPUT"
+            echo "Mutate the files \`$FILES\` of platform/." >> "$GITHUB_STEP_SUMMARY"
+          else
+            ref="${SINCE:-$(git describe --tags --abbrev=0 --match 'v*')}"
+            echo "flag=--since" >> "$GITHUB_OUTPUT"
+            echo "value=$ref" >> "$GITHUB_OUTPUT"
+            echo "Mutate the lines that changed since \`$ref\`." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The report goes outside `_build`, which the cache keeps: muex keeps a
+      # report that is there already, and writes none when it has nothing to
+      # mutate, so a report of an earlier run would show as this one.
+      - name: Run muex
+        continue-on-error: true
+        timeout-minutes: 150
+        env:
+          SCOPE_FLAG: ${{ steps.scope.outputs.flag }}
+          SCOPE_VALUE: ${{ steps.scope.outputs.value }}
+        run: |
+          rm -rf "$RUNNER_TEMP/muex"
+          # The inner bash expands the variables of the step, so the quotes
+          # are single on purpose.
+          # shellcheck disable=SC2016
+          devenv shell -- bash -c 'cd platform && mix test.mutation "$SCOPE_FLAG" "$SCOPE_VALUE" --preset "$PRESET" --deadline-minutes "$MINUTES" --format json --output "$RUNNER_TEMP/muex/report.json"'
+
+      - name: Write the summary
+        if: always()
+        continue-on-error: true
+        run: devenv shell -- elixir .github/scripts/muex_summary.exs "$RUNNER_TEMP/muex/report.json" platform
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: ${{ runner.temp }}/muex/
+          if-no-files-found: ignore

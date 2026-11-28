@@ -1760,3 +1760,930 @@ pre[data-wrap] {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ------------------------------------------------------------------ ruby */
+
+/*
+ * Ruby, the assistant (ADR 0069). No rule here writes a colour: Ruby has
+ * none of its own. Red stays "what needs somebody now", so the mark of
+ * Ruby is in the lead colour, and never red.
+ *
+ * The attributes:
+ *
+ *   main[data-ruby]          the page of Ruby
+ *   a[data-ruby]             the link to Ruby in the site bar
+ *   a[data-about]            what a conversation is about: a resident, an item
+ *   section[data-log]        the conversation
+ *   ol[data-chat]            its messages
+ *   article[data-from]       one message, from "member" or from "ruby"
+ *   [data-prose]             the words of Ruby, from Markdown
+ *   ul[data-steps]           what Ruby read to answer, one step a line
+ *   [data-proposal]          a write that Ruby proposes, with the state of the
+ *                            proposal: "proposed", "done", "failed",
+ *                            "discarded", "lapsed", "expired" or "unknown",
+ *                            and "editing" while the member changes it
+ *   [data-rate]              was the answer right: two buttons
+ *   ul[data-thumbs]          the photos of a message
+ *   ul[data-suggestions]     things to ask, each a button
+ *   form[data-composer]      the form of the message, at the foot of the screen
+ *   article[data-day]        the day ahead, in two sentences of Ruby, later
+ *   aside[data-ruby-panel]   Ruby beside a page, on a wide screen (an option)
+ */
+
+/* ------------------------------------------------------- the site bar */
+
+/* The link to Ruby is in the bar of a phone, between the name of the site
+   and the button of the menu: one press from any place of any page. */
+header > nav > a[data-ruby] {
+  gap: 0.375rem;
+  padding-inline: 0.625rem;
+  font-weight: 600;
+}
+
+/* The mark of Ruby is a gem in the lead colour. */
+a[data-ruby] > svg,
+section[data-log] h2 > svg,
+[data-ruby-panel] h2 > svg,
+article[data-day] h3 > svg {
+  color: var(--accent);
+}
+
+/* A narrow phone has no room for three things with words in the bar. The
+   name of the site stays for a screen reader, and the mark stays in view. */
+@media (width < 22.5rem) {
+  header > nav:has(> a[data-ruby]) > a:first-child > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* A wide screen has Ruby in the row of the parts of the organisation, at
+   its end. */
+@media (width >= 60rem) {
+  header > nav > a[data-ruby] {
+    display: none;
+  }
+
+  header > nav ul > li:has(> a[data-ruby]) {
+    margin-inline-start: auto;
+  }
+}
+
+header > nav ul a[data-ruby] {
+  gap: 0.375rem;
+}
+
+/* The link in the bar says that the page is the page of Ruby, as a link
+   of the menu does. */
+header > nav > a[data-ruby][aria-current] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* ------------------------------------------------------------ the page */
+
+/*
+ * The page of Ruby is as high as the screen, and the form of the message
+ * is at its foot. The page itself scrolls, and not a box inside it: the
+ * address bar of a phone hides as usual, a screen reader reads the page in
+ * its order, and the browser finds a word in it.
+ */
+[data-phx-main]:has(> main[data-ruby]) {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+}
+
+main[data-ruby] {
+  display: grid;
+  flex: 1;
+  grid-template-areas:
+    "head"
+    "about"
+    "log"
+    "say";
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block-end: 0;
+}
+
+main[data-ruby] > header {
+  grid-area: head;
+  margin-block-end: 1rem;
+}
+
+main[data-ruby] > nav[aria-label="Breadcrumb"] {
+  grid-area: head;
+  align-self: start;
+}
+
+/* The breadcrumb and the header share the first row: the header starts
+   below the line of the breadcrumb. */
+main[data-ruby] > nav[aria-label="Breadcrumb"] + header {
+  padding-block-start: 1.75rem;
+}
+
+main[data-ruby] > [data-about] {
+  grid-area: about;
+}
+
+main[data-ruby] > section {
+  grid-area: log;
+  min-inline-size: 0;
+}
+
+main[data-ruby] > aside {
+  display: none;
+}
+
+/* A flash message is at the foot of a phone, where the form of the message
+   is. On the page of Ruby it is below the site bar. */
+@media (width < 40rem) {
+  [data-phx-main]:has(> main[data-ruby]) > [aria-live]:has(> [data-flash]) {
+    inset-block: calc(var(--bar-size) + 0.5rem) auto;
+  }
+}
+
+/* What is in the page for a screen reader and not for the eye: the words
+   "You said" of a message of the member, the label of the message field,
+   and the place where Ruby says what it does. */
+section[data-log] article[data-from="member"] > header,
+form[data-composer] > label[for],
+main[data-ruby] [role="status"][data-quiet],
+[data-ruby-panel] [role="status"][data-quiet] {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------- what a conversation is about */
+
+a[data-about] {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  min-block-size: 3.25rem;
+  margin-block-end: 1.25rem;
+  padding: 0.375rem 0.75rem;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+a[data-about] > span:not([data-portrait]),
+ul[data-links] a > span:not([data-portrait]) {
+  display: grid;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+a[data-about] small,
+ul[data-links] a small {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+a[data-about]::after {
+  color: var(--accent);
+  content: "\203A";
+  content: "\203A" / "";
+}
+
+@media (hover: hover) {
+  a[data-about]:hover {
+    border-color: var(--accent);
+  }
+}
+
+/* -------------------------------------------------------- the messages */
+
+/*
+ * The conversation keeps the newest message in view while Ruby writes, with
+ * no script: nothing in it is an anchor of the scroll but the last, empty
+ * element. While that element is in view, the browser holds it in its
+ * place, and the page follows the words. A member who scrolled up stays
+ * where they read.
+ */
+section[data-log] * {
+  overflow-anchor: none;
+}
+
+section[data-log] > [data-end] {
+  block-size: 1px;
+  overflow-anchor: auto;
+}
+
+ol[data-chat] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+ol[data-chat] > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A message is an article, and here it is no card. Ruby writes on the
+   ground of the page, as wide as the page: its answer holds lists, cards
+   and tables. */
+section[data-log] article {
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+/* What the member wrote is at the end of the line, on the ground of a
+   chosen thing. */
+section[data-log] article[data-from="member"] {
+  justify-self: end;
+  max-inline-size: min(88%, 36rem);
+  padding: 0.625rem 0.875rem;
+  background: var(--selected);
+  border-radius: var(--radius);
+  border-end-end-radius: 0.25rem;
+}
+
+section[data-log] article[data-from="member"] > p {
+  white-space: pre-line;
+}
+
+section[data-log] article > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.5rem;
+  align-items: center;
+}
+
+section[data-log] article > header > h2 {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+section[data-log] article > header > :is(time, small) {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* The photos of a message: squares, as the thumbnails of a resident. */
+ul[data-thumbs] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ul[data-thumbs] img {
+  display: block;
+  inline-size: 5.5rem;
+  block-size: 5.5rem;
+  object-fit: cover;
+  background: var(--tint);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 0.25rem);
+}
+
+/* The words of Ruby come from Markdown: paragraphs, lists, a table. */
+[data-prose] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
+}
+
+/* Rescord draws each block of the Markdown in a `div[data-block]` with a key,
+   so that LiveView sends only the block that grows (ADR 0069). The div is no box: its children are the rows of the grid. */
+[data-prose] > [data-block] {
+  display: contents;
+}
+
+[data-prose] > *,
+[data-block] > * {
+  margin-block: 0;
+}
+
+[data-prose] :is(ul, ol) {
+  padding-inline-start: 1.25rem;
+}
+
+/* A list of Ruby is inside the list of the messages, and is no list of a
+   second level. */
+:is([data-prose], [data-block]) > ul {
+  list-style: disc;
+}
+
+[data-prose] li + li {
+  margin-block-start: 0.25rem;
+}
+
+/* While Ruby writes, a mark follows the last word. It says nothing to a
+   screen reader: `aria-busy` does. With reduced motion it does not blink. */
+[data-prose][aria-busy="true"] > [data-block]:last-child > :last-child:not(ul, ol, table)::after,
+[data-prose][aria-busy="true"] > [data-block]:last-child > :is(ul, ol):last-child > li:last-child::after {
+  display: inline-block;
+  inline-size: 0.5em;
+  block-size: 1em;
+  margin-inline-start: 0.125em;
+  vertical-align: -0.15em;
+  content: "";
+  background: var(--accent);
+  border-radius: 1px;
+  animation: ruby-caret 1.1s steps(1, end) infinite;
+}
+
+@keyframes ruby-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Ruby has no word yet: a line that says what it does. */
+p[data-thinking] {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  color: var(--muted);
+}
+
+/* What Ruby read to answer: one step a line, each with the shape of its
+   state. A step in words of the refuge, and never the name of a tool. */
+ul[data-steps] {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  list-style: none;
+}
+
+ul[data-steps] > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.5rem;
+}
+
+ul[data-steps] > li > svg {
+  margin-block-start: 0.3em;
+}
+
+ul[data-steps] > li > small {
+  grid-column: 2;
+}
+
+li[data-step="done"] > svg {
+  color: var(--ok);
+}
+
+li[data-step="running"],
+li[data-step="failed"] {
+  color: var(--text);
+}
+
+li[data-step="failed"] > svg {
+  color: var(--alert);
+}
+
+/* The foot of an answer: the records that it comes from, each a card that
+   goes to the page of the record. */
+section[data-log] article > footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+section[data-log] article > footer > h3,
+section[data-start] > h2 {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+section[data-log] ul[data-links] {
+  margin: 0;
+}
+
+ul[data-links] a:has(> span) {
+  justify-content: start;
+  gap: 0.625rem;
+}
+
+/* The buttons below a problem of an answer: "Try again". */
+section[data-log] article > p[role="alert"] {
+  margin: 0;
+}
+
+section[data-log] article > p:has(> button) {
+  margin: 0;
+}
+
+/* ------------------------------------------------------- the proposals */
+
+/*
+ * A write that Ruby proposes is a card with the record as Rescord will
+ * store it, and the buttons that decide. The server draws the card from
+ * the arguments of the action, and never from the words of Ruby. An open
+ * proposal has the edge of the lead colour: it waits for the member.
+ */
+[data-proposal] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  max-inline-size: none;
+  margin: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+[data-proposal="proposed"],
+[data-proposal="editing"] {
+  border-color: var(--accent);
+  border-inline-start-width: 4px;
+}
+
+[data-proposal] > h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+[data-proposal] > :is(p, dl, fieldset) {
+  margin: 0;
+}
+
+[data-proposal] > p > small {
+  color: var(--muted);
+}
+
+[data-proposal] > span[data-state] {
+  justify-self: start;
+}
+
+/* Was the answer right? Two words, Yes and No, in place of a thumb up
+   and a thumb down. The buttons keep the size of a button. */
+section[data-log] [data-rate] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+section[data-log] [data-rate] > span {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+section[data-log] [data-rate] > button[aria-pressed="true"] {
+  background: var(--selected);
+  border-color: var(--accent);
+}
+
+/* The button that records takes the line. The two quiet ones share the
+   line below it. */
+form[data-proposal] > footer > button[type="button"] {
+  flex: 1 1 7rem;
+}
+
+/* A proposal of many things of one kind: a box for each, so the member
+   takes one out. */
+[data-proposal] > fieldset {
+  padding: 0.25rem 0.75rem;
+}
+
+/* What Ruby took for granted is below the value, in its own line. */
+[data-proposal] dd > small {
+  display: block;
+  color: var(--muted);
+}
+
+[data-proposal] > fieldset > label small {
+  display: block;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------- the start */
+
+/* A new conversation: who Ruby is, things to ask, and the conversations
+   of before. */
+section[data-start] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  align-content: start;
+  margin-block-end: 1.5rem;
+}
+
+section[data-start] > * {
+  margin-block: 0;
+}
+
+section[data-start] > h2:not(:first-child) {
+  margin-block-start: 0.75rem;
+}
+
+ul[data-suggestions] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+ul[data-suggestions] > li {
+  display: grid;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+}
+
+ul[data-suggestions] button {
+  justify-content: start;
+  min-block-size: 3.25rem;
+  margin: 0;
+  font-weight: 600;
+  text-align: start;
+  border-color: var(--border);
+  border-radius: var(--radius);
+}
+
+/* ------------------------------------------------- the form of the message */
+
+/*
+ * The form of the message stays at the foot of the screen. It is in the
+ * flow of the page (`sticky`, and not `fixed`), so the keyboard of a phone
+ * moves it up with the page. A screen that is low, such as a phone on its
+ * side or a page at 400%, gives none of its height away: there the form is
+ * at the end of the conversation.
+ */
+form[data-composer] {
+  grid-area: say;
+  z-index: 10;
+  gap: 0.5rem;
+  max-inline-size: none;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 0.625rem var(--gutter) max(0.625rem, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border: 0;
+  border-block-start: 1px solid var(--border);
+  border-radius: 0;
+}
+
+@media (height >= 30rem) {
+  form[data-composer] {
+    position: sticky;
+    inset-block-end: 0;
+  }
+}
+
+/* The field is one line high, and as high as its words up to a part of the
+   screen, where the browser can do that (`field-sizing`). */
+form[data-composer] textarea {
+  min-block-size: var(--tap);
+  max-block-size: 40dvh;
+  margin: 0;
+  resize: none;
+  background: var(--surface);
+  field-sizing: content;
+}
+
+/* The field and the button that sends are side by side. With the control
+   of a photo, the field takes the line, and the controls are below it. */
+form[data-composer] {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+form[data-composer] > :is(ul, p),
+form[data-composer]:has(> footer label) > :is(textarea, footer) {
+  grid-column: 1 / -1;
+}
+
+form[data-composer] > footer {
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+form[data-composer] > footer > :is(button, label) {
+  flex: none;
+}
+
+form[data-composer] > footer > :last-child {
+  margin-inline-start: auto;
+}
+
+/* The control of a photo is its label, which looks as a quiet button. The
+   control itself is in the page for the keyboard, and takes no room. */
+form[data-composer] label:has(> input[type="file"]) {
+  position: relative;
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-block-size: var(--tap);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--field);
+  border-radius: var(--pill);
+}
+
+form[data-composer] label > input[type="file"] {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+form[data-composer] label:has(> input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* A photo that the message will take: its picture, its name, how much of
+   it went, and the button that takes it out. */
+form[data-composer] > ul {
+  gap: 0.5rem;
+}
+
+form[data-composer] > ul > li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  font-size: 0.875rem;
+}
+
+form[data-composer] > ul > li > img {
+  grid-row: 1 / span 2;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 0.25rem);
+}
+
+form[data-composer] > ul > li > progress {
+  grid-column: 2;
+}
+
+form[data-composer] > ul > li > button {
+  grid-column: 3;
+}
+
+form[data-composer] > p {
+  margin: 0;
+}
+
+form[data-composer] > p[role="alert"] {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+}
+
+/* While Ruby hears the member (not built: a voice message would need it): the time, and a mark
+   that the microphone is open. */
+form[data-composer] > p[data-recording] {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-block-size: var(--tap);
+  padding: 0.5rem 0.75rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  border: 1px solid var(--field);
+  border-radius: var(--radius);
+}
+
+p[data-recording] > svg {
+  color: var(--alert);
+}
+
+/* ------------------------------------------- the first page */
+
+/*
+ * Ruby has no place of its own on the first page of an organisation: what
+ * needs somebody is in the section of ADR 0065, which Rescord has. Ruby
+ * adds a link in that section, and for a member who asked, the day ahead
+ * in two sentences above the parts. The article is the card of Rescord.
+ */
+article[data-day] > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  align-items: baseline;
+}
+
+article[data-day] h3 {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  margin: 0;
+  font-size: 1rem;
+}
+
+article[data-day] small {
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ settings */
+
+/* How much of the allowance of the month went. */
+meter {
+  inline-size: 100%;
+  block-size: 0.75rem;
+}
+
+/* --------------------------------------------------------- a wide screen */
+
+/*
+ * A wide screen has the conversations of before beside the conversation,
+ * and the conversation in a column that a person reads with ease.
+ */
+@media (width >= 60rem) {
+  main[data-ruby] {
+    grid-template-areas:
+      "head"
+      "about"
+      "log"
+      "say";
+    grid-template-columns: minmax(0, 44rem);
+    justify-content: center;
+  }
+
+  main[data-ruby]:has(> aside) {
+    grid-template-areas:
+      "aside head"
+      "aside about"
+      "aside log"
+      "aside say";
+    grid-template-columns: minmax(0, 17rem) minmax(0, 44rem);
+    column-gap: 3rem;
+  }
+
+  main[data-ruby] > aside {
+    position: sticky;
+    inset-block-start: 1rem;
+    display: block;
+    grid-area: aside;
+    align-self: start;
+    max-block-size: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+
+  main[data-ruby] > aside > h2 {
+    margin-block-start: 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  main[data-ruby] > aside ul[data-links] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  main[data-ruby] > aside ul[data-links] a {
+    min-block-size: var(--tap);
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+    background: none;
+    border-color: transparent;
+  }
+
+  main[data-ruby] > aside ul[data-links] a::after {
+    content: none;
+  }
+
+  main[data-ruby] > aside ul[data-links] a[aria-current] {
+    font-weight: 600;
+    background: var(--selected);
+  }
+
+  form[data-composer] {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  form[data-proposal] > footer > button {
+    flex: none;
+  }
+}
+
+/*
+ * An option for later: Ruby beside any page of a wide screen, in a panel
+ * that stays while the member goes from page to page. A phone has no room
+ * for a page and a panel, so there Ruby is always its own page.
+ */
+aside[data-ruby-panel] {
+  display: none;
+}
+
+@media (width >= 75rem) {
+  [data-phx-main]:has(> aside[data-ruby-panel]) {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr) 26rem;
+    min-block-size: 100dvh;
+  }
+
+  /* The panel is as high as the screen, beside the site bar and the page. */
+  [data-phx-main]:has(> aside[data-ruby-panel]) > :is(header, main) {
+    grid-column: 1;
+  }
+
+  [data-phx-main]:has(> aside[data-ruby-panel]) > main {
+    padding-inline: 2rem;
+  }
+
+  aside[data-ruby-panel] {
+    position: sticky;
+    inset-block-start: 0;
+    display: grid;
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
+    align-self: start;
+    block-size: 100dvh;
+    padding: 1rem 1rem 0;
+    background: var(--surface);
+    border-inline-start: 1px solid var(--border);
+  }
+
+  aside[data-ruby-panel] > header {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: 0.75rem;
+  }
+
+  aside[data-ruby-panel] > header > h2 {
+    display: inline-flex;
+    gap: 0.375rem;
+    align-items: center;
+    margin: 0;
+  }
+
+  /* The panel is the one place where the conversation scrolls in a box:
+     the page beside it scrolls by itself. */
+  aside[data-ruby-panel] > section[data-log] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  aside[data-ruby-panel] form[data-composer] {
+    position: static;
+    grid-area: auto;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    background: var(--surface);
+  }
+
+  aside[data-ruby-panel] form[data-composer] textarea {
+    background: var(--bg);
+  }
+}
+
+/* With the microphone, a narrow phone has no room for the words of three
+   controls: the photo and the microphone keep their shape, and their word
+   stays for a screen reader. */
+@media (width < 22.5rem) {
+  form[data-composer] > footer:has(> button + button) > :is(label, button[type="button"]) > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* The answer that is on its way is below the list of the messages, and not
+   in it: the page draws it again as the words arrive, and puts the stored
+   message in the list when it is whole. */
+section[data-log] > article[data-from] {
+  margin-block-end: 1.5rem;
+}
