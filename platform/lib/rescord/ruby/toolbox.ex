@@ -11,13 +11,15 @@ defmodule Rescord.Ruby.Toolbox do
     * Each request goes through `Rescord.Ruby.LLM.Client`, with the
       options of the profile: the key, the limit of an answer, the effort
       and the prompt cache.
+    * The system prompt is the one text of `Rescord.Ruby.Prompt`, the
+      same for each member, so that the provider keeps one copy of it.
 
   The options hold the key of the provider. Never log them, and never
   keep them.
   """
 
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Actor, Catalogue}
+  alias Rescord.Ruby.{Actor, Catalogue, Prompt}
   alias Rescord.Ruby.LLM.{Client, Profile}
 
   # The most requests of one turn: a question, and the reads that answer it.
@@ -25,8 +27,7 @@ defmodule Rescord.Ruby.Toolbox do
 
   @doc """
   The options for this member. `profile` is the profile of the provider of
-  the organisation, from `Rescord.Ruby.LLM.profile_of/1`. `extra` adds to
-  the options, such as the system prompt.
+  the organisation, from `Rescord.Ruby.LLM`. `extra` adds to the options.
   """
   @spec options(User.t(), term, Profile.t(), keyword) :: keyword
   def options(%User{} = user, tenant, %Profile{} = profile, extra \\ []) do
@@ -51,6 +52,8 @@ defmodule Rescord.Ruby.Toolbox do
       # Without them a request has no key and no cache, and ReqLLM asks for
       # the whole output limit of the model.
       req_llm_opts: Profile.req_llm_opts(profile),
+      # The loop puts it before the messages of each request.
+      system_prompt: fn _options -> Prompt.system() end,
       max_iterations: @max_iterations
     ] ++ extra
   end

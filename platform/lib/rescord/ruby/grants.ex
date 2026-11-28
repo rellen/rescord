@@ -38,7 +38,8 @@ defmodule Rescord.Ruby.Grants do
         {Settings, :change, :all},
         {Conversation, :read, :all},
         {Conversation, :of_member, :all},
-        {Message, :read, :all}
+        {Message, :read, :all},
+        {Message, :of_conversation, :all}
       ],
       ruby: [
         {Conversation, :read, :own},
@@ -48,6 +49,7 @@ defmodule Rescord.Ruby.Grants do
         {Conversation, :rename, :own},
         {Conversation, :remove, :own},
         {Message, :read, :own},
+        {Message, :of_conversation, :own},
         # `say` refuses a conversation of another person.
         {Message, :say, :all},
         {Message, :rate, :own},

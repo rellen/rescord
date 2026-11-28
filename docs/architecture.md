@@ -720,6 +720,22 @@ code does not have yet is what its phase lands.
   `Rescord.Ruby.Gate` turns a write into a proposal, and
   `Rescord.Ruby.confirm_proposal/2` runs it in the request of the member,
   through the action of the domain that the form uses.
+- `Rescord.Ruby.say/3` saves the message of a member and starts the job
+  of its reply, in the queue `ruby`, which runs five replies at a time: a
+  busy hour of Ruby cannot fill the other queues. The job is the trigger
+  `respond` of AshOban on `Rescord.Ruby.Message`. It holds the id of the
+  message, the organisation and the id of the member, and no word of the
+  message. It runs the tool loop as that member
+  (`Rescord.Ruby.Changes.Respond`), saves the reply as it arrives, and
+  ends it with a state and, when it failed, a reason of
+  `Rescord.Ruby.Reason`. A job runs one time, because the provider bills
+  each try. No page waits for it: the reply is written also when the
+  member has closed the page.
+- The system prompt is one text for the whole server
+  (`Rescord.Ruby.Prompt`). What differs is in the header of the first
+  message of a member: the rescue, the role, the day and the time zone.
+  The header is stored with the message and sent again as it was, so the
+  start of a conversation never changes and the provider can cache it.
 - A tool is a line of `Rescord.Ruby.Catalogue`. A read that is a function
   of a domain is a digest in `Rescord.Ruby.Digests`. A tool names each
   record with a reference, and the page makes each link and each card

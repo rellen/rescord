@@ -11,6 +11,7 @@ defmodule Rescord.Ruby.ConversationsTest do
   use Rescord.DataCase, async: false
 
   import Rescord.AccountsFixtures
+  import Rescord.RubyFixtures
 
   alias Rescord.{Accounts, Ruby}
   alias Rescord.Ruby.{Conversation, Message, Title}
@@ -35,6 +36,10 @@ defmodule Rescord.Ruby.ConversationsTest do
     {_, kim} = with_role.(keeper)
     # The role `member` of a new organisation has no power `ruby`.
     {_, reader} = member!(organisation, :member, administrator)
+
+    # A member says a thing only where Ruby is on. The job of each message
+    # stays in its queue: `Rescord.Ruby.RepliesTest` runs the jobs.
+    ruby_on!(root, admin)
 
     {:ok,
      root: root,
@@ -122,7 +127,9 @@ defmodule Rescord.Ruby.ConversationsTest do
     end
 
     test "keeps the first title when more messages come", context do
-      {conversation, _message} = talk!(context, "The first words")
+      {conversation, message} = talk!(context, "The first words")
+      # A conversation takes one message at a time.
+      reply!(context, conversation, message)
       Ruby.say!(conversation.id, "Other words", as(context, context.ana))
 
       assert {:ok, %{title: "The first words"}} =

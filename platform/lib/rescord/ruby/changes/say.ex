@@ -2,8 +2,22 @@ defmodule Rescord.Ruby.Changes.Say do
   @moduledoc """
   What `say` does to a new message of a member: the source is the member,
   the text has no space around it and is within its limit, the
-  conversation is one of the actor, and the conversation gets the time of
-  the message, and its title from the first one.
+  conversation is one of the actor and takes a message, the message gets
+  its header, and the conversation gets the time of the message, and its
+  title from the first one.
+
+  A conversation takes one message at a time: while Ruby answers, a second
+  message is refused. The change locks the row of the conversation until
+  the message is saved, so two messages of one moment cannot both pass. A
+  conversation where the provider refused to answer takes no more: the
+  same history would be refused again.
+
+  The header is what the model gets before the text, and no page shows
+  (`Rescord.Ruby.Prompt`). The first message of a conversation has the
+  rescue, the role of the member, the day and the time zone, and the
+  record that the conversation is about. A message of a later day has the
+  new day. It is never an input, and it is stored: Rescord sends it again
+  as it was.
 
   With no user, the change does nothing, and the policy refuses the
   action.
@@ -11,8 +25,10 @@ defmodule Rescord.Ruby.Changes.Say do
 
   use Ash.Resource.Change
 
+  alias Rescord.Accounts
+  alias Rescord.Accounts.Checks.Granted
   alias Rescord.Accounts.User
-  alias Rescord.Ruby.{Conversation, Title}
+  alias Rescord.Ruby.{Conversation, Prompt, Replies, Title}
 
   # The most characters of what a member types in one message.
   @most 4_000
@@ -22,11 +38,11 @@ defmodule Rescord.Ruby.Changes.Say do
   def most, do: @most
 
   @impl true
-  def change(changeset, _opts, %{actor: %User{id: user_id}}) do
+  def change(changeset, _opts, %{actor: %User{} = user}) do
     changeset
     |> Ash.Changeset.force_change_attribute(:source, :user)
     |> text()
-    |> Ash.Changeset.before_action(&own_conversation(&1, user_id))
+    |> Ash.Changeset.before_action(&place(&1, user))
     |> Ash.Changeset.after_action(&note/2)
   end
 
@@ -51,20 +67,91 @@ defmodule Rescord.Ruby.Changes.Say do
     end
   end
 
+  # The conversation of the message, inside the transaction of the action.
   # A conversation that is not there and a conversation of another person
   # get the same answer, so the answer says nothing about another person.
-  defp own_conversation(changeset, user_id) do
+  defp place(%{valid?: false} = changeset, _user), do: changeset
+
+  defp place(changeset, %User{id: user_id} = user) do
     id = Ash.Changeset.get_attribute(changeset, :conversation_id)
 
-    case id && Ash.get(Conversation, id, [not_found_error?: false] ++ options(changeset)) do
+    # The lock holds a second message of the same conversation until this
+    # one is saved.
+    found =
+      id &&
+        Ash.get(
+          Conversation,
+          id,
+          [not_found_error?: false, lock: :for_update] ++ options(changeset)
+        )
+
+    case found do
       {:ok, %Conversation{owner_id: ^user_id} = conversation} ->
-        Ash.Changeset.put_context(changeset, :ruby_conversation, conversation)
+        changeset
+        |> Ash.Changeset.put_context(:ruby_conversation, conversation)
+        |> turn(conversation, user)
 
       _other ->
         Ash.Changeset.add_error(changeset,
           field: :conversation_id,
           message: "is no conversation of this person"
         )
+    end
+  end
+
+  defp turn(changeset, conversation, user) do
+    case Replies.standing(conversation.id, changeset.tenant) do
+      :running ->
+        Ash.Changeset.add_error(changeset,
+          field: :text,
+          message: "Ruby is still answering: wait for the answer, or stop it"
+        )
+
+      :closed ->
+        Ash.Changeset.add_error(changeset,
+          field: :text,
+          message: "this conversation takes no more messages: start a new one"
+        )
+
+      {:open, last} ->
+        Ash.Changeset.force_change_attribute(
+          changeset,
+          :header,
+          header(conversation, last, user, changeset.tenant)
+        )
+    end
+  end
+
+  # The first message has the whole header. A message of a later day, as
+  # the organisation counts its days, has the new day. Any other has none.
+  defp header(conversation, last, user, tenant) do
+    organisation = Accounts.organisation_of(tenant)
+    today = Accounts.local_date(organisation, DateTime.utc_now())
+
+    cond do
+      is_nil(last) ->
+        Prompt.header(%{
+          organisation: organisation.name,
+          role: role_name(user, tenant),
+          today: today,
+          time_zone: organisation.time_zone,
+          about: conversation.about
+        })
+
+      Accounts.local_date(organisation, last) != today ->
+        Prompt.day_note(today)
+
+      true ->
+        nil
+    end
+  end
+
+  # The name of the role, as the organisation named it. It says what the
+  # member does there, and is no name of a person.
+  defp role_name(user, tenant) do
+    case Granted.role_of(user, tenant) do
+      nil -> nil
+      role -> to_string(role.name)
     end
   end
 

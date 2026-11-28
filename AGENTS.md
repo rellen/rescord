@@ -561,6 +561,22 @@ hand (ADR 0073). Read it before you write a migration. In short:
     options of `Rescord.Ruby.LLM.Profile`. The system prompt is one
     constant text with no value in it. Inside a conversation the tools,
     the prompt and the stored turns never change: the messages only grow.
+  - **A job writes each reply**, and `Rescord.Ruby.say/3` is the one way
+    to start it: the trigger `respond` of `Rescord.Ruby.Message`, in the
+    queue `ruby`. The job holds the id of the message, the organisation
+    and the id of the member, and no word. It runs one time: do not raise
+    `max_attempts`, the provider bills each try.
+    `Rescord.Ruby.Changes.Respond` checks the member again
+    (`available?/2`), and then `Rescord.Ruby.Replies` writes the rows with
+    no policy. A reply always gets an end: a state, and a reason of
+    `Rescord.Ruby.Reason` when it failed. The job raises only
+    `Rescord.Ruby.Fault`, which has the shape of an error and none of its
+    words, because Oban keeps the error of a job in its row. Keep
+    `log_errors? false` on the trigger.
+  - **The header of a message is stored, and sent again as it was.**
+    `Rescord.Ruby.Changes.Say` makes it with `Rescord.Ruby.Prompt`, from
+    the rescue, the role, the day and the time zone. It is never an input,
+    and holds no name, no address and no id of a person.
   - **No test calls a provider.** Use `Rescord.Ruby.ScriptedModel`, or
     `Rescord.FakeAnthropic` on `127.0.0.1`. The evaluation run is a Mix
     task, outside `mix test` and CI. `config/test.exs` names the scripted
@@ -922,7 +938,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
-| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, and the conversations (ADR 0069) |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt and the job that writes a reply (ADR 0069) |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |

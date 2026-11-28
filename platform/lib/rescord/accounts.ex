@@ -136,6 +136,21 @@ defmodule Rescord.Accounts do
   def all_organisations, do: Organisation |> Ash.Query.sort(:name) |> Ash.read!(authorize?: false)
 
   @doc """
+  The user with this id, or `nil`, for a job that works for a person: the
+  job holds the id, and reads the user when it runs. It asks no policy: no
+  person is there. What the user can do is the question of the job.
+  """
+  @spec user_for_job(term) :: User.t() | nil
+  def user_for_job(id) when is_binary(id) do
+    case Ash.get(User, id, authorize?: false, not_found_error?: false) do
+      {:ok, user} -> user
+      {:error, _not_an_id} -> nil
+    end
+  end
+
+  def user_for_job(_other), do: nil
+
+  @doc """
   The organisation of a tenant: the organisation itself, or the name of its
   schema, as an action has it. Code that asks for the local time many times
   reads the organisation one time with this.
