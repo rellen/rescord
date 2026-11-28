@@ -457,6 +457,13 @@ release (ADR 0047).
 
 ### Changed
 
+- A failure of Rescord itself, such as a time after now in a form, a
+  file that is not a photo or an email of an invitation that the mail
+  server refused, is now an error with a name and a reason, and no
+  longer a sentence. The log line of a background job that fails names
+  that error and its reason, such as
+  `Rescord.Accounts.Errors.InvitationNotSent`, where it said only that
+  the reason was text. The words on the pages are the same (ADR 0077).
 - The chart of a kind of measurement with a standard unit is in that
   unit. It was in the unit of the newest measurement, so one weight in
   kg changed a chart in g. A kind with no standard unit keeps the unit of

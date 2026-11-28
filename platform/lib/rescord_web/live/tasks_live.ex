@@ -183,12 +183,6 @@ defmodule RescordWeb.TasksLive do
          to: ~p"/o/#{socket.assigns.organisation.short_name}/tasks?day=#{Date.to_iso8601(day)}"
        )}
     else
-      {:error, words} when is_binary(words) ->
-        {:noreply,
-         socket
-         |> assign(problems: [words], refused_form?: socket.assigns.can_plan?)
-         |> assign_form(fields)}
-
       {:error, error} ->
         {:noreply,
          socket

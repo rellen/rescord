@@ -134,9 +134,14 @@ defmodule RescordWeb.GroupLive do
   # the organisation and never after now, or at this instant with no time.
   defp at(socket, text, write) do
     case Rescord.Accounts.instant(socket.assigns.organisation, text) do
-      {:ok, nil} -> socket |> options() |> write.() |> after_write(socket)
-      {:ok, instant} -> ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
-      {:error, words} -> {:noreply, assign(socket, problems: [words])}
+      {:ok, nil} ->
+        socket |> options() |> write.() |> after_write(socket)
+
+      {:ok, instant} ->
+        ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
     end
   end
 

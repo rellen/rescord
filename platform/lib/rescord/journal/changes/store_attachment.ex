@@ -34,7 +34,7 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
       content when is_binary(content) ->
         case Upload.prepare(content) do
           {:ok, files} -> store(changeset, files)
-          {:error, words} -> error(changeset, words)
+          {:error, error} -> Ash.Changeset.add_error(changeset, %{error | field: :content})
         end
 
       _none ->
@@ -69,9 +69,6 @@ defmodule Rescord.Journal.Changes.StoreAttachment do
       end
     end)
   end
-
-  defp error(changeset, message),
-    do: Ash.Changeset.add_error(changeset, field: :content, message: message)
 
   @doc """
   The type of a file from its first bytes, or `nil` for a type that Rescord

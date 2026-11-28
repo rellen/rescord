@@ -930,8 +930,11 @@ Each action answers with the classes of Ash, and Rescord has no second
 tree. A new failure that can reach a person is a module with
 `use Splode.Error` and the class `:invalid` or `:forbidden`, in the domain
 that returns it, and not a sentence: Ash reads a sentence as a fault of
-the code. An atom is for a result that only the caller sees. The sentences
-that some functions still return change with the localisation.
+the code. An atom is for a result that only the caller sees. The times
+of a form, the export, a file that Rescord refuses, the dose of a task
+and the email of an invitation each have one (`Errors` in the namespace
+of the domain), with a reason that is an atom.
+`Rescord.Accounts.error_messages/1` says each in words.
 
 ## Releases
 

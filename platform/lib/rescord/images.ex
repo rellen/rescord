@@ -22,14 +22,15 @@ defmodule Rescord.Images do
 
   Only a few photos go through libvips at the same time, each in a process
   of its own (`Rescord.Images.Limit`, ADR 0056). A photo that waits too
-  long for its turn is refused, with words that ask the person to try
-  again.
+  long for its turn is refused with the reason `:busy`, whose words ask the
+  person to try again.
 
   The date that the camera recorded, `DateTimeOriginal` of EXIF, is read
   before the metadata goes, as a suggestion for the date of the photo.
   """
 
   alias Rescord.Images.Limit
+  alias Rescord.Storage.Errors.RefusedFile
   alias Vix.Vips.Image, as: Vimage
 
   @max_pixels 100_000_000
@@ -80,13 +81,13 @@ defmodule Rescord.Images do
   def type_of(_other), do: nil
 
   @doc """
-  The photo that Rescord keeps, with its thumbnail, or the words of the
-  reason that it cannot keep it.
+  The photo that Rescord keeps, with its thumbnail, or a `RefusedFile`
+  error with the reason that it cannot keep it.
   """
-  @spec prepare(binary) :: {:ok, prepared} | {:error, String.t()}
+  @spec prepare(binary) :: {:ok, prepared} | {:error, RefusedFile.t()}
   def prepare(bytes) when is_binary(bytes) do
     case type_of(bytes) do
-      nil -> {:error, "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"}
+      nil -> refused(:not_a_photo)
       type -> one_of_few(fn -> prepare(bytes, type) end)
     end
   end
@@ -95,7 +96,7 @@ defmodule Rescord.Images do
   # only a few photos go through it at once (ADR 0056).
   defp one_of_few(work) do
     case Limit.run(work) do
-      {:error, :busy} -> {:error, "waited too long behind other photos. Try again in a minute"}
+      {:error, :busy} -> refused(:busy)
       result -> result
     end
   end
@@ -107,10 +108,12 @@ defmodule Rescord.Images do
          {:ok, thumbnail} <- thumbnail(bytes, image, type) do
       {:ok, %{bytes: full, content_type: type, thumbnail: thumbnail, taken_at: taken_at(image)}}
     else
-      {:error, words} when is_binary(words) -> {:error, words}
-      {:error, _reason} -> {:error, "is a photo that Rescord cannot read"}
+      {:error, %RefusedFile{} = error} -> {:error, error}
+      {:error, _reason} -> refused(:unreadable)
     end
   end
+
+  defp refused(reason), do: {:error, RefusedFile.exception(reason: reason)}
 
   # libvips reads the header first, and the pixels only when an operation
   # needs them. An animated GIF opens with each of its frames.
@@ -119,7 +122,7 @@ defmodule Rescord.Images do
 
   defp within_limit(image) do
     if Image.width(image) * Image.height(image) > @max_pixels,
-      do: {:error, "has more than 100 million pixels"},
+      do: refused(:too_many_pixels),
       else: :ok
   end
 

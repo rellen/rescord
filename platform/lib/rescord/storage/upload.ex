@@ -14,6 +14,7 @@ defmodule Rescord.Storage.Upload do
   """
 
   alias Rescord.{Images, Storage}
+  alias Rescord.Storage.Errors.RefusedFile
 
   @max_size 20_000_000
 
@@ -44,18 +45,18 @@ defmodule Rescord.Storage.Upload do
   def type_of(bytes), do: Images.type_of(bytes)
 
   @doc """
-  Makes a file ready for the store, or says in words why Rescord does not
-  take it. The words follow the name of the field: "is an empty file".
+  Makes a file ready for the store, or returns a `RefusedFile` error that
+  says why Rescord does not take it.
   """
-  @spec prepare(binary) :: {:ok, files} | {:error, String.t()}
-  def prepare(""), do: {:error, "is an empty file"}
+  @spec prepare(binary) :: {:ok, files} | {:error, RefusedFile.t()}
+  def prepare(""), do: refused(:empty)
 
-  def prepare(content) when byte_size(content) > @max_size, do: {:error, "is more than 20 MB"}
+  def prepare(content) when byte_size(content) > @max_size, do: refused(:too_large)
 
   def prepare(content) when is_binary(content) do
     case type_of(content) do
       nil ->
-        {:error, "is not a photo or a PDF: Rescord takes JPEG, PNG, GIF, WebP and PDF"}
+        refused(:not_a_photo_or_pdf)
 
       "application/pdf" ->
         {:ok, %{bytes: content, content_type: "application/pdf", thumbnail: nil}}
@@ -64,6 +65,8 @@ defmodule Rescord.Storage.Upload do
         Images.prepare(content)
     end
   end
+
+  defp refused(reason), do: {:error, RefusedFile.exception(reason: reason)}
 
   @doc """
   Puts a prepared file under `key`, and its thumbnail under `thumbnail_key`

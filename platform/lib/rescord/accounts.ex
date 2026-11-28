@@ -24,6 +24,7 @@ defmodule Rescord.Accounts do
   require Ash.Query
 
   alias Rescord.Accounts.{Grants, Member, Organisation, User}
+  alias Rescord.Accounts.Errors.InvalidTime
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -441,10 +442,11 @@ defmodule Rescord.Accounts do
 
   The instant is never after now (`docs/domain.md`, section 4). A time that
   the clocks of the zone skip, or have two times, is refused: the person
-  gives another minute.
+  gives another minute. A refused time is an `InvalidTime` error, which
+  `error_messages/1` says in words.
   """
   @spec instant(Ash.Resource.record() | String.t(), term) ::
-          {:ok, DateTime.t() | nil} | {:error, String.t()}
+          {:ok, DateTime.t() | nil} | {:error, InvalidTime.t()}
   def instant(_tenant, text) when text in [nil, ""], do: {:ok, nil}
 
   def instant(tenant, text) when is_binary(text) do
@@ -452,13 +454,12 @@ defmodule Rescord.Accounts do
          true <- DateTime.compare(instant, DateTime.utc_now()) != :gt do
       {:ok, instant}
     else
-      false -> {:error, "The time cannot be after now"}
-      {:error, words} -> {:error, words}
+      false -> {:error, InvalidTime.exception(reason: :after_now)}
+      {:error, error} -> {:error, error}
     end
   end
 
-  def instant(_tenant, _other),
-    do: {:error, "The time is not a date and a time of this time zone"}
+  def instant(_tenant, _other), do: {:error, InvalidTime.exception(reason: :not_a_time)}
 
   @doc """
   The instant of a local date and time of an organisation, from the text of
@@ -466,7 +467,7 @@ defmodule Rescord.Accounts do
   is for the future. `instant/2` is for a thing that happened.
   """
   @spec local_instant(Ash.Resource.record() | String.t(), term) ::
-          {:ok, DateTime.t()} | {:error, String.t()}
+          {:ok, DateTime.t()} | {:error, InvalidTime.t()}
   def local_instant(tenant, text) when is_binary(text) do
     text = if String.length(text) == 16, do: text <> ":00", else: text
 
@@ -474,12 +475,11 @@ defmodule Rescord.Accounts do
          {:ok, local} <- DateTime.from_naive(naive, time_zone_of(tenant), Tz.TimeZoneDatabase) do
       {:ok, DateTime.shift_zone!(local, "Etc/UTC", Tz.TimeZoneDatabase)}
     else
-      _not_a_time -> {:error, "The time is not a date and a time of this time zone"}
+      _not_a_time -> {:error, InvalidTime.exception(reason: :not_a_time)}
     end
   end
 
-  def local_instant(_tenant, _other),
-    do: {:error, "The time is not a date and a time of this time zone"}
+  def local_instant(_tenant, _other), do: {:error, InvalidTime.exception(reason: :not_a_time)}
 
   @doc """
   The instant of a date and a time of the day in an organisation. There is
@@ -556,7 +556,10 @@ defmodule Rescord.Accounts do
   def granted?(:root, _resource, _action), do: true
   def granted?(role, resource, action), do: Grants.scope(role, resource, action) != :none
 
-  @doc "The messages of an error of an action, for a person to read."
+  @doc """
+  The messages of an error, for a person to read: an error of an action, or
+  one error of Rescord itself, such as the `InvalidTime` of `instant/2`.
+  """
   @spec error_messages(term) :: [String.t()]
   def error_messages(%{errors: errors}) when is_list(errors) do
     Enum.flat_map(errors, fn
@@ -576,9 +579,26 @@ defmodule Rescord.Accounts do
     end)
   end
 
+  def error_messages(error) when is_exception(error), do: error_messages(%{errors: [error]})
   def error_messages(_error), do: ["That did not work"]
 
-  defp message(error) do
+  # An error of Rescord itself (ADR 0077, E2) says its words after the name
+  # of its field, when it has one, and with no bread crumbs of Ash in front.
+  defp message(%module{} = error) do
+    if match?(["Rescord" | _], Module.split(module)),
+      do: own_message(error),
+      else: ash_message(error)
+  end
+
+  defp own_message(%{field: field} = error) when not is_nil(field),
+    do: "#{field_words(field)} #{own_message(%{error | field: nil})}"
+
+  defp own_message(%{bread_crumbs: _} = error),
+    do: Exception.message(%{error | bread_crumbs: []})
+
+  defp own_message(error), do: Exception.message(error)
+
+  defp ash_message(error) do
     case error do
       # A value that is necessary and is not there has no message of its own.
       %Ash.Error.Changes.Required{field: field} when not is_nil(field) ->

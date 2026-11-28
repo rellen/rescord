@@ -11,6 +11,7 @@ defmodule Rescord.ImagesTest do
   import Rescord.StorageFixtures
 
   alias Rescord.Images
+  alias Rescord.Storage.Errors.RefusedFile
 
   doctest Images
 
@@ -88,14 +89,16 @@ defmodule Rescord.ImagesTest do
   end
 
   test "refuses a file that is not a photo, and a photo that libvips cannot read" do
-    assert Images.prepare("%PDF-1.7 ...") ==
-             {:error, "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"}
+    assert {:error, %RefusedFile{reason: :not_a_photo} = error} = Images.prepare("%PDF-1.7 ...")
+    assert Exception.message(error) == "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"
 
-    assert Images.prepare("<svg xmlns='http://www.w3.org/2000/svg'/>") ==
-             {:error, "is not a photo: Rescord takes JPEG, PNG, GIF and WebP"}
+    assert {:error, %RefusedFile{reason: :not_a_photo}} =
+             Images.prepare("<svg xmlns='http://www.w3.org/2000/svg'/>")
 
-    assert Images.prepare(<<0xFF, 0xD8, 0xFF, 0xE0>> <> String.duplicate("a", 100)) ==
-             {:error, "is a photo that Rescord cannot read"}
+    assert {:error, %RefusedFile{reason: :unreadable} = error} =
+             Images.prepare(<<0xFF, 0xD8, 0xFF, 0xE0>> <> String.duplicate("a", 100))
+
+    assert Exception.message(error) == "is a photo that Rescord cannot read"
   end
 
   test "refuses a photo of more than 100 million pixels before it decodes it" do
@@ -108,7 +111,8 @@ defmodule Rescord.ImagesTest do
       <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A>> <>
         chunk("IHDR", header) <> data <> chunk("IEND", "")
 
-    assert Images.prepare(png) == {:error, "has more than 100 million pixels"}
+    assert {:error, %RefusedFile{reason: :too_many_pixels} = error} = Images.prepare(png)
+    assert Exception.message(error) == "has more than 100 million pixels"
   end
 
   defp chunk(type, data) do

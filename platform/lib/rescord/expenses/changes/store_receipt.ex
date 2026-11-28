@@ -24,7 +24,7 @@ defmodule Rescord.Expenses.Changes.StoreReceipt do
       content when is_binary(content) ->
         case Upload.prepare(content) do
           {:ok, files} -> store(changeset, files)
-          {:error, words} -> error(changeset, words)
+          {:error, error} -> Ash.Changeset.add_error(changeset, %{error | field: :content})
         end
 
       _none ->
@@ -59,7 +59,4 @@ defmodule Rescord.Expenses.Changes.StoreReceipt do
       end
     end)
   end
-
-  defp error(changeset, message),
-    do: Ash.Changeset.add_error(changeset, field: :content, message: message)
 end

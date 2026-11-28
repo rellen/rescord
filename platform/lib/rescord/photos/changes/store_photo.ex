@@ -21,6 +21,7 @@ defmodule Rescord.Photos.Changes.StorePhoto do
   use Ash.Resource.Change
 
   alias Rescord.{Accounts, Images, Storage}
+  alias Rescord.Storage.Errors.RefusedFile
 
   @max_size 20_000_000
 
@@ -35,19 +36,29 @@ defmodule Rescord.Photos.Changes.StorePhoto do
   @impl true
   def change(changeset, _opts, _context) do
     case Ash.Changeset.get_argument(changeset, :content) do
-      "" -> error(changeset, "is an empty file")
-      content when byte_size(content) > @max_size -> error(changeset, "is more than 20 MB")
-      content when is_binary(content) -> prepare(changeset, content)
-      _none -> changeset
+      "" ->
+        refuse(changeset, RefusedFile.exception(reason: :empty))
+
+      content when byte_size(content) > @max_size ->
+        refuse(changeset, RefusedFile.exception(reason: :too_large))
+
+      content when is_binary(content) ->
+        prepare(changeset, content)
+
+      _none ->
+        changeset
     end
   end
 
   defp prepare(changeset, content) do
     case Images.prepare(content) do
       {:ok, photo} -> store(changeset, photo)
-      {:error, words} -> error(changeset, words)
+      {:error, error} -> refuse(changeset, error)
     end
   end
+
+  defp refuse(changeset, %RefusedFile{} = error),
+    do: Ash.Changeset.add_error(changeset, %{error | field: :content})
 
   defp store(changeset, photo) do
     # The id is not set when a change runs, and the keys name it.
@@ -100,7 +111,4 @@ defmodule Rescord.Photos.Changes.StorePhoto do
 
   defp instant(%{as_of: %DateTime{} = instant}), do: instant
   defp instant(_changeset), do: DateTime.utc_now()
-
-  defp error(changeset, message),
-    do: Ash.Changeset.add_error(changeset, field: :content, message: message)
 end

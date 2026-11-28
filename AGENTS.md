@@ -733,7 +733,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   `:forbidden`), in the domain that returns it. Do not return a sentence
   from a change or an action: Ash makes it `Ash.Error.Unknown`. Do not
   make a Splode root of our own. An atom, such as `{:error, :busy}`, is
-  for a result that the caller matches and that no person sees.
+  for a result that the caller matches and that no person sees. Put the
+  module in `Errors` of its domain, give it a reason that is an atom and
+  never a value that a person typed, and let a page say it with
+  `Rescord.Accounts.error_messages/1`, which takes one such error too.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the
   server sends to it with zod when its shape matters; zod is not a dependency
   yet, so ask before the first use (`docs/architecture.md`, "Code in the
