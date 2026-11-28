@@ -42,6 +42,19 @@ defmodule RescordWeb.FeatureCase do
   setup do
     Application.put_env(:swoosh, :shared_test_process, self())
     on_exit(fn -> Application.delete_env(:swoosh, :shared_test_process) end)
+    forget_sign_in_counts()
+    :ok
+  end
+
+  # One client can ask for 20 sign-in links in 15 minutes (ADR 0020), and each
+  # browser test is the same client. So each test starts with no count: the
+  # limit must not depend on how many browser tests there are.
+  defp forget_sign_in_counts do
+    for {{"sign-in/client/" <> _address, _window} = key, _count, _expires} <-
+          :ets.tab2list(Rescord.RateLimit) do
+      :ets.delete(Rescord.RateLimit, key)
+    end
+
     :ok
   end
 
