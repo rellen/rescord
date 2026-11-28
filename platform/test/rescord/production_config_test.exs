@@ -28,7 +28,7 @@ defmodule Rescord.ProductionConfigTest do
                RESCORD_S3_ACCESS_KEY_ID RESCORD_S3_SECRET_ACCESS_KEY RESCORD_SMTP_PORT
                RESCORD_SMTP_USERNAME RESCORD_SMTP_PASSWORD RESCORD_SMTP_TLS
                RESCORD_MAIL_FROM_NAME PHX_SERVER RESCORD_LISTEN_ADDRESS RESCORD_TRUSTED_PROXIES
-               RESCORD_PHOTO_SLOTS RESCORD_BOTH_STORES)
+               RESCORD_PHOTO_SLOTS RESCORD_BOTH_STORES RESCORD_KEY_SECRET_PREVIOUS)
 
   @s3 Map.merge(@required, %{
         "RESCORD_STORAGE" => "s3",
@@ -73,6 +73,40 @@ defmodule Rescord.ProductionConfigTest do
 
     assert config[:rescord][RescordWeb.Endpoint][:url][:host] == "rescord.example.org"
     assert config[:rescord][RescordWeb.Endpoint][:http][:ip] == {0, 0, 0, 0}
+  end
+
+  test "the secret of the server gives the vault and the keys of the transfers one secret" do
+    config = read(@required)
+    secret = String.duplicate("k", 32)
+
+    for module <- [Rescord.Vault, Rescord.Transfers.Keys] do
+      assert config[:rescord][module][:secret] == secret
+      assert config[:rescord][module][:previous_secret] == nil
+    end
+
+    previous = String.duplicate("p", 32)
+    config = read(Map.put(@required, "RESCORD_KEY_SECRET_PREVIOUS", previous))
+
+    for module <- [Rescord.Vault, Rescord.Transfers.Keys] do
+      assert config[:rescord][module][:secret] == secret
+      assert config[:rescord][module][:previous_secret] == previous
+    end
+
+    # An empty setting is no previous secret, and a short one stops the start.
+    config = read(Map.put(@required, "RESCORD_KEY_SECRET_PREVIOUS", ""))
+    assert config[:rescord][Rescord.Vault][:previous_secret] == nil
+
+    assert_raise ArgumentError, ~r/RESCORD_KEY_SECRET_PREVIOUS/, fn ->
+      read(Map.put(@required, "RESCORD_KEY_SECRET_PREVIOUS", "too short"))
+    end
+  end
+
+  test "no setting of the environment is for the assistant" do
+    source = File.read!("config/runtime.exs")
+
+    refute source =~ "RUBY"
+    refute source =~ "ANTHROPIC"
+    refute source =~ "req_llm"
   end
 
   test "an S3 store needs its endpoint, and has no default service" do

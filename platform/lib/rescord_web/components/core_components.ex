@@ -105,6 +105,8 @@ defmodule RescordWeb.CoreComponents do
 
   A control with errors gets `aria-invalid="true"` and an
   `aria-describedby` that names the `<small>` element with its errors.
+  `hint` gives a text control or a select words below it, which say what
+  it takes, and the control names them too.
 
   A control of the type `number` gets an `inputmode`, so a phone shows its
   keyboard of digits (ADR 0061).
@@ -156,6 +158,11 @@ defmodule RescordWeb.CoreComponents do
     doc: "a form field struct retrieved from the form, for example: @form[:email]"
 
   attr :errors, :list, default: []
+
+  attr :hint, :string,
+    default: nil,
+    doc: "words below the control, which say what it takes. The control names them too"
+
   attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
   attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
   attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
@@ -225,13 +232,14 @@ defmodule RescordWeb.CoreComponents do
         name={@name}
         multiple={@multiple}
         aria-invalid={@errors != [] && "true"}
-        aria-describedby={@errors != [] && error_id(@id)}
+        aria-describedby={described_by(@id, @errors, @hint)}
         {@rest}
       >
         <option :if={@prompt} value="">{@prompt}</option>
         {Phoenix.HTML.Form.options_for_select(@options, @value)}
       </select>
       <.errors id={@id} errors={@errors} />
+      <.hint id={@id} hint={@hint} />
     </div>
     """
   end
@@ -244,10 +252,11 @@ defmodule RescordWeb.CoreComponents do
         id={@id}
         name={@name}
         aria-invalid={@errors != [] && "true"}
-        aria-describedby={@errors != [] && error_id(@id)}
+        aria-describedby={described_by(@id, @errors, @hint)}
         {@rest}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       <.errors id={@id} errors={@errors} />
+      <.hint id={@id} hint={@hint} />
     </div>
     """
   end
@@ -265,10 +274,11 @@ defmodule RescordWeb.CoreComponents do
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         aria-invalid={@errors != [] && "true"}
-        aria-describedby={@errors != [] && error_id(@id)}
+        aria-describedby={described_by(@id, @errors, @hint)}
         {@rest}
       />
       <.errors id={@id} errors={@errors} />
+      <.hint id={@id} hint={@hint} />
     </div>
     """
   end
@@ -284,6 +294,15 @@ defmodule RescordWeb.CoreComponents do
   defp keyboard(_type, rest), do: rest
 
   defp error_id(id), do: "#{id}-error"
+  defp hint_id(id), do: "#{id}-hint"
+
+  # The ids of what describes a control: its errors, then its hint.
+  defp described_by(id, errors, hint) do
+    case [errors != [] && error_id(id), hint && hint_id(id)] |> Enum.filter(& &1) do
+      [] -> false
+      ids -> Enum.join(ids, " ")
+    end
+  end
 
   # The errors of a form control, which the control names in its
   # aria-describedby.
@@ -296,6 +315,17 @@ defmodule RescordWeb.CoreComponents do
       <.icon name="exclamation-circle" />
       <span :for={msg <- @errors}>{msg}</span>
     </small>
+    """
+  end
+
+  # The hint of a form control, which the control names in its
+  # aria-describedby. `data-hint` keeps the look of an error from it.
+  attr :id, :any, required: true
+  attr :hint, :string, required: true
+
+  defp hint(assigns) do
+    ~H"""
+    <small :if={@hint} id={hint_id(@id)} data-hint>{@hint}</small>
     """
   end
 

@@ -19,10 +19,42 @@ release (ADR 0047).
   itself. Make a backup first, as `docs/self-hosting.md` says.
   - `20261127182144_archive_task_subjects`, in each organisation: adds a
     column to the subjects of the tasks. It changes no row.
-- No new setting is needed.
+  - `20261128050845_add_ruby_providers`, in the database: adds the table
+    of the providers of the assistant, and the table of their history.
+    Both are empty until a root user adds a provider. It changes no row.
+- `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
+  the database, such as the key of a provider of the assistant. It did so
+  for the private keys of the transfers already, so the rule is the same:
+  keep a copy of the secret with the backups. A backup of the database
+  without this secret cannot open those values.
+- No new setting is needed. One new variable is optional:
+  `RESCORD_KEY_SECRET_PREVIOUS` is for the time when you change
+  `RESCORD_KEY_SECRET`, and a server that does not change its secret
+  does not set it.
 
 ### Added
 
+- The groundwork of an assistant with the code name Ruby (ADR 0069). No
+  member can use it yet: this version has only the page where a root user
+  says which service would answer. Rescord sends nothing to any service
+  until a root user adds a provider, and then only the one small question
+  of the button "Test", with no record of a rescue in it.
+- A root user has a new page, `/root/ruby`, with the providers of the
+  assistant: Anthropic, Amazon Bedrock, Ollama, or a server that speaks
+  the chat API of OpenAI. A provider has a name, a model, a key and
+  limits. Rescord keeps the key encrypted, and no page shows it again:
+  only its last four characters and the day that it was set. The history
+  of a provider holds each change, without the key. The assistant reads no
+  variable of the environment.
+- `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
+  value that `RESCORD_KEY_SECRET` guards, after you change the secret:
+  the secrets of the settings and the private keys of the transfers.
+  `docs/self-hosting.md` has the steps, in "Change the secret of the
+  keys". Before this version a server could not change that secret.
+- `bin/check` has two new lines. `vault` says whether each encrypted
+  value opens with the secret of the server. `assistant` has a line for
+  each provider: where the records would go, and what its last test
+  found. Neither sends a request, and neither prints a key.
 - Rescord now knows what a unit of measure means, from its name. The
   lists page says for each unit of an organisation, and for each shared
   unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and

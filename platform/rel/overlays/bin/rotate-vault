@@ -1,0 +1,27 @@
+#!/bin/sh
+# Encrypts again, with the secret of today, what the previous secret of the
+# server encrypted (ADR 0068): the secrets of the settings, such as the key
+# of a provider of the assistant, and the private keys of the transfers.
+#
+# To change RESCORD_KEY_SECRET:
+#   1. Set the new secret as RESCORD_KEY_SECRET, and the old one as
+#      RESCORD_KEY_SECRET_PREVIOUS. Start Rescord again: it reads what
+#      either secret encrypted.
+#   2. Run bin/rotate-vault.
+#   3. Take RESCORD_KEY_SECRET_PREVIOUS out, and start Rescord again.
+#
+# It prints counts, and no value. A second run changes nothing. It exits
+# with 1 when a value opens with neither secret: that value stays as it is.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  echo "bin/rotate-vault takes no argument." >&2
+  exit 2
+fi
+
+cd -P -- "$(dirname -- "$0")"
+exec ./rescord eval '
+  case Rescord.Release.rotate_vault() do
+    :ok -> :ok
+    :error -> System.halt(1)
+  end'

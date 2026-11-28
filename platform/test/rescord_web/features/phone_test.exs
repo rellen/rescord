@@ -105,6 +105,60 @@ defmodule RescordWeb.Features.PhoneTest do
     end
   end
 
+  @tag browser_context_opts: @small
+  test "the pages of the assistant for a root user fit a small phone", %{conn: session} do
+    address = "a.root.user.with.a.long.address@wattle-creek-refuge.example.org"
+    root = root!(address)
+
+    provider =
+      Rescord.RubyFixtures.provider!(root, %{name: "Anthropic, for the whole server"})
+
+    Rescord.Ruby.ScriptedModel.script([{:error, %{status: 401}}])
+    {:ok, _provider} = Rescord.Ruby.test_provider(provider, actor: root)
+
+    Rescord.RubyFixtures.provider!(root, %{
+      name: "The server in the feed shed",
+      kind: :openai_compatible,
+      model: "a-model-with-a-long-name-of-its-own:32b-instruct",
+      base_url: "https://llm.a-long-name-of-a-server.example.org/v1"
+    })
+
+    session = sign_in_with_link(session, address)
+
+    pages = [
+      "/root",
+      "/root/ruby",
+      "/root/ruby/new",
+      "/root/ruby/new?kind=openai_compatible",
+      "/root/ruby/#{provider.id}"
+    ]
+
+    for page <- pages do
+      session
+      |> visit(page)
+      |> assert_has("h1")
+      |> evaluate(problems(), fn problems ->
+        assert problems == [], "#{page} on a phone: #{Enum.join(problems, "; ")}"
+      end)
+    end
+
+    # The list is a card for each provider, and a cell says its column.
+    session
+    |> visit("/root/ruby")
+    |> assert_connected()
+    |> assert_has("td[data-label=Key]", text: "Ends in -key")
+    |> evaluate(
+      """
+      (() => {
+        const row = document.querySelector("#providers tbody tr");
+        const cells = row.querySelectorAll("td");
+        return cells[1].getBoundingClientRect().top >= cells[0].getBoundingClientRect().bottom;
+      })()
+      """,
+      fn stacked -> assert stacked, "the cells of a provider are side by side" end
+    )
+  end
+
   @tag browser_context_opts: @phone
   test "the site menu opens from the bar, marks the part of the page, and closes",
        %{conn: session, home: home} do

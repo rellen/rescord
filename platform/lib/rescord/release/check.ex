@@ -7,6 +7,10 @@ defmodule Rescord.Release.Check do
     * the store takes a file, gives it back, and deletes it;
     * the SMTP server takes the connection and the user, with the TLS of
       the settings, and sends nothing;
+    * the values that the secret of the server encrypts open with it
+      (ADR 0068);
+    * each provider of the assistant has what a request needs (ADR 0069).
+      This check reads the database, sends no request and decrypts no key;
     * with an address, a short email reaches that address.
 
   `Rescord.Release.check/1` runs the checks and prints them, and
@@ -18,7 +22,7 @@ defmodule Rescord.Release.Check do
   start before a check could name it.
   """
 
-  alias Rescord.{Mailer, Repo, Storage}
+  alias Rescord.{Mailer, Repo, Ruby, Storage, Transfers, Vault}
 
   @typedoc """
   The result of a check: `:ok`, `:note` for something to know that is not a
@@ -36,7 +40,15 @@ defmodule Rescord.Release.Check do
   def run(address \\ nil) do
     start()
 
-    [database(), migrations(), store(), smtp()] ++
+    migrations = migrations()
+
+    # The two checks that read tables wait for the migrations of a new
+    # version: the next start runs them.
+    of_the_database =
+      if match?({:ok, _name, _words}, migrations), do: [vault() | assistant()], else: []
+
+    [database(), migrations, store(), smtp()] ++
+      of_the_database ++
       if address, do: [test_email(address)], else: []
   end
 
@@ -176,6 +188,93 @@ defmodule Rescord.Release.Check do
 
   defp smtp_reason(reason), do: inspect(reason)
 
+  @doc """
+  The values that the secret of the server encrypts: the secrets of the
+  settings in `Rescord.Vault`, and the private keys of the transfers
+  (ADR 0068). Each must open with `RESCORD_KEY_SECRET`. While the secret
+  changes, some open with `RESCORD_KEY_SECRET_PREVIOUS`, and
+  `bin/rotate-vault` writes them again.
+  """
+  @spec vault() :: result
+  def vault do
+    counts = Map.merge(Vault.count(), Transfers.count_keys(), fn _kind, a, b -> a + b end)
+    total = counts.current + counts.previous + counts.sealed
+    previous? = is_binary(Application.get_env(:rescord, Vault, [])[:previous_secret])
+
+    case counts do
+      %{sealed: sealed} when sealed > 0 ->
+        {:fail, "vault",
+         "#{some(sealed, total)} with no secret of this server: " <>
+           "RESCORD_KEY_SECRET is not the secret that encrypted the rest"}
+
+      %{previous: previous} when previous > 0 ->
+        {:note, "vault",
+         "#{some(previous, total)} with the previous secret alone: run bin/rotate-vault"}
+
+      _each_current when total == 0 ->
+        {:ok, "vault", "no encrypted value yet"}
+
+      _each_current when previous? ->
+        {:note, "vault",
+         "#{each(total)} opens with the secret of today: take RESCORD_KEY_SECRET_PREVIOUS out"}
+
+      _each_current ->
+        {:ok, "vault", "#{each(total)} opens with the secret of this server"}
+    end
+  rescue
+    _error -> {:fail, "vault", "cannot read the encrypted values"}
+  end
+
+  defp some(1, total), do: "1 of #{total} encrypted values opens"
+  defp some(count, total), do: "#{count} of #{total} encrypted values open"
+
+  defp each(1), do: "the one encrypted value"
+  defp each(total), do: "each of the #{total} encrypted values"
+
+  @doc """
+  A line for each provider of the assistant: where the records go, whether
+  it has what a request needs, whether an organisation can choose it, and
+  what its last test found. It reads the rows, sends no request, and
+  decrypts and prints no key: a person with a shell gets no way to spend
+  money here.
+  """
+  @spec assistant() :: [result]
+  def assistant do
+    case Ruby.providers_for_check() do
+      [] -> [{:note, "assistant", "no provider yet. A root user adds one at /root/ruby"}]
+      providers -> Enum.map(providers, &provider_line/1)
+    end
+  rescue
+    _error -> [{:fail, "assistant", "cannot read the providers"}]
+  end
+
+  defp provider_line(provider) do
+    words =
+      "#{provider.name}: the model #{provider.model}, records go to #{Ruby.place(provider)}"
+
+    cond do
+      (problems = Ruby.provider_problems(provider)) != [] ->
+        {_field, problem} = hd(problems)
+        {:fail, "assistant", words <> ": " <> problem}
+
+      not provider.offered ->
+        {:note, "assistant", words <> ". Not offered to an organisation"}
+
+      provider.test_result == :ok ->
+        {:ok, "assistant", words <> ". The last test passed on #{day(provider.tested_at)}"}
+
+      is_nil(provider.tested_at) ->
+        {:note, "assistant", words <> ". Never tested: press Test at /root/ruby"}
+
+      true ->
+        {:fail, "assistant",
+         words <>
+           ". The last test failed on #{day(provider.tested_at)}: #{provider.test_result}"}
+    end
+  end
+
+  defp day(%DateTime{} = instant), do: Calendar.strftime(instant, "%-d %B %Y")
+
   @doc "Sends a short email to `address`, through the mailer of the settings."
   @spec test_email(String.t()) :: result
   def test_email(address) do
@@ -205,7 +304,7 @@ defmodule Rescord.Release.Check do
 
   # The applications of the checks, and the repository with a small pool.
   defp start do
-    for app <- [:ssl, :ecto_sql, :postgrex, :req, :gen_smtp, :swoosh] do
+    for app <- [:ssl, :ecto_sql, :postgrex, :req, :gen_smtp, :swoosh, :ash] do
       {:ok, _} = Application.ensure_all_started(app)
     end
 

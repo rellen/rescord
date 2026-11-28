@@ -58,8 +58,9 @@ let
   # the service: `rescord-bootstrap-root you@example.org` makes the first root
   # user, `rescord-check [you@example.org]` checks the server (ADR 0049),
   # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050),
-  # and `rescord-move-storage disk s3` copies the files into the other
-  # store (ADR 0059).
+  # `rescord-move-storage disk s3` copies the files into the other store
+  # (ADR 0059), and `rescord-rotate-vault` encrypts again what the previous
+  # secret of the server encrypted (ADR 0068).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
@@ -88,6 +89,7 @@ let
   check = releaseCommand "rescord-check" "check";
   restore = releaseCommand "rescord-restore" "restore";
   moveStorage = releaseCommand "rescord-move-storage" "move-storage";
+  rotateVault = releaseCommand "rescord-rotate-vault" "rotate-vault";
 in
 {
   options.services.rescord = {
@@ -207,6 +209,7 @@ in
       check
       restore
       moveStorage
+      rotateVault
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {

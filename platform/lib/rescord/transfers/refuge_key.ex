@@ -28,6 +28,11 @@ defmodule Rescord.Transfers.RefugeKey do
     create :make do
       accept [:organisation_id, :sign_public, :box_public, :sign_private, :box_private]
     end
+
+    update :rewrap do
+      description "Keeps the private keys under the new secret of the server (ADR 0068)"
+      accept [:sign_private, :box_private]
+    end
   end
 
   # No policy: each request through a policy is refused, and the keys are

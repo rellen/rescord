@@ -120,8 +120,9 @@ agenix can make that file.
 
 The module installs `rescord-check`, which checks the server (see "Check
 the server" below), and `rescord-bootstrap-root`, which makes the first
-root user. It also installs `rescord-restore` (see "Restore") and
-`rescord-move-storage` (see "Move the files to another store"). Each runs
+root user. It also installs `rescord-restore` (see "Restore"),
+`rescord-move-storage` (see "Move the files to another store") and
+`rescord-rotate-vault` (see "Change the secret of the keys"). Each runs
 with the environment of the service. Run them as root:
 
 ```sh
@@ -208,6 +209,8 @@ ok    database   PostgreSQL 18.1
 ok    migrations each migration has run
 ok    store      the directory /var/lib/rescord/files takes, gives back and deletes a file
 ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and the user rescord
+ok    vault      each of the 3 encrypted values opens with the secret of this server
+note  assistant  no provider yet. A root user adds one at /root/ruby
 ok    email      sent to you@example.org: look for it in that inbox, and in its spam
 
 Rescord is ready.
@@ -221,6 +224,15 @@ Rescord is ready.
   it.
 - **mail**: the SMTP server takes the connection, the TLS and the user of
   the settings. This check sends nothing.
+- **vault**: each value that Rescord keeps encrypted opens with
+  `RESCORD_KEY_SECRET`: the keys of the transfers between servers, and
+  the key of each provider of the assistant. A fault here means that the
+  secret is not the one that encrypted them. A note names the next step
+  while the secret changes (see "Change the secret of the keys").
+- **assistant**: a line for each provider of the assistant (see "The
+  assistant, Ruby"): where the records go, whether it has its key, and
+  what its last test found. This check reads the database. It sends no
+  request to a provider, and costs nothing.
 - **email**: with an address, Rescord sends a short email to it. When the
   email does not arrive, ask the provider of the SMTP server, and check
   the SPF and DKIM records of the domain of `RESCORD_MAIL_FROM`.
@@ -242,7 +254,8 @@ take, stop the start with the name of the setting.
 | `RESCORD_TRUSTED_PROXIES` | no | `127.0.0.0/8, ::1` | The reverse proxies that say the address of each client in `X-Forwarded-For`, as addresses and networks separated by commas. Rescord counts the limits of the sign-in for each client by that address. The default trusts a proxy on the same machine; the Compose file trusts the networks of Docker. |
 | `SECRET_KEY_BASE` | yes | | A secret of 64 bytes or more, which signs the sessions. |
 | `TOKEN_SIGNING_SECRET` | yes | | A secret of 64 bytes or more, which signs the sign-in tokens. |
-| `RESCORD_KEY_SECRET` | yes | | A secret of 32 bytes or more, which guards the private keys of the transfers between servers (ADR 0043). Keep it with the backups. |
+| `RESCORD_KEY_SECRET` | yes | | A secret of 32 bytes or more. It guards the private keys of the transfers between servers (ADR 0043), and each secret that Rescord keeps in its database, such as the key of a provider of the assistant (ADR 0068). Keep it with the backups. |
+| `RESCORD_KEY_SECRET_PREVIOUS` | no | | The secret that `RESCORD_KEY_SECRET` had before, only while that secret changes (see "Change the secret of the keys"). |
 | `RESCORD_SMTP_HOST` | yes | | The SMTP server. |
 | `RESCORD_SMTP_PORT` | no | `587` | Its port: usually 587 for `starttls` and 465 for `tls`. |
 | `RESCORD_SMTP_TLS` | no | `starttls` | `starttls`, `tls` (encrypted from the start), or `none` for a relay on the same machine or private network alone. With TLS, Rescord checks the certificate of the server. |
@@ -266,6 +279,9 @@ take, stop the start with the name of the setting.
 `GET /health` answers `ok` while Rescord and its database work, and the
 Docker image and the Compose file use it.
 
+The assistant has no setting here, and no other setting of this list is
+for it (see "The assistant, Ruby").
+
 ## Back up
 
 Each way of installing backs Rescord up by itself, each day (ADR 0050). A
@@ -278,7 +294,9 @@ The backups are on the server. Copy them to another place each day too,
 with the secrets: the environment file or `.env`. A backup does not hold
 the secrets, and without `RESCORD_KEY_SECRET`, Rescord cannot open the keys
 of the transfers between servers, and each partner must record a new
-partner card. Try a restore on another machine one time.
+partner card. It cannot open the key of a provider of the assistant
+either, and a root user must type that key again. Try a restore on
+another machine one time.
 
 - **Docker Compose**: the service `backup` backs up into `./backups` when it
   starts and then each 24 hours. `docker compose run --rm backup now` makes
@@ -409,6 +427,74 @@ A name in the old store that Rescord did not make, such as the
 `lost+found` of a volume, stays there, and the report names it. The
 command does not move the files of one bucket into another bucket: move
 them through a directory.
+
+## Change the secret of the keys
+
+`RESCORD_KEY_SECRET` encrypts what Rescord keeps secret in its database:
+the private keys of the transfers between servers, and the key of each
+provider of the assistant. To give the server a new secret, for example
+after a person who knew it has left:
+
+1. Make a backup, and make the new secret: `openssl rand -base64 48`.
+2. Put the new secret in `RESCORD_KEY_SECRET`, and the old one in
+   `RESCORD_KEY_SECRET_PREVIOUS`. Start Rescord again. It now reads what
+   either secret encrypted, and encrypts with the new one.
+3. Run `bin/rotate-vault`, in the way of your install:
+
+   ```sh
+   docker compose exec rescord bin/rotate-vault     # Docker Compose
+   rescord-rotate-vault                             # NixOS, as root
+   rescord rotate-vault                             # the tarball, with the `rescord` function of the install steps
+   ```
+
+   It encrypts each value of the old secret again with the new one, and
+   prints how many. It prints no secret. A second run changes nothing.
+4. Run `bin/check`. Its line `vault` says when no value needs the old
+   secret any more.
+5. Take `RESCORD_KEY_SECRET_PREVIOUS` out, and start Rescord again. Keep
+   the new secret with the backups. A backup from before the change needs
+   the old secret: keep that one with those backups, until they are gone.
+
+A value that neither secret opens stays as it is, and the command says so
+and exits with 1. A key of a provider that does not open is typed again on
+its page. The keys of the transfers of a refuge that do not open cannot be
+made again by a command: restore the secret that encrypted them.
+
+## The assistant, Ruby
+
+Ruby is an optional assistant for the members of a rescue (ADR 0069).
+Rescord works in full without it, and a server sends nothing to any
+service of a language model until a root user sets one up. The work comes
+in steps: this version has the settings of the server alone, and no
+member can ask Ruby anything yet.
+
+**Ruby has no setting in the environment**, and none in a file of the
+server. A root user of Rescord sets it on the page `/root/ruby`:
+
+1. Add a provider: the service that runs the model (Anthropic, Claude on
+   Amazon Bedrock, Ollama on a machine of your own, or another server
+   that speaks the chat API of OpenAI), the model, and the key of the
+   service.
+2. Press "Test". Rescord sends one small request with the word "ping" and
+   no record of a rescue. It costs a part of a cent at a hosted service.
+3. Tick "An organisation can choose this provider" when the test passes.
+
+The page says where the records of a question go with each provider, in
+the words that an administrator of an organisation reads before they
+turn Ruby on.
+
+**The key of a provider** is encrypted in the database with
+`RESCORD_KEY_SECRET`. No page shows it again: only its last four
+characters and the day that it was set. It is in no file, no log and no
+history of Rescord.
+
+- To change it, type the new key into the field of the provider and save.
+  Then revoke the old key at the service: Rescord cannot do that.
+- To remove a provider deletes its key from Rescord.
+- Set a spend limit at the service too, for the account or the workspace
+  of the key. It holds whatever Rescord counts.
+- A backup of the database holds the key in its encrypted form. Without
+  `RESCORD_KEY_SECRET` nobody opens it.
 
 ## Upgrade
 

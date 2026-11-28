@@ -30,6 +30,54 @@ defmodule Rescord.ReleaseTest do
     assert output =~ "Rescord has a root user already."
   end
 
+  describe "the change of the secret of the server" do
+    import Rescord.AccountsFixtures
+    import Rescord.RubyFixtures
+
+    @old "the secret that the server had before, 32 bytes"
+    @new "the secret that the server has now, 32 bytes long"
+
+    test "encrypts each value again, says the counts, and prints no secret" do
+      secrets!(@old)
+      root = root!()
+      provider = provider!(root)
+      organisation = organisation!(root)
+      keys = Rescord.Transfers.Keys.of(organisation)
+      secrets!(@new, @old)
+
+      output = capture_io(fn -> assert :ok = Release.rotate_vault() end)
+
+      assert output =~
+               "The secrets of the settings: 1 encrypted again, 0 had the secret of today, 0 open with neither secret."
+
+      assert output =~
+               "The keys of the transfers: 1 encrypted again, 0 had the secret of today, 0 open with neither secret."
+
+      assert output =~ "Take RESCORD_KEY_SECRET_PREVIOUS out now"
+      for secret <- [@old, @new, key()], do: refute(output =~ secret)
+
+      # The old secret can go.
+      secrets!(@new)
+      assert {:ok, %{api_key: opened}} = Rescord.Ruby.LLM.profile_of(provider)
+      assert opened == key()
+      assert Rescord.Transfers.Keys.of(organisation) == keys
+
+      output = capture_io(fn -> assert :ok = Release.rotate_vault() end)
+      assert output =~ "The secrets of the settings: 0 encrypted again, 1 had the secret of today"
+      assert output =~ "RESCORD_KEY_SECRET_PREVIOUS is not set"
+    end
+
+    test "says that a value opens with neither secret, and fails" do
+      secrets!(@old)
+      provider!(root!())
+      secrets!(@new)
+
+      output = capture_io(fn -> assert :error = Release.rotate_vault() end)
+      assert output =~ "0 encrypted again, 0 had the secret of today, 1 open with neither secret."
+      assert output =~ "Some values open with neither secret"
+    end
+  end
+
   describe "the move of the files" do
     @describetag :tmp_dir
 

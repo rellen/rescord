@@ -48,8 +48,13 @@ self:
 
     machine.wait_for_unit("postfix.service")
     report = machine.succeed("rescord-check root@localhost")
-    for line in ["ok    database", "ok    migrations", "ok    store", "ok    mail", "ok    email", "Rescord is ready."]:
+    for line in ["ok    database", "ok    migrations", "ok    store", "ok    mail", "ok    vault", "note  assistant", "ok    email", "Rescord is ready."]:
         assert line in report, f"{line!r} is not in the report:\n{report}"
+
+    # The change of the secret of the keys (ADR 0068): with no previous
+    # secret, the command reads each value and changes none.
+    rotated = machine.succeed("rescord-rotate-vault")
+    assert "0 open with neither secret" in rotated, f"the command printed:\n{rotated}"
     machine.wait_until_succeeds("grep -rl 'Rescord can send mail' /var/spool/mail /var/lib/postfix 2>/dev/null", timeout=120)
 
     machine.succeed("echo 'a file of the store' > /var/lib/rescord/files/probe.txt")

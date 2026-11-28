@@ -37,6 +37,8 @@ if config_env() == :dev do
   # The secret that guards the private keys of the refuges of this machine
   # (ADR 0043). It is no secret on a machine for development.
   config :rescord, Rescord.Transfers.Keys, secret: "the secret of the development keys, 32 bytes"
+  # The same secret gives the key of the vault of the settings (ADR 0068).
+  config :rescord, Rescord.Vault, secret: "the secret of the development keys, 32 bytes"
 
   config :rescord, Rescord.Storage.S3,
     endpoint: Shoddy.Env.string("GARAGE_S3_ENDPOINT", default: "http://127.0.0.1:3900"),
@@ -89,8 +91,21 @@ if config_env() == :prod do
   # Make each secret with `mix phx.gen.secret`, which gives 64 bytes.
   # The secret that guards the private keys of the refuges (ADR 0043). A
   # refuge keeps it with its backups: another secret cannot open the keys.
+  #
+  # The same secret gives the key of the vault, which encrypts each secret
+  # of a settings resource (ADR 0068). RESCORD_KEY_SECRET_PREVIOUS holds the
+  # old secret only while the secret changes: Rescord then reads what
+  # either secret wrote, and `bin/rotate-vault` writes it again.
+  key_secret = Shoddy.Env.string("RESCORD_KEY_SECRET", min_bytes: 32)
+
+  previous_key_secret =
+    Shoddy.Env.string("RESCORD_KEY_SECRET_PREVIOUS", default: nil, min_bytes: 32)
+
   config :rescord, Rescord.Transfers.Keys,
-    secret: Shoddy.Env.string("RESCORD_KEY_SECRET", min_bytes: 32)
+    secret: key_secret,
+    previous_secret: previous_key_secret
+
+  config :rescord, Rescord.Vault, secret: key_secret, previous_secret: previous_key_secret
 
   # The photos that go through libvips at the same time (ADR 0056). Each can
   # take 150 MB to 300 MB while it works.

@@ -470,7 +470,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - **No setting of Ruby is a variable of the environment or a line of
     application config.** A provider is a row of `Rescord.Ruby.Provider`,
     and its key is under AshCloak in `Rescord.Vault`. Only
-    `Rescord.Ruby.LLM.profile/1` decrypts a key. No page, no tool, no
+    `Rescord.Ruby.LLM.profile_of/1` decrypts a key. No page, no tool, no
     version row and no line of the log holds one.
   - **Each request goes through `Rescord.Ruby.LLM.Client`**, with the
     options of `Rescord.Ruby.LLM.Profile`. The system prompt is one
@@ -478,7 +478,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
     the prompt and the stored turns never change: the messages only grow.
   - **No test calls a provider.** Use `Rescord.Ruby.ScriptedModel`, or
     `Rescord.FakeAnthropic` on `127.0.0.1`. The evaluation run is a Mix
-    task, outside `mix test` and CI.
+    task, outside `mix test` and CI. `config/test.exs` names the scripted
+    model under `:ruby_llm`. That line is a seam for the tests, and
+    `Rescord.Ruby.LLM.Client` is its one reader: add no other.
   - **Never log the text of a conversation**, a prompt, the arguments of a
     tool or its result. Log the ids, the names, the counts and the reason
     of a failure as an atom, never an error struct of ReqLLM: it holds the
@@ -566,6 +568,8 @@ hand (ADR 0073). Read it before you write a migration. In short:
   (`push_navigate` to its own path). Read each field of the form with
   `non_blank/1` of `Shoddy.Strings`, which each LiveView imports: it
   returns `nil` for a blank field and for a value that is not text.
+  A line of help for one field is the `hint` of `<.input>`, which ties
+  the line to the field with `aria-describedby`.
   `<.problems list={@problems} />` says
   what an action refused. Draw it in the form that the person sent when
   that form is far down the page, and below the header in each other case.
@@ -685,6 +689,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/dosage.ex` | the arithmetic of a dose, for the dose calculator of the tools (ADR 0072) |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
+| `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, and the one module that sends a request (ADR 0069) |
+| `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
@@ -699,7 +706,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore` and `move-storage` (ADR 0044, ADR 0049, ADR 0050, ADR 0059) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage` and `rotate-vault` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068) |
 | `platform/lib/rescord/storage.ex`, `storage/` | the stores of the files, a directory and a bucket of S3, and the move from one into the other (ADR 0038, ADR 0059) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |

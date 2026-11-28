@@ -63,22 +63,91 @@ defmodule Rescord.Transfers.Keys do
   end
 
   defp open(record) do
-    with {:ok, sign_private} <- Crypto.unwrap(record.sign_private, secret()),
-         {:ok, box_private} <- Crypto.unwrap(record.box_private, secret()) do
-      %{
-        sign_public: record.sign_public,
-        sign_private: sign_private,
-        box_public: record.box_public,
-        box_private: box_private
-      }
-    else
+    case unwrap(record) do
+      {:ok, _secret, sign_private, box_private} ->
+        %{
+          sign_public: record.sign_public,
+          sign_private: sign_private,
+          box_public: record.box_public,
+          box_private: box_private
+        }
+
       :error ->
         raise "the keys of refuge #{record.organisation_id} do not open with the secret of this server"
     end
   end
 
+  # The secret of today first, then the previous one while the secret of
+  # the server changes (ADR 0068). Says which secret opened the keys.
+  defp unwrap(record) do
+    Enum.find_value(secrets(), :error, fn secret ->
+      with {:ok, sign_private} <- Crypto.unwrap(record.sign_private, secret),
+           {:ok, box_private} <- Crypto.unwrap(record.box_private, secret) do
+        {:ok, secret, sign_private, box_private}
+      else
+        :error -> nil
+      end
+    end)
+  end
+
   defp secret do
     :rescord |> Application.fetch_env!(__MODULE__) |> Keyword.fetch!(:secret)
+  end
+
+  defp secrets do
+    previous = :rescord |> Application.fetch_env!(__MODULE__) |> Keyword.get(:previous_secret)
+    [secret() | List.wrap(previous)]
+  end
+
+  @typedoc "What `count/0` and `rewrap/0` found, as numbers of refuges."
+  @type report :: %{current: non_neg_integer, previous: non_neg_integer, sealed: non_neg_integer}
+
+  @doc """
+  Counts the refuges by the secret that opens their keys: the secret of
+  today, the previous secret, or none. It changes nothing.
+  """
+  @spec count() :: report
+  def count, do: visit(false)
+
+  @doc """
+  Encrypts again, with the secret of today, the keys that the previous
+  secret of the server encrypted, and returns the counts as they were
+  before (ADR 0068). `bin/rotate-vault` runs it. A second run changes
+  nothing.
+  """
+  @spec rewrap() :: report
+  def rewrap, do: visit(true)
+
+  defp visit(write?) do
+    current = secret()
+
+    RefugeKey
+    |> Ash.read!(authorize?: false)
+    |> Enum.reduce(%{current: 0, previous: 0, sealed: 0}, fn record, report ->
+      case unwrap(record) do
+        {:ok, ^current, _sign_private, _box_private} ->
+          Map.update!(report, :current, &(&1 + 1))
+
+        {:ok, _previous, sign_private, box_private} ->
+          if write? do
+            record
+            |> Ash.Changeset.for_update(
+              :rewrap,
+              %{
+                sign_private: Crypto.wrap(sign_private, current),
+                box_private: Crypto.wrap(box_private, current)
+              },
+              authorize?: false
+            )
+            |> Ash.update!()
+          end
+
+          Map.update!(report, :previous, &(&1 + 1))
+
+        :error ->
+          Map.update!(report, :sealed, &(&1 + 1))
+      end
+    end)
   end
 
   @doc "The partner card of a refuge: one line of text, with no secret in it."

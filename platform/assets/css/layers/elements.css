@@ -481,7 +481,8 @@ fieldset
   color: var(--muted);
 }
 
-:has(> [aria-invalid="true"], > label > [aria-invalid="true"]) > small {
+/* A hint stays a hint beside an error. */
+:has(> [aria-invalid="true"], > label > [aria-invalid="true"]) > small:not([data-hint]) {
   font-weight: 600;
   color: var(--alert);
 }

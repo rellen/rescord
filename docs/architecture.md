@@ -578,6 +578,14 @@ A resource with a secret is not temporal, its paper trail leaves the
 encrypted attribute out, and a page never shows the secret again. One
 function of the domain decrypts it.
 
+The secret of the server can change. A value of the vault starts with the
+id of its key, so a server with `RESCORD_KEY_SECRET_PREVIOUS` reads the
+values of both secrets and writes with the new one. `bin/rotate-vault`
+then writes each value of the old secret again: the secrets of the
+settings (`Rescord.Vault.rotate/0`) and the private keys of the transfers
+(`Rescord.Transfers.rewrap_keys/0`). `bin/check` counts what still needs
+the old secret.
+
 The settings of today move in releases of their own. The store of the
 files is still in the environment.
 

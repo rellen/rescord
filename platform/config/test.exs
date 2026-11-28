@@ -44,6 +44,9 @@ config :rescord, :storage, Rescord.Storage.Disk
 
 # The secret that guards the private keys of the refuges (ADR 0043).
 config :rescord, Rescord.Transfers.Keys, secret: "the secret of the test keys, 32 bytes or more"
+
+# The same secret gives the key of the vault of the settings (ADR 0068).
+config :rescord, Rescord.Vault, secret: "the secret of the test keys, 32 bytes or more"
 config :rescord, Rescord.Storage.Disk, root: Path.join(System.tmp_dir!(), "rescord-test-store")
 
 # Disable swoosh api client as it is only required for production adapters
@@ -91,3 +94,7 @@ config :phoenix_test,
       # the pool: with its default pool, the launch has the 4 seconds.
       browser_pools: [[id: :default_pool]]
     ] ++ chromium
+
+# A request of the assistant goes to a scripted model (ADR 0069). This is a
+# seam for the tests and no setting: no test reaches a provider.
+config :rescord, :ruby_llm, Rescord.Ruby.ScriptedModel

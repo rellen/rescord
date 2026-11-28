@@ -116,6 +116,118 @@ defmodule Rescord.Release.CheckTest do
     end
   end
 
+  describe "the vault" do
+    import Rescord.AccountsFixtures
+    import Rescord.RubyFixtures
+
+    @old "the secret that the server had before, 32 bytes"
+    @new "the secret that the server has now, 32 bytes long"
+
+    test "has nothing on a new server" do
+      assert {:ok, "vault", "no encrypted value yet"} = Check.vault()
+    end
+
+    test "counts the secrets of the settings and the keys of the transfers" do
+      root = root!()
+      provider!(root)
+      assert {:ok, "vault", "the one encrypted value opens with the secret" <> _} = Check.vault()
+
+      Rescord.Transfers.Keys.of(organisation!(root))
+
+      assert {:ok, "vault", "each of the 2 encrypted values opens with the secret of this server"} =
+               Check.vault()
+    end
+
+    test "says what to do while the secret of the server changes" do
+      secrets!(@old)
+      root = root!()
+      provider!(root)
+      Rescord.Transfers.Keys.of(organisation!(root))
+      secrets!(@new, @old)
+      provider!(root, %{name: "Another one"})
+
+      assert {:note, "vault", words} = Check.vault()
+
+      assert words ==
+               "2 of 3 encrypted values open with the previous secret alone: run bin/rotate-vault"
+
+      Rescord.Vault.rotate()
+      Rescord.Transfers.rewrap_keys()
+
+      assert {:note, "vault", words} = Check.vault()
+
+      assert words ==
+               "each of the 3 encrypted values opens with the secret of today: " <>
+                 "take RESCORD_KEY_SECRET_PREVIOUS out"
+    end
+
+    test "fails for a value that no secret of the server opens, and names no secret" do
+      secrets!(@old)
+      provider!(root!())
+      secrets!(@new)
+
+      assert {:fail, "vault", words} = Check.vault()
+      assert words =~ "1 of 1 encrypted values opens with no secret of this server"
+      refute words =~ @old
+      refute words =~ @new
+    end
+  end
+
+  describe "the assistant" do
+    import Rescord.AccountsFixtures
+    import Rescord.RubyFixtures
+
+    alias Rescord.Ruby
+    alias Rescord.Ruby.ScriptedModel
+
+    test "has no provider on a new server" do
+      assert [{:note, "assistant", "no provider yet. A root user adds one at /root/ruby"}] =
+               Check.assistant()
+    end
+
+    test "has a line for each provider, with its place, and no key" do
+      root = root!()
+      provider = provider!(root)
+
+      place =
+        "Anthropic: the model claude-opus-5-5, records go to Anthropic, in the United States and other countries"
+
+      assert [{:note, "assistant", words}] = Check.assistant()
+      assert words == place <> ". Not offered to an organisation"
+
+      {:ok, provider} = Ruby.change_provider(provider, %{offered: true}, actor: root)
+      assert [{:note, "assistant", words}] = Check.assistant()
+      assert words == place <> ". Never tested: press Test at /root/ruby"
+
+      ScriptedModel.script([{:text, "pong"}, {:error, %{status: 401}}])
+      {:ok, provider} = Ruby.test_provider(provider, actor: root)
+      day = Calendar.strftime(provider.tested_at, "%-d %B %Y")
+      assert [{:ok, "assistant", words}] = Check.assistant()
+      assert words == place <> ". The last test passed on #{day}"
+
+      {:ok, _provider} = Ruby.test_provider(provider, actor: root)
+      assert [{:fail, "assistant", words}] = Check.assistant()
+      assert words == place <> ". The last test failed on #{day}: key_refused"
+
+      shed = %{name: "The shed server", kind: :ollama, model: "a-model", api_key: nil}
+      provider!(root, shed)
+      assert [_anthropic, {:note, "assistant", words}] = Check.assistant()
+      assert words =~ "The shed server: the model a-model, records go to this server"
+
+      refute inspect(Check.assistant()) =~ key()
+      # No line sent a request: the script had two steps, for the two tests.
+      assert length(ScriptedModel.requests()) == 2
+    end
+
+    test "fails for a provider that an older rule saved, or that lost its key" do
+      provider!(root!())
+      Repo.query!("update ruby_providers set key_set_at = null, encrypted_api_key = null")
+
+      assert [{:fail, "assistant", words}] = Check.assistant()
+      assert words =~ "countries: this service needs a key"
+    end
+  end
+
   test "the report names each check, and passes only with no fault" do
     report = Check.format([{:ok, "database", "PostgreSQL 18.1"}, {:fail, "store", "no"}])
     assert report =~ "ok    database   PostgreSQL 18.1"

@@ -1,6 +1,7 @@
 defmodule RescordWeb.RootLive do
   @moduledoc """
-  The page of a root user: the organisations, and the root users.
+  The page of a root user: the organisations, and the root users, with a
+  line for the assistant (ADR 0069).
 
   A root user creates an organisation here, which makes its schema, and makes
   another user a root user. The live session lets only a root user in.
@@ -9,8 +10,9 @@ defmodule RescordWeb.RootLive do
   use RescordWeb, :live_view
 
   import RescordWeb.AccountComponents
+  import RescordWeb.RubyComponents, only: [root_line: 1]
 
-  alias Rescord.Accounts
+  alias Rescord.{Accounts, Ruby}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -19,6 +21,7 @@ defmodule RescordWeb.RootLive do
      |> assign(page_title: "Root", problems: [], time_zones: Accounts.time_zones())
      |> assign_organisation_form(%{"name" => "", "short_name" => "", "time_zone" => ""})
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
+     |> assign(providers: Ruby.providers!(actor: socket.assigns.current_user))
      |> assign_roots()}
   end
 
@@ -110,6 +113,7 @@ defmodule RescordWeb.RootLive do
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
       <p><a href={~p"/root/lists"}>See the shared lists of values</a>.</p>
+      <.root_line providers={@providers} />
 
       <.organisations
         current_user={@current_user}

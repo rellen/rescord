@@ -38,6 +38,7 @@ defmodule RescordWeb do
       Rescord.Tasks,
       Rescord.Inventory,
       Rescord.Transfers,
+      Rescord.Ruby,
       Rescord.Export,
       Rescord.Attention,
       Rescord.Mail

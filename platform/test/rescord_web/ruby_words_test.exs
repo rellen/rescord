@@ -1,0 +1,131 @@
+defmodule RescordWeb.RubyWordsTest do
+  @moduledoc """
+  Holds the words of the assistant to the fixed lists (ADR 0069): each
+  service of a provider, each effort and each reason of a failure has
+  words, and the words name no value that a list does not have. It holds
+  also the amounts of money of the form of a provider.
+  """
+
+  use ExUnit.Case, async: true
+
+  alias Rescord.Ruby.Provider
+  alias Rescord.Ruby.Reason
+  alias RescordWeb.RubyWords
+
+  defp values(attribute),
+    do: Ash.Resource.Info.attribute(Provider, attribute).constraints[:one_of]
+
+  test "each service has words, and a path names no other service" do
+    kinds = Keyword.keys(RubyWords.services())
+    assert Enum.sort(kinds) == Enum.sort(values(:kind))
+
+    for kind <- kinds do
+      refute RubyWords.service(kind) =~ "_"
+      assert RubyWords.about(kind) =~ ~r/\.$/
+      assert RubyWords.service_of(Atom.to_string(kind)) == {:ok, kind}
+    end
+
+    assert RubyWords.service_of("no_such_service") == :error
+    assert RubyWords.service_of(nil) == :error
+  end
+
+  test "each effort has a word" do
+    efforts = for {_words, value} <- RubyWords.efforts(), do: value
+    assert Enum.sort(efforts) == values(:effort) |> Enum.map(&Atom.to_string/1) |> Enum.sort()
+    for {words, _value} <- RubyWords.efforts(), do: refute(words =~ "_")
+  end
+
+  test "each reason of a failure has a sentence" do
+    for reason <- Reason.all() do
+      sentence = RubyWords.failure(reason)
+      assert sentence =~ ~r/\.$/, "the sentence of #{reason} ends with a full stop"
+      refute sentence =~ "_"
+    end
+
+    # The result of a test is `:ok` or a reason, and nothing else.
+    assert Enum.sort(values(:test_result)) == Enum.sort([:ok | Reason.all()])
+  end
+
+  test "the state of the last test is a kind and a word" do
+    assert RubyWords.test_state(%{tested_at: nil, test_result: nil}) == {"none", "Not tested"}
+    now = DateTime.utc_now()
+    assert RubyWords.test_state(%{tested_at: now, test_result: :ok}) == {"ok", "Answered"}
+
+    for reason <- Reason.all() do
+      assert RubyWords.test_state(%{tested_at: now, test_result: reason}) == {"alert", "Failed"}
+    end
+  end
+
+  test "the words of a key never hold more than its hint" do
+    set_at = ~U[2026-03-03 09:14:00.000000Z]
+
+    assert RubyWords.key(%{kind: :ollama, key_set_at: nil, key_hint: nil}) == "Takes no key"
+    assert RubyWords.key(%{kind: :anthropic, key_set_at: nil, key_hint: nil}) == "No key"
+
+    assert RubyWords.key(%{kind: :anthropic, key_set_at: set_at, key_hint: nil}) ==
+             "Set on 3 March 2026"
+
+    assert RubyWords.key(%{kind: :anthropic, key_set_at: set_at, key_hint: "wxyz"}) ==
+             "Ends in wxyz, set on 3 March 2026"
+
+    assert RubyWords.time(set_at) == "3 March 2026 at 09:14 UTC"
+  end
+
+  test "the hint of the key field says to type the key again only after a refusal" do
+    refute RubyWords.key_hint(nil, :anthropic, false) =~ "Type it again"
+    assert RubyWords.key_hint(nil, :anthropic, true) =~ "Type it again"
+
+    assert RubyWords.key_hint(nil, :openai_compatible, false) =~ "asks for no key"
+    refute RubyWords.key_hint(nil, :anthropic, false) =~ "asks for no key"
+
+    kept = %{key_set_at: ~U[2026-03-03 09:14:00.000000Z], key_hint: "wxyz"}
+    assert RubyWords.key_hint(kept, :anthropic, false) =~ "ends in wxyz"
+    refute RubyWords.key_hint(kept, :openai_compatible, false) =~ "asks for no key"
+  end
+
+  test "an amount in cents reads as dollars, and back" do
+    assert RubyWords.dollars(nil) == ""
+    assert RubyWords.dollars(2000) == "20"
+    assert RubyWords.dollars(1250) == "12.50"
+    assert RubyWords.dollars(5) == "0.05"
+
+    assert RubyWords.cents("20") == {:ok, 2000}
+    assert RubyWords.cents(" 12.50 ") == {:ok, 1250}
+    assert RubyWords.cents("0.05") == {:ok, 5}
+    assert RubyWords.cents("0") == {:ok, 0}
+
+    for cents <- [0, 5, 99, 100, 1250, 2000, 123_456] do
+      assert cents |> RubyWords.dollars() |> RubyWords.cents() == {:ok, cents}
+    end
+  end
+
+  test "a price for a million tokens reads as dollars, and back" do
+    assert RubyWords.price(nil) == ""
+    assert RubyWords.price(4_000_000) == "4"
+    assert RubyWords.price(100_000) == "0.1"
+    assert RubyWords.price(0) == "0"
+
+    assert RubyWords.millionths("4") == {:ok, 4_000_000}
+    assert RubyWords.millionths("0.1") == {:ok, 100_000}
+
+    for millionths <- [0, 1, 100_000, 4_000_000, 25_000_000] do
+      assert millionths |> RubyWords.price() |> RubyWords.millionths() == {:ok, millionths}
+    end
+  end
+
+  test "an amount that Rescord cannot keep exactly is refused, and not rounded" do
+    assert RubyWords.cents("12.505") == :error
+    assert RubyWords.millionths("0.0000001") == :error
+  end
+
+  test "what is no amount is refused" do
+    for text <- ["", " ", "abc", "-1", "1e3x", "12,50", "$20", "NaN", "Infinity", "-0.01"] do
+      assert RubyWords.cents(text) == :error, "#{inspect(text)} is no amount"
+    end
+
+    assert RubyWords.cents(nil) == :error
+    assert RubyWords.cents(20) == :error
+    # Too large for a column of a whole number of cents to be of any use.
+    assert RubyWords.cents("100000000000") == :error
+  end
+end

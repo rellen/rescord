@@ -7,7 +7,7 @@ defmodule Rescord.Application do
 
   # The application starts both the core and the web layer, so it is a
   # boundary of its own, outside the core (ADR 0009).
-  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, RescordWeb]
+  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, Rescord.Ruby, RescordWeb]
 
   @impl true
   def start(_type, _args) do
@@ -38,6 +38,9 @@ defmodule Rescord.Application do
       # The slots of libvips (ADR 0056): only a few photos go through it at
       # the same time, so that a batch of large photos cannot fill the memory.
       Rescord.Images.Limit,
+      # The model catalogue of the assistant, when the server has a provider
+      # (ADR 0069). The task runs one time, and is not started again.
+      Supervisor.child_spec({Task, &Rescord.Ruby.warm_up/0}, id: :ruby_warm_up),
       # Start to serve requests, typically the last entry
       RescordWeb.Endpoint
     ]

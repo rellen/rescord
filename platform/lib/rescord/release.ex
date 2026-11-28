@@ -25,9 +25,22 @@ defmodule Rescord.Release do
   `move_storage/2` copies the files of one store into the other, for a
   server that changes its store (`Rescord.Storage.Move`, ADR 0059).
   `bin/move-storage` runs it.
+
+  `rotate_vault/0` encrypts again, with the secret of today, what the
+  previous secret of the server encrypted (ADR 0068). `bin/rotate-vault`
+  runs it.
   """
 
-  use Boundary, top_level?: true, deps: [Rescord, Rescord.Accounts, Rescord.Mail]
+  use Boundary,
+    top_level?: true,
+    deps: [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Mail,
+      Rescord.Ruby,
+      Rescord.Transfers,
+      Rescord.Vault
+    ]
 
   alias Rescord.Storage.Move
 
@@ -132,6 +145,53 @@ defmodule Rescord.Release do
     end
   end
 
+  @doc """
+  Encrypts again, with the secret of today, each value that the previous
+  secret of the server encrypted: the secrets of the settings in
+  `Rescord.Vault`, and the private keys of the transfers (ADR 0068). It
+  prints the counts, and no value.
+
+  A change of `RESCORD_KEY_SECRET` has three steps: start Rescord with the
+  new secret and with the old one as `RESCORD_KEY_SECRET_PREVIOUS`, run
+  this, and take the second setting out. A second run changes nothing. A
+  value that neither secret opens stays as it is, and the result is
+  `:error`.
+  """
+  @spec rotate_vault() :: :ok | :error
+  def rotate_vault do
+    load_app()
+    start_repo()
+
+    values = Rescord.Vault.rotate()
+    keys = Rescord.Transfers.rewrap_keys()
+
+    IO.puts(rotated("The secrets of the settings", values))
+    IO.puts(rotated("The keys of the transfers", keys))
+
+    cond do
+      values.sealed + keys.sealed > 0 ->
+        IO.puts(
+          "\nSome values open with neither secret, and stay as they are. " <>
+            "Give the secret that encrypted them as RESCORD_KEY_SECRET_PREVIOUS, and run this again."
+        )
+
+        :error
+
+      is_binary(Application.fetch_env!(@app, Rescord.Vault)[:previous_secret]) ->
+        IO.puts("\nTake RESCORD_KEY_SECRET_PREVIOUS out now, and start Rescord again.")
+        :ok
+
+      true ->
+        IO.puts("\nRESCORD_KEY_SECRET_PREVIOUS is not set: there was nothing to encrypt again.")
+        :ok
+    end
+  end
+
+  defp rotated(name, report) do
+    "#{name}: #{report.previous} encrypted again, " <>
+      "#{report.current} had the secret of today, #{report.sealed} open with neither secret."
+  end
+
   defp store("disk"), do: {:ok, Rescord.Storage.Disk}
   defp store("s3"), do: {:ok, Rescord.Storage.S3}
   defp store(_other), do: :error
@@ -158,6 +218,19 @@ defmodule Rescord.Release do
     # Many platforms need SSL when they connect to the database.
     Application.ensure_all_started(:ssl)
     Application.ensure_loaded(@app)
+  end
+
+  # The repository with a small pool, and not the application: its jobs
+  # would run.
+  defp start_repo do
+    for app <- [:ecto_sql, :postgrex, :ash] do
+      {:ok, _apps} = Application.ensure_all_started(app)
+    end
+
+    case Rescord.Repo.start_link(pool_size: 2) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+    end
   end
 
   defp start_app do

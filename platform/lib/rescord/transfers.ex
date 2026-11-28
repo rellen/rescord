@@ -254,6 +254,22 @@ defmodule Rescord.Transfers do
   def card(organisation), do: {Keys.card(organisation), Keys.fingerprint(organisation)}
 
   @doc """
+  Counts the refuges by the secret that opens their private keys: the
+  secret of this server, its previous secret, or none (ADR 0068).
+  `bin/check` shows it. It changes nothing, and returns no key.
+  """
+  @spec count_keys() :: Keys.report()
+  def count_keys, do: Keys.count()
+
+  @doc """
+  Encrypts again, with the secret of this server, the private keys that
+  its previous secret encrypted, and returns the counts as they were
+  before (ADR 0068). `bin/rotate-vault` runs it, with no person.
+  """
+  @spec rewrap_keys() :: Keys.report()
+  def rewrap_keys, do: Keys.rewrap()
+
+  @doc """
   A file of the copy of a transfer, and its bytes, when the actor can read
   the transfer of the organisation and its copy names the file. A file of
   an export is not kept on this server.

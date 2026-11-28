@@ -11,8 +11,8 @@
 # A backup is a dump of the database in ./backups/database, and a copy of
 # each new file in ./backups/files. Each dump older than
 # RESCORD_BACKUP_KEEP_DAYS days, 14 by default, is deleted. Keep .env with
-# the backups: without RESCORD_KEY_SECRET, the keys of the transfers do not
-# open.
+# the backups: without RESCORD_KEY_SECRET, the keys of the transfers and the
+# secrets of the settings do not open.
 set -eu
 
 dest=/backups

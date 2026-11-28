@@ -149,7 +149,8 @@ config :rescord,
     Rescord.Photos,
     Rescord.Tasks,
     Rescord.Inventory,
-    Rescord.Transfers
+    Rescord.Transfers,
+    Rescord.Ruby
   ],
   # Each domain other than the accounts holds its own grants (ADR 0024).
   grant_sources: [
@@ -231,7 +232,9 @@ config :rescord, :sign_in_page_url, {RescordWeb.SignInLink, :page}
 config :rescord, :mail_from, {"Rescord", "rescord@localhost"}
 
 # A token is a credential: Phoenix keeps it out of the log of a request.
-config :phoenix, :filter_parameters, ["password", "token"]
+# The key of a provider is one too (ADR 0068): its field has the name
+# `api_key`.
+config :phoenix, :filter_parameters, ["password", "token", "api_key"]
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

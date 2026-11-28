@@ -64,6 +64,10 @@ defmodule RescordWeb.Router do
     live_session :root, on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}] do
       live "/root", RootLive
       live "/root/lists", ListsLive, :shared
+      # The providers of the assistant (ADR 0069).
+      live "/root/ruby", RootRubyLive, :index
+      live "/root/ruby/new", RootRubyLive, :new
+      live "/root/ruby/:id", RootRubyLive, :provider
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
