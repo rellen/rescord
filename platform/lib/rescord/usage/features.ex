@@ -60,6 +60,8 @@ defmodule Rescord.Usage.Features do
     reports: :reports,
     residents: :residents,
     ruby: :assistant,
+    # The virus scan of the PDFs is a setting of the server (issue 37).
+    scan: :server,
     tasks: :tasks,
     transfers: :transfers
   }

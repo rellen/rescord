@@ -207,6 +207,8 @@ defmodule Rescord.ChangesTest do
           # The privacy settings of the server, which only a root user
           # changes, and which a notice reads at each request (ADR 0105).
           Rescord.Privacy.InstanceSettings,
+          # The virus scan of the server, which only a root user sets (issue 37).
+          Rescord.Storage.Scan.Settings,
           # The private keys of a refuge. No page waits for one.
           Rescord.Transfers.RefugeKey,
           # What the sanity checks found, which only the root page of the
