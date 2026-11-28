@@ -281,15 +281,15 @@ defmodule RescordWeb.ReportPagesTest do
     tomorrow = today |> Date.from_iso8601!() |> Date.add(1) |> Date.to_iso8601()
 
     for {path, params, words} <- [
-          {"register.pdf", %{"on" => "soon"}, "The date is not a date."},
+          {"register.pdf", %{"on" => "soon"}, "Give a date as a day, a month and a year."},
           {"register.pdf", %{"on" => tomorrow}, "The day is after today."},
-          {"tasks.pdf", %{"on" => "31/01/2026"}, "The date is not a date."},
-          {"movements.pdf", %{}, "Give the first day and the last day."},
-          {"movements.pdf", %{"from" => today}, "Give the first day and the last day."},
+          {"tasks.pdf", %{"on" => "31/01/2026"}, "Give a date as a day, a month and a year."},
+          {"movements.pdf", %{}, "Give a day in From and a day in To."},
+          {"movements.pdf", %{"from" => today}, "Give a day in From and a day in To."},
           {"movements.pdf", %{"from" => today, "to" => "2026-01-01"},
            "The last day is before the first day."},
           {"movements.pdf", %{"from" => today, "to" => tomorrow}, "The last day is after today."},
-          {"expenses.pdf", %{"to" => today}, "Give the first day and the last day."},
+          {"expenses.pdf", %{"to" => today}, "Give a day in From and a day in To."},
           {"expenses.pdf", %{"from" => today, "to" => "2026-01-01"},
            "The last day is before the first day."}
         ] do

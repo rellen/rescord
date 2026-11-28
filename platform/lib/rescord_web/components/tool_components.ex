@@ -178,7 +178,8 @@ defmodule RescordWeb.ToolComponents do
           hint={
             if @item && @from_item?,
               do: ToolWords.from_item(@item) <> " Check it against the label.",
-              else: "From the label. Leave it empty for the dose alone."
+              else:
+                "From the label. Leave it empty to get the dose alone, with no volume or number of tablets."
           }
         />
       </fieldset>

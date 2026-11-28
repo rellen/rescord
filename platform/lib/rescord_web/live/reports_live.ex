@@ -160,7 +160,7 @@ defmodule RescordWeb.ReportsLive do
 
       <section aria-labelledby="tasks-heading">
         <h2 id="tasks-heading"><.icon name={Icons.section(:tasks)} /> Tasks of a day</h2>
-        <p>The tasks that are due on one day, each with a box to tick, and the late ones.</p>
+        <p>The tasks that are due on one day, each with a box to tick, and the overdue ones.</p>
         <form id="task-sheet" action={~p"/o/#{@organisation.short_name}/reports/tasks.pdf"}>
           <.input id="task-sheet-on" name="on" type="date" label="Day" value={@today} required />
           <input type="hidden" name="paper" value={@paper_value} />
@@ -171,8 +171,8 @@ defmodule RescordWeb.ReportsLive do
       <section aria-labelledby="stock-heading">
         <h2 id="stock-heading"><.icon name={Icons.section(:inventory)} /> Stock</h2>
         <p>
-          The stock of each item with its lots, what needs somebody first, and a column for
-          a count.
+          The stock of each item and its lots: first the items to order, to count or that
+          expire soon, then the others, with a column to write a count.
         </p>
         <p>
           <a

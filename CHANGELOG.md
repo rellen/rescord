@@ -927,6 +927,16 @@ release (ADR 0047).
   residents in care have 3 ongoing conditions", and its filter of the
   state says "Ongoing or chronic". The resident page links to its
   measurements even before the first one (ADR 0108).
+- The pages of the tasks, the routines, the journal, the lists, the
+  calendar feeds, the reports and the export help more: "Count the days
+  from", the days ahead of a routine, the members of a task, the warning
+  days of an expiry, the day of an export and the notes of a feed have a
+  line of help, and an empty list says what to do next. The filter "Who"
+  of the tasks offers "Given to me" and "Open to anybody". The Lists page
+  says what its lists are for. A task past its time is "overdue" on every
+  page. A report or an export with a wrong date says "Give a date as a
+  day, a month and a year", and one with no range says "Give a day in
+  From and a day in To" (ADR 0108).
 
 ### Fixed
 

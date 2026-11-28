@@ -212,7 +212,9 @@ defmodule RescordWeb.ListsLive do
           its own lists.
         </:subtitle>
         <:subtitle :if={!@shared?}>
-          The values that {@organisation.name} uses to describe a resident.
+          The choices in the forms of {@organisation.name}: species, kinds of task, units, categories
+          of items and expenses, and more. Add a shared value of Rescord, or a local value of your
+          own. Retire a value to stop offering it: the records that have it keep it.
         </:subtitle>
       </.header>
 

@@ -189,7 +189,8 @@ defmodule RescordWeb.ListComponents do
           id={"soon-#{@value.id}-days"}
           name="soon[days]"
           type="number"
-          label={"Days before its expiry date in which a lot of #{@value.label} expires soon. No number: 30"}
+          label={"Days of warning before stock of #{@value.label} expires"}
+          hint="Leave it empty for 30 days."
           min="0"
           max="3650"
           value={@value.soon_days}
@@ -262,7 +263,7 @@ defmodule RescordWeb.ListComponents do
     <section aria-labelledby={"list-#{@list.key}"}>
       <h2 id={"list-#{@list.key}"}>{@list.name}</h2>
 
-      <p :if={@list.values == []}>The list is empty.</p>
+      <p :if={@list.values == []}>The list has no value yet.</p>
       <ul :if={@list.values != []}>
         <.list_value
           :for={value <- @list.values}

@@ -114,7 +114,9 @@ defmodule RescordWeb.CalendarComponents do
     ~H"""
     <section aria-labelledby="own-feeds-heading">
       <h2 id="own-feeds-heading">Your feeds</h2>
-      <p :if={@feeds == []} id="no-feeds">You have no feed.</p>
+      <p :if={@feeds == []} id="no-feeds">
+        You have no feed yet. Make one below, then give its address to your calendar app.
+      </p>
       <ul :if={@feeds != []} id="own-feeds">
         <li :for={feed <- @feeds} id={"feed-#{feed.id}"}>
           <.feed_words feed={feed} organisation={@organisation} />

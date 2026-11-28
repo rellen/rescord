@@ -207,7 +207,11 @@ defmodule RescordWeb.ResidentFormLive do
 
         <fieldset :for={{key, legend} <- @many}>
           <legend>{legend}</legend>
-          <p :if={@lists[key] == []}>The list is empty.</p>
+          <p :if={@lists[key] == []}>
+            This list has no value yet. An administrator adds them on <.link navigate={
+              ~p"/o/#{@organisation.short_name}/lists"
+            }>the lists page</.link>.
+          </p>
           <label :for={{label, id} <- @lists[key]}>
             <input
               type="checkbox"

@@ -93,7 +93,7 @@ defmodule RescordWeb.ResidentPagesTest do
       {view, html} = open(conn, ~p"/root/lists")
 
       assert html =~ "Species"
-      assert html =~ "The list is empty."
+      assert html =~ "The list has no value yet."
 
       {view, html} = submit(view, conn, "#add-species", value: %{name: "Guinea pig"})
       assert html =~ "Guinea pig"

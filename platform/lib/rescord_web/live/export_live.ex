@@ -77,7 +77,8 @@ defmodule RescordWeb.ExportLive do
             id="export-on"
             name="export[on]"
             type="date"
-            label="As of the end of"
+            label="Day"
+            hint="The export holds the data as it was at the end of this day."
             value={@today}
             max={@today}
             required
@@ -87,7 +88,8 @@ defmodule RescordWeb.ExportLive do
       </section>
 
       <p :if={!@can_export?} id="no-export">
-        Your role cannot export the data. An administrator can give a role the power to export.
+        Your role cannot export the data. An administrator can allow it for your role on the
+        page of the roles.
       </p>
     </Layouts.app>
     """

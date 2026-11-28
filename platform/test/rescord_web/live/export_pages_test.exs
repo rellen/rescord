@@ -44,7 +44,7 @@ defmodule RescordWeb.ExportPagesTest do
              ~s(input#export-on[type="date"][value="#{context.today}"][max="#{context.today}"])
            )
 
-    assert has_element?(view, ~s(label[for="export-on"]), "As of the end of")
+    assert has_element?(view, ~s(label[for="export-on"]), "Day")
     refute has_element?(view, "#no-export")
 
     conn = post(conn, context.path, %{"export" => %{"on" => context.today}})
@@ -80,7 +80,9 @@ defmodule RescordWeb.ExportPagesTest do
 
     conn = post(conn, context.path, %{"export" => %{"on" => "soon"}})
     assert redirected_to(conn) == context.path
-    assert Phoenix.Flash.get(conn.assigns.flash, :error) == "The date is not a date."
+
+    assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+             "Give a date as a day, a month and a year."
 
     tomorrow = context.today |> Date.from_iso8601!() |> Date.add(1) |> Date.to_iso8601()
 

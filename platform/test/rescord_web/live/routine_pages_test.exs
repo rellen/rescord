@@ -122,7 +122,7 @@ defmodule RescordWeb.RoutinePagesTest do
 
     test "say so when there is none", context do
       {_view, html} = open(context.conn, context.path)
-      assert html =~ "There is no routine yet."
+      assert html =~ "No routine yet."
     end
 
     test "say when one has not started, and when one is finished", context do
@@ -329,7 +329,7 @@ defmodule RescordWeb.RoutinePagesTest do
 
       {_view, html} = submit(view, context.conn, "#end-#{routine.id}", %{})
 
-      assert html =~ "There is no routine yet."
+      assert html =~ "No routine yet."
       assert {:ok, []} = Tasks.day(context.tomorrow, context.options)
     end
 

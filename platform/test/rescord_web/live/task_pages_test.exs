@@ -106,7 +106,7 @@ defmodule RescordWeb.TaskPagesTest do
       done = plan!(context, %{title: "Old and done", due_at: DateTime.add(from, -4, :hour)})
       {:ok, _} = Tasks.complete_task(done, %{}, context.options)
 
-      earlier = "The tasks of earlier days that are still due come first"
+      earlier = "The overdue tasks of earlier days come first"
 
       context.conn
       |> visit(context.path)

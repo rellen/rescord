@@ -93,7 +93,7 @@ defmodule RescordWeb.TaskComponents do
     <section id="day-tasks" aria-labelledby="day-heading">
       <h2 id="day-heading">Tasks of the day</h2>
       <p :if={@day == @today}>
-        The tasks of earlier days that are still due come first, each with its day.
+        The overdue tasks of earlier days come first, each with its day.
       </p>
       <Cinder.collection
         id="tasks"
@@ -108,14 +108,16 @@ defmodule RescordWeb.TaskComponents do
           field="who"
           type="select"
           label="Who"
-          prompt="Each person"
+          prompt="All tasks"
           options={who_options(@members)}
           fn={@for_person}
         />
         <:filter field="kind_id" type="select" label="Kind" prompt="Any kind" options={@kinds} />
         <:empty :let={found}>
           <p :if={found.filtered?}>No task matches the search and the filters.</p>
-          <p :if={not found.filtered?}>There is no task on this day.</p>
+          <p :if={not found.filtered?}>
+            There is no task on this day. Plan one with New task, or make tasks that repeat with a routine.
+          </p>
         </:empty>
         <:col :let={task} field="title" label="Task" search>
           <%!-- The place of a link from the first page or a calendar:
@@ -213,7 +215,7 @@ defmodule RescordWeb.TaskComponents do
 
   # The choices of the filter "Who": the person who reads, the tasks that
   # name no member, and each member.
-  defp who_options(members), do: [{"Me", "me"}, {"Anybody", "anybody"} | members]
+  defp who_options(members), do: [{"Given to me", "me"}, {"Open to anybody", "anybody"} | members]
 
   # Whether a task is of a day before the day of the page: it then shows
   # its day with its time.
@@ -266,8 +268,11 @@ defmodule RescordWeb.TaskComponents do
     assigns = assign(assigns, chosen: List.wrap(assigns.form[:assignee_ids].value))
 
     ~H"""
-    <fieldset id={"#{@name}-members"}>
-      <legend>Who does it: one of the members that you tick, or anybody</legend>
+    <fieldset id={"#{@name}-members"} aria-describedby={"#{@name}-members-hint"}>
+      <legend>Who does it</legend>
+      <small id={"#{@name}-members-hint"} data-hint>
+        Tick one or more members, or none so that anybody can. The task is done when one of them does it.
+      </small>
       <label :for={{email, id} <- @members}>
         <input type="checkbox" name={"#{@name}[assignee_ids][]"} value={id} checked={id in @chosen} />
         {email}

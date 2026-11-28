@@ -133,7 +133,7 @@ defmodule RescordWeb.JournalComponents do
           :if={@kind == :prescription}
           field={@form[:route]}
           type="select"
-          label="Route"
+          label="How it is given"
           prompt="Not recorded"
           options={JournalWords.options(:route)}
         />

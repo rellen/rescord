@@ -77,7 +77,7 @@ defmodule RescordWeb.ReportController do
         |> Reports.movements(to, paper(params), options)
         |> answer(conn, organisation, "movements-#{from}-to-#{to}.pdf")
       else
-        {:ok, nil} -> {:error, "Give the first day and the last day."}
+        {:ok, nil} -> {:error, "Give a day in From and a day in To."}
         error -> error
       end
     end)
@@ -121,7 +121,7 @@ defmodule RescordWeb.ReportController do
         |> Reports.expenses(to, paper(params), options)
         |> answer(conn, organisation, "expenses-#{from}-to-#{to}.pdf")
       else
-        {:ok, nil} -> {:error, "Give the first day and the last day."}
+        {:ok, nil} -> {:error, "Give a day in From and a day in To."}
         error -> error
       end
     end)
@@ -197,11 +197,11 @@ defmodule RescordWeb.ReportController do
   defp date(text) when is_binary(text) do
     case Date.from_iso8601(text) do
       {:ok, date} -> {:ok, date}
-      {:error, _not_a_date} -> {:error, "The date is not a date."}
+      {:error, _not_a_date} -> {:error, "Give a date as a day, a month and a year."}
     end
   end
 
-  defp date(_other), do: {:error, "The date is not a date."}
+  defp date(_other), do: {:error, "Give a date as a day, a month and a year."}
 
   # The paper that the address names, as an argument of a report, or no
   # argument: then the document is on the paper of the organisation.

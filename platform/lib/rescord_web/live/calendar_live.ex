@@ -180,8 +180,8 @@ defmodule RescordWeb.CalendarLive do
       </p>
 
       <p :if={@member? and !@can_subscribe?} id="no-calendar">
-        Your role cannot make a calendar feed. An administrator can give a role the power
-        to subscribe to one.
+        Your role cannot make a calendar feed. An administrator can allow it for your role on
+        the page of the roles.
       </p>
 
       <.other_feeds :if={@reads_each?} feeds={@others} organisation={@organisation} />
