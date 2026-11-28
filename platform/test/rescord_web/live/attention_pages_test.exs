@@ -129,7 +129,7 @@ defmodule RescordWeb.AttentionPagesTest do
 
     assert has_element?(view, "#attention-task-#{overdue.id} span[data-state=alert]", "Overdue")
     assert has_element?(view, "#attention-task-#{overdue.id} small", "For Biscuit")
-    assert has_element?(view, "#attention-task-#{overdue.id} small", "08:00")
+    assert has_element?(view, "#attention-task-#{overdue.id} small", "8:00 am")
 
     assert has_element?(
              view,
@@ -202,12 +202,12 @@ defmodule RescordWeb.AttentionPagesTest do
     view = open(context, context.member)
 
     assert rows(view, "tasks") == ["An old task", "A late task"]
-    assert has_element?(view, "#attention-task-#{late.id} small", "Today, 23:59")
+    assert has_element?(view, "#attention-task-#{late.id} small", "Today, 11:59 pm")
 
     assert has_element?(
              view,
              "#attention-task-#{old.id} small",
-             "#{RescordWeb.ResidentWords.date(Date.add(context.today, -3))}, 07:30"
+             "#{RescordWeb.ResidentWords.date(Date.add(context.today, -3))}, 7:30 am"
            )
 
     assert has_element?(view, "#attention-task-#{late.id} small", "Anybody")

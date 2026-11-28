@@ -53,7 +53,7 @@ defmodule RescordWeb.Features.RoutinesTest do
     |> check("Thursday")
     |> fill_in("Time", with: "09:00")
     |> click_button("Start the routine")
-    |> assert_has("tbody td", text: "Each Monday and Thursday, at 09:00")
+    |> assert_has("tbody td", text: "Each Monday and Thursday, at 9:00 am")
     |> assert_has("[data-state=ok]", text: "Active")
   end
 end

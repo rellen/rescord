@@ -47,8 +47,9 @@ defmodule Rescord.Accounts.Organisation do
     end
 
     create :create do
-      accept [:name, :short_name, :time_zone]
+      accept [:name, :short_name, :time_zone, :locale]
       validate Rescord.Accounts.Validations.KnownTimeZone
+      validate Rescord.Accounts.Validations.KnownLocale
     end
 
     update :set_time_zone do
@@ -57,6 +58,14 @@ defmodule Rescord.Accounts.Organisation do
       require_atomic? false
       accept [:time_zone]
       validate Rescord.Accounts.Validations.KnownTimeZone
+    end
+
+    update :set_locale do
+      description "Changes the language and the region of the organisation"
+      # The validation reads the tag of the locale in Elixir.
+      require_atomic? false
+      accept [:locale]
+      validate Rescord.Accounts.Validations.KnownLocale
     end
 
     update :set_task_days_ahead do
@@ -90,8 +99,14 @@ defmodule Rescord.Accounts.Organisation do
     end
 
     # An administrator changes the settings of their own organisation
-    # (ADR 0026 and ADR 0033). Nobody else has a policy here.
-    policy action([:set_time_zone, :set_task_days_ahead, :set_transfer_parts, :export]) do
+    # (ADR 0026, ADR 0033 and ADR 0075). Nobody else has a policy here.
+    policy action([
+             :set_time_zone,
+             :set_locale,
+             :set_task_days_ahead,
+             :set_transfer_parts,
+             :export
+           ]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
     end
   end
@@ -118,6 +133,15 @@ defmodule Rescord.Accounts.Organisation do
       public? true
       constraints max_length: 64
       description "The name of the time zone of the organisation, for example Australia/Brisbane"
+    end
+
+    attribute :locale, :string do
+      allow_nil? false
+      default "en-AU"
+      public? true
+      constraints max_length: 35
+
+      description "The language and the region of the organisation, as a tag of BCP 47, for example en-AU (ADR 0075)"
     end
 
     attribute :task_days_ahead, :integer do

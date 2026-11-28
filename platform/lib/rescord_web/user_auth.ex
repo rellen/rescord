@@ -44,6 +44,8 @@ defmodule RescordWeb.UserAuth do
   def on_mount(:require_root, _params, session, socket) do
     case user_of(session) do
       %{root?: true} = user ->
+        # A page with no organisation has the default locale (ADR 0075).
+        RescordWeb.Locale.put(nil)
         {:cont, Phoenix.Component.assign(socket, :current_user, user)}
 
       _other ->
@@ -54,6 +56,10 @@ defmodule RescordWeb.UserAuth do
   def on_mount(:require_organisation, params, session, socket) do
     with %{} = user <- user_of(session),
          {:ok, organisation, member} <- Accounts.organisation_for(user, params["organisation"]) do
+      # The dates, the times and the numbers of the page have the forms of
+      # the locale of the organisation (ADR 0075).
+      RescordWeb.Locale.put(organisation)
+
       {:cont,
        Phoenix.Component.assign(socket,
          current_user: user,

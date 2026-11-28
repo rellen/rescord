@@ -91,14 +91,14 @@ defmodule RescordWeb.TaskPagesTest do
 
       assert html =~ "today"
       assert html =~ "Hay and pellets"
-      assert has_element?(view, "tbody td", "23:30")
+      assert has_element?(view, "tbody td", "11:30 pm")
       assert has_element?(view, "tbody td", "Biscuit")
       assert has_element?(view, "tbody td", "Anybody")
       refute html =~ "Tomorrow"
 
       html = view |> element("a", "The day after") |> render_click()
       assert html =~ "Tomorrow"
-      assert has_element?(view, "tbody td", "00:30")
+      assert has_element?(view, "tbody td", "12:30 am")
       refute html =~ "Hay and pellets"
     end
 
@@ -199,7 +199,7 @@ defmodule RescordWeb.TaskPagesTest do
       # The page of that day.
       assert html =~ RescordWeb.TaskWords.day(later)
       assert html =~ "Yearly check"
-      assert has_element?(view, "tbody td", "09:15")
+      assert has_element?(view, "tbody td", "9:15 am")
       assert has_element?(view, "tbody td", to_string(context.other.email))
       assert has_element?(view, "tbody small", "Clean")
 
@@ -284,6 +284,6 @@ defmodule RescordWeb.TaskPagesTest do
       assert RescordWeb.TaskWords.phase_kind(phase) in ~w(ok alert info none)
     end
 
-    assert RescordWeb.TaskWords.day(~D[2026-11-16]) == "Monday 16 November 2026"
+    assert RescordWeb.TaskWords.day(~D[2026-11-16]) == "Monday, 16 November 2026"
   end
 end

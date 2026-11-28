@@ -31,6 +31,10 @@ release (ADR 0047).
     `member`, which are the roles Administrator and Member that each
     organisation starts with. No other row changes: a role that an
     administrator defined does not get the power by itself.
+  - `20261128051728_add_the_locale_of_an_organisation`, in the database:
+    adds the language and region to the organisations. Each organisation
+    that is there gets English (Australia), and no other value of a row
+    changes.
 - `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
   the database, such as the key of a provider of the assistant. It did so
   for the private keys of the transfers already, so the rule is the same:
@@ -48,6 +52,14 @@ release (ADR 0047).
   reverse proxy that logs the whole address of each request then holds
   those tokens: see step 5 of the install with systemd in
   `docs/self-hosting.md`.
+- Each organisation has the language and region English (Australia)
+  after the upgrade, and its pages now write a time of day as `8:30 am`,
+  where they wrote `08:30`, and a day as `Monday, 16 November 2026`, with
+  a comma. An administrator chooses another one on the settings page:
+  English (United Kingdom) has the 24 hour clock, and English (Ireland)
+  has exactly the forms of the earlier versions. The exports do not
+  change. A build of Rescord from its source needs no network for this:
+  the data of each language and region is in the repository.
 
 ### Added
 
@@ -72,6 +84,16 @@ release (ADR 0047).
   value opens with the secret of the server. `assistant` has a line for
   each provider: where the records would go, and what its last test
   found. Neither sends a request, and neither prints a key.
+- An organisation now has a language and region, which say how its pages
+  write a date, a time of day and a number: `16 November 2026` and
+  `6:30 pm` for English (Australia), `November 16, 2026` and `6:30 PM`
+  for English (United States), `18:30` for English (United Kingdom). A
+  root user chooses it when they create the organisation, and an
+  administrator changes it on the settings page, which shows an example
+  of each form. There are nine to choose from, each an English of a
+  region: Australia, Canada, India, Ireland, New Zealand, South Africa,
+  the United Kingdom, the United States, and the world. The words of the
+  pages are English in each one.
 - Rescord now knows what a unit of measure means, from its name. The
   lists page says for each unit of an organisation, and for each shared
   unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and

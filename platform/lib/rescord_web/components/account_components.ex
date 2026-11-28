@@ -130,6 +130,13 @@ defmodule RescordWeb.AccountComponents do
         <datalist id="time-zones">
           <option :for={zone <- @time_zones} value={zone}></option>
         </datalist>
+        <.input
+          field={@organisation_form[:locale]}
+          type="select"
+          label="Language and region, for the forms of a date, a time and a number"
+          options={locale_options()}
+          required
+        />
         <footer>
           <.button type="submit">Create the organisation</.button>
         </footer>
@@ -209,6 +216,47 @@ defmodule RescordWeb.AccountComponents do
     </section>
     """
   end
+
+  @doc """
+  The language and the region of an organisation (ADR 0075), the forms that
+  they give, and the form that changes them. The examples have the forms of
+  the locale of the page, which is the one of the organisation.
+  """
+  attr :organisation, :any, required: true
+  attr :can_change?, :any, required: true
+  attr :locale_form, :any, required: true
+
+  def locale_setting(assigns) do
+    ~H"""
+    <section aria-labelledby="locale-heading">
+      <h2 id="locale-heading">Language and region</h2>
+      <.list>
+        <:item title="Language and region">{Accounts.locale_name(@organisation.locale)}</:item>
+        <:item title="A date">{RescordWeb.Locale.date(~D[2026-11-16])}</:item>
+        <:item title="A time of day">{RescordWeb.Locale.time(~T[18:30:00])}</:item>
+        <:item title="A number">{RescordWeb.Locale.number(Decimal.new("1234567.5"))}</:item>
+      </.list>
+      <p>
+        The language and region say how the pages of {@organisation.name} write a date, a time
+        of day and a number. The words of the pages are English in each one.
+      </p>
+
+      <.form :if={@can_change?} for={@locale_form} id="locale" phx-submit="save_locale">
+        <.input
+          field={@locale_form[:locale]}
+          type="select"
+          label="Language and region"
+          options={locale_options()}
+          required
+        />
+        <footer><.button type="submit">Save the language and region</.button></footer>
+      </.form>
+    </section>
+    """
+  end
+
+  # The locales that Rescord offers, as the options of a select.
+  defp locale_options, do: for({tag, name} <- Accounts.locales(), do: {name, tag})
 
   @doc "How many days ahead the tasks of the routines exist, and the form that changes it."
   attr :organisation, :any, required: true

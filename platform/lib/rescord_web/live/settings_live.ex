@@ -4,7 +4,8 @@ defmodule RescordWeb.SettingsLive do
 
   The time zone (ADR 0026) says what today is for the organisation: a date
   of an arrival is not after today, and the age of a resident counts to
-  today. The number of days ahead (ADR 0033) says how far ahead the tasks of
+  today. The language and region (ADR 0075) say how a page writes a date, a
+  time of day and a number. The number of days ahead (ADR 0033) says how far ahead the tasks of
   the routines exist. The parts of a copy (ADR 0042) are the parts that a
   copy of a transferred resident holds at first. Each member reads the settings. An administrator and a
   root user change them.
@@ -33,6 +34,7 @@ defmodule RescordWeb.SettingsLive do
        today: Accounts.today(organisation),
        time_zones: if(can_change?, do: Accounts.time_zones(), else: []),
        form: to_form(%{"time_zone" => organisation.time_zone}, as: :settings),
+       locale_form: to_form(%{"locale" => organisation.locale}, as: :locale),
        ahead_form:
          to_form(%{"task_days_ahead" => to_string(organisation.task_days_ahead)}, as: :ahead)
      )}
@@ -57,6 +59,31 @@ defmodule RescordWeb.SettingsLive do
          assign(socket,
            problems: Accounts.error_messages(error),
            form: typed_form(params, as: :settings)
+         )}
+    end
+  end
+
+  def handle_event("save_locale", %{"locale" => %{"locale" => locale} = params}, socket)
+      when is_binary(locale) do
+    organisation = socket.assigns.organisation
+
+    case Accounts.set_organisation_locale(organisation, locale,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, organisation} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           "The language and region are #{Accounts.locale_name(organisation.locale)} now."
+         )
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply,
+         assign(socket,
+           problems: Accounts.error_messages(error),
+           locale_form: typed_form(params, as: :locale)
          )}
     end
   end
@@ -140,6 +167,12 @@ defmodule RescordWeb.SettingsLive do
         can_change?={@can_change?}
         form={@form}
         time_zones={@time_zones}
+      />
+
+      <.locale_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        locale_form={@locale_form}
       />
 
       <.days_ahead_setting

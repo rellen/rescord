@@ -129,6 +129,7 @@ These subjects are out of scope for now:
 | How far ahead does Rescord make the tasks of a routine? | A number of days that is a setting, 14 at the start. A member can also plan a task or an event for a date months ahead, one time or with a pattern, as on a calendar. |
 | Where will Rescord run? | The maintainer has not decided, and the work does not wait for it. |
 | In which time zone is an organisation? | In the zone that is its setting (ADR 0026). A root user gives it when they create the organisation, and an administrator can change it. |
+| How does a page write a date, a time and a number? | In the forms of the language and region of the organisation, which is a setting (ADR 0075). A root user gives it when they create the organisation, and an administrator can change it. The words of a page are English. |
 | Which units can a measurement have? | Each kind of measurement lists the units that it accepts, and the form offers only those (18 November 2026). |
 | Does Rescord know what a unit means? | Yes, for a unit of its catalogue, by the name of the unit: `kg` is a mass, and Rescord converts it. A unit that only the organisation knows, such as `bag`, stays a name (ADR 0071). |
 | Can a use of stock take more than the record has? | Yes. The level can go below zero, and the item shows a warning until a member records a count. |

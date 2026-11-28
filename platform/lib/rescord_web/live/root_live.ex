@@ -19,10 +19,16 @@ defmodule RescordWeb.RootLive do
     {:ok,
      socket
      |> assign(page_title: "Root", problems: [], time_zones: Accounts.time_zones())
-     |> assign_organisation_form(%{"name" => "", "short_name" => "", "time_zone" => ""})
+     |> assign_organisation_form(new_organisation())
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
      |> assign(providers: Ruby.providers!(actor: socket.assigns.current_user))
      |> assign_roots()}
+  end
+
+  # The fields of the form of a new organisation, with the default locale
+  # chosen (ADR 0075).
+  defp new_organisation do
+    %{"name" => "", "short_name" => "", "time_zone" => "", "locale" => Accounts.default_locale()}
   end
 
   defp assign_organisation_form(socket, params) do
@@ -39,7 +45,8 @@ defmodule RescordWeb.RootLive do
     attributes = %{
       name: params["name"],
       short_name: params["short_name"],
-      time_zone: params["time_zone"]
+      time_zone: params["time_zone"],
+      locale: params["locale"] || Accounts.default_locale()
     }
 
     case Accounts.create_organisation(attributes, actor: socket.assigns.current_user) do
@@ -47,7 +54,7 @@ defmodule RescordWeb.RootLive do
         {:noreply,
          socket
          |> assign(problems: [])
-         |> assign_organisation_form(%{"name" => "", "short_name" => "", "time_zone" => ""})
+         |> assign_organisation_form(new_organisation())
          |> put_flash(:info, "#{organisation.name} is created.")
          |> Cinder.Refresh.refresh_table("organisations")}
 

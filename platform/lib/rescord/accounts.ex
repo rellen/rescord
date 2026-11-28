@@ -52,6 +52,7 @@ defmodule Rescord.Accounts do
       define :create_organisation, action: :create
       define :rename_organisation, action: :rename
       define :set_organisation_time_zone, action: :set_time_zone, args: [:time_zone]
+      define :set_organisation_locale, action: :set_locale, args: [:locale]
 
       define :set_organisation_task_days_ahead,
         action: :set_task_days_ahead,
@@ -211,6 +212,67 @@ defmodule Rescord.Accounts do
     do: match?({:ok, _now}, DateTime.now(zone, Tz.TimeZoneDatabase))
 
   def time_zone?(_zone), do: false
+
+  # The locales that Rescord offers (ADR 0075), each with its name in English,
+  # in the order of the names. The words of the pages are English, so each one
+  # is the English of a region. `priv/localize/locales` holds the file of
+  # each one, and `config :localize` names them.
+  @locales [
+    {"en-AU", "English (Australia)"},
+    {"en-CA", "English (Canada)"},
+    {"en-IN", "English (India)"},
+    {"en-IE", "English (Ireland)"},
+    {"en-NZ", "English (New Zealand)"},
+    {"en-ZA", "English (South Africa)"},
+    {"en-GB", "English (United Kingdom)"},
+    {"en-US", "English (United States)"},
+    {"en-001", "English (world)"}
+  ]
+
+  @default_locale "en-AU"
+
+  @doc """
+  The locales that an organisation chooses from, each as `{tag, name}`: the
+  tag of BCP 47, such as `en-AU`, and its name in English (ADR 0075).
+
+      iex> {"en-AU", "English (Australia)"} in Rescord.Accounts.locales()
+      true
+  """
+  @spec locales() :: [{String.t(), String.t()}]
+  def locales, do: @locales
+
+  @doc "The locale of an organisation until a person chooses another."
+  @spec default_locale() :: String.t()
+  def default_locale, do: @default_locale
+
+  @doc """
+  Whether a tag is a locale that Rescord offers. The tag is exact: `en-AU`,
+  and not `en-au`.
+
+      iex> Rescord.Accounts.locale?("en-AU")
+      true
+
+      iex> Rescord.Accounts.locale?("fr")
+      false
+  """
+  @spec locale?(term) :: boolean
+  def locale?(tag) when is_binary(tag), do: List.keymember?(@locales, tag, 0)
+  def locale?(_tag), do: false
+
+  @doc """
+  The name of a locale in English, or the tag itself for a locale that
+  Rescord does not offer.
+
+      iex> Rescord.Accounts.locale_name("en-NZ")
+      "English (New Zealand)"
+  """
+  @spec locale_name(String.t()) :: String.t()
+  def locale_name(tag) when is_binary(tag) do
+    case List.keyfind(@locales, tag, 0) do
+      {_tag, name} -> name
+      nil -> tag
+    end
+  end
 
   @doc """
   The names of the time zones that PostgreSQL knows, for the suggestions of

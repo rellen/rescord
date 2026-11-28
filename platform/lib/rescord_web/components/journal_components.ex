@@ -157,7 +157,7 @@ defmodule RescordWeb.JournalComponents do
           type="number"
           step="any"
           label="Value"
-          value={JournalWords.number(@entry.measurement.value) |> String.replace(",", "")}
+          value={@entry.measurement.value |> Decimal.normalize() |> Decimal.to_string(:normal)}
         />
         <.input
           id={"correct-#{@entry.id}-note"}

@@ -65,6 +65,6 @@ defmodule RescordWeb.JournalWordsTest do
   end
 
   test "a time is a date and a time of day" do
-    assert JournalWords.time(~U[2026-11-16 08:05:00Z]) == "16 November 2026, 08:05"
+    assert JournalWords.time(~U[2026-11-16 08:05:00Z]) == "16 November 2026, 8:05 am"
   end
 end

@@ -166,6 +166,48 @@ defmodule RescordWeb.OrganisationPagesTest do
       assert {:ok, nil} = Accounts.organisation_by_short_name("banksia-road", actor: context.root)
     end
 
+    test "offers the languages and regions, with the default chosen, and creates with one",
+         context do
+      {view, _html} = open(context.conn, context.root, ~p"/root")
+
+      assert has_element?(view, "#new-organisation option[value=en-AU][selected]")
+
+      assert has_element?(
+               view,
+               "#new-organisation option[value=en-US]",
+               "English (United States)"
+             )
+
+      view
+      |> form("#new-organisation",
+        organisation: %{
+          name: "Banksia",
+          short_name: "banksia-road",
+          time_zone: "Australia/Perth",
+          locale: "en-NZ"
+        }
+      )
+      |> render_submit()
+
+      assert render_async(view) =~ "banksia-road"
+
+      assert {:ok, %{locale: "en-NZ"}} =
+               Accounts.organisation_by_short_name("banksia-road", actor: context.root)
+
+      # A locale that the form did not offer is refused.
+      render_submit(view, "create_organisation", %{
+        "organisation" => %{
+          "name" => "Correa",
+          "short_name" => "correa-lane",
+          "time_zone" => "Australia/Perth",
+          "locale" => "fr"
+        }
+      })
+
+      assert has_element?(view, "main p[role=alert]", "Locale is not a language and region")
+      assert {:ok, nil} = Accounts.organisation_by_short_name("correa-lane", actor: context.root)
+    end
+
     test "makes a user a root user, and says so for an address with no user", context do
       {view, _html} = open(context.conn, context.root, ~p"/root")
       user = user!()
@@ -245,6 +287,82 @@ defmodule RescordWeb.OrganisationPagesTest do
 
       assert html =~ "The time zone is Australia/Perth now."
       assert has_element?(view, "dd", "Australia/Perth")
+    end
+  end
+
+  describe "the language and region, on the settings page" do
+    test "are English (Australia) at first, and a member reads them with no form", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      {view, _html} = open(context.conn, context.member, path)
+
+      assert has_element?(view, "dd", "English (Australia)")
+      assert has_element?(view, "dd", "16 November 2026")
+      assert has_element?(view, "dd", "6:30 pm")
+      assert has_element?(view, "dd", "1,234,567.5")
+      refute has_element?(view, "#locale")
+
+      # An event that the page did not offer is refused.
+      render_submit(view, "save_locale", %{"locale" => %{"locale" => "en-US"}})
+      assert has_element?(view, "main p[role=alert]")
+
+      assert {:ok, %{locale: "en-AU"}} =
+               Accounts.organisation_by_short_name(context.organisation.short_name,
+                 actor: context.root
+               )
+    end
+
+    test "an administrator changes them, and the pages have the forms of the new ones",
+         context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      conn = sign_in(context.conn, context.administrator)
+      {:ok, view, _html} = live(conn, path)
+
+      assert has_element?(view, "#locale option[value=en-AU][selected]")
+
+      # A locale that the form did not offer is refused.
+      render_submit(view, "save_locale", %{"locale" => %{"locale" => "fr"}})
+      assert has_element?(view, "main p[role=alert]", "Locale is not a language and region")
+
+      {:ok, view, html} =
+        view
+        |> form("#locale", locale: %{locale: "en-US"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert html =~ "The language and region are English (United States) now."
+      assert has_element?(view, "dd", "English (United States)")
+      assert has_element?(view, "dd", "November 16, 2026")
+      assert has_element?(view, "dd", "6:30 PM")
+      assert has_element?(view, "#locale option[value=en-US][selected]")
+
+      # The date of today, which is another part of the page, follows too.
+      today = Accounts.today(context.organisation)
+      assert has_element?(view, "dd", Calendar.strftime(today, "%B %-d, %Y"))
+
+      {:ok, view, _html} =
+        view
+        |> form("#locale", locale: %{locale: "en-GB"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert has_element?(view, "dd", "18:30")
+      assert has_element?(view, "dd", Calendar.strftime(today, "%-d %B %Y"))
+    end
+
+    test "the pages of another organisation keep the forms of that one", context do
+      {:ok, _organisation} =
+        Accounts.set_organisation_locale(context.organisation, "en-US", actor: context.root)
+
+      other = organisation!(context.root, "Other")
+      {_, person} = member!(other, :member, context.root)
+
+      {view, _html} = open(context.conn, person, ~p"/o/#{other.short_name}/settings")
+      assert has_element?(view, "dd", "16 November 2026")
+
+      {view, _html} =
+        open(context.conn, context.member, ~p"/o/#{context.organisation.short_name}/settings")
+
+      assert has_element?(view, "dd", "November 16, 2026")
     end
   end
 

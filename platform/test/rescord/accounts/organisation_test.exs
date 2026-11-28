@@ -458,6 +458,103 @@ defmodule Rescord.Accounts.OrganisationTest do
     end
   end
 
+  describe "the locale of an organisation" do
+    setup %{root: root} do
+      organisation = organisation!(root, "Wattle Creek", "Australia/Brisbane")
+      {_, administrator} = member!(organisation, :administrator, root)
+      {_, member} = member!(organisation, :member, administrator)
+      {:ok, organisation: organisation, administrator: administrator, member: member}
+    end
+
+    test "is the default at first, and a root user can give another one", context do
+      assert context.organisation.locale == "en-AU"
+      assert Accounts.default_locale() == "en-AU"
+
+      assert {:ok, %{locale: "en-US"}} =
+               Accounts.create_organisation(
+                 %{name: "A", short_name: "a-refuge", time_zone: "Etc/UTC", locale: "en-US"},
+                 actor: context.root
+               )
+    end
+
+    test "is one that Rescord offers", %{root: root} do
+      for locale <- ["", "fr", "en-au", "en", "English (Australia)"] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.create_organisation(
+                   %{name: "A", short_name: "a-refuge", time_zone: "Etc/UTC", locale: locale},
+                   actor: root
+                 )
+      end
+
+      assert Accounts.locale?("en-AU")
+      assert Accounts.locale?("en-001")
+      refute Accounts.locale?("fr")
+      refute Accounts.locale?("en-au")
+      refute Accounts.locale?(nil)
+      refute Accounts.locale?(:"en-AU")
+    end
+
+    test "has a list with a name for each locale, in the order of the names" do
+      locales = Accounts.locales()
+
+      assert {"en-AU", "English (Australia)"} in locales
+      assert Accounts.default_locale() in Enum.map(locales, &elem(&1, 0))
+      assert Enum.all?(locales, fn {tag, name} -> Accounts.locale?(tag) and name =~ "English" end)
+      assert Accounts.locale_name("en-GB") == "English (United Kingdom)"
+      assert Accounts.locale_name("fr") == "fr"
+
+      names = for {tag, name} <- locales, tag != "en-001", do: name
+      assert names == Enum.sort(names)
+      assert List.last(locales) == {"en-001", "English (world)"}
+    end
+
+    test "changes for an administrator and for a root user, and the version names who", context do
+      assert {:ok, %{locale: "en-US"}} =
+               Accounts.set_organisation_locale(context.organisation, "en-US",
+                 actor: context.administrator
+               )
+
+      assert {:ok, %{locale: "en-GB"}} =
+               Accounts.set_organisation_locale(context.organisation, "en-GB",
+                 actor: context.root
+               )
+
+      for locale <- ["fr", "en-gb", "", nil] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Accounts.set_organisation_locale(context.organisation, locale,
+                   actor: context.administrator
+                 )
+      end
+
+      version = AshPaperTrail.Resource.Info.version_resource(Rescord.Accounts.Organisation)
+
+      users =
+        version
+        |> Ash.read!(authorize?: false)
+        |> Enum.filter(&(&1.version_source_id == context.organisation.id))
+        |> Enum.filter(&(&1.version_action_name == :set_locale))
+        |> Enum.map(& &1.user_id)
+
+      assert Enum.sort(users) == Enum.sort([context.administrator.id, context.root.id])
+    end
+
+    test "does not change for a member, for a user of another organisation, or for nobody",
+         context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      for actor <- [context.member, outsider, user!(), nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Accounts.set_organisation_locale(context.organisation, "en-US", actor: actor)
+      end
+
+      assert {:ok, %{locale: "en-AU"}} =
+               Accounts.organisation_by_short_name(context.organisation.short_name,
+                 actor: context.root
+               )
+    end
+  end
+
   describe "the organisations of a user" do
     test "are the ones where the user is a member, and each one for a root user", %{root: root} do
       mine = organisation!(root, "Mine")

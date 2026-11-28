@@ -65,8 +65,11 @@ defmodule RescordWeb.ResidentWords do
   defp options_of(words),
     do: Enum.map(words, fn {value, word} -> {word, Atom.to_string(value)} end)
 
-  @doc "A date in words, for example `12 September 2026`."
-  def date(%Date{} = date), do: Calendar.strftime(date, "%-d %B %Y")
+  @doc """
+  A date in words, in the form of the locale of the page (ADR 0075), for
+  example `12 September 2026`.
+  """
+  def date(%Date{} = date), do: RescordWeb.Locale.date(date)
   def date(nil), do: nil
 
   @doc """

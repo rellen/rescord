@@ -88,9 +88,10 @@ defmodule Rescord.Accounts.Grants do
       {Member, :remove, :members}
     ],
     roles: [{Role, :define, :all}, {Role, :revise, :all}, {Role, :remove, :all}],
-    # The settings of the organisation itself (ADR 0026).
+    # The settings of the organisation itself (ADR 0026 and ADR 0075).
     settings: [
       {Organisation, :set_time_zone, :all},
+      {Organisation, :set_locale, :all},
       {Organisation, :set_task_days_ahead, :all},
       {Organisation, :set_transfer_parts, :all}
     ],

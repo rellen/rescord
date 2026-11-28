@@ -368,6 +368,16 @@ table (ADR 0025).
   zone is a setting of the organisation, and the package `tz` has the rules.
   `Rescord.Accounts.today/1` and `local_date/2` give the date. Never use
   `Date.utc_today/0` for a rule or for a page of an organisation.
+- **A date, a time of day and a number have the forms of the locale of
+  the organisation** (ADR 0075). The locale is a setting of the
+  organisation, a tag such as `en-AU` from the list of
+  `Rescord.Accounts.locales/0`, and the package `localize` has the forms,
+  with the file of each locale in `priv/localize/locales`.
+  `RescordWeb.Locale` is the one module that calls it: a page calls
+  `ResidentWords.date/1`, `TaskWords.day/1`, `TaskWords.time/1`,
+  `JournalWords.time/1` and `JournalWords.number/1`. Never use
+  `Calendar.strftime/2` or `to_string/1` for a date or a number that a
+  person reads. An export keeps ISO dates and plain numbers.
 - **A tenant migration needs a repair.** ash_postgres 2.15.2 writes the
   period foreign key of a temporal resource with two faults.
   `Rescord.TenantMigrations.repair!/0` repairs them, and a test fails while

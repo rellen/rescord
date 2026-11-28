@@ -40,12 +40,15 @@ defmodule RescordWeb.TaskWords do
   @doc "The phases, for the test that holds the words."
   def phases, do: Keyword.keys(@phases)
 
-  @doc "A day in words, with its day of the week: `Monday 16 November 2026`."
-  def day(%Date{} = date), do: Calendar.strftime(date, "%A %-d %B %Y")
+  @doc """
+  A day in words, with its day of the week, in the form of the locale of
+  the page (ADR 0075): `Monday, 16 November 2026`.
+  """
+  def day(%Date{} = date), do: RescordWeb.Locale.day(date)
 
-  @doc "A time of day: `08:30`."
-  def time(%DateTime{} = local), do: Calendar.strftime(local, "%H:%M")
-  def time(%Time{} = time), do: Calendar.strftime(time, "%H:%M")
+  @doc "A time of day, in the form of the locale of the page: `8:30 am`."
+  def time(%DateTime{} = local), do: RescordWeb.Locale.time(local)
+  def time(%Time{} = time), do: RescordWeb.Locale.time(time)
 
   @doc "The days of the week with their numbers: Monday is 1."
   def weekdays, do: @weekdays
@@ -85,7 +88,7 @@ defmodule RescordWeb.TaskWords do
       {"The day when a member last finishes a task", "last_done"}
     ]
 
-  @doc "The times of a routine: `08:00 and 18:00`."
+  @doc "The times of a routine: `8:00 am and 6:00 pm`."
   def times(times), do: times |> Enum.map(&time/1) |> join()
 
   @doc "The first and the last day of a routine: `From 16 November 2026`."

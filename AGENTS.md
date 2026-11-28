@@ -682,6 +682,18 @@ hand (ADR 0073). Read it before you write a migration. In short:
 - **Words for a value.** A page never shows an atom. A fixed list has a word
   for each value in a module such as `RescordWeb.ResidentWords`, and a test
   holds the words to the type.
+- **Dates and numbers that a person reads** (ADR 0075). A page writes a
+  date, a time of day and a number through the words modules
+  (`ResidentWords.date/1`, `TaskWords.day/1` and `time/1`,
+  `JournalWords.time/1` and `number/1`), which call `RescordWeb.Locale`,
+  the one module that calls `Localize`. They have the forms of the locale
+  of the organisation, which the hook `:require_organisation` sets for
+  the process. A task that a page starts gets the tag of
+  `RescordWeb.Locale.current/0` and calls `put/1`. A number never rounds.
+  A test that holds a time of day holds the form of the default locale,
+  `8:30 am`. After an update of `localize`, run
+  `mix localize.download_locales` and commit the files of
+  `priv/localize/locales`: `Rescord.LocaleFilesTest` fails until then.
 - **Atoms.** Never create atoms from text that a client sends.
 - **Branches.** Work is on `main` for now (the maintainer, 15 November 2026).
   Commit there and push `main`, with no pull request. A session whose own

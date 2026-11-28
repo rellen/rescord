@@ -56,8 +56,11 @@ defmodule RescordWeb.JournalWords do
 
   def kind_of(_text), do: nil
 
-  @doc "A local date and time in words: `16 November 2026, 08:30`."
-  def time(%DateTime{} = local), do: Calendar.strftime(local, "%-d %B %Y, %H:%M")
+  @doc """
+  A local date and time in words, in the form of the locale of the page
+  (ADR 0075): `16 November 2026, 8:30 am`.
+  """
+  def time(%DateTime{} = local), do: RescordWeb.Locale.date_time(local)
 
   @doc """
   The size of a file in words, in units of 1000 bytes.
@@ -108,17 +111,9 @@ defmodule RescordWeb.JournalWords do
   defp days(nil, to), do: "to #{ResidentWords.date(to)}"
   defp days(from, to), do: "#{ResidentWords.date(from)} to #{ResidentWords.date(to)}"
 
-  @doc "A number with a comma for each thousand, and no zeros after the point: `1,095`."
-  def number(%Decimal{} = value) do
-    [whole | rest] =
-      value |> Decimal.normalize() |> Decimal.to_string(:normal) |> String.split(".")
-
-    grouped =
-      whole
-      |> String.reverse()
-      |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
-      |> String.reverse()
-
-    Enum.join([grouped | rest], ".")
-  end
+  @doc """
+  A number with the marks of the locale of the page (ADR 0075), each digit
+  of it, and no zeros after the point: `1,095`. It never rounds.
+  """
+  def number(%Decimal{} = value), do: RescordWeb.Locale.number(value)
 end

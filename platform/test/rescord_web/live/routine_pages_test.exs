@@ -95,7 +95,7 @@ defmodule RescordWeb.RoutinePagesTest do
       assert has_element?(view, "tbody td", "Hay and pellets")
       assert has_element?(view, "tbody td small", "Feed")
       assert has_element?(view, "tbody td small", "Two scoops")
-      assert has_element?(view, "tbody td", "Each day, at 08:00 and 18:00")
+      assert has_element?(view, "tbody td", "Each day, at 8:00 am and 6:00 pm")
       assert has_element?(view, "tbody td", "Biscuit")
 
       assert has_element?(
@@ -158,7 +158,7 @@ defmodule RescordWeb.RoutinePagesTest do
           }
         )
 
-      assert has_element?(view, "tbody td", "Each day, at 07:30 and 17:00")
+      assert has_element?(view, "tbody td", "Each day, at 7:30 am and 5:00 pm")
 
       {:ok, tasks} = Tasks.day(context.tomorrow, context.options)
       assert Enum.map(tasks, & &1.title) == List.duplicate("Clean the water bottles", 2)
@@ -220,7 +220,7 @@ defmodule RescordWeb.RoutinePagesTest do
           routine: %{title: "Weigh each resident", weekdays: ["1", "4"], time_1: "09:00"}
         )
 
-      assert has_element?(view, "tbody td", "Each Monday and Thursday, at 09:00")
+      assert has_element?(view, "tbody td", "Each Monday and Thursday, at 9:00 am")
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert %{pattern: :weekly, weekdays: [1, 4], times: [~T[09:00:00]]} = routine
@@ -235,7 +235,7 @@ defmodule RescordWeb.RoutinePagesTest do
           routine: %{title: "Yearly check", every: "12", time_1: "10:00", days_ahead: "400"}
         )
 
-      assert has_element?(view, "tbody td", "Every 12 months, at 10:00")
+      assert has_element?(view, "tbody td", "Every 12 months, at 10:00 am")
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert %{pattern: :monthly, every: 12, days_ahead: 400} = routine
@@ -296,7 +296,7 @@ defmodule RescordWeb.RoutinePagesTest do
         submit(view, context.conn, "#routine", routine: %{title: "Hay only", time_2: ""})
 
       assert has_element?(view, "tbody td", "Hay only")
-      assert has_element?(view, "tbody td", "Each day, at 08:00")
+      assert has_element?(view, "tbody td", "Each day, at 8:00 am")
 
       {:ok, tasks} = Tasks.day(context.tomorrow, context.options)
       assert Enum.map(tasks, & &1.title) == ["Hay only"]
@@ -450,10 +450,10 @@ defmodule RescordWeb.RoutinePagesTest do
       assert TaskWords.pattern(routine.(%{pattern: :monthly, every: 1})) == "Each month"
       assert TaskWords.pattern(routine.(%{pattern: :monthly, every: 12})) == "Every 12 months"
 
-      assert TaskWords.times([~T[08:00:00]]) == "08:00"
+      assert TaskWords.times([~T[08:00:00]]) == "8:00 am"
 
       assert TaskWords.times([~T[08:00:00], ~T[12:30:00], ~T[18:00:00]]) ==
-               "08:00, 12:30 and 18:00"
+               "8:00 am, 12:30 pm and 6:00 pm"
 
       assert TaskWords.span(%{starts_on: ~D[2026-11-16], ends_on: nil}) == "From 16 November 2026"
 

@@ -1,0 +1,161 @@
+defmodule RescordWeb.Locale do
+  @moduledoc """
+  The forms of a date, a time of day and a number in the locale of an
+  organisation (ADR 0075): `16 November 2026` in Australia, and
+  `November 16, 2026` in the United States.
+
+  This is the one module that calls `Localize`. A page calls the words
+  modules, such as `RescordWeb.ResidentWords.date/1`, and they call this
+  one.
+
+  ## The locale of a page
+
+  `put/1` sets the locale of the process, and the hook
+  `:require_organisation` of `RescordWeb.UserAuth` calls it with the
+  organisation of the page. `current/0` reads it. A process with no locale,
+  such as a page with no organisation, or a test of a words module, has the
+  default of `Rescord.Accounts.default_locale/0`.
+
+  The locale of a process does not reach a task that the process starts.
+  Give such a task the tag of `current/0`, and call `put/1` in it.
+
+  Each function gives `Localize` the locale by name. The default locale of
+  `Localize` itself can come from the variable `LANG` of the server, so no
+  function here relies on it.
+
+  ## The forms
+
+  A function writes the ISO form, or the plain digits, when `Localize`
+  cannot write the form of the locale, and logs a warning: a page does not
+  fail for a form.
+  """
+
+  require Logger
+
+  alias Rescord.Accounts
+
+  @key {__MODULE__, :locale}
+
+  @doc """
+  Sets the locale of this process: an organisation, or a tag such as
+  `en-US`. A tag that Rescord does not offer sets the default.
+  """
+  @spec put(%{locale: String.t()} | String.t() | nil) :: :ok
+  def put(%{locale: tag}), do: put(tag)
+
+  def put(tag) do
+    if Accounts.locale?(tag), do: Process.put(@key, tag), else: Process.delete(@key)
+    :ok
+  end
+
+  @doc "The tag of the locale of this process, for example `en-AU`."
+  @spec current() :: String.t()
+  def current, do: Process.get(@key) || Accounts.default_locale()
+
+  @doc """
+  A date in words.
+
+      iex> RescordWeb.Locale.date(~D[2026-11-16])
+      "16 November 2026"
+  """
+  @spec date(Date.t()) :: String.t()
+  def date(%Date{} = date) do
+    case Localize.Date.to_string(date, locale: current(), format: :long) do
+      {:ok, words} -> words
+      {:error, reason} -> plain(Date.to_iso8601(date), reason)
+    end
+  end
+
+  @doc """
+  A date in words, with its day of the week.
+
+      iex> RescordWeb.Locale.day(~D[2026-11-16])
+      "Monday, 16 November 2026"
+  """
+  @spec day(Date.t()) :: String.t()
+  def day(%Date{} = date) do
+    case Localize.Date.to_string(date, locale: current(), format: :full) do
+      {:ok, words} -> words
+      {:error, reason} -> plain(Date.to_iso8601(date), reason)
+    end
+  end
+
+  @doc """
+  A time of day, to the minute. A date and time gives its time of day as it
+  is: turn an instant into the local time of the organisation first.
+
+  The data of CLDR has a narrow no-break space (U+202F) before `am`. This
+  writes a usual space there, so a search of the page finds `8:30 am`.
+
+      iex> RescordWeb.Locale.time(~T[08:30:00])
+      "8:30 am"
+
+      iex> RescordWeb.Locale.time(~T[18:05:00])
+      "6:05 pm"
+  """
+  @spec time(Time.t() | DateTime.t() | NaiveDateTime.t()) :: String.t()
+  def time(%Time{} = time) do
+    case Localize.Time.to_string(time, locale: current(), format: :short) do
+      {:ok, words} -> String.replace(words, " ", " ")
+      {:error, reason} -> plain(Calendar.strftime(time, "%H:%M"), reason)
+    end
+  end
+
+  def time(%DateTime{} = local), do: local |> DateTime.to_time() |> time()
+  def time(%NaiveDateTime{} = local), do: local |> NaiveDateTime.to_time() |> time()
+
+  @doc """
+  A local date and time in words: the date, a comma, and the time of day.
+
+      iex> RescordWeb.Locale.date_time(~N[2026-11-16 08:30:00])
+      "16 November 2026, 8:30 am"
+  """
+  @spec date_time(DateTime.t() | NaiveDateTime.t()) :: String.t()
+  def date_time(%DateTime{} = local), do: "#{date(DateTime.to_date(local))}, #{time(local)}"
+
+  def date_time(%NaiveDateTime{} = local),
+    do: "#{date(NaiveDateTime.to_date(local))}, #{time(local)}"
+
+  @doc """
+  A number with the marks of the locale, each digit of it, and no zeros at
+  the end. It never rounds: a dose of `0.00025` stays `0.00025`.
+
+      iex> RescordWeb.Locale.number(Decimal.new("1095.50"))
+      "1,095.5"
+
+      iex> RescordWeb.Locale.number(Decimal.new("0.00025"))
+      "0.00025"
+
+      iex> RescordWeb.Locale.number(1234567)
+      "1,234,567"
+  """
+  @spec number(Decimal.t() | integer) :: String.t()
+  def number(%Decimal{} = value) do
+    value = Decimal.normalize(value)
+
+    # The default pattern of a locale keeps three digits after the point and
+    # rounds the rest away. The count of the digits of the value itself keeps
+    # each one.
+    with %Decimal{coef: coef, exp: exp} when is_integer(coef) <- value,
+         {:ok, words} <-
+           Localize.Number.to_string(value, locale: current(), fractional_digits: max(0, -exp)) do
+      words
+    else
+      {:error, reason} -> plain(Decimal.to_string(value, :normal), reason)
+      # Not a number, or an infinity: there is no form for it.
+      %Decimal{} -> Decimal.to_string(value, :normal)
+    end
+  end
+
+  def number(value) when is_integer(value) do
+    case Localize.Number.to_string(value, locale: current()) do
+      {:ok, words} -> words
+      {:error, reason} -> plain(Integer.to_string(value), reason)
+    end
+  end
+
+  defp plain(text, reason) do
+    Logger.warning("no form of the locale #{current()} for #{text}: #{inspect(reason)}")
+    text
+  end
+end
