@@ -246,6 +246,67 @@ defmodule Rescord.TasksTest do
 
       assert {:ok, [%{title: "Late"}]} = Tasks.overdue(now, context.options)
     end
+
+    test "are one query for a page, with the tasks of earlier days that are still due",
+         context do
+      at = fn title, time ->
+        plan!(context, %{
+          title: title,
+          due_at: DateTime.from_naive!(NaiveDateTime.from_iso8601!(time), "Etc/UTC")
+        })
+      end
+
+      at.("Day", "2026-11-16T01:00:00")
+      at.("Earlier", "2026-11-14T01:00:00")
+      done = at.("Earlier and done", "2026-11-13T01:00:00")
+      {:ok, _done} = Tasks.complete_task(done, %{}, context.options)
+      at.("Later", "2026-11-17T01:00:00")
+
+      read = fn opts ->
+        {:ok, tasks} =
+          ~D[2026-11-16] |> Tasks.query_to_day(opts ++ context.options) |> Ash.read()
+
+        Enum.map(tasks, & &1.title)
+      end
+
+      assert read.([]) == ["Day"]
+      assert read.(earlier: true) == ["Earlier", "Day"]
+
+      # A page finds a task of its day by its id, and no other.
+      [day, earlier] = Enum.map(["Day", "Earlier"], &find_titled(context, &1))
+      assert {:ok, %{title: "Day"}} = Tasks.task_of_day(~D[2026-11-16], day.id, context.options)
+      assert {:ok, nil} = Tasks.task_of_day(~D[2026-11-16], earlier.id, context.options)
+
+      assert {:ok, %{title: "Earlier"}} =
+               Tasks.task_of_day(~D[2026-11-16], earlier.id, [earlier: true] ++ context.options)
+
+      assert {:ok, nil} = Tasks.task_of_day(~D[2026-11-16], "not an id", context.options)
+    end
+
+    test "narrow to one person, or to the tasks that name nobody", context do
+      plan!(context, %{title: "Mine", assignee_ids: [context.member.id]})
+      plan!(context, %{title: "Both", assignee_ids: [context.member.id, context.other.id]})
+      plan!(context, %{title: "Anybody"})
+
+      read = fn person ->
+        {:ok, tasks} =
+          Rescord.Tasks.Task
+          |> Ash.Query.sort(title: :asc)
+          |> Tasks.for_person(person)
+          |> Ash.read(context.options)
+
+        Enum.map(tasks, & &1.title)
+      end
+
+      assert read.(context.member.id) == ["Both", "Mine"]
+      assert read.(context.other.id) == ["Both"]
+      assert read.(:anybody) == ["Anybody"]
+    end
+  end
+
+  defp find_titled(context, title) do
+    {:ok, tasks} = Tasks.tasks(context.options)
+    Enum.find(tasks, &(&1.title == title))
   end
 
   describe "a task that names a prescription" do

@@ -587,8 +587,12 @@ defmodule Rescord.Accounts do
       %Ash.Error.Forbidden.Policy{} ->
         "You cannot do that"
 
-      # The record changed after the page read it.
-      %Ash.Error.Changes.StaleRecord{} ->
+      # The record changed after the page read it. A page that reads the
+      # record again for an event finds it in its new state, which allows
+      # the action no more (ADR 0097).
+      error
+      when is_struct(error, Ash.Error.Changes.StaleRecord) or
+             is_struct(error, AshStateMachine.Errors.NoMatchingTransition) ->
         "Somebody changed this a moment ago. The page shows it as it is now"
 
       error ->

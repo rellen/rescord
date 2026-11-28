@@ -1,8 +1,8 @@
 defmodule RescordWeb.TaskPagesTest do
   @moduledoc """
   Holds the page of the tasks: the tasks of a day in the time zone of the
-  organisation, what a member does with a task, and a dose that a member
-  plans from a prescription.
+  organisation, their search and filters (ADR 0097), what a member does
+  with a task, and a dose that a member plans from a prescription.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
@@ -15,6 +15,7 @@ defmodule RescordWeb.TaskPagesTest do
   import Rescord.ResidentsFixtures
 
   alias Rescord.{Accounts, Journal, Tasks}
+  alias RescordWeb.ResidentWords
 
   setup context do
     root = root!()
@@ -51,9 +52,20 @@ defmodule RescordWeb.TaskPagesTest do
     {view, render_async(view)}
   end
 
-  defp press(view, conn, event, id) do
-    {:ok, view, _html} = view |> render_click(event, %{"id" => id}) |> follow_redirect(conn)
+  # A press on a button of a task: the page stays, and the collection reads
+  # again.
+  defp press(view, event, id) do
+    render_click(view, event, %{"id" => id})
     {view, render_async(view)}
+  end
+
+  # The rows of the collection, by the id of their task.
+  defp rows(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#day-tasks tbody tr[data-item-id]")
+    |> LazyHTML.attribute("data-item-id")
   end
 
   # A time of today in the organisation, as an instant.
@@ -96,7 +108,8 @@ defmodule RescordWeb.TaskPagesTest do
       assert has_element?(view, "tbody td", "Anybody")
       refute html =~ "Tomorrow"
 
-      html = view |> element("a", "The day after") |> render_click()
+      view |> element("a", "The day after") |> render_click()
+      html = render_async(view)
       assert html =~ "Tomorrow"
       assert has_element?(view, "tbody td", "12:30 am")
       refute html =~ "Hay and pellets"
@@ -110,13 +123,139 @@ defmodule RescordWeb.TaskPagesTest do
 
       {view, html} = open(context.conn, context.path)
 
-      assert html =~ "Still due from earlier days"
+      assert html =~ "The tasks of earlier days that are still due come first"
       assert html =~ "Nail trim"
+      # The task of an earlier day shows its day with its time.
+      assert has_element?(view, "tbody td", ResidentWords.date(Date.add(context.today, -1)))
       assert has_element?(view, "[data-state=alert]", "Overdue")
       refute html =~ "Old and done"
 
       {_view, html} = open(context.conn, context.path <> "?day=#{Date.add(context.today, 1)}")
-      refute html =~ "Still due from earlier days"
+      refute html =~ "The tasks of earlier days that are still due come first"
+      refute html =~ "Nail trim"
+    end
+  end
+
+  describe "the search and the filters (ADR 0097)" do
+    setup context do
+      mine =
+        plan!(context, %{
+          title: "Clean the hutch",
+          due_at: today_at(context, "09:00"),
+          assignee_ids: [context.member.id],
+          kind_id: context.lists.task_kind.clean
+        })
+
+      theirs =
+        plan!(context, %{
+          title: "Hay and pellets",
+          due_at: today_at(context, "10:00"),
+          assignee_ids: [context.other.id]
+        })
+
+      open = plan!(context, %{title: "Weigh Biscuit", due_at: today_at(context, "11:00")})
+      done = plan!(context, %{title: "Fresh water", due_at: today_at(context, "12:00")})
+      {:ok, _done} = Tasks.complete_task(done, %{}, context.options)
+
+      {:ok, mine: mine, theirs: theirs, open: open, done: done}
+    end
+
+    test "are in the address, so a link gives the same list", context do
+      {view, _html} = open(context.conn, context.path)
+
+      assert rows(view) ==
+               Enum.map([context.mine, context.theirs, context.open, context.done], & &1.id)
+
+      {view, _html} = open(context.conn, context.path <> "?who=me")
+      assert rows(view) == [context.mine.id]
+
+      {view, _html} = open(context.conn, context.path <> "?who=anybody")
+      assert rows(view) == [context.open.id, context.done.id]
+
+      {view, _html} = open(context.conn, context.path <> "?who=#{context.other.id}")
+      assert rows(view) == [context.theirs.id]
+
+      {view, _html} = open(context.conn, context.path <> "?state=done")
+      assert rows(view) == [context.done.id]
+
+      {view, _html} = open(context.conn, context.path <> "?state=due&who=anybody")
+      assert rows(view) == [context.open.id]
+
+      {view, _html} =
+        open(context.conn, context.path <> "?kind_id=#{context.lists.task_kind.clean}")
+
+      assert rows(view) == [context.mine.id]
+
+      {view, _html} = open(context.conn, context.path <> "?search=HAY")
+      assert rows(view) == [context.theirs.id]
+    end
+
+    test "change the address, and a value that is no choice changes nothing", context do
+      {view, _html} = open(context.conn, context.path)
+
+      view
+      |> element("#tasks-filter-form")
+      |> render_change(%{"filters" => %{"state" => "done"}})
+
+      assert_patch(view)
+      render_async(view)
+      assert rows(view) == [context.done.id]
+
+      {view, _html} = open(context.conn, context.path <> "?who=nobody-at-all&state=lost")
+      assert length(rows(view)) == 4
+    end
+
+    test "say when nothing matches, apart from a day with no task", context do
+      {_view, html} = open(context.conn, context.path <> "?search=nothing+like+this")
+      assert html =~ "No task matches the search and the filters."
+
+      {_view, html} = open(context.conn, context.path <> "?day=#{Date.add(context.today, 3)}")
+      assert html =~ "There is no task on this day."
+    end
+
+    test "stay on the links to another day, from its first page", context do
+      {view, _html} = open(context.conn, context.path <> "?who=me&state=due&page=2")
+
+      href =
+        view
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("a[data-variant=secondary]")
+        |> Enum.find(&(LazyHTML.text(&1) =~ "The day after"))
+        |> LazyHTML.attribute("href")
+        |> hd()
+
+      query = URI.decode_query(URI.parse(href).query)
+      assert query["who"] == "me"
+      assert query["state"] == "due"
+      assert query["day"] == Date.to_iso8601(Date.add(context.today, 1))
+      refute Map.has_key?(query, "page")
+    end
+
+    test "stay after a member completes a task", context do
+      {view, _html} = open(context.conn, context.path <> "?state=due")
+      assert context.open.id in rows(view)
+
+      {view, _html} = press(view, "complete", context.open.id)
+
+      refute context.open.id in rows(view)
+      assert {:ok, %{state: :done}} = Tasks.task(context.open.id, context.options)
+    end
+
+    test "a page acts only on a task of its own day", context do
+      later =
+        plan!(context, %{
+          title: "Later",
+          due_at: DateTime.add(today_at(context, "12:00"), 3, :day)
+        })
+
+      {view, _html} = open(context.conn, context.path)
+
+      render_click(view, "complete", %{"id" => later.id})
+      render_click(view, "complete", %{"id" => "not an id"})
+
+      refute has_element?(view, "main p[role=alert]")
+      assert {:ok, %{state: :due}} = Tasks.task(later.id, context.options)
     end
   end
 
@@ -128,29 +267,29 @@ defmodule RescordWeb.TaskPagesTest do
     end
 
     test "is taken, done, and opened again", context do
-      conn = context.conn
-      {view, _html} = open(conn, context.day_path)
+      {view, _html} = open(context.conn, context.day_path)
 
-      {view, _html} = press(view, conn, "take", context.task.id)
+      {view, _html} = press(view, "take", context.task.id)
       assert has_element?(view, "tbody td", to_string(context.member.email))
       # The member has it, so the page does not offer it to them again.
       refute has_element?(view, "button[phx-click=take]")
 
-      {view, _html} = press(view, conn, "complete", context.task.id)
+      {view, _html} = press(view, "complete", context.task.id)
       assert has_element?(view, "[data-state=ok]", "Done")
       refute has_element?(view, "button[phx-click=complete]")
 
-      {view, _html} = press(view, conn, "reopen", context.task.id)
+      {view, _html} = press(view, "reopen", context.task.id)
       assert has_element?(view, "[data-state=info]", "Due")
     end
 
     test "is skipped with a reason", context do
       {view, _html} = open(context.conn, context.day_path)
 
-      {view, html} =
-        submit(view, context.conn, "#skip-#{context.task.id}",
-          skip: %{reason: "The clinic has her today"}
-        )
+      view
+      |> form("#skip-#{context.task.id}", skip: %{reason: "The clinic has her today"})
+      |> render_submit()
+
+      html = render_async(view)
 
       assert has_element?(view, "[data-state=none]", "Skipped")
       assert html =~ "Skipped: The clinic has her today"
@@ -164,7 +303,8 @@ defmodule RescordWeb.TaskPagesTest do
       other = [actor: context.other, tenant: context.organisation]
       {:ok, _done} = Tasks.complete_task(context.task, %{}, other)
 
-      html = render_click(view, "complete", %{"id" => context.task.id})
+      render_click(view, "complete", %{"id" => context.task.id})
+      html = render_async(view)
 
       assert has_element?(view, "main p[role=alert]", "Somebody changed this a moment ago")
       # The page shows the task as it is now.
@@ -270,7 +410,7 @@ defmodule RescordWeb.TaskPagesTest do
 
       conn = build_conn() |> sign_in(context.other)
       {view, _html} = open(conn, context.path)
-      {_view, _html} = press(view, conn, "complete", task.id)
+      {_view, _html} = press(view, "complete", task.id)
 
       {:ok, [dose, _prescription]} = Journal.entries(context.biscuit.id, context.options)
       assert dose.kind == :dose
@@ -296,14 +436,17 @@ defmodule RescordWeb.TaskPagesTest do
 
       other = [actor: context.other, tenant: context.organisation]
       task = plan!(context, %{due_at: today_at(context, "23:30")})
-      assert render(view) =~ "Hay and pellets"
-      assert has_element?(view, "#task-#{task.id} td", "Anybody")
+      row = "tr[data-item-id='#{task.id}']"
+      assert render_changes(view) =~ "Hay and pellets"
+      assert has_element?(view, "#{row} td", "Anybody")
 
       taken = Tasks.take_task!(task, other)
-      assert has_element?(view, "#task-#{task.id} td", to_string(context.other.email))
+      render_changes(view)
+      assert has_element?(view, "#{row} td", to_string(context.other.email))
 
       Tasks.complete_task!(taken, %{}, other)
-      assert has_element?(view, "#task-#{task.id} [data-state=ok]", "Done")
+      render_changes(view)
+      assert has_element?(view, "#{row} [data-state=ok]", "Done")
     end
 
     test "does not show a task of another organisation", context do
@@ -318,7 +461,7 @@ defmodule RescordWeb.TaskPagesTest do
         tenant: elsewhere
       )
 
-      refute render(view) =~ "Ironbark Flat"
+      refute render_changes(view) =~ "Ironbark Flat"
     end
   end
 end

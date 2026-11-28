@@ -978,6 +978,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
     other parameter is of Cinder: the page gives it back in a link, and
     does not read it. A new parameter of the page must not have the name
     of a field of a filter.
+- **The tasks page** (ADR 0097). The tasks of a day are a collection of
+  Cinder, so the page does not hold them.
+  - An event that names a task by its id reads it with
+    `Rescord.Tasks.task_of_day/3`: as the person, and only from the tasks
+    that the day of the page shows. Never act on a task by the id alone.
+  - The parameter `day` is of the page. Each other parameter is of Cinder:
+    the links to another day give them back, without `page`.
+  - A link from another page to one task is `tasks?day=<date>#task-<id>`.
+    The id is on the title of the task, because Cinder writes the row.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through

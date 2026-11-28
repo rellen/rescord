@@ -1,7 +1,8 @@
 defmodule RescordWeb.TaskComponents do
   @moduledoc """
-  The parts of the page of the tasks (ADR 0032 and ADR 0037): a table of
-  tasks with what a member can do with each, and the form of a new task.
+  The parts of the page of the tasks (ADR 0032 and ADR 0037): the
+  collection of the tasks of a day with what a member can do with each
+  (ADR 0097), and the form of a new task.
   """
 
   use RescordWeb, :html
@@ -64,101 +65,153 @@ defmodule RescordWeb.TaskComponents do
     """
   end
 
-  attr :tasks, :list, required: true
+  attr :day, Date, required: true
+  attr :today, Date, required: true
+  attr :query, :any, required: true, doc: "the query of `Rescord.Tasks.query_to_day/2`"
+  attr :url_state, :any, required: true
   attr :organisation, :map, required: true
   attr :members, :list, required: true
+  attr :kinds, :list, required: true, doc: "each kind of task, as the choices of the filter"
+  attr :for_person, :any, required: true, doc: "the function of the filter \"Who\""
   attr :user, :map, required: true
   attr :role, :atom, required: true
   attr :now, :any, required: true
-  attr :with_day, :boolean, default: false, doc: "shows the day of each task with its time"
 
-  # A table of tasks, each with its state and what a member can do with it.
+  @doc """
+  The tasks of a day, as a collection of Cinder (ADR 0097): a search on the
+  title, filters on the state, the kind and the person, and pages. Each row
+  has what a member can do with the task. On the page of today, the tasks
+  of earlier days that are still due come first, each with its day.
+  """
   def tasks(assigns) do
     ~H"""
-    <div data-scroll>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Due</th>
-            <th scope="col">Task</th>
-            <th scope="col">For</th>
-            <th scope="col">Who</th>
-            <th scope="col">State</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <%!-- The key: a read after a change sends the rows that changed (ADR 0096). --%>
-          <tr :for={task <- @tasks} :key={task.id} id={"task-#{task.id}"}>
-            <td>{due(task, @organisation, @with_day)}</td>
-            <th scope="row">
-              {task.title}
-              <small :if={task.kind}>{task.kind.label}</small>
-              <small :if={task.routine_id}>From a routine</small>
-              <small :if={task.note}>{task.note}</small>
-              <small :if={task.skip_reason}>Skipped: {task.skip_reason}</small>
-            </th>
-            <td data-label="For">{for_words(task)}</td>
-            <td data-label="Who">{who(task, @members, @user)}</td>
-            <td>
-              <.state kind={TaskWords.phase_kind(Tasks.phase(task, @now))}>
-                {TaskWords.phase(Tasks.phase(task, @now))}
-              </.state>
-            </td>
-            <td>
-              <.button
-                :if={
-                  task.state == :due and @user.id not in task.assignee_ids and
-                    Tasks.role_can?(@role, :take)
-                }
-                phx-click="take"
-                phx-value-id={task.id}
-                aria-label={"Take the task #{task.title}"}
-              >
-                Take
-              </.button>
-              <.button
-                :if={task.state == :due and Tasks.role_can?(@role, :complete)}
-                phx-click="complete"
-                phx-value-id={task.id}
-                aria-label={"Mark the task #{task.title} as done"}
-              >
-                Done
-              </.button>
-              <.button
-                :if={task.state != :due and Tasks.role_can?(@role, :reopen)}
-                phx-click="reopen"
-                phx-value-id={task.id}
-                aria-label={"Open again the task #{task.title}"}
-              >
-                Open again
-              </.button>
-              <details
-                :if={task.state == :due and Tasks.role_can?(@role, :skip)}
-                id={"skip-details-#{task.id}"}
-              >
-                <summary>Skip</summary>
-                <form id={"skip-#{task.id}"} phx-submit="skip">
-                  <input type="hidden" name="task_id" value={task.id} />
-                  <.input
-                    id={"skip-#{task.id}-reason"}
-                    name="skip[reason]"
-                    type="text"
-                    label={"Why you skip #{task.title}"}
-                    value=""
-                    maxlength="200"
-                    required
-                  />
-                  <.button type="submit">Skip the task</.button>
-                </form>
-              </details>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <section id="day-tasks" aria-labelledby="day-heading">
+      <h2 id="day-heading">Tasks of the day</h2>
+      <p :if={@day == @today}>
+        The tasks of earlier days that are still due come first, each with its day.
+      </p>
+      <Cinder.collection
+        id="tasks"
+        query={@query}
+        actor={@user}
+        tenant={@organisation}
+        url_state={@url_state}
+        page_size={[default: 50, options: [50, 100, 200]]}
+        search={[label: "Search", placeholder: "A word of the title"]}
+      >
+        <:filter
+          field="who"
+          type="select"
+          label="Who"
+          prompt="Each person"
+          options={who_options(@members)}
+          fn={@for_person}
+        />
+        <:filter field="kind_id" type="select" label="Kind" prompt="Any kind" options={@kinds} />
+        <:empty :let={found}>
+          <p :if={found.filtered?}>No task matches the search and the filters.</p>
+          <p :if={not found.filtered?}>There is no task on this day.</p>
+        </:empty>
+        <:col :let={task} field="title" label="Task" search>
+          <%!-- The place of a link from the first page or a calendar:
+               `tasks#task-<id>`. Cinder writes the row, with no id. --%>
+          <span id={"task-#{task.id}"}>{task.title}</span>
+          <small :if={task.kind}>{task.kind.label}</small>
+          <small :if={task.routine_id}>From a routine</small>
+          <small :if={task.note}>{task.note}</small>
+          <small :if={task.skip_reason}>Skipped: {task.skip_reason}</small>
+        </:col>
+        <:col :let={task} field="due_at" label="Due">
+          <span data-label="Due">{due(task, @organisation, earlier?(task, @organisation, @day))}</span>
+        </:col>
+        <:col :let={task} label="For">
+          <span data-label="For">{for_words(task)}</span>
+        </:col>
+        <:col :let={task} field="assignee_ids" label="Who">
+          <span data-label="Who">{who(task, @members, @user)}</span>
+        </:col>
+        <:col
+          :let={task}
+          field="state"
+          label="State"
+          filter={[type: :select, prompt: "Any state", options: TaskWords.state_options()]}
+        >
+          <.state kind={TaskWords.phase_kind(Tasks.phase(task, @now))}>
+            {TaskWords.phase(Tasks.phase(task, @now))}
+          </.state>
+        </:col>
+        <:col :let={task} label="Actions">
+          <.actions task={task} user={@user} role={@role} />
+        </:col>
+      </Cinder.collection>
+    </section>
     """
   end
+
+  attr :task, :map, required: true
+  attr :user, :map, required: true
+  attr :role, :atom, required: true
+
+  # What a member can do with a task.
+  defp actions(assigns) do
+    ~H"""
+    <.button
+      :if={
+        @task.state == :due and @user.id not in @task.assignee_ids and
+          Tasks.role_can?(@role, :take)
+      }
+      phx-click="take"
+      phx-value-id={@task.id}
+      aria-label={"Take the task #{@task.title}"}
+    >
+      Take
+    </.button>
+    <.button
+      :if={@task.state == :due and Tasks.role_can?(@role, :complete)}
+      phx-click="complete"
+      phx-value-id={@task.id}
+      aria-label={"Mark the task #{@task.title} as done"}
+    >
+      Done
+    </.button>
+    <.button
+      :if={@task.state != :due and Tasks.role_can?(@role, :reopen)}
+      phx-click="reopen"
+      phx-value-id={@task.id}
+      aria-label={"Open again the task #{@task.title}"}
+    >
+      Open again
+    </.button>
+    <details
+      :if={@task.state == :due and Tasks.role_can?(@role, :skip)}
+      id={"skip-details-#{@task.id}"}
+    >
+      <summary>Skip</summary>
+      <form id={"skip-#{@task.id}"} phx-submit="skip">
+        <input type="hidden" name="task_id" value={@task.id} />
+        <.input
+          id={"skip-#{@task.id}-reason"}
+          name="skip[reason]"
+          type="text"
+          label={"Why you skip #{@task.title}"}
+          value=""
+          maxlength="200"
+          required
+        />
+        <.button type="submit">Skip the task</.button>
+      </form>
+    </details>
+    """
+  end
+
+  # The choices of the filter "Who": the person who reads, the tasks that
+  # name no member, and each member.
+  defp who_options(members), do: [{"Me", "me"}, {"Anybody", "anybody"} | members]
+
+  # Whether a task is of a day before the day of the page: it then shows
+  # its day with its time.
+  defp earlier?(task, organisation, day),
+    do: Date.before?(Accounts.local_date(organisation, task.due_at), day)
 
   def due(task, organisation, with_day?) do
     local = Accounts.local_time(organisation, task.due_at)

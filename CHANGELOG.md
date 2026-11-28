@@ -560,6 +560,16 @@ release (ADR 0047).
   condition keeps them. A link from the measurements or from a photo to
   its entry now opens that one entry, with what a member added to it
   (ADR 0092).
+- The tasks page now has a search on the title of a task, and filters on
+  the state (due, done or skipped), on the kind, and on who does it: "Me",
+  "Anybody" for the tasks that name no member, or one member. The tasks
+  are in pages of 50, 100 or 200. The address holds the search and the
+  filters, so the address that ends in `?state=due&who=me` is what is left
+  for the person who opens it, and "The day before" and "The day after"
+  keep them. On today the tasks of earlier days that are still due are
+  now at the top of one list, each with its day, and not in a table of
+  their own, so a filter holds for both. After Take, Done, Skip or Open
+  again the page stays where it was (ADR 0097).
 
 ### Fixed
 

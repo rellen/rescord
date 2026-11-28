@@ -37,6 +37,13 @@ defmodule RescordWeb.TaskWords do
   @doc "The kind of state that `<.state>` draws for a phase."
   def phase_kind(value), do: @phases |> Keyword.fetch!(value) |> elem(1)
 
+  @doc """
+  The states of a task as the choices of a filter: the words, and the value
+  as text. Overdue is no state: it is a task that is due, past its time.
+  """
+  def state_options,
+    do: for(state <- [:due, :done, :skipped], do: {phase(state), to_string(state)})
+
   @doc "The phases, for the test that holds the words."
   def phases, do: Keyword.keys(@phases)
 

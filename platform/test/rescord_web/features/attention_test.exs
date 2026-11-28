@@ -166,7 +166,7 @@ defmodule RescordWeb.Features.AttentionTest do
     """)
     |> assert_has("h1", text: "Tasks", exact: true)
     |> assert_connected()
-    |> assert_has("#task-#{task.id} th", text: "Give Sir Reginald")
+    |> assert_has("#task-#{task.id}", text: "Give Sir Reginald")
     |> evaluate(
       """
       (async () => {
