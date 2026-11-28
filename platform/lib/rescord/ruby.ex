@@ -137,6 +137,7 @@ defmodule Rescord.Ruby do
       define :messages, action: :of_conversation, args: [:conversation_id]
       define :message, action: :read, get_by: [:id], not_found_error?: false
       define :rate_reply, action: :rate, args: [:rating]
+      define :report_reply, action: :report
       define :stop_reply, action: :stop
     end
 
@@ -332,6 +333,53 @@ defmodule Rescord.Ruby do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  @doc """
+  What the members said of the answers of the month of `today` (UTC), for
+  the settings page: how many were right (Yes), how many were not (No),
+  and how many of those a member sent to the administrators. Counts only.
+  An answer counts in the month that Ruby wrote it, not the month of the
+  Yes or No.
+  An answer of a conversation that is gone is in no count.
+
+  It reads as the person of `opts`: the power `settings` reads each
+  message, and any other person counts only their own.
+  """
+  @spec answers_of_month(keyword, Date.t()) ::
+          %{right: non_neg_integer, wrong: non_neg_integer, sent: non_neg_integer}
+  def answers_of_month(opts, today \\ Date.utc_today()) do
+    {:ok, from} = DateTime.new(Date.beginning_of_month(today), ~T[00:00:00], "Etc/UTC")
+    {:ok, to} = DateTime.new(Date.add(Date.end_of_month(today), 1), ~T[00:00:00], "Etc/UTC")
+
+    month =
+      Message
+      |> Ash.Query.filter(source == :ruby and inserted_at >= ^from and inserted_at < ^to)
+
+    count = fn query -> Ash.count!(query, opts) end
+
+    %{
+      right: month |> Ash.Query.filter(rating == :up) |> count.(),
+      wrong: month |> Ash.Query.filter(rating == :down) |> count.(),
+      sent: month |> Ash.Query.filter(rating == :down and not is_nil(reported_at)) |> count.()
+    }
+  end
+
+  @doc """
+  The answers that members sent to the administrators, the newest first,
+  at most `limit`, each with the message that it answers. Read as the
+  person of `opts`: only the power `settings` reads those of each member.
+  A member can take a report back with Yes, or remove the conversation:
+  then it is gone from here.
+  """
+  @spec reported_answers(keyword, pos_integer) :: [Message.t()]
+  def reported_answers(opts, limit \\ 20) do
+    Message
+    |> Ash.Query.filter(source == :ruby and rating == :down and not is_nil(reported_at))
+    |> Ash.Query.sort(reported_at: :desc, id: :desc)
+    |> Ash.Query.limit(limit)
+    |> Ash.Query.load(:response_to)
+    |> Ash.read!(opts)
   end
 
   @doc """

@@ -170,8 +170,10 @@ defmodule Rescord.Ruby.ConversationsTest do
       reply = reply!(context, conversation, message)
       options = as(context, context.ana)
 
-      assert {:ok, %{rating: :down, rating_note: "Not so"}} =
-               Ruby.rate_reply(reply, :down, %{rating_note: "Not so"}, options)
+      assert {:ok, %{rating: :down} = reply} = Ruby.rate_reply(reply, :down, options)
+
+      assert {:ok, %{rating_note: "Not so"}} =
+               Ruby.report_reply(reply, %{rating_note: "Not so"}, options)
 
       assert {:error, _refused} = Ruby.rate_reply(message, :up, options)
 

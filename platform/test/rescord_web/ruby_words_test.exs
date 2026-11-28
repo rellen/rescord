@@ -272,6 +272,17 @@ defmodule RescordWeb.RubyWordsTest do
     end
   end
 
+  test "what the members said of the answers of a month" do
+    month = ~D[2026-11-01]
+
+    assert RubyWords.answers(%{right: 1, wrong: 0, sent: 0}, month) ==
+             "In November 2026, members said that 1 answer was right and 0 answers were not right."
+
+    assert RubyWords.answers(%{right: 3, wrong: 2, sent: 2}, month) ==
+             "In November 2026, members said that 3 answers were right and 2 answers were not right. " <>
+               "2 of those were sent to you."
+  end
+
   describe "the use of a month" do
     test "rounds to the cent, with two places, and says about" do
       assert RubyWords.cents_of(4_999) == 0

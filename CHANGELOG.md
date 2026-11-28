@@ -231,6 +231,10 @@ release (ADR 0047).
     adds an empty column to the settings of Ruby, for the share of one
     member for a month (ADR 0117). Empty means no share, as before the
     upgrade. It changes no row.
+  - `20261128145856_add_ruby_reported_at`, in each organisation: adds an
+    empty column to the messages of Ruby, for the time at which a member
+    sent an answer that was not right to the administrators. It changes
+    no row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -761,6 +765,13 @@ release (ADR 0047).
   word of any conversation, and a member who left stays in them. The
   events of ReqLLM now hold no request and no answer by configuration
   (`config :req_llm, telemetry: [payloads: :none]`), as before by default.
+- Below each whole answer of Ruby, "Was this answer right?" with "Yes"
+  and "No". After "No" the member may say what was wrong, and may send
+  that one question and its answer, and what Ruby read for it, to the
+  administrators; until then what was wrong is theirs alone. The
+  settings of Ruby count what the members said this month, and show the
+  words only of the answers that a member sent. A "Yes" takes a report
+  back, and a removed conversation takes its reports with it.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.

@@ -33,6 +33,9 @@ defmodule RescordWeb.RubyLive do
   # The things to ask that the start shows.
   @asks 4
 
+  # The words of the buttons "Yes" and "No", as the ratings that they give.
+  @ratings %{"up" => :up, "down" => :down}
+
   @impl true
   def mount(_params, _session, socket) do
     unless socket.assigns.ruby?, do: raise(NotFound)
@@ -42,6 +45,7 @@ defmodule RescordWeb.RubyLive do
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
      |> assign(problems: [], recent: [], about: nil, asks: [], name_form: nil)
+     |> assign(rate_problems: %{})
      |> assign(refused: nil, allowance: nil, closed?: false, settings?: Ruby.sets?(scope(socket)))
      |> assign_form("")}
   end
@@ -70,7 +74,8 @@ defmodule RescordWeb.RubyLive do
      |> assign(about: about, asks: asks(user, organisation, about))
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
-     |> assign(problems: [], refused: nil, closed?: false, recent: recent(socket))}
+     |> assign(problems: [], refused: nil, closed?: false, recent: recent(socket))
+     |> assign(rate_problems: %{})}
   end
 
   @impl true
@@ -124,6 +129,7 @@ defmodule RescordWeb.RubyLive do
               known={@known}
               way_on?={is_nil(@answer) and is_nil(@refused) and message.id == List.last(@messages).id}
               settings?={@settings?}
+              rate_problems={Map.get(@rate_problems, message.id, [])}
             />
           </li>
         </ol>
@@ -230,7 +236,60 @@ defmodule RescordWeb.RubyLive do
     {:noreply, socket}
   end
 
+  # "Was this answer right?": a reply of this conversation, read as the
+  # person. The page reads again, so the button shows as pressed.
+  def handle_event("rate", %{"reply" => id, "rating" => rating}, socket)
+      when is_binary(id) and is_map_key(@ratings, rating) do
+    with {:ok, reply} <- reply_of(socket, id),
+         {:ok, _reply} <- Ruby.rate_reply(reply, Map.fetch!(@ratings, rating), scope(socket)) do
+      {:noreply, socket |> rate_problems(id, []) |> read()}
+    else
+      error -> {:noreply, socket |> rate_problems(id, problems_of(error)) |> read()}
+    end
+  end
+
+  def handle_event("report", %{"report" => %{"reply" => id} = params}, socket)
+      when is_binary(id) do
+    values = %{rating_note: non_blank(params["rating_note"]), send: params["send"] == "true"}
+
+    with {:ok, reply} <- reply_of(socket, id),
+         {:ok, reply} <- Ruby.report_reply(reply, values, scope(socket)) do
+      words =
+        if reply.reported_at,
+          do: "The answer is sent to the administrators.",
+          else: "What was wrong is saved."
+
+      {:noreply, socket |> rate_problems(id, []) |> put_flash(:info, words) |> read()}
+    else
+      error -> {:noreply, socket |> rate_problems(id, problems_of(error)) |> read()}
+    end
+  end
+
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # A reply of the conversation of the page, and of no other one.
+  defp reply_of(%{assigns: %{conversation: %{id: conversation_id}}} = socket, id) do
+    case Ruby.message(id, scope(socket)) do
+      {:ok, %{source: :ruby, conversation_id: ^conversation_id} = reply} -> {:ok, reply}
+      _other -> :gone
+    end
+  end
+
+  defp reply_of(_socket, _id), do: :gone
+
+  # A refusal of "Was this answer right?" shows below that answer, and
+  # goes when the next press of it succeeds.
+  defp rate_problems(socket, id, []),
+    do: assign(socket, rate_problems: Map.delete(socket.assigns.rate_problems, id))
+
+  defp rate_problems(socket, id, problems),
+    do:
+      assign(socket,
+        rate_problems: Map.put(socket.assigns.rate_problems, id, sentences(problems))
+      )
+
+  defp problems_of({:error, error}), do: Ruby.problems(error)
+  defp problems_of(_gone), do: [{nil, "That answer is not in this conversation any more"}]
 
   # The reply has a row, or it ended: the page reads the conversation
   # again, and the status says the state once.

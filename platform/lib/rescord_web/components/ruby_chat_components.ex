@@ -135,6 +135,10 @@ defmodule RescordWeb.RubyChatComponents do
 
   attr :settings?, :boolean, default: false, doc: "the person can change the settings of Ruby"
 
+  attr :rate_problems, :list,
+    default: [],
+    doc: "the refusals of the last press of \"Was this answer right?\" of this answer"
+
   def message(%{message: %{source: :user}} = assigns) do
     ~H"""
     <article data-from="member" aria-labelledby={"who-#{@message.id}"}>
@@ -181,7 +185,77 @@ defmodule RescordWeb.RubyChatComponents do
         organisation={@organisation}
       />
       <.steps_done id={"steps-#{@message.id}"} steps={@message.steps || []} />
+      <.rate :if={@message.state == :complete} message={@message} problems={@rate_problems} />
     </article>
+    """
+  end
+
+  @doc """
+  "Was this answer right?" at the foot of a whole answer: "Yes" and "No",
+  pressed at once, as words and with `aria-pressed`. After "No", what was
+  wrong, which nobody must write, and a box, not ticked, that sends this
+  one question, its answer and what Ruby read for it to the
+  administrators. A refusal of the last press shows below the buttons.
+  """
+  attr :message, :map, required: true
+  attr :problems, :list, default: [], doc: "the refusals of the last press, as sentences"
+
+  def rate(assigns) do
+    assigns =
+      assign(assigns,
+        report:
+          to_form(
+            %{
+              "rating_note" => assigns.message.rating_note || "",
+              "send" => assigns.message.reported_at != nil
+            },
+            as: :report,
+            id: "report-#{assigns.message.id}"
+          )
+      )
+
+    ~H"""
+    <div id={"rate-#{@message.id}"} data-rating>
+      <div role="group" data-rate aria-labelledby={"rate-words-#{@message.id}"}>
+        <span id={"rate-words-#{@message.id}"}>Was this answer right?</span>
+        <button
+          :for={{rating, word} <- [up: "Yes", down: "No"]}
+          type="button"
+          aria-pressed={to_string(@message.rating == rating)}
+          phx-click="rate"
+          phx-value-reply={@message.id}
+          phx-value-rating={rating}
+        >
+          {word}
+        </button>
+      </div>
+      <.problems :if={@problems != []} list={@problems} />
+      <.form
+        :if={@message.rating == :down}
+        for={@report}
+        id={"report-#{@message.id}"}
+        phx-submit="report"
+      >
+        <input type="hidden" name="report[reply]" value={@message.id} />
+        <.input
+          field={@report[:rating_note]}
+          type="textarea"
+          label="What was wrong?"
+          hint="You need not write anything. At most 500 characters."
+          maxlength="500"
+        />
+        <.input
+          field={@report[:send]}
+          type="checkbox"
+          label="Send this question and its answer, and what Ruby read for it, to the administrators"
+          hint="They can read each conversation already. This asks them to look at this answer."
+        />
+        <button type="submit">Save what was wrong</button>
+      </.form>
+      <p :if={@message.rating == :down and @message.reported_at}>
+        <.icon name="check" /> You sent this answer to the administrators.
+      </p>
+    </div>
     """
   end
 

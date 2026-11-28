@@ -55,6 +55,7 @@ defmodule Rescord.Ruby.Grants do
         # `say` refuses a conversation of another person.
         {Message, :say, :all},
         {Message, :rate, :own},
+        {Message, :report, :own},
         {Message, :stop, :own}
       ]
     }

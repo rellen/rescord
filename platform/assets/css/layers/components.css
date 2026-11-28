@@ -2863,6 +2863,23 @@ section[data-log] [data-rate] > span {
   color: var(--muted);
 }
 
+/* After No: what was wrong, and the box that sends the answer. */
+section[data-log] [data-rating] {
+  display: grid;
+  gap: 0.75rem;
+  margin-block-start: 0.75rem;
+}
+
+section[data-log] [data-rating] > form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+section[data-log] [data-rating] > p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
 /* -------------------------------------------------------------- comments */
 
 /* The comments of a record (issue 29): a list of cards, oldest first. */

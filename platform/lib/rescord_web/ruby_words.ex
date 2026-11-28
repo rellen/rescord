@@ -233,6 +233,25 @@ defmodule RescordWeb.RubyWords do
 
   def use_warning(_microdollars, _allowance, _month), do: nil
 
+  @doc """
+  What the members said of the answers of a month, from
+  `Rescord.Ruby.answers_of_month/2`, in two whole sentences.
+  """
+  def answers(%{right: right, wrong: wrong, sent: sent}, %Date{} = month) do
+    count = &RescordWeb.Locale.count/3
+    words = RescordWeb.Locale.month(month)
+
+    said =
+      "In #{words}, members said that " <>
+        count.(right, "answer was right", "answers were right") <>
+        " and " <> count.(wrong, "answer was not right", "answers were not right") <> "."
+
+    case sent do
+      0 -> said
+      _some -> said <> " " <> count.(sent, "of those was", "of those were") <> " sent to you."
+    end
+  end
+
   @doc "A cost of the use, in US dollars with the word \"about\": \"about 6.10\"."
   def about_dollars(microdollars) when is_integer(microdollars),
     do: "about #{amount(cents_of(microdollars))}"
