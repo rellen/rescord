@@ -973,7 +973,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
   person. "On time" is done by the due time plus one hour, and a week
   starts on a Monday.
   - The residents in care on a day are those that arrived on that day or
-    before and had not left by then (ADR 0117): count with
+    before and had not left by then (ADR 0118): count with
     `Rescord.Residents.stays/1` and `Rescord.Residents.Census`, never
     with a rule of your own. The room of the housing is
     `Rescord.Locations.room/1`.

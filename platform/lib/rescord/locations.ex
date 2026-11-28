@@ -249,7 +249,7 @@ defmodule Rescord.Locations do
   end
 
   @doc """
-  The room of the housing (ADR 0117): how many residents the locations
+  The room of the housing (ADR 0118): how many residents the locations
   hold, by their capacities. A location with a capacity counts with it,
   and the locations inside it do not count again; a location with none
   counts the room of the locations inside it. `nil` when no location has a

@@ -73,7 +73,7 @@ defmodule RescordWeb.ChartComponents do
   attr :tick, :any, default: &JournalWords.number/1, doc: "writes the number of a tick"
   attr :pick, :string, default: nil, doc: "the event of a press on a point"
   attr :selected, :any, default: nil, doc: "the id of the point that the person chose"
-  attr :step, :boolean, default: false, doc: "a count that holds until the next point (ADR 0117)"
+  attr :step, :boolean, default: false, doc: "a count that holds until the next point (ADR 0118)"
 
   attr :rules, :list,
     default: [],
@@ -187,7 +187,7 @@ defmodule RescordWeb.ChartComponents do
   end
 
   @doc """
-  Bars above and below a line (ADR 0117): for each period, a bar up for one
+  Bars above and below a line (ADR 0118): for each period, a bar up for one
   count and a bar down for another, such as the arrivals and the
   departures of each week. It is one image with a name and a description,
   and the page gives its values as a table too.

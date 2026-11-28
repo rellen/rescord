@@ -169,7 +169,7 @@ defmodule RescordWeb.InsightPagesTest do
     end
   end
 
-  describe "residents in care (ADR 0117)" do
+  describe "residents in care (ADR 0118)" do
     setup context do
       admin = [actor: context.administrator, tenant: context.organisation]
       Rescord.Locations.add_location!(%{name: "Hutch row", capacity: 1}, admin)

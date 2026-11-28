@@ -300,7 +300,7 @@ defmodule RescordWeb.ChartComponentsTest do
     end
   end
 
-  describe "a count over time (ADR 0117)" do
+  describe "a count over time (ADR 0118)" do
     test "draws steps, and a dashed rule at a value that the scale holds" do
       points = points(3)
       scale = RescordWeb.Chart.scale([%{hd(points) | value: Decimal.new(400)} | points])
@@ -315,7 +315,7 @@ defmodule RescordWeb.ChartComponentsTest do
     end
   end
 
-  describe "bars above and below a line (ADR 0117)" do
+  describe "bars above and below a line (ADR 0118)" do
     test "are one image with a name and a description, and a bar for each count" do
       doc =
         render_component(&updown_bars/1,

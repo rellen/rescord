@@ -377,7 +377,7 @@ release (ADR 0047).
   both, and a press on a day says its counts with a link to its tasks.
   Each member can open it. It counts the tasks of the refuge, and never
   the work of one person.
-- The second insight, "Residents in care" (issue 36, ADR 0117): the
+- The second insight, "Residents in care" (issue 36, ADR 0118): the
   residents in care at the end of each day of the last year as a line,
   with a dashed line at the room that the capacities of the locations
   give, the arrivals and departures of each week as bars above and below

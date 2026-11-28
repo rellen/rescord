@@ -1,7 +1,7 @@
 defmodule RescordWeb.ResidentsInsightsLive do
   @moduledoc """
   The residents in care over a year, at
-  `/o/<short name>/insights/residents` (ADR 0117).
+  `/o/<short name>/insights/residents` (ADR 0118).
 
   Four figures: the residents in care today, the arrivals and the
   departures of the last 12 months, and the days on which the refuge had

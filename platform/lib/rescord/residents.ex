@@ -324,7 +324,7 @@ defmodule Rescord.Residents do
   defdelegate moves_by_week(stays, mondays), to: Rescord.Residents.Census, as: :by_week
 
   @doc """
-  The stay of each resident that the actor of `opts` reads (ADR 0117): when
+  The stay of each resident that the actor of `opts` reads (ADR 0118): when
   it arrived and how, and when it left and how, or `nil` while it is in
   care. A resident with no arrival has no stay.
 

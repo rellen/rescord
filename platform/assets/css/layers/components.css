@@ -1193,14 +1193,14 @@ figure[data-chart] > figcaption {
 }
 
 /* A rule across the plot at a value, such as the room of the housing
-   (ADR 0117): dashed, so it is apart from the line of the values. */
+   (ADR 0118): dashed, so it is apart from the line of the values. */
 [data-plot] line[data-rule] {
   stroke: var(--field);
   stroke-width: 1.5;
   stroke-dasharray: 5 4;
 }
 
-/* Bars above and below a line (ADR 0117): the count above is the lead
+/* Bars above and below a line (ADR 0118): the count above is the lead
    colour, and the count below the colour of an edge, with the key in
    words beside them. */
 svg[data-bars] {

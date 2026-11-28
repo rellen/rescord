@@ -192,7 +192,7 @@ defmodule RescordWeb.Chart do
 
   @doc """
   The steps through some marks, for a count that holds its value until the
-  next mark (ADR 0117): across to the next mark, then up or down to it.
+  next mark (ADR 0118): across to the next mark, then up or down to it.
   An empty text for no mark.
 
       iex> marks = [%RescordWeb.Chart.Mark{id: 1, x: 0.0, y: 80.0}, %RescordWeb.Chart.Mark{id: 2, x: 50.0, y: 40.0}]
@@ -209,7 +209,7 @@ defmodule RescordWeb.Chart do
   end
 
   @doc """
-  The places of bars above and below a middle line (ADR 0117), one pair for
+  The places of bars above and below a middle line (ADR 0118), one pair for
   each `{up, down}` count: `x` and `width` of the bar from the left, and
   `up` and `down`, the height of each bar as a share of the half of the
   plot, in percent of the whole plot. The greatest count of all fills its

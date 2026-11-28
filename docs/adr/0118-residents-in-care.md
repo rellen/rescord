@@ -1,4 +1,4 @@
-# ADR 0117: Residents in care, a census against the room
+# ADR 0118: Residents in care, a census against the room
 
 Status: accepted. The second chart of issue 36, which the maintainer chose
 to build with the other nine on 28 November 2026 (ADR 0116).

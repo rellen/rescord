@@ -1,7 +1,7 @@
 defmodule Rescord.Residents.Census do
   @moduledoc """
   The counts of the stays of `Rescord.Residents.stays/1` over time
-  (ADR 0117): how many residents were in care at the end of each day, and
+  (ADR 0118): how many residents were in care at the end of each day, and
   how many arrived and left in each week. A resident is in care at the end
   of a day when it arrived on that day or before, and has not left by then,
   as `Rescord.Reports.Facts.Register.in_care_on/2` says.

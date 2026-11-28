@@ -333,7 +333,7 @@ defmodule Rescord.LocationsTest do
     end
   end
 
-  describe "the room of the housing (ADR 0117)" do
+  describe "the room of the housing (ADR 0118)" do
     test "counts a capacity once: an outer one, or else the ones inside", context do
       assert Locations.room(context.options) == {:ok, 4}
 

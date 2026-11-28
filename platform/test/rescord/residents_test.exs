@@ -737,7 +737,7 @@ defmodule Rescord.ResidentsTest do
     end
   end
 
-  describe "the stays (ADR 0117)" do
+  describe "the stays (ADR 0118)" do
     test "are each arrival and departure, the earliest first, and narrow to a species",
          context do
       today = Rescord.Accounts.today(context.organisation)
