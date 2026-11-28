@@ -525,6 +525,21 @@ organisation cannot read it. Rescord deletes a conversation after the
 number of days that the organisation sets, and when its member removes
 it. A conversation is not in the export of the data.
 
+### 5.12 Tools
+
+An organisation has tools (ADR 0072). A tool helps a member with a piece
+of work. It is not a record, and it stores nothing. Each member of the
+organisation can use each tool.
+
+The dose calculator is the first tool. A member types the weight of an
+animal, the dose rate for each kilogram, and the strength of the product.
+The calculator gives the dose, and the volume or the number of tablets
+that holds the dose. It shows each step of the arithmetic.
+
+The calculator knows no medication. It gives no dose rate, and it does not
+say that a dose is safe. The dose rate and the strength come from a vet or
+from the label. The page tells the member to check the result with a vet.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.

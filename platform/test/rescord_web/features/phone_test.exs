@@ -84,8 +84,8 @@ defmodule RescordWeb.Features.PhoneTest do
            ~w(tasks routines residents residents/new residents/#{resident.id}
               residents/#{resident.id}/edit residents/#{resident.id}/journal
               residents/#{resident.id}/photos residents/#{resident.id}/timeline groups housing
-              housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers lists members
-              roles partners transfers settings export),
+              housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
+              lists members roles partners transfers settings export),
            &"#{home}/#{&1}"
          )}
   end

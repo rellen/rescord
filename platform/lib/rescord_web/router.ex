@@ -84,6 +84,8 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/inventory", InventoryLive
       live "/o/:organisation/inventory/suppliers", SuppliersLive
       live "/o/:organisation/inventory/:id", ItemLive
+      live "/o/:organisation/tools", ToolsLive
+      live "/o/:organisation/tools/dose", DoseLive
       live "/o/:organisation/housing", HousingLive
       live "/o/:organisation/housing/:id", LocationLive
       live "/o/:organisation/groups", GroupsLive

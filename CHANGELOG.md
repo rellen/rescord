@@ -29,6 +29,15 @@ its GitHub release (ADR 0047).
   such as `Kilograms` and `millilitre` too. Nothing in the records
   changes, and a unit that Rescord does not know works as before. This is
   the base of the dosage calculator, which comes next.
+- An organisation now has tools, as a new part of the site menu, and the
+  first tool is a dose calculator. A member types the weight of an animal
+  (in kg, g, lb or oz), the dose rate for each kilogram (in mg, mcg, g or
+  mL), and, for a volume or a number of tablets, the strength of the
+  product. The page gives the dose and the amount of the product, shows
+  each step of the arithmetic, and says to check the result with a vet. It
+  knows no medication: it offers no dose rate and does not say that a dose
+  is safe. It stores nothing, and each member can use it. A number with a
+  comma is refused, because `1,095` can mean two numbers.
 
 ### Changed
 

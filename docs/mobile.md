@@ -28,7 +28,8 @@ The pages: the first page, the sign-in pages, the first page of an
 organisation, tasks, routines, residents, a resident, the form of a
 resident, the journal, the photos, the timeline, groups, a group, housing,
 a location, inventory, an item, suppliers, lists, members, roles, partner
-refuges, transfers, settings, export, and the root pages.
+refuges, transfers, settings, export, and the root pages. The tools and the
+dose calculator came later (ADR 0072), and `PhoneTest` visits them too.
 
 ## What was found, and what was done
 

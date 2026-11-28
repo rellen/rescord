@@ -530,6 +530,23 @@ for Rescord.
   - A new unit takes a line in the catalogue of `Rescord.Units`, words for
     a new dimension in `RescordWeb.UnitWords`, and a line with its factor
     in `Rescord.UnitsTest`.
+- **Tools** (ADR 0072). A tool is a page below `/o/:organisation/tools`
+  that helps with a piece of work and stores nothing: a card in
+  `RescordWeb.ToolComponents.tools/1`, a route, and a LiveView with
+  `section={:tools}`. Each member can open it, and what it reads from the
+  records it reads as the member.
+  - The dose calculator is `Rescord.Dosage` and `RescordWeb.DoseLive`. It
+    is an aid to arithmetic and **knows no medication**: never give it a
+    dose rate, a list of medications, or a warning that a dose is too
+    much or is safe. That would be a formulary, and a new decision of the
+    maintainer.
+  - Its guards are in ADR 0072, and `Rescord.DosageTest` holds each one.
+    A number comes through `Rescord.Dosage.parse_number/1`, a unit is one
+    of the lists of `Rescord.Dosage`, the result goes when a field
+    changes, and the note to check with a vet is on the page at all
+    times.
+  - A new problem or note of `Rescord.Dosage` takes words in
+    `RescordWeb.ToolWords`.
 - **Dates.** Today for an organisation is `Rescord.Accounts.today/1`, in its
   time zone (ADR 0026). Never use `Date.utc_today/0` or `DateTime.to_date/1`
   for a rule or a page of an organisation; `Rescord.Accounts.local_date/2`
@@ -605,6 +622,7 @@ for Rescord.
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
+| `platform/lib/rescord/dosage.ex` | the arithmetic of a dose, for the dose calculator of the tools (ADR 0072) |
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord_web/live/` | page LiveViews |

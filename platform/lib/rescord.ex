@@ -16,6 +16,8 @@ defmodule Rescord do
   use Boundary,
     deps: [],
     exports: [
+      Dosage,
+      Dosage.Result,
       History,
       Images,
       Images.Limit,

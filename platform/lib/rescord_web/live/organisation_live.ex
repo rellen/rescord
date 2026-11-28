@@ -98,6 +98,7 @@ defmodule RescordWeb.OrganisationLive do
           <li><a href={~p"/o/#{@organisation.short_name}/groups"}>See the groups</a></li>
           <li><a href={~p"/o/#{@organisation.short_name}/housing"}>See the housing</a></li>
           <li><a href={~p"/o/#{@organisation.short_name}/inventory"}>See the inventory</a></li>
+          <li><a href={~p"/o/#{@organisation.short_name}/tools"}>Use the tools</a></li>
           <li><a href={~p"/o/#{@organisation.short_name}/lists"}>See the lists of values</a></li>
           <li><a href={~p"/o/#{@organisation.short_name}/members"}>See the members</a></li>
           <li><a href={~p"/o/#{@organisation.short_name}/roles"}>See the roles</a></li>
