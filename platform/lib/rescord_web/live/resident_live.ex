@@ -368,7 +368,6 @@ defmodule RescordWeb.ResidentLive do
         role={@role}
         identifier_kinds={@identifier_kinds}
         identifier_form={@identifier_form}
-        organisation={@organisation}
       />
 
       <.facts_history

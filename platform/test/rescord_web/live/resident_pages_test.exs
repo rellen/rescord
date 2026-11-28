@@ -583,7 +583,12 @@ defmodule RescordWeb.ResidentPagesTest do
     test "adds an identifier, and removes it", context do
       conn = context.conn
       {view, html} = open(conn, context.path)
-      assert html =~ "No identifier is recorded."
+
+      # A resident needs no identifier: the page has the form, and no
+      # sentence about an identifier that is not there.
+      assert has_element?(view, "#identifiers-heading", "Identifiers")
+      assert has_element?(view, "form#identifier")
+      refute html =~ "No identifier"
 
       {view, html} =
         submit(view, conn, "#identifier",
@@ -604,11 +609,40 @@ defmodule RescordWeb.ResidentPagesTest do
         |> render_click("remove_identifier", %{"id" => identifier.id})
         |> follow_redirect(conn)
 
-      assert render_async(view) =~ "No identifier is recorded."
+      html = render_async(view)
+      refute html =~ "Microchip: 956000012345678"
+      refute html =~ "No identifier"
+      assert has_element?(view, "form#identifier")
 
       # An identifier that is not one of this resident does nothing.
       render_click(view, "remove_identifier", %{"id" => Ash.UUID.generate()})
       refute has_element?(view, "main p[role=alert]")
+    end
+
+    test "has no section of identifiers when there is none to show or to add", context do
+      admin = [actor: context.administrator, tenant: context.organisation]
+      kinds = context.lists.identifier_kind
+
+      tagged = resident!(context.lists, context.options, %{name: "Biscuit"})
+
+      Residents.add_identifier!(
+        %{resident_id: tagged.id, kind_id: kinds.ear_tag, value: "WC-041"},
+        context.options
+      )
+
+      # The refuge uses no identifier: an administrator retires each kind.
+      {:ok, _} = Lists.retire_value(:identifier_kind, kinds.microchip, admin)
+      {:ok, _} = Lists.retire_value(:identifier_kind, kinds.ear_tag, admin)
+
+      {view, html} = open(context.conn, context.path)
+      refute has_element?(view, "#identifiers-heading")
+      refute html =~ "identifier"
+
+      # A resident that has an identifier keeps it on its page, with no form.
+      {view, html} = open(context.conn, context.base <> "/residents/#{tagged.id}")
+      assert has_element?(view, "#identifiers-heading", "Identifiers")
+      assert html =~ "Ear tag: WC-041"
+      refute has_element?(view, "form#identifier")
     end
   end
 end

@@ -11,19 +11,21 @@
 #if d.rows.len() == 0 {
   nothing("The refuge had no resident in care on this day.")
 } else {
+  // The column of the identifiers is there only when a resident of the
+  // register has one: many species carry no microchip and no tag.
+  let identifiers(cell) = if d.with_identifiers { (cell,) } else { () }
+  let columns = (
+    (("Name", 1.1fr), ("Species", 0.9fr), ("Breed", 1fr), ("Sex", 0.9fr), ("Born", 1.5fr))
+      + identifiers(("Identifiers", 1.5fr))
+      + (("Arrival", 1.4fr), ("Place", 1.3fr), ("Status", 0.8fr))
+  )
   records(
-    (1.1fr, 0.9fr, 1fr, 0.9fr, 1.5fr, 1.5fr, 1.4fr, 1.3fr, 0.8fr),
-    ("Name", "Species", "Breed", "Sex", "Born", "Identifiers", "Arrival", "Place", "Status"),
+    columns.map(column => column.at(1)),
+    columns.map(column => column.at(0)),
     d.rows.map(row => (
-      text(weight: "bold", row.name),
-      or-dash(row.species),
-      or-dash(row.breed),
-      row.sex,
-      or-dash(row.born),
-      if row.identifiers.len() == 0 { or-dash(none) } else { row.identifiers.join(linebreak()) },
-      row.arrived,
-      or-dash(row.place),
-      row.status,
+      (text(weight: "bold", row.name), or-dash(row.species), or-dash(row.breed), row.sex, or-dash(row.born))
+        + identifiers(if row.identifiers.len() == 0 { or-dash(none) } else { row.identifiers.join(linebreak()) })
+        + (row.arrived, or-dash(row.place), row.status)
     )),
     size: 8.5pt,
   )

@@ -40,7 +40,8 @@ program on the server.
   2. *The cage card*: one page on its side, with large type, the picture,
      where the resident lives, and the routines that name it.
   3. *The register*: each resident in care on a day, with its facts, its
-     identifiers and its place.
+     place and the identifiers that it has. The column of the identifiers
+     is there only when a resident of the register has one.
   4. *Arrivals and departures*: a period, with each resident that came or
      went, the totals by kind and by species, and the numbers in care at
      the start and at the end.

@@ -19,6 +19,8 @@ defmodule RescordWeb.ReportWords.Register do
           )
         ),
       counts: counts(rows),
+      # The register has a column of identifiers only when a resident has one.
+      with_identifiers: Enum.any?(rows, &(&1.identifiers != [])),
       rows: rows
     }
   end

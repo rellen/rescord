@@ -58,7 +58,9 @@ defmodule RescordWeb.ReportsLive do
 
       <section aria-labelledby="register-heading">
         <h2 id="register-heading">Register of residents</h2>
-        <p>Each resident in care on one day, with its facts, its identifiers and its place.</p>
+        <p>
+          Each resident in care on one day, with its facts, its place and the identifiers that it has.
+        </p>
         <form id="register" action={~p"/o/#{@organisation.short_name}/reports/register.pdf"}>
           <.input
             id="register-on"

@@ -408,18 +408,28 @@ defmodule RescordWeb.ResidentComponents do
     """
   end
 
-  @doc "The identifiers of a resident."
+  @doc """
+  The identifiers of a resident. A resident needs none: many species carry
+  no microchip and no tag. So the section is there only when the resident
+  has an identifier or the person can add one, and it has no sentence about
+  an identifier that is not there.
+  """
   attr :resident, :any, required: true
   attr :role, :any, required: true
   attr :identifier_kinds, :any, required: true
   attr :identifier_form, :any, required: true
-  attr :organisation, :any, required: true
 
   def identifiers(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :can_add,
+        can?(assigns.role, :identifier, :add) and assigns.identifier_kinds != []
+      )
+
     ~H"""
-    <section aria-labelledby="identifiers-heading">
+    <section :if={@resident.identifiers != [] or @can_add} aria-labelledby="identifiers-heading">
       <h2 id="identifiers-heading">Identifiers</h2>
-      <p :if={@resident.identifiers == []}>No identifier is recorded.</p>
       <ul :if={@resident.identifiers != []}>
         <li :for={identifier <- @resident.identifiers}>
           {identifier.kind.label}: {identifier.value}
@@ -435,15 +445,10 @@ defmodule RescordWeb.ResidentComponents do
       </ul>
 
       <.identifier_form
-        :if={can?(@role, :identifier, :add) and @identifier_kinds != []}
+        :if={@can_add}
         identifier_form={@identifier_form}
         identifier_kinds={@identifier_kinds}
       />
-      <p :if={@identifier_kinds == []}>
-        The list of identifier kinds is empty. An administrator adds a kind on <.link navigate={
-          ~p"/o/#{@organisation.short_name}/lists"
-        }>the lists page</.link>.
-      </p>
     </section>
     """
   end

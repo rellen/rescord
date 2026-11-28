@@ -217,6 +217,15 @@ release (ADR 0047).
   for its one action, and loads no image and no font, so a mail program
   has nothing to block. Each one keeps a text part with the same words,
   for a program that shows plain text. The mail settings do not change.
+- A resident needs no identifier, and a page or a report no longer has an
+  empty place for one: many species, guinea pigs among them, carry no
+  microchip and no ear tag. The page of a resident has no sentence "No
+  identifier is recorded", and it has the section of the identifiers only
+  when the resident has one or the person can add one. An organisation
+  that uses no identifier retires each identifier kind on its lists page,
+  and the section then shows only on a resident that has one. The register
+  on paper has its column of identifiers only when a resident of the
+  register has one.
 
 ### Fixed
 

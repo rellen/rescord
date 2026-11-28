@@ -132,6 +132,7 @@ defmodule RescordWeb.ReportWordsTest do
 
     biscuit = hd(register.rows)
     assert biscuit.identifiers == ["Ear tag: WC-041", "Microchip: 956000012345678"]
+    assert register.with_identifiers
     assert biscuit.sex == "Male, desexed"
     assert biscuit.arrived == "#{date(context, 64)}, surrender by an owner"
     assert biscuit.place == "Main shed › Pen 3"
@@ -142,6 +143,17 @@ defmodule RescordWeb.ReportWordsTest do
 
     past = data(context, :register, %{on: Date.add(context.today, -15)})
     assert past.frame.subtitle == "The residents in care at the end of #{date(context, 15)}"
+
+    # A resident needs no identifier. When no resident of the register has
+    # one, the register has no column for them.
+    for identifier <- Ash.read!(Rescord.Residents.ResidentIdentifier, context.options) do
+      Rescord.Residents.remove_identifier!(identifier, context.options)
+    end
+
+    plain = data(context, :register)
+    refute plain.with_identifiers
+    assert Enum.all?(plain.rows, &(&1.identifiers == []))
+    assert Enum.map(plain.rows, & &1.name) == Enum.map(register.rows, & &1.name)
   end
 
   test "the arrivals and the departures", context do
