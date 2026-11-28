@@ -19,6 +19,47 @@ install Rescord, each setting, and how to back up and upgrade.
   directory of the server, or a bucket of a service that is compatible
   with S3.
 
+## What leaves the server
+
+Rescord sends nothing to its makers, and calls no service that you did not
+set up: it has no analytics, no reports of errors to anybody, and no check
+for a new version. These are all the connections that a server of Rescord
+opens, and what goes through each one.
+
+**Always**, because Rescord needs them:
+
+| To | When | What goes | Where you set it |
+| --- | --- | --- | --- |
+| The database | Always | Everything that Rescord keeps | `DATABASE_URL` |
+| The SMTP server | Each sign-in link, invitation and notice that an erasure is done (ADR 0105), and the test of `bin/check` | The address of the person, and a link, or the name of the organisation and of the person who invited them | `RESCORD_SMTP_*` (see "The settings") |
+| The S3 store, with `RESCORD_STORAGE=s3` | Each photo, PDF or receipt that is added, opened or removed, and the marker of each erasure | The files themselves | `RESCORD_S3_*` (see "The settings") |
+
+**Only when a root user turns it on:**
+
+| To | When | What goes | Where you turn it on |
+| --- | --- | --- | --- |
+| clamd | Each PDF that a person adds | The PDF | `/root/scan` (see "The virus scan of the PDFs") |
+| The provider of a language model | Each question that a member asks Ruby, and the test of a provider | The question, the conversation so far, and the records that Ruby reads to answer it; the test sends the word "ping" and no record | `/root/ruby`, and then each organisation agrees to the place (see "The assistant, Ruby") |
+| The push services of the browsers: Apple, Google, Mozilla, Microsoft | Each notification to a device | The name of the organisation, one sentence, and the address of the page of notifications | `/root/push` (see "Web Push") |
+| A server of ntfy | Each notification on ntfy | The same as Web Push | `/root/push` (see "ntfy") |
+| The address of the usage counts | Each hour, in the mode "Count, and send each day" | The counts of each full day, and a random id of the server | `/root/usage` (see "Usage counts") |
+
+**What does not leave by itself:**
+
+- **The pages load nothing from another address.** Rescord serves its own
+  fonts, scripts and icons, and its Content Security Policy lets a browser
+  fetch only from your server.
+- **A transfer to a partner on another server** is a file that a person
+  downloads and gives to the partner. Rescord opens no connection to the
+  other server (ADR 0043).
+- **The metrics, `GET /health` and the calendar feeds** are addresses that
+  something else asks. Rescord sends nothing to them. But a member who
+  adds a calendar feed to a hosted calendar, such as Google Calendar,
+  gives that service a copy: the title of each task, its kind, and the
+  names of the residents, groups and locations that it is for (ADR 0074).
+- **The backups** stay where `bin/backup` writes them (see "Back up").
+  Copying them to another place is your choice.
+
 ## The releases
 
 Each version of Rescord has a tag such as `v0.2.0`, a section in

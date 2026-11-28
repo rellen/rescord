@@ -944,6 +944,9 @@ release (ADR 0047).
 
 ### Changed
 
+- `docs/self-hosting.md` has a section "What leaves the server": each
+  connection that a server of Rescord opens, when, what goes through it,
+  and where it is set or turned on, and what does not leave by itself.
 - The administrator role keeps both the power to define the roles and the
   power to change the members, and the last member who can change the
   members keeps a role with that power through each change of role: an
