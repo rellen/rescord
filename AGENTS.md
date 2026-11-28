@@ -312,6 +312,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A change to what a page can or cannot do for a person with a
     disability changes the accessibility statement of the colophon
     (`controllers/page_html/colophon.html.heex`) too.
+- **The catalogue of the components** (ADR 00XX) is the page
+  `/dev/components`, in development and in the tests. A new function of
+  `CoreComponents`, a new state of one, and a new icon get an example: a
+  template in `lib/rescord_web/controllers/catalogue_html/examples/` and
+  a line of the list in `RescordWeb.CatalogueHTML`. The headings of an
+  example start at `h4`, and each `id` in it starts with `example-`. The
+  phone test and the accessibility test hold each example as they hold a
+  page. Do not add Phoenix Storybook.
 - **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
   a list or a grid with filters, a sort, a search and pages. Do not write
   those by hand.
@@ -1043,6 +1051,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
 | `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
+| `platform/lib/rescord_web/controllers/catalogue_html.ex`, `catalogue_html/examples/` | the catalogue of the components at `/dev/components`, and a template for each example (ADR 00XX) |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |

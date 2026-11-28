@@ -158,6 +158,12 @@ We do not write those by hand.
     and an error page uses it.
   - Each page has a title of its own, with " · Rescord" after it.
   - The name of a control starts with the words that show on it.
+- **A developer sees each core component by itself in the catalogue**
+  (ADR 00XX): the page `/dev/components`, which development and the tests
+  have. An example is a template of its own, which the page renders and
+  shows as text. The phone test and the accessibility test visit the
+  page, so each example is held to the rules of a page. There is no
+  Phoenix Storybook.
 - **The stylesheet is one cascade layer per file, and a layer is a role**
   (ADR 0007). `assets/css/app.css` states the order of the layers and imports
   one file per layer from `assets/css/layers/`: `tokens`, `base`, `elements`,

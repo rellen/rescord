@@ -1,0 +1,33 @@
+<Layouts.app flash={@flash} current_user={@current_user}>
+  <.header>
+    Components
+    <:subtitle>
+      Each element and each core component of Rescord, by itself and in each of its
+      states. The headings of this page are the example of the headings.
+    </:subtitle>
+  </.header>
+
+  <nav aria-label="Groups of the catalogue">
+    <ul>
+      <li :for={{group, _examples} <- @groups}>
+        <a href={"#" <> anchor(group)}>{group}</a>
+      </li>
+    </ul>
+  </nav>
+
+  <section
+    :for={{group, examples} <- @groups}
+    aria-labelledby={anchor(group)}
+  >
+    <h2 id={anchor(group)}>{group}</h2>
+
+    <section :for={example <- examples} aria-labelledby={example.id} data-example>
+      <h3 id={example.id}>{example.title}</h3>
+      <div>{render_example(example, assigns)}</div>
+      <details id={example.id <> "-markup"}>
+        <summary>Markup of {example.title}</summary>
+        <pre data-source><code>{example.source}</code></pre>
+      </details>
+    </section>
+  </section>
+</Layouts.app>

@@ -164,4 +164,14 @@ defmodule RescordWeb.Router do
       get "/mail/:name/:part", RescordWeb.MailPreviewController, :show
     end
   end
+
+  # The catalogue of the components (ADR 00XX). Development has it, and the
+  # tests, whose browser holds each example to the rules of a page.
+  if Application.compile_env(:rescord, :catalogue, false) do
+    scope "/dev", RescordWeb do
+      pipe_through :browser
+
+      get "/components", CatalogueController, :index
+    end
+  end
 end
