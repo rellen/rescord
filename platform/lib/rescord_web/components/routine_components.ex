@@ -31,7 +31,7 @@ defmodule RescordWeb.RoutineComponents do
       <h2 id="edit-heading">Change the routine {@editing.title}</h2>
       <p>
         When you save, Rescord cancels the tasks of this routine that are due after now, and
-        makes them again. The tasks that are done, skipped or late stay as they are.
+        makes them again. The tasks that are done, skipped or overdue stay as they are.
       </p>
       <.routine_form
         button="Save the routine"
@@ -68,7 +68,10 @@ defmodule RescordWeb.RoutineComponents do
     ~H"""
     <section aria-labelledby="routines-heading">
       <h2 id="routines-heading">The routines</h2>
-      <p :if={@routines == []}>There is no routine yet.</p>
+      <p :if={@routines == []}>
+        No routine yet. A routine makes the same task again and again, such as a feed each
+        morning or a wormer every 90 days.
+      </p>
       <div :if={@routines != []} data-scroll>
         <table>
           <thead>
@@ -123,17 +126,22 @@ defmodule RescordWeb.RoutineComponents do
                 >
                   <.icon name="play" /> Start again
                 </.button>
-                <details :if={@can_remove?} id={"end-details-#{routine.id}"}>
-                  <summary><.icon name="no-symbol" /> End</summary>
+                <.confirm
+                  :if={@can_remove?}
+                  id={"end-details-#{routine.id}"}
+                  summary="End"
+                  label={"End the routine #{routine.title}"}
+                  icon="no-symbol"
+                >
                   <form id={"end-#{routine.id}"} phx-submit="remove">
                     <input type="hidden" name="routine_id" value={routine.id} />
                     <p>
                       The routine goes, with its tasks that are due after now. The tasks that
-                      are done, skipped or late stay.
+                      are done, skipped or overdue stay.
                     </p>
-                    <.button type="submit">End the routine {routine.title}</.button>
+                    <.button type="submit" variant="danger">End the routine {routine.title}</.button>
                   </form>
-                </details>
+                </.confirm>
               </td>
             </tr>
           </tbody>
@@ -256,6 +264,7 @@ defmodule RescordWeb.RoutineComponents do
         type="select"
         label="Count the days from"
         options={TaskWords.count_from_options()}
+        hint="Choose the second when the next time depends on the last one, such as a wormer 90 days after the last dose."
       />
       <.input field={@form[:time_1]} type="time" label="Time" required />
       <.input field={@form[:time_2]} type="time" label="A second time, if there is one" />
@@ -288,7 +297,8 @@ defmodule RescordWeb.RoutineComponents do
       <.input
         field={@form[:days_ahead]}
         type="number"
-        label={"How many days ahead the tasks exist, if not #{@days_ahead}"}
+        label="Days ahead"
+        hint={"Leave it empty for #{@days_ahead}, the setting of the organisation. Each task of the routine shows on the tasks page this many days before its day."}
         min="1"
         max="400"
       />

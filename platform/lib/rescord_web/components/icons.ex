@@ -135,6 +135,8 @@ defmodule RescordWeb.Icons do
     "scissors" =>
       ~S|<circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/><path d="M8.3 15.7 18 4M15.7 15.7 6 4"/>|,
     "shield" => ~S|<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8-7.5 9.5-4.3-1.5-7.5-4.9-7.5-9.5V6z"/>|,
+    "squares" =>
+      ~S|<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>|,
     "star" =>
       ~S|<path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/>|,
     "stop" => ~S|<rect x="7" y="7" width="10" height="10" rx="1.5"/>|,
@@ -225,6 +227,7 @@ defmodule RescordWeb.Icons do
   def section(:expenses), do: "receipt"
   def section(:tools), do: "wrench"
   def section(:dose), do: "calculator"
+  def section(:insights), do: "squares"
   def section(:reports), do: "document-chart"
   def section(:lists), do: "list-bullet"
   def section(:members), do: "users"
@@ -237,6 +240,7 @@ defmodule RescordWeb.Icons do
   def section(:export), do: "arrow-down-tray"
   def section(:root), do: "shield"
   def section(:privacy), do: "lock"
+  def section(:health), do: "pulse"
   def section(:notifications), do: "bell"
   def section(:journal), do: "book-open"
   def section(:measurements), do: "chart-line"

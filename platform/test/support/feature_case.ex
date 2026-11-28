@@ -49,7 +49,7 @@ defmodule RescordWeb.FeatureCase do
   # browser test is the same client. So each test starts with no count: the
   # limit must not depend on how many browser tests there are.
   defp forget_sign_in_counts do
-    for {{"sign-in/client/" <> _address, _window} = key, _count, _expires} <-
+    for {{"sign-in/client/" <> _address, _call} = key, _expires} <-
           :ets.tab2list(Rescord.RateLimit) do
       :ets.delete(Rescord.RateLimit, key)
     end

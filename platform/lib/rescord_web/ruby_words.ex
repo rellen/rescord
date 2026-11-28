@@ -42,12 +42,12 @@ defmodule RescordWeb.RubyWords do
 
   def about(:ollama),
     do:
-      "A model on a machine of your own. Ruby only reads with this service: it proposes no record."
+      "A model on a machine of your own. With this service Ruby only reads: it cannot offer to add or change a record."
 
   def about(:openai_compatible),
     do:
       "A server that speaks the chat API of OpenAI, such as llama.cpp or vLLM. " <>
-        "Ruby only reads with this service: it proposes no record."
+        "With this service Ruby only reads: it cannot offer to add or change a record."
 
   @doc "The efforts, as the options of a select."
   def efforts, do: for({effort, words} <- @efforts, do: {words, Atom.to_string(effort)})
@@ -274,6 +274,25 @@ defmodule RescordWeb.RubyWords do
   @doc "The title of a conversation, also before Ruby gave it one."
   def title(%{title: title}) when is_binary(title) and title != "", do: title
   def title(_conversation), do: "A new conversation"
+
+  @doc """
+  The small line of a conversation in a list: the time of its last
+  message, the record that it is about, when the person can read it, and
+  how many messages it holds. "14:02 · about Biscuit · 4 messages".
+  """
+  def conversation_line(conversation, about, organisation) do
+    [
+      moment(conversation.last_message_at, organisation),
+      about && "about " <> (about.name || "a record with no name"),
+      is_integer(conversation.message_count) &&
+        RescordWeb.Locale.count(conversation.message_count, "message", "messages")
+    ]
+    |> Enum.filter(&is_binary/1)
+    |> Enum.join(" · ")
+  end
+
+  @doc "A number of days: \"1 day\", \"90 days\"."
+  def days(count) when is_integer(count), do: RescordWeb.Locale.count(count, "day", "days")
 
   @doc """
   What the one `role="status"` of the page of a conversation says once,

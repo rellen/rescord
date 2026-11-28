@@ -185,11 +185,18 @@ defmodule RescordWeb.ExpensePagesTest do
       expense!(context, %{resident_id: biscuit.id})
       expense!(context, %{description: "Fuel"})
 
-      {_view, html} = open(context.conn, context.path <> "?resident=#{biscuit.id}")
+      {view, html} = open(context.conn, context.path <> "?resident=#{biscuit.id}")
 
       assert html =~ "Only the expenses for"
       assert html =~ "Vet consult for Biscuit"
       refute html =~ "Fuel"
+
+      # A new expense from here is an expense of the resident (ADR 0111).
+      assert has_element?(
+               view,
+               "a[href$='/expenses/new?resident=#{biscuit.id}']",
+               "Record an expense"
+             )
     end
   end
 
@@ -478,6 +485,32 @@ defmodule RescordWeb.ExpensePagesTest do
       assert html =~ "is not a photo or a PDF"
       assert {:ok, []} = Expenses.receipts_of(expense.id, context.options)
     end
+
+    test "refuses a PDF that the virus scan finds harmful (issue 37)", context do
+      address = Rescord.FakeClamd.start({:found, "Win.Test.EICAR_HDB-1"})
+
+      {:ok, _settings} =
+        Rescord.Storage.Scan.save_settings(%{scan_on: true, address: address}, actor: root!())
+
+      expense = expense!(context)
+      {view, _html} = open(context.conn, context.path <> "/#{expense.id}")
+
+      upload =
+        file_input(view, "#add-receipt", :receipts, [
+          %{name: "invoice.pdf", content: pdf(), type: "application/pdf"}
+        ])
+
+      render_upload(upload, "invoice.pdf")
+
+      ExUnit.CaptureLog.capture_log(fn ->
+        {:ok, _view, html} =
+          view |> form("#add-receipt") |> render_submit() |> follow_redirect(context.conn)
+
+        assert html =~ "holds something that the virus scan found harmful"
+      end)
+
+      assert {:ok, []} = Expenses.receipts_of(expense.id, context.options)
+    end
   end
 
   describe "the file of a receipt" do
@@ -491,7 +524,7 @@ defmodule RescordWeb.ExpensePagesTest do
         conn = get(conn, "#{base}/#{paper.id}")
         assert response(conn, 200) == pdf()
         assert get_resp_header(conn, "content-type") == ["application/pdf"]
-        assert get_resp_header(conn, "cache-control") == ["private, no-store"]
+        assert get_resp_header(conn, "cache-control") == [RescordWeb.FileCache.kept()]
         assert [policy] = get_resp_header(conn, "content-security-policy")
         assert policy =~ "sandbox"
         assert [disposition] = get_resp_header(conn, "content-disposition")

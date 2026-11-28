@@ -20,6 +20,9 @@ defmodule Rescord.Storage.Errors.RefusedFile do
   - `:busy`: other photos took each place in libvips for too long (ADR 0056).
   - `:unreadable`: the bytes say photo, and libvips cannot read them.
   - `:too_many_pixels`: the photo has more than 100 million pixels.
+  - `:infected`: the virus scan found something harmful in the PDF
+    (`Rescord.Storage.Scan`, issue 37).
+  - `:unscanned`: the virus scan is on, and clamd did not answer.
   """
 
   use Splode.Error, fields: [:field, :reason], class: :invalid
@@ -34,6 +37,8 @@ defmodule Rescord.Storage.Errors.RefusedFile do
           | :busy
           | :unreadable
           | :too_many_pixels
+          | :infected
+          | :unscanned
 
   @impl true
   def message(%{reason: reason}), do: words(reason)
@@ -54,4 +59,6 @@ defmodule Rescord.Storage.Errors.RefusedFile do
   defp words(:busy), do: "waited too long behind other photos. Try again in a minute"
   defp words(:unreadable), do: "is a photo that Rescord cannot read"
   defp words(:too_many_pixels), do: "has more than 100 million pixels"
+  defp words(:infected), do: "holds something that the virus scan found harmful"
+  defp words(:unscanned), do: "could not be checked for viruses. Try again later"
 end

@@ -107,7 +107,8 @@ defmodule RescordWeb.ExpenseComponents do
         :if={@payers != []}
         field={@form[:payer_id]}
         type="select"
-        label="The member who paid, for an expense of another member"
+        label="Member who paid"
+        hint="The organisation pays this member back."
         prompt="Choose a member"
         options={@payers}
       />
@@ -182,10 +183,10 @@ defmodule RescordWeb.ExpenseComponents do
       <label for={@upload.ref}>Choose files, or take a photo</label>
       <.live_file_input upload={@upload} aria-describedby="receipt-files-hint" />
       <small id="receipt-files-hint">
-        A photo or a PDF, five at most, each 20 MB at most. Rescord removes the place and the
-        other metadata of a photo before it keeps it.
+        A photo or a PDF, five at most, each 20 MB at most. Rescord takes out the place where a
+        photo was taken, and other hidden details, before it keeps it.
       </small>
-      <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
+      <.problems list={Enum.map(upload_errors(@upload), &upload_words/1)} />
       <ul :if={@upload.entries != []}>
         <li :for={entry <- @upload.entries} id={"new-receipt-#{entry.ref}"}>
           <span>{entry.client_name}</span>
@@ -373,7 +374,7 @@ defmodule RescordWeb.ExpenseComponents do
           label="Reference (optional)"
           value=""
           maxlength="120"
-          hint="For example the words of the bank transfer."
+          hint="For example the reference of the bank payment."
         />
         <footer><.button type="submit">Record the payment</.button></footer>
       </form>
@@ -426,16 +427,24 @@ defmodule RescordWeb.ExpenseComponents do
             )}</span>
           </a>
           <small>{receipt.name} · {ExpenseWords.size(receipt.size)}</small>
-          <.button
+          <.confirm
             :if={MapSet.member?(@removable, receipt.id)}
-            type="button"
-            phx-click="take_off"
-            phx-value-id={receipt.id}
-            data-confirm={"Take #{receipt.name} off the expense?"}
-            aria-label={"Take off #{receipt.name}"}
+            id={"take-off-#{receipt.id}"}
+            summary="Take off"
+            label={"Take off #{receipt.name}"}
+            icon="x-mark"
           >
-            <.icon name="x-mark" /> Take off
-          </.button>
+            <p>The file leaves the expense.</p>
+            <.button
+              type="button"
+              variant="danger"
+              phx-click="take_off"
+              phx-value-id={receipt.id}
+              aria-label={"Take off the file #{receipt.name}"}
+            >
+              Take off the file
+            </.button>
+          </.confirm>
         </li>
       </ul>
       <details :if={@upload} id="add-receipt-details" open={@problems != []}>
@@ -480,11 +489,14 @@ defmodule RescordWeb.ExpenseComponents do
   """
   attr :organisation, :any, required: true
   attr :can_change?, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def tax_setting(assigns) do
     ~H"""
     <section aria-labelledby="tax-heading">
       <h2 id="tax-heading"><.icon name="banknotes" /> Tax</h2>
+      <.problems list={@problems} at={@problems_at} here={:tax} />
       <p :if={@organisation.tax_name}>
         An expense can hold the <strong>{@organisation.tax_name}</strong>
         in its amount, as the receipt shows it. Rescord knows no rate.
@@ -512,11 +524,14 @@ defmodule RescordWeb.ExpenseComponents do
   attr :organisation, :any, required: true
   attr :can_change?, :any, required: true
   attr :currencies, :list, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def currency_setting(assigns) do
     ~H"""
     <section aria-labelledby="currency-heading">
       <h2 id="currency-heading"><.icon name="banknotes" /> Currency</h2>
+      <.problems list={@problems} at={@problems_at} here={:currency} />
       <p>
         The currency of the amounts is <strong>{ExpenseWords.currency_name(@organisation.currency)} ({@organisation.currency})</strong>. An amount looks like this: <span data-money>{ExpenseWords.money(Money.new(@organisation.currency, "1234.5"))}</span>.
       </p>

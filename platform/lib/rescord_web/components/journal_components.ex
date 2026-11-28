@@ -133,7 +133,7 @@ defmodule RescordWeb.JournalComponents do
           :if={@kind == :prescription}
           field={@form[:route]}
           type="select"
-          label="Route"
+          label="How it is given"
           prompt="Not recorded"
           options={JournalWords.options(:route)}
         />
@@ -274,7 +274,7 @@ defmodule RescordWeb.JournalComponents do
       <legend>Files: photos or PDFs, five at most, each 20 MB at most</legend>
       <label for={@upload.ref}>Choose files</label>
       <.live_file_input upload={@upload} />
-      <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
+      <.problems list={Enum.map(upload_errors(@upload), &upload_words/1)} />
       <ul :if={@upload.entries != []}>
         <li :for={entry <- @upload.entries} id={"file-#{entry.ref}"}>
           {entry.client_name}
@@ -325,14 +325,23 @@ defmodule RescordWeb.JournalComponents do
             {attachment.name}
           </a>
           <small>{JournalWords.file_size(attachment.size)}</small>
-          <.button
+          <.confirm
             :if={Journal.can_remove_attachment?(@role, @current_user, attachment)}
-            phx-click="remove_attachment"
-            phx-value-id={attachment.id}
-            aria-label={"Take off #{attachment.name}"}
+            id={"take-off-#{attachment.id}"}
+            summary="Take off"
+            label={"Take off #{attachment.name}"}
+            icon="x-mark"
           >
-            <.icon name="x-mark" /> Take off
-          </.button>
+            <p>The file leaves the entry.</p>
+            <.button
+              variant="danger"
+              phx-click="remove_attachment"
+              phx-value-id={attachment.id}
+              aria-label={"Take off the file #{attachment.name}"}
+            >
+              Take off the file
+            </.button>
+          </.confirm>
         </li>
       </ul>
     </section>

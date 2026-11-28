@@ -61,9 +61,13 @@ defmodule RescordWeb.Roles do
     link: "a[href]",
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
+    form: "form",
     figure: "figure",
+    details: "details",
+    definition: "dd",
     image: "img:not([alt=''])",
     row: "tr",
+    list: "ul, ol, [role=list]",
     item: "li",
     alert: "[role=alert]",
     status: "[role=status], output"
@@ -95,8 +99,28 @@ defmodule RescordWeb.Roles do
   @doc "An article, by its name."
   def article(scope \\ nil, name), do: locate(scope, :article, name)
 
+  @doc """
+  A form, by its name: an `aria-label` or `aria-labelledby`. With `nil`,
+  any form, as in `region("Stock") |> form(nil)`.
+  """
+  def form(scope \\ nil, name), do: locate(scope, :form, name)
+
   @doc "A table, by its name."
   def table(scope \\ nil, name), do: locate(scope, :table, name)
+
+  @doc """
+  A disclosure (`details`), by the name of its `summary`, as a person
+  finds the form or the list that it holds: its `aria-label`, as on a
+  confirm step (`<.confirm>`), or else its words.
+  """
+  def details(scope \\ nil, name), do: locate(scope, :details, name)
+
+  @doc """
+  The definition (`dd`) of a term (`dt`) of a description list, by the
+  words of the term: `definition("In stock")`. The two are in one `div` of
+  the `dl`, as `<.list>` draws them.
+  """
+  def definition(scope \\ nil, term), do: locate(scope, :definition, term)
 
   @doc "A figure, by its name: the words of its `figcaption`."
   def figure(scope \\ nil, name), do: locate(scope, :figure, name)
@@ -106,6 +130,9 @@ defmodule RescordWeb.Roles do
 
   @doc "A row of a table, by its words: give a regex, such as `row(~r/^Meadow hay/)`."
   def row(scope \\ nil, name), do: locate(scope, :row, name)
+
+  @doc "A list (`ul` or `ol`), by its name: an `aria-label` or `aria-labelledby`."
+  def list(scope \\ nil, name), do: locate(scope, :list, name)
 
   @doc """
   An item of a list, by its words: give a regex, such as `item(~r/^Biscuit/)`.
@@ -184,11 +211,50 @@ defmodule RescordWeb.Roles do
     source |> one(locator) |> LazyHTML.attribute("href") |> List.first()
   end
 
+  @doc """
+  An attribute of the one element that the locator finds, or `nil`: what a
+  person cannot read but the browser uses, such as the `action` of a form,
+  `aria-current` or `max`.
+  """
+  @spec attribute(source, t, String.t()) :: String.t() | nil
+  def attribute(source, locator, name), do: source |> one(locator) |> attribute(name)
+
   @doc "Where the one image that the locator finds comes from."
   @spec src(source, t) :: String.t() | nil
   def src(source, locator) do
     source |> one(locator) |> LazyHTML.attribute("src") |> List.first()
   end
+
+  @doc """
+  What the one field that the locator finds holds: the `value` of an input,
+  the words of a text area, or the words of the chosen option of a select
+  (the first option when none is chosen, as in a browser).
+  """
+  @spec value(source, t) :: String.t() | nil
+  def value(source, locator) do
+    node = one(source, locator)
+
+    case LazyHTML.tag(node) do
+      ["select"] ->
+        chosen = LazyHTML.query(node, "option[selected]")
+        options = if Enum.empty?(chosen), do: LazyHTML.query(node, "option"), else: chosen
+        options |> Enum.take(1) |> Enum.map_join(&visible_text/1)
+
+      ["textarea"] ->
+        LazyHTML.text(node)
+
+      _input ->
+        attribute(node, "value")
+    end
+  end
+
+  @doc "Whether the one checkbox or radio button that the locator finds is checked."
+  @spec checked?(source, t) :: boolean
+  def checked?(source, locator), do: source |> one(locator) |> LazyHTML.attribute("checked") != []
+
+  @doc "Whether the one disclosure (`details`) that the locator finds is open."
+  @spec open?(source, t) :: boolean
+  def open?(source, locator), do: source |> one(locator) |> LazyHTML.attribute("open") != []
 
   @doc "The accessible names of each element, in the order of the page."
   @spec names(source, t) :: [String.t()]
@@ -230,8 +296,13 @@ defmodule RescordWeb.Roles do
   def click(session, %__MODULE__{role: role} = locator) when role in [:button, :link] do
     root = document(session)
     node = one(root, locator)
-    {css, _text} = selector(node, locator, root)
     words = visible_text(node)
+
+    css =
+      case selector(node, locator, root) do
+        {css, nil} -> css
+        {_css, _words} -> narrow(node, words, root)
+      end
 
     case role do
       :button -> PhoenixTest.click_button(session, css, words)
@@ -297,7 +368,9 @@ defmodule RescordWeb.Roles do
 
   @doc """
   Asserts that the locator finds an element. Options: `text:` (words that
-  the element holds) and `count:`.
+  the element holds), `count:`, and `state:`, the kind of a state that the
+  element holds (`data-state`, ADR 0004), whose words `text:` then gives:
+  `assert_has(item_row("Meadow hay"), state: "alert", text: "Order more")`.
   """
   def assert_has(session, locator, opts \\ [])
 
@@ -341,7 +414,13 @@ defmodule RescordWeb.Roles do
   # `assert_has/3` of PhoenixTest.Playwright puts its selector in `css=`, so
   # a selector by role goes in `within/3`, and the assertion is on `:scope`.
   defp in_browser(session, locator, opts, assertion) do
-    PhoenixTest.within(session, playwright(locator), &assertion.(&1, ":scope", opts))
+    {selector, opts} =
+      case Keyword.pop(opts, :state) do
+        {nil, opts} -> {":scope", opts}
+        {kind, opts} -> {"[data-state=#{kind}]", opts}
+      end
+
+    PhoenixTest.within(session, playwright(locator), &assertion.(&1, selector, opts))
   rescue
     error in ExUnit.AssertionError ->
       reraise ExUnit.AssertionError,
@@ -352,12 +431,22 @@ defmodule RescordWeb.Roles do
   defp matches(session, locator, opts) do
     found = all(document(session), locator)
 
-    case Keyword.fetch(opts, :text) do
-      {:ok, %Regex{} = text} -> Enum.filter(found, &(visible_text(&1) =~ text))
-      {:ok, text} -> Enum.filter(found, &String.contains?(visible_text(&1), text))
-      :error -> found
+    case Keyword.fetch(opts, :state) do
+      {:ok, kind} ->
+        Enum.filter(found, fn node ->
+          node
+          |> LazyHTML.query("[data-state=#{kind}]")
+          |> Enum.any?(&holds?(&1, opts[:text]))
+        end)
+
+      :error ->
+        Enum.filter(found, &holds?(&1, opts[:text]))
     end
   end
+
+  defp holds?(_node, nil), do: true
+  defp holds?(node, %Regex{} = text), do: visible_text(node) =~ text
+  defp holds?(node, text), do: String.contains?(visible_text(node), text)
 
   defp found?(found, opts) do
     case Keyword.fetch(opts, :count) do
@@ -395,6 +484,14 @@ defmodule RescordWeb.Roles do
 
   defp playwright_one(%{role: :field, name: name}), do: "internal:label=#{pw_name(name)}"
 
+  # Playwright gives neither a name from its words, so these are XPath.
+  defp playwright_one(%{role: :details, name: name}),
+    do:
+      "xpath=.//details[summary[@aria-label=#{xpath_text(name)} or normalize-space()=#{xpath_text(name)}]]"
+
+  defp playwright_one(%{role: :definition, name: name}),
+    do: "xpath=.//dd[preceding-sibling::dt[1][normalize-space()=#{xpath_text(name)}]]"
+
   defp playwright_one(%{role: :item, name: nil}), do: "internal:role=listitem"
 
   defp playwright_one(%{role: :item, name: name}),
@@ -415,6 +512,13 @@ defmodule RescordWeb.Roles do
   defp pw_name(%Regex{source: source}), do: "/#{source}/"
 
   defp pw_name(name), do: JSON.encode!(name) <> "s"
+
+  defp xpath_text(%Regex{} = name),
+    do: raise(ArgumentError, "a browser test finds #{inspect(name)} by its exact words")
+
+  defp xpath_text(text) do
+    if String.contains?(text, ~s(")), do: "'#{text}'", else: ~s("#{text}")
+  end
 
   defp pw_text(%Regex{source: source}), do: "/#{source}/"
   defp pw_text(text), do: JSON.encode!(text)
@@ -499,6 +603,18 @@ defmodule RescordWeb.Roles do
 
       role == :image ->
         fold(attribute(node, "alt") || "")
+
+      # The name of its summary: an `aria-label`, as a confirm step has, or its words.
+      role == :details ->
+        summary = node |> LazyHTML.child_nodes() |> LazyHTML.filter("summary")
+        fold(attribute(summary, "aria-label") || visible_text(summary))
+
+      role == :definition ->
+        node
+        |> LazyHTML.parent_node()
+        |> LazyHTML.child_nodes()
+        |> LazyHTML.filter("dt")
+        |> visible_text()
 
       role == :figure ->
         node |> LazyHTML.query("figcaption") |> visible_text()
@@ -589,6 +705,31 @@ defmodule RescordWeb.Roles do
         words = node |> visible_text() |> String.split() |> Enum.map_join("\\s+", &Regex.escape/1)
         {scope_css(locator, root) <> tag, Regex.compile!("^\\s*#{words}\\s*$")}
     end
+  end
+
+  # PhoenixTest finds a button or a link by a part of its words, so "Save"
+  # finds "Save the token" too. For an element with no selector of its own,
+  # this is the tag inside the nearest element with an id that holds no
+  # other of those words, below the part of the page that `within/3` gives.
+  defp narrow(node, words, root) do
+    tag = node |> LazyHTML.tag() |> List.first()
+    tops = root |> Enum.map(&LazyHTML.to_html/1) |> MapSet.new()
+
+    node
+    |> LazyHTML.parent_node()
+    |> Stream.unfold(fn ancestor ->
+      if Enum.empty?(ancestor) or MapSet.member?(tops, LazyHTML.to_html(ancestor)),
+        do: nil,
+        else: {ancestor, LazyHTML.parent_node(ancestor)}
+    end)
+    |> Enum.find_value(tag, fn ancestor ->
+      id = attribute(ancestor, "id")
+
+      holders =
+        ancestor |> LazyHTML.query(tag) |> Enum.count(&String.contains?(visible_text(&1), words))
+
+      if id && holders == 1, do: "##{css_escape(id)} #{tag}"
+    end)
   end
 
   defp quote_css(value), do: String.replace(value, ~S("), ~S(\"))

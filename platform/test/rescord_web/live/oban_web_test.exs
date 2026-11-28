@@ -101,6 +101,22 @@ defmodule RescordWeb.ObanWebTest do
     end
   end
 
+  test "Oban Web has a policy with a nonce of its own response (ADR 0115)", %{root: root} do
+    running_oban()
+    conn = build_conn() |> sign_in(root) |> get(~p"/root/oban/jobs")
+
+    nonce = conn.assigns.csp_nonce
+    assert [policy] = get_resp_header(conn, "content-security-policy")
+    assert policy =~ "script-src 'self' 'nonce-#{nonce}';"
+    assert policy =~ "style-src-attr 'unsafe-inline'"
+    assert html_response(conn, 200) =~ ~s(nonce="#{nonce}")
+
+    # Each other page has the strict policy, with no nonce.
+    [other] = build_conn() |> get(~p"/sign-in") |> get_resp_header("content-security-policy")
+    refute other =~ "nonce"
+    refute other =~ "unsafe-inline"
+  end
+
   describe "what a root user may do" do
     test "cancel a job, and not delete one", %{root: root} do
       running_oban()

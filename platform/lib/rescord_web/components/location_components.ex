@@ -69,7 +69,7 @@ defmodule RescordWeb.LocationComponents do
       </header>
       <.state :if={@node.over?} kind="alert">Over its capacity</.state>
       <ul :if={@node.residents != [] or @node.groups != []}>
-        <li :for={placement <- @node.residents}>
+        <li :for={placement <- @node.residents} id={"placement-#{placement.id}"}>
           <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{placement.resident_id}"}>{placement.resident.name ||
             "A resident with no name"}</.link>
         </li>
@@ -151,35 +151,43 @@ defmodule RescordWeb.LocationComponents do
       <h2 id="who-heading">Who lives here</h2>
       <p :if={@node.residents == [] and @node.groups == []}>Nobody lives here now.</p>
       <ul :if={@node.residents != [] or @node.groups != []}>
-        <li :for={placement <- @node.residents}>
+        <li :for={placement <- @node.residents} id={"placement-#{placement.id}"}>
           <.link navigate={resident_path(@organisation, placement.resident_id)}>
             <.icon name={Icons.section(:residents)} /> {placement.resident.name ||
               "A resident with no name"}
           </.link>
-          <.button
+          <.confirm
             :if={can?(@role, :placement, :finish)}
-            phx-click="finish"
-            phx-value-id={placement.id}
-            aria-label={"End the placement of #{placement.resident.name || "the resident with no name"}"}
+            id={"finish-#{placement.id}"}
+            summary="End the placement"
+            label={"End the placement of #{placement.resident.name || "the resident with no name"}"}
+            icon="no-symbol"
           >
-            <.icon name="no-symbol" /> End the placement
-          </.button>
+            <p>The resident no longer lives here. The placement stays in its history.</p>
+            <.button variant="danger" phx-click="finish" phx-value-id={placement.id}>
+              End the placement of {placement.resident.name || "the resident with no name"}
+            </.button>
+          </.confirm>
         </li>
-        <li :for={{placement, group, members} <- @node.groups}>
+        <li :for={{placement, group, members} <- @node.groups} id={"placement-#{placement.id}"}>
           <.link navigate={group_path(@organisation, group.id)}>
             <.icon name={Icons.section(:groups)} /> {Residents.group_name(group)}
           </.link>
           <span>
             (here: {length(members)} of the {length(group.members)} in the group)
           </span>
-          <.button
+          <.confirm
             :if={can?(@role, :placement, :finish)}
-            phx-click="finish"
-            phx-value-id={placement.id}
-            aria-label={"End the placement of #{Residents.group_name(group)}"}
+            id={"finish-#{placement.id}"}
+            summary="End the placement"
+            label={"End the placement of #{Residents.group_name(group)}"}
+            icon="no-symbol"
           >
-            <.icon name="no-symbol" /> End the placement
-          </.button>
+            <p>The group no longer lives here. The placement stays in its history.</p>
+            <.button variant="danger" phx-click="finish" phx-value-id={placement.id}>
+              End the placement of {Residents.group_name(group)}
+            </.button>
+          </.confirm>
         </li>
       </ul>
 
@@ -268,11 +276,10 @@ defmodule RescordWeb.LocationComponents do
 
   def close_location(assigns) do
     ~H"""
-    <details id="close-location">
-      <summary><.icon name="no-symbol" /> Close this location</summary>
+    <.confirm id="close-location" summary="Close this location" icon="no-symbol">
       <p>Close a location that the organisation uses no more. Its history stays.</p>
-      <.button phx-click="close">Close the location</.button>
-    </details>
+      <.button variant="danger" phx-click="close">Close the location</.button>
+    </.confirm>
     """
   end
 

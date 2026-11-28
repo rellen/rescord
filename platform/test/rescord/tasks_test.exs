@@ -431,4 +431,77 @@ defmodule Rescord.TasksTest do
       assert {:ok, []} = Tasks.day(date, context.options)
     end
   end
+
+  describe "the counts of each day (ADR 0116)" do
+    test "say how many tasks were done on time, late, skipped, overdue and to come", context do
+      at = fn attributes, time ->
+        plan!(context, Map.put(attributes, :due_at, DateTime.from_iso8601(time) |> elem(1)))
+      end
+
+      # Brisbane: 01:00 UTC on 10 November is 11:00 there, the same day.
+      late = at.(%{kind_id: context.lists.task_kind.feed}, "2026-11-10T01:00:00Z")
+      {:ok, _} = Tasks.complete_task(late, %{}, context.options)
+      skipped = at.(%{}, "2026-11-10T02:00:00Z")
+      {:ok, _} = Tasks.skip_task(skipped, %{skip_reason: "No hay"}, context.options)
+      at.(%{}, "2026-11-10T03:00:00Z")
+      cancelled = at.(%{}, "2026-11-10T04:00:00Z")
+      :ok = Tasks.cancel_task(cancelled, context.options)
+
+      # Done before its time is on time.
+      now = DateTime.utc_now()
+      early = plan!(context, %{due_at: DateTime.add(now, 2, :hour)})
+      {:ok, _} = Tasks.complete_task(early, %{}, context.options)
+      coming = plan!(context, %{due_at: DateTime.add(now, 3, :day)})
+
+      early_on = Rescord.Accounts.local_date(context.organisation, early.due_at)
+      coming_on = Rescord.Accounts.local_date(context.organisation, coming.due_at)
+
+      {:ok, days} = Tasks.days(~D[2026-11-09], coming_on, context.options)
+
+      assert map_size(days) == Date.diff(coming_on, ~D[2026-11-09]) + 1
+
+      assert days[~D[2026-11-09]] ==
+               %{total: 0, on_time: 0, late: 0, skipped: 0, overdue: 0, upcoming: 0}
+
+      assert days[~D[2026-11-10]] ==
+               %{total: 3, on_time: 0, late: 1, skipped: 1, overdue: 1, upcoming: 0}
+
+      assert %{on_time: 1} = days[early_on]
+      assert %{total: 1, upcoming: 1} = days[coming_on]
+
+      {:ok, fed} =
+        Tasks.days(
+          ~D[2026-11-10],
+          ~D[2026-11-10],
+          [kind: context.lists.task_kind.feed] ++ context.options
+        )
+
+      assert %{total: 1, late: 1} = fed[~D[2026-11-10]]
+    end
+
+    test "are by the day of the organisation", context do
+      # 13:59 UTC is 23:59 in Brisbane, and 14:00 UTC is the next day there.
+      plan!(context, %{due_at: ~U[2026-11-15 13:59:00Z]})
+      plan!(context, %{due_at: ~U[2026-11-15 14:00:00Z]})
+
+      {:ok, days} = Tasks.days(~D[2026-11-15], ~D[2026-11-16], context.options)
+
+      assert days[~D[2026-11-15]].total == 1
+      assert days[~D[2026-11-16]].total == 1
+    end
+
+    test "are none for a user of another organisation", context do
+      plan!(context, %{due_at: ~U[2026-11-15 01:00:00Z]})
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :administrator, context.root)
+
+      assert {:ok, days} =
+               Tasks.days(~D[2026-11-15], ~D[2026-11-15],
+                 actor: outsider,
+                 tenant: context.organisation
+               )
+
+      assert days[~D[2026-11-15]].total == 0
+    end
+  end
 end

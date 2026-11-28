@@ -217,4 +217,126 @@ defmodule RescordWeb.ChartComponentsTest do
       assert attribute(doc, "svg[data-spark] > circle", "cx") == ["44.44%"]
     end
   end
+
+  describe "a heat map (ADR 0116)" do
+    defp heat(extra \\ []) do
+      render_component(
+        &heat_table/1,
+        [
+          id: "calendar",
+          summary: "91% of 24 tasks were done on time.",
+          corner: "Day of the week",
+          columns: [
+            %{label: "Jun", words: "Week of 1 June 2026"},
+            %{label: "", words: "Week of 8 June 2026"}
+          ],
+          rows: [
+            %{
+              label: "Mon",
+              words: "Monday",
+              cells: [
+                %{id: "2026-06-01", level: 4, words: "8 of 8 on time"},
+                %{id: "2026-06-08", level: 2, words: "7 of 8 on time, 1 skipped", mark: true}
+              ]
+            },
+            %{
+              label: "Tue",
+              words: "Tuesday",
+              cells: [
+                %{id: "2026-06-02", level: 0, words: "No task", today: true},
+                %{level: :none, words: ""}
+              ]
+            }
+          ]
+        ] ++ extra
+      )
+    end
+
+    test "is a table named by its caption, with a header for each row and column" do
+      doc = heat() |> parse()
+
+      assert doc |> LazyHTML.query("table > caption") |> LazyHTML.text() =~ "91% of 24 tasks"
+      assert count(doc, "thead th[scope=col]") == 3
+      assert count(doc, "tbody th[scope=row]") == 2
+
+      # The short words show, and the whole words are for a screen reader.
+      assert doc |> LazyHTML.query("thead th [data-words]") |> Enum.map(&LazyHTML.text/1) ==
+               ["Day of the week", "Week of 1 June 2026", "Week of 8 June 2026"]
+
+      assert attribute(doc, "tbody th > span[aria-hidden]", "aria-hidden") == ["true", "true"]
+    end
+
+    test "has a step, a dot and an outline as attributes, and the words of each cell" do
+      doc = heat() |> parse()
+
+      assert attribute(doc, "td", "data-level") == ["4", "2", "0", "none"]
+      assert count(doc, "td[data-mark]") == 1
+      assert count(doc, "td[data-today]") == 1
+
+      assert doc |> LazyHTML.query("td > span") |> Enum.map(&LazyHTML.text/1) ==
+               ["8 of 8 on time", "7 of 8 on time, 1 skipped", "No task"]
+    end
+
+    test "has cells that take a press, and no focus, with the chosen one marked" do
+      doc = heat(pick: "pick", selected: "2026-06-08") |> parse()
+
+      assert attribute(doc, "td[phx-click]", "phx-value-cell") ==
+               ["2026-06-01", "2026-06-08", "2026-06-02"]
+
+      assert attribute(doc, "td[data-selected]", "phx-value-cell") == ["2026-06-08"]
+      assert count(doc, "[tabindex]") == 0
+
+      doc = heat() |> parse()
+      assert count(doc, "td[phx-click]") == 0
+      assert count(doc, "td[data-selected]") == 0
+    end
+
+    test "has no class, no style and no colour" do
+      html = heat(variant: "numbers")
+
+      assert html =~ ~s(data-heat="numbers")
+      refute html =~ ~r/\sclass=/
+      refute html =~ ~r/\sstyle=/
+    end
+  end
+
+  describe "a count over time (ADR 0118)" do
+    test "draws steps, and a dashed rule at a value that the scale holds" do
+      points = points(3)
+      scale = RescordWeb.Chart.scale([%{hd(points) | value: Decimal.new(400)} | points])
+
+      doc =
+        chart(points, step: true, scale: scale, rules: [Decimal.new(400)])
+        |> parse()
+
+      [line] = attribute(doc, "path[data-line]", "d")
+      assert line =~ ~r/^M0 [\d.]+H50V[\d.]+H100V[\d.]+$/
+      assert attribute(doc, "line[data-rule]", "y1") == ["0.0%"]
+    end
+  end
+
+  describe "bars above and below a line (ADR 0118)" do
+    test "are one image with a name and a description, and a bar for each count" do
+      doc =
+        render_component(&updown_bars/1,
+          id: "moves",
+          title: "Arrivals and departures of each week",
+          summary: "3 arrivals and 3 departures.",
+          pairs: [{2, 0}, {1, 3}],
+          from: "Week of 16 November 2026",
+          to: "Week of 23 November 2026"
+        )
+        |> parse()
+
+      assert attribute(doc, "svg[role=img]", "aria-label") == [
+               "Arrivals and departures of each week"
+             ]
+
+      assert attribute(doc, "svg[role=img]", "aria-describedby") == ["moves-summary"]
+      assert doc |> LazyHTML.query("#moves-summary") |> LazyHTML.text() =~ "3 arrivals"
+      assert count(doc, "rect[data-up]") == 2
+      assert count(doc, "rect[data-down]") == 1
+      assert attribute(doc, "rect[data-down]", "height") == ["50.0%"]
+    end
+  end
 end

@@ -1,4 +1,4 @@
-# ADR 0110: The focus and the numbers of a person who uses the keyboard
+# ADR 0111: The focus and the numbers of a person who uses the keyboard
 
 Status: accepted. An assessment of the keyboard navigation and the data
 entry (28 November 2026, in a real browser with the keyboard only) found
@@ -57,6 +57,28 @@ assessment wait for a choice of the maintainer.
   shows no ring: it is no control.
 - `menu.ts` closes an open popover when the focus goes to a control
   outside it and its button.
+
+### Forms that start where the work is
+
+The maintainer chose these on 28 November 2026, with the bugs above.
+
+- `forms.ts`: a form in a `<details>` that a person opens from its
+  summary gives the focus to its first field. Ctrl or Cmd with Enter in a
+  text area sends its form.
+- A field with `autofocus` on a live page takes the focus in place of the
+  `h1` (`focusHeading` in `focus.ts`). Only a form that a person goes on
+  with has one: the measurement after a measurement.
+- After a measurement, the page goes to `?again=<kind id>`: the form is
+  open with that kind and its unit, and the value has the focus. A run of
+  weights is the value and Enter for each.
+- `?new=<kind>` opens the form of the journal with any kind of entry.
+- The new task form is above the list of the day, not below its rows.
+- A choice of how a resident came puts today in an empty date of the
+  arrival.
+- In the form of stock that came in, the quantity and the place come
+  right after the lot, and the fields of a new lot after them.
+- The list of the expenses of one resident records a new expense of that
+  resident.
 
 ## Consequences
 

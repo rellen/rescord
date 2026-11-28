@@ -2,15 +2,15 @@ defmodule RescordWeb.TimelinePagesTest do
   @moduledoc """
   Holds the page of the timeline of a resident: each event in words, with
   its time in the organisation and its person, and the words of each kind
-  of event.
+  of event. The page tests find what a person finds (ADR 0107).
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -36,27 +36,21 @@ defmodule RescordWeb.TimelinePagesTest do
      conn: sign_in(context.conn, member)}
   end
 
-  defp open(conn, path) do
-    {:ok, view, _html} = live(conn, path)
-    {view, render_async(view)}
-  end
+  defp events, do: main() |> list("The events")
 
   test "the page does not open for a user of another organisation, or with no sign-in", context do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
 
-    assert {:error, {:redirect, %{to: "/"}}} =
-             build_conn() |> sign_in(outsider) |> live(context.path)
-
-    assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), context.path)
+    build_conn() |> sign_in(outsider) |> visit(context.path) |> assert_path("/")
+    build_conn() |> visit(context.path) |> assert_path("/")
   end
 
   test "the page goes to the residents when the resident of the address is not there", context do
     base = ~p"/o/#{context.organisation.short_name}/residents"
 
     for id <- [Ash.UUID.generate(), "not-an-id"] do
-      assert {:error, {:live_redirect, %{to: ^base}}} =
-               live(context.conn, base <> "/#{id}/timeline")
+      context.conn |> visit(base <> "/#{id}/timeline") |> assert_path(base)
     end
   end
 
@@ -66,11 +60,10 @@ defmodule RescordWeb.TimelinePagesTest do
     {:ok, _} = Locations.settle(fern, context.east.id, context.options)
     Process.sleep(5)
 
-    group =
-      Residents.form_group!(
-        %{name: "The nursery", resident_ids: [context.fern.id]},
-        context.options
-      )
+    Residents.form_group!(
+      %{name: "The nursery", resident_ids: [context.fern.id]},
+      context.options
+    )
 
     Process.sleep(5)
 
@@ -91,60 +84,52 @@ defmodule RescordWeb.TimelinePagesTest do
         context.options
       )
 
-    _ = group
-    {view, html} = open(context.conn, context.path)
+    session =
+      context.conn
+      |> visit(context.path)
+      |> assert_has(main() |> heading(level: 1), text: "Timeline of Fern")
 
-    assert html =~ "Timeline of Fern"
+    # Each event has its time, its words and its person, the newest first.
+    words = [
+      "Behaviour. Ate well",
+      "Came back",
+      "Went away: At the clinic",
+      "Joined the group The nursery",
+      "Placed in East 1",
+      "Arrival recorded: #{RescordWeb.ResidentWords.arrival(:surrender)}, on " <>
+        RescordWeb.ResidentWords.date(Date.add(Date.utc_today(), -3)),
+      "Got the name Fern"
+    ]
 
-    words =
-      view
-      |> render()
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#timeline li p")
-      |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
-
-    assert words == [
-             "Behaviour. Ate well",
-             "Came back",
-             "Went away: At the clinic",
-             "Joined the group The nursery",
-             "Placed in East 1",
-             "Arrival recorded: #{RescordWeb.ResidentWords.arrival(:surrender)}, on " <>
-               RescordWeb.ResidentWords.date(Date.add(Date.utc_today(), -3)),
-             "Got the name Fern"
-           ]
+    shown = names(session, events() |> item(nil))
+    assert length(shown) == length(words)
+    for {event, said} <- Enum.zip(shown, words), do: assert(event =~ said)
 
     # The member reads who made each change. An end has no person, and a
     # root user who is not a member is the operator (ADR 0105).
-    assert has_element?(
-             view,
-             "#timeline li[data-subject=placement] small",
-             to_string(context.member.email)
-           )
+    member = to_string(context.member.email)
+    assert text(session, events() |> item(~r/Placed in East 1/)) =~ ~r/East 1 #{member}$/
+    assert text(session, events() |> item(~r/Came back/)) =~ ~r/Came back$/
 
-    refute has_element?(view, "#timeline li:nth-child(2) small")
-
-    assert has_element?(
-             view,
-             "#timeline li:nth-child(3) small",
-             "Rescord operator"
-           )
+    assert text(session, events() |> item(~r/Went away/)) =~
+             ~r/At the clinic Rescord operator$/
 
     # The words of an event show no atom.
-    refute Enum.any?(words, &(&1 =~ "_"))
+    refute Enum.any?(shown, &(&1 =~ "_"))
 
-    assert has_element?(view, "a", "The journal")
-    assert has_element?(view, "a", "The resident")
+    session
+    |> assert_has(main() |> link("The journal"))
+    |> assert_has(navigation("Breadcrumb") |> link("Fern"))
   end
 
   test "the pages of the resident and of its journal link to the timeline", context do
     base = ~p"/o/#{context.organisation.short_name}/residents/#{context.fern.id}"
 
-    {view, _html} = open(context.conn, base)
-    assert has_element?(view, "a[href='#{context.path}']", "Open the timeline")
+    assert context.conn |> visit(base) |> href(main() |> link("Open the timeline")) ==
+             context.path
 
-    {view, _html} = open(context.conn, base <> "/journal")
-    assert has_element?(view, "a[href='#{context.path}']", "Timeline")
+    assert context.conn |> visit(base <> "/journal") |> href(main() |> link("Timeline")) ==
+             context.path
   end
 
   describe "the words of an event" do

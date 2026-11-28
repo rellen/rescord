@@ -14,12 +14,14 @@ defmodule RescordWeb.ReceiptController do
 
   As for an attachment of the journal (ADR 0041), the answer names the type
   that Rescord found in the first bytes of the file, puts the page in a
-  sandbox, and tells the browser to keep no copy.
+  sandbox. The bytes of a receipt never change, so the browser of the
+  person keeps the file for a week (`RescordWeb.FileCache`).
   """
 
   use RescordWeb, :controller
 
   alias Rescord.{Accounts, Expenses}
+  alias RescordWeb.FileCache
 
   def show(conn, %{"organisation" => short_name, "id" => id}) when is_binary(id) do
     with {:ok, options} <- options(conn, short_name, id),
@@ -57,7 +59,7 @@ defmodule RescordWeb.ReceiptController do
     conn
     |> put_resp_content_type(type, nil)
     |> put_resp_header("content-security-policy", "sandbox; default-src 'none'; img-src 'self'")
-    |> put_resp_header("cache-control", "private, no-store")
+    |> FileCache.put(true)
     |> put_resp_header("content-disposition", disposition(name))
     |> send_resp(200, bytes)
   end

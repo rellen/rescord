@@ -98,7 +98,12 @@ defmodule RescordWeb.PartnersLive do
 
     with %{} = partnership <- Enum.find(socket.assigns.partnerships, &(&1.id == id)),
          {:ok, _partnership} <- action.(partnership, actor: socket.assigns.current_user) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      name = Transfers.other(partnership, socket.assigns.organisation).name
+
+      {:noreply,
+       socket
+       |> put_flash(:info, partnership_words(event, name))
+       |> push_navigate(to: path(socket))}
     else
       nil ->
         {:noreply, socket}
@@ -126,7 +131,10 @@ defmodule RescordWeb.PartnersLive do
     with %{} = partner <- Enum.find(socket.assigns.remote, &(&1.id == id)),
          {:ok, _partner} <-
            Transfers.end_remote_partner(partner, actor: socket.assigns.current_user) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply,
+       socket
+       |> put_flash(:info, partnership_words("end", partner.name))
+       |> push_navigate(to: path(socket))}
     else
       nil -> {:noreply, socket}
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
@@ -135,6 +143,11 @@ defmodule RescordWeb.PartnersLive do
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # What a press on a partnership did, as the message of the page (issue 35).
+  defp partnership_words("accept", name), do: "#{name} is a partner refuge now."
+  defp partnership_words("decline", name), do: "The question of #{name} is declined."
+  defp partnership_words("end", name), do: "The partnership with #{name} is ended."
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -148,8 +161,10 @@ defmodule RescordWeb.PartnersLive do
       organisation={@organisation}
       inbox={@inbox}
       ruby={@ruby?}
+      section={:home}
     >
       <.header icon={Icons.section(:partners)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}"}>{@organisation.name}</:crumb>
         Partner refuges
         <:subtitle>The refuges that {@organisation.name} transfers residents with</:subtitle>
         <:actions>
@@ -159,7 +174,7 @@ defmodule RescordWeb.PartnersLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.partnerships
         partnerships={@partnerships}

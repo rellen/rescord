@@ -64,15 +64,26 @@ defmodule RescordWeb.AccountComponents do
           <.button type="submit" aria-label={"Give the role to #{member.email}"}><.icon name="key" />
           Give the role</.button>
         </form>
-        <.button
+        <.confirm
           :if={Accounts.role_can?(@role, :remove, member, @organisation)}
-          phx-click="remove"
-          phx-value-id={member.id}
-          data-confirm={"Remove #{member.email} from #{@organisation.name}? Their records stay theirs, marked as a former member. The tasks that are due for them alone become for anybody, and their calendar feeds stop."}
-          aria-label={"Remove #{member.email} from #{@organisation.name}"}
+          id={"remove-member-#{member.id}"}
+          summary="Remove"
+          label={"Remove #{member.email}"}
+          icon="user-minus"
         >
-          <.icon name="user-minus" /> Remove
-        </.button>
+          <p>
+            Their records stay theirs, marked as a former member. The tasks that are due for them
+            alone become for anybody, and their calendar feeds stop.
+          </p>
+          <.button
+            variant="danger"
+            phx-click="remove"
+            phx-value-id={member.id}
+            aria-label={"Remove #{member.email} from #{@organisation.name}"}
+          >
+            Remove {member.email}
+          </.button>
+        </.confirm>
         <.link
           :if={@can_erase? and member.user_id != @current_user.id}
           navigate={~p"/o/#{@organisation.short_name}/privacy?member=#{member.id}"}
@@ -142,13 +153,20 @@ defmodule RescordWeb.AccountComponents do
     <section aria-labelledby="invite-heading">
       <h2 id="invite-heading"><.icon name="user-plus" /> Invite a person</h2>
       <.form for={@invite_form} id="invite" phx-submit="invite">
-        <.input field={@invite_form[:email]} type="email" label="Email address" required />
+        <.input
+          field={@invite_form[:email]}
+          type="email"
+          label="Email address"
+          hint="Rescord emails them a link to sign in. They need no password."
+          required
+        />
         <.input
           :if={@roles != []}
           field={@invite_form[:role_id]}
           type="select"
           label="Role"
           options={@roles}
+          hint="What they may do. You can change it later."
         />
         <footer>
           <.button type="submit"><.icon name="envelope" /> Send the invitation</.button>
@@ -196,6 +214,7 @@ defmodule RescordWeb.AccountComponents do
         <.input
           field={@organisation_form[:short_name]}
           label="Short name, for the address of its pages"
+          hint="Small letters, digits and hyphens, such as happy-paws. It is in the address of each page, and it cannot change later."
           autocapitalize="none"
           spellcheck="false"
           required
@@ -236,22 +255,32 @@ defmodule RescordWeb.AccountComponents do
       <h2 id="roots-heading">Root users</h2>
 
       <ul>
-        <li :for={root <- @roots}>
+        <li :for={root <- @roots} id={"root-#{root.id}"}>
           {root.email}
-          <.button
+          <.confirm
             :if={root.id != @current_user.id}
-            phx-click="revoke_root"
-            phx-value-id={root.id}
-            aria-label={"Make an ordinary user of #{root.email}"}
+            id={"revoke-root-#{root.id}"}
+            summary="Make an ordinary user"
+            label={"Make an ordinary user of #{root.email}"}
+            icon="user-minus"
           >
-            Make an ordinary user
-          </.button>
+            <p>The user stays, with the organisations and the roles that they have.</p>
+            <.button variant="danger" phx-click="revoke_root" phx-value-id={root.id}>
+              Make an ordinary user of {root.email}
+            </.button>
+          </.confirm>
         </li>
       </ul>
 
       <.form for={@root_form} id="new-root" phx-submit="make_root">
         <h3>Make a user a root user</h3>
-        <.input field={@root_form[:email]} type="email" label="Email address of the user" required />
+        <.input
+          field={@root_form[:email]}
+          type="email"
+          label="Email address of the user"
+          hint="The person must have signed in once. A root user can do anything, in each organisation of this server."
+          required
+        />
         <footer>
           <.button type="submit">Make a root user</.button>
         </footer>
@@ -266,11 +295,14 @@ defmodule RescordWeb.AccountComponents do
   attr :can_change?, :any, required: true
   attr :form, :any, required: true
   attr :time_zones, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def time_zone_setting(assigns) do
     ~H"""
     <section aria-labelledby="time-zone-heading">
       <h2 id="time-zone-heading"><.icon name="globe" /> Time zone</h2>
+      <.problems list={@problems} at={@problems_at} here={:time_zone} />
       <.list>
         <:item title="Time zone">{@organisation.time_zone}</:item>
         <:item title="Today here">{ResidentWords.date(@today)}</:item>
@@ -305,11 +337,14 @@ defmodule RescordWeb.AccountComponents do
   attr :organisation, :any, required: true
   attr :can_change?, :any, required: true
   attr :locale_form, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def locale_setting(assigns) do
     ~H"""
     <section aria-labelledby="locale-heading">
       <h2 id="locale-heading"><.icon name="globe" /> Language and region</h2>
+      <.problems list={@problems} at={@problems_at} here={:locale} />
       <.list>
         <:item title="Language and region">{Accounts.locale_name(@organisation.locale)}</:item>
         <:item title="A date">{RescordWeb.Locale.date(~D[2026-11-16])}</:item>
@@ -342,11 +377,14 @@ defmodule RescordWeb.AccountComponents do
   attr :organisation, :any, required: true
   attr :can_change?, :any, required: true
   attr :ahead_form, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def days_ahead_setting(assigns) do
     ~H"""
     <section aria-labelledby="ahead-heading">
       <h2 id="ahead-heading">Tasks of the routines</h2>
+      <.problems list={@problems} at={@problems_at} here={:ahead} />
       <.list>
         <:item title="The tasks exist">{TaskWords.days(@organisation.task_days_ahead)} ahead</:item>
       </.list>
@@ -373,17 +411,22 @@ defmodule RescordWeb.AccountComponents do
   @doc "The parts that a copy of a transferred resident holds at first (ADR 0042)."
   attr :organisation, :any, required: true
   attr :can_change?, :boolean, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def transfer_parts_setting(assigns) do
     ~H"""
     <section aria-labelledby="parts-heading">
       <h2 id="parts-heading">Transfers</h2>
+      <.problems list={@problems} at={@problems_at} here={:parts} />
       <p>
-        A copy of a resident that this refuge sends to a partner holds the facts and the medical
-        history always. It also holds these parts at first, and the person who sends it can
-        change them for each transfer.
+        When you send a resident to a partner refuge, the partner gets a copy of its record. The
+        copy always has the facts of the resident and its medical history. It also holds these
+        parts at first, and the member who sends it can change them each time.
       </p>
-      <p :if={@organisation.transfer_parts == []}>No other part.</p>
+      <p :if={@organisation.transfer_parts == []}>
+        No other part: only the facts and the medical history.
+      </p>
       <ul :if={@organisation.transfer_parts != []}>
         <li :for={part <- @organisation.transfer_parts}>{RescordWeb.TransferWords.part(part)}</li>
       </ul>

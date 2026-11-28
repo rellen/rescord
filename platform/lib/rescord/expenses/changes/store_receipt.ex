@@ -5,7 +5,8 @@ defmodule Rescord.Expenses.Changes.StoreReceipt do
   `Rescord.Journal.Changes.StoreAttachment` does for the journal.
 
   `Rescord.Storage.Upload.prepare/1` checks the file and makes a photo safe
-  to keep. The keys are `<organisation id>/receipts/<receipt id>` and, for a
+  to keep, and `Rescord.Storage.Scan.check/1` scans a PDF when the scan is
+  on (issue 37). The keys are `<organisation id>/receipts/<receipt id>` and, for a
   photo, `<organisation id>/thumbnails/<receipt id>`.
 
   The files go into the store in an `after_action` hook, in the
@@ -16,14 +17,17 @@ defmodule Rescord.Expenses.Changes.StoreReceipt do
   use Ash.Resource.Change
 
   alias Rescord.{Accounts, Storage}
-  alias Rescord.Storage.Upload
+  alias Rescord.Storage.{Scan, Upload}
 
   @impl true
   def change(changeset, _opts, _context) do
     case Ash.Changeset.get_argument(changeset, :content) do
       content when is_binary(content) ->
-        case Upload.prepare(content) do
-          {:ok, files} -> store(changeset, files)
+        # A PDF goes to the virus scan when it is on (issue 37).
+        with {:ok, files} <- Upload.prepare(content),
+             :ok <- Scan.check(files) do
+          store(changeset, files)
+        else
           {:error, error} -> Ash.Changeset.add_error(changeset, %{error | field: :content})
         end
 

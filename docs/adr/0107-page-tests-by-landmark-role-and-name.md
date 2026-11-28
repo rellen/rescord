@@ -31,7 +31,12 @@ part of the words and prefers them to `aria-label`, so it finds each
   `click/2` of the module, which take a locator or a CSS selector.
   Locators: `main`, `banner`, `contentinfo`, `navigation`, `region`,
   `complementary`, `article`, `heading`, `button`, `link`, `field`,
-  `table`, `row`, `alert`, `status`, narrowed with a pipe.
+  `table`, `row`, `form`, `list` (by its label), `item`, `figure`,
+  `image`, `details` (by the label or the words of its summary),
+  `definition` (the `dd` of a term), `alert`, `status`, narrowed with a
+  pipe. Queries: `has?`, `all`, `one`, `text`, `names`, `href`, `src`,
+  `attribute` and `value`. `assert_has/3` takes `state:`, the kind of a
+  `data-state` that the element holds, with its words in `text:`.
 - **The name is a short form of the W3C computation**: `aria-labelledby`,
   `aria-label`, the label of a field, the caption of a table, the words of
   a button, a link, a heading or a row. What is `aria-hidden` is left out,

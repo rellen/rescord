@@ -34,7 +34,8 @@ defmodule Rescord.Transfers do
       Rescord.Residents,
       Rescord.Journal,
       Rescord.Locations,
-      Rescord.Photos
+      Rescord.Photos,
+      Rescord.Storage.Scan
     ]
   end
 
@@ -59,6 +60,7 @@ defmodule Rescord.Transfers do
       define :decline_transfer, action: :decline
       define :withdraw_transfer, action: :withdraw
       define :send_transfer_again, action: :send_again
+      define :check_transfer_again, action: :check_again
     end
 
     resource RemotePartner do
@@ -272,12 +274,14 @@ defmodule Rescord.Transfers do
 
   @doc """
   A file of the copy of a transfer, and its bytes, when the actor can read
-  the transfer of the organisation and its copy names the file. A file of
-  an export is not kept on this server.
+  the transfer of the organisation and its copy names the file, and the
+  files of the transfer are open (`files_open?/1`). A file of an export is
+  not kept on this server.
   """
   def transfer_file(organisation, id, file_id, opts \\ []) do
     with {:ok, %{to_organisation_id: to_id} = transfer} when is_binary(to_id) <-
            transfer_of(organisation, id, opts),
+         true <- files_open?(transfer),
          %{} = file <- Rescord.Transfers.Files.named(transfer.snapshot, file_id),
          {:ok, bytes} <-
            Rescord.Storage.get(Rescord.Transfers.Files.key(to_id, transfer.id, file["id"])) do
@@ -286,6 +290,20 @@ defmodule Rescord.Transfers do
       _no_file -> {:error, :not_found}
     end
   end
+
+  @doc """
+  Whether the files of a transfer open (issue 37): each one does but an
+  import whose files a job has not checked, or whose check failed
+  (`Rescord.Transfers.Actions.CheckFiles`). An import is the one transfer
+  with both a partner on another server and a refuge of this server that
+  receives it.
+  """
+  @spec files_open?(map) :: boolean
+  def files_open?(%{remote_partner_id: partner, to_organisation_id: to} = transfer)
+      when is_binary(partner) and is_binary(to),
+      do: not is_nil(transfer.files_checked_at) and is_nil(transfer.files_check_failure)
+
+  def files_open?(%{}), do: true
 
   @doc """
   Makes each transfer that is `sending` with no job left `failed` (ADR 0100,
@@ -306,7 +324,6 @@ defmodule Rescord.Transfers do
 
   @doc """
   Each key of the store that a transfer to the organisation names: each
-
   file of the copy of each transfer that the organisation received, in
   any state (`Rescord.Storage.Named`, ADR 0091). It reads the table with
   no actor, for `bin/check-files`, and no page calls it.

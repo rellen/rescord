@@ -278,17 +278,14 @@ defmodule RescordWeb.ExpenseFormLive do
       ruby={@ruby?}
       section={:expenses}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/expenses"}>Expenses</.link>
-        <span :if={@expense}>
-          ›
-          <.link navigate={~p"/o/#{@organisation.short_name}/expenses/#{@expense.id}"}>
-            {@expense.description}
-          </.link>
-        </span>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:expenses)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/expenses"}>Expenses</:crumb>
+        <:crumb
+          :if={@expense}
+          navigate={~p"/o/#{@organisation.short_name}/expenses/#{@expense.id}"}
+        >
+          {@expense.description}
+        </:crumb>
         {if @expense, do: "Change the expense", else: "Record an expense"}
         <:subtitle :if={is_nil(@expense)}>
           Something that you or {@organisation.name} paid for

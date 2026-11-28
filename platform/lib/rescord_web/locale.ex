@@ -95,6 +95,45 @@ defmodule RescordWeb.Locale do
   end
 
   @doc """
+  The short name of the month of a date, for the head of a narrow column.
+
+      iex> RescordWeb.Locale.short_month(~D[2026-12-01])
+      "Dec"
+  """
+  @spec short_month(Date.t()) :: String.t()
+  def short_month(%Date{} = date), do: formatted(date, :MMM, "%b")
+
+  @doc """
+  A short date with no year, for the head of a narrow row.
+
+      iex> RescordWeb.Locale.short_date(~D[2026-11-30])
+      "30 Nov"
+  """
+  @spec short_date(Date.t()) :: String.t()
+  def short_date(%Date{} = date), do: formatted(date, :MMMd, "%d %b")
+
+  @doc """
+  The day of the week of a date, in full or short.
+
+      iex> RescordWeb.Locale.weekday(~D[2026-12-01])
+      "Tuesday"
+
+      iex> RescordWeb.Locale.weekday(~D[2026-12-01], :short)
+      "Tue"
+  """
+  @spec weekday(Date.t(), :long | :short) :: String.t()
+  def weekday(date, length \\ :long)
+  def weekday(%Date{} = date, :long), do: formatted(date, :EEEE, "%A")
+  def weekday(%Date{} = date, :short), do: formatted(date, :E, "%a")
+
+  defp formatted(date, format, fallback) do
+    case Localize.Date.to_string(date, locale: current(), format: format) do
+      {:ok, words} -> words
+      {:error, reason} -> plain(Calendar.strftime(date, fallback), reason)
+    end
+  end
+
+  @doc """
   A time of day, to the minute. A date and time gives its time of day as it
   is: turn an instant into the local time of the organisation first.
 

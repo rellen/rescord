@@ -12,5 +12,5 @@ defmodule Rescord.Export.Errors.InvalidDate do
 
   @impl true
   def message(%{reason: :after_today}), do: "The date is after today."
-  def message(%{reason: _not_a_date}), do: "The date is not a date."
+  def message(%{reason: _not_a_date}), do: "Give a date as a day, a month and a year."
 end

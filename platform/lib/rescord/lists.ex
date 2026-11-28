@@ -251,6 +251,20 @@ defmodule Rescord.Lists do
   end
 
   @doc """
+  Gives a measure kind of the organisation the lowest and the highest value
+  of a measurement, in its standard unit (ADR 0117). A measurement outside
+  the range is refused. `nil` takes a bound away. Only a kind with a
+  standard unit takes a range.
+  """
+  def set_range(measure_kind_id, lowest, highest, opts \\ []) do
+    with {:ok, kind} <- Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, opts) do
+      kind
+      |> Ash.Changeset.for_update(:set_range, %{lowest: lowest, highest: highest}, opts)
+      |> Ash.update()
+    end
+  end
+
+  @doc """
   The units that a measurement of a kind can have, from the units of the
   organisation, each with its `label` (ADR 0094).
 
@@ -361,6 +375,21 @@ defmodule Rescord.Lists do
       value |> Ash.Changeset.for_update(action, %{}, opts) |> Ash.update()
     end
   end
+
+  @doc """
+  The name of a value that a write returned, for words on a page. A write
+  does not load the `label`, which is a calculation, so this reads it. A
+  shared value has only its name.
+  """
+  def label_of(%{label: %Ash.NotLoaded{}} = value, opts) do
+    case Ash.load(value, :label, opts) do
+      {:ok, %{label: label}} -> to_string(label)
+      {:error, _error} -> to_string(Map.get(value, :name) || "The value")
+    end
+  end
+
+  def label_of(%{label: label}, _opts), do: to_string(label)
+  def label_of(%{name: name}, _opts), do: to_string(name)
 
   @doc "The shared values of a dimension that the organisation does not use yet."
   def unused_shared_values(key, opts \\ []) do

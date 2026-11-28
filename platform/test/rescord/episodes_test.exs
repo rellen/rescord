@@ -620,5 +620,65 @@ defmodule Rescord.EpisodesTest do
       assert [%{count: 2}] = of_uri.by_condition
       assert Enum.sum(Enum.map(of_uri.by_month, & &1.count)) == 2
     end
+
+    test "count the new cases of each week, and the cases that go on now (ADR 0119)", context do
+      today = context.today
+      monday = Date.beginning_of_week(today)
+      mondays = RescordWeb.Chart.weeks(today, 4)
+      diagnose!(context, context.uri)
+      diagnose!(context, context.bumblefoot, %{onset_on: Date.add(monday, -7)})
+
+      gone =
+        resident!(context.lists, context.options, %{
+          name: "Gone",
+          arrived_on: Date.add(today, -40)
+        })
+
+      old =
+        resident!(context.lists, context.options, %{name: "Old", arrived_on: Date.add(today, -90)})
+
+      Journal.write_entry!(
+        %{
+          resident_id: gone.id,
+          kind: :diagnosis,
+          condition_id: context.uri,
+          onset_on: Date.add(today, -35)
+        },
+        context.options
+      )
+
+      {:ok, _} =
+        Residents.record_departure(
+          %{resident_id: gone.id, kind: :release, departed_on: today},
+          actor: context.administrator,
+          tenant: context.organisation
+        )
+
+      Journal.write_entry!(
+        %{
+          resident_id: old.id,
+          kind: :diagnosis,
+          condition_id: context.uri,
+          onset_on: Date.add(today, -80)
+        },
+        context.options
+      )
+
+      [ended] = episodes(context, old)
+
+      {:ok, _} =
+        Journal.resolve_episode(ended, %{ended_on: Date.add(today, -60)}, context.options)
+
+      {:ok, counts} = Journal.conditions_by_week(mondays, context.options)
+
+      assert counts.new == 2
+      assert counts.ongoing == 2
+      assert counts.weeks == [0, 0, 1, 1]
+
+      assert [{"Bumblefoot", [0, 0, 1, 0], 1}, {"Respiratory infection", [0, 0, 0, 1], 1}] =
+               Enum.map(counts.conditions, &{to_string(&1.condition.label), &1.weeks, &1.ongoing})
+
+      assert List.last(mondays) == monday
+    end
   end
 end

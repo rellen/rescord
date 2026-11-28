@@ -15,6 +15,8 @@ defmodule Rescord.Release.CheckTest do
 
   alias Rescord.Release.Check
 
+  doctest Rescord.Release.Check, only: [metrics: 1]
+
   defp smtp_server! do
     name = :"check_smtp_#{System.unique_integer([:positive])}"
 
@@ -70,6 +72,12 @@ defmodule Rescord.Release.CheckTest do
       assert {:fail, "store", words} = Check.store()
       assert words =~ "the put of a file gave"
     end
+  end
+
+  test "names the version of libvips that reads the photos (issue 37)" do
+    assert {:note, "libvips", words} = Check.libvips()
+    assert words == "#{Rescord.Images.libvips_version()} reads the photos"
+    assert words =~ ~r/^\d+\.\d+\.\d+ /
   end
 
   describe "the SMTP server" do

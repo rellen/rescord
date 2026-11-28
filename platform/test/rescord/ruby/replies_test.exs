@@ -21,6 +21,7 @@ defmodule Rescord.Ruby.RepliesTest do
   import Ecto.Query, only: [from: 2]
   import ExUnit.CaptureLog
   import Rescord.AccountsFixtures
+  import Rescord.ClockFixtures
   import Rescord.ResidentsFixtures
   import Rescord.RubyFixtures
 
@@ -36,6 +37,8 @@ defmodule Rescord.Ruby.RepliesTest do
   setup do
     root = root!()
     organisation = organisation!(root, "Wattle Creek", @zone)
+    # The tests compare the day of a header with the day of the test.
+    clear_of_midnight(organisation)
     {_, administrator} = member!(organisation, :administrator, root)
     admin = [actor: administrator, tenant: organisation]
 

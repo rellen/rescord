@@ -144,7 +144,7 @@ defmodule RescordWeb.CoreComponentsTest do
     assert attribute(doc, "input#words", "inputmode") == []
   end
 
-  test "a decimal is a text control with the keyboard of a decimal (ADR 0110)" do
+  test "a decimal is a text control with the keyboard of a decimal (ADR 0111)" do
     assigns = %{}
 
     doc =

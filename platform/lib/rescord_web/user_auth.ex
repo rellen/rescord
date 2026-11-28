@@ -110,7 +110,10 @@ defmodule RescordWeb.UserAuth do
     |> put_session(:live_socket_id, socket_id(user.id))
   end
 
-  @doc "Ends the session, revokes its token, and closes each open page of the user."
+  @doc """
+  Ends the session, revokes its token, closes each open page of the user,
+  and asks the browser to drop the files that it kept (`RescordWeb.FileCache`).
+  """
   def sign_out(conn) do
     case conn.assigns[:current_user] do
       %{id: id} -> disconnect(id)
@@ -121,6 +124,8 @@ defmodule RescordWeb.UserAuth do
     |> Helpers.revoke_session_tokens(:rescord)
     |> configure_session(renew: true)
     |> clear_session()
+    # The photos and files that the browser kept (RescordWeb.FileCache).
+    |> put_resp_header("clear-site-data", ~s("cache"))
   end
 
   @doc """

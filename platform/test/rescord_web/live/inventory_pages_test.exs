@@ -3,13 +3,32 @@ defmodule RescordWeb.InventoryPagesTest do
   Holds the pages of the inventory: the list of the items, the page of one
   item with its lots and what a member records there, and the suppliers.
 
+  The tests find what a person finds (ADR 0107): an item is a row of the
+  region "The items", a lot a row of the region "Stock", a movement a row
+  of "What happened", and each form is in the disclosure that its summary
+  names. The controls of Cinder keep their ids.
+
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest,
+    only: [
+      assert_patch: 1,
+      assert_redirect: 1,
+      element: 2,
+      live: 2,
+      refute_patched: 2,
+      render_async: 1,
+      render_change: 2,
+      render_click: 1,
+      render_click: 3,
+      render_submit: 3
+    ]
+
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -52,17 +71,10 @@ defmodule RescordWeb.InventoryPagesTest do
      admin_conn: sign_in(build_conn(), administrator)}
   end
 
-  defp open(conn, path) do
-    {:ok, view, _html} = live(conn, path)
-    {view, render_async(view)}
-  end
-
-  defp submit(view, conn, selector, fields) do
-    {:ok, view, _html} =
-      view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
-
-    {view, render_async(view)}
-  end
+  # Cinder draws its rows after the first render of a page.
+  defp open(conn, path), do: conn |> visit(path) |> settle()
+  defp settle(session), do: unwrap(session, &render_async/1)
+  defp send_form(session, button), do: session |> click_button(button) |> settle()
 
   defp lot!(context, facts \\ %{}) do
     %{item_id: context.hay.id, quantity: 10, location_id: context.shed.id, code: "B-1"}
@@ -77,18 +89,30 @@ defmodule RescordWeb.InventoryPagesTest do
 
   defp level(context), do: InventoryWords.plain(stock!(context).level)
 
-  # The rows of the table of a page, with no control of the collection.
-  defp rows(html) do
-    html |> LazyHTML.from_fragment() |> LazyHTML.query("tbody") |> LazyHTML.to_html()
-  end
+  # The parts of the pages, and a row by the words that it starts with.
+  defp items, do: main() |> region("The items")
+  defp item_row(name), do: items() |> row(~r/^#{Regex.escape(name)}\b/)
+  defp shown(session), do: names(session, items() |> row(~r/./) |> link(~r/./))
+
+  defp stock, do: main() |> region("Stock")
+  defp lot_row(words), do: stock() |> row(~r/^#{Regex.escape(words)}\b/)
+  defp in_stock(session), do: text(session, stock() |> definition("In stock"))
+
+  defp history, do: main() |> region("What happened")
+  defp movement(words), do: history() |> row(~r/#{Regex.escape(words)}/)
+  # The movements, each as its words, with no row of the heads.
+  defp movements(session), do: session |> names(history() |> row(~r/./)) |> tl()
+
+  defp record(summary), do: main() |> region("Record what happened") |> details(summary)
+  defp keep(summary), do: main() |> region("Keep the item") |> details(summary)
 
   test "the pages do not open for a user of another organisation, or with no sign-in", context do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
 
     for path <- [context.path, context.item_path, context.path <> "/suppliers"] do
-      assert {:error, {:redirect, %{to: "/"}}} = build_conn() |> sign_in(outsider) |> live(path)
-      assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), path)
+      build_conn() |> sign_in(outsider) |> visit(path) |> assert_path("/")
+      build_conn() |> visit(path) |> assert_path("/")
     end
   end
 
@@ -97,131 +121,121 @@ defmodule RescordWeb.InventoryPagesTest do
       lot!(context)
       Inventory.add_item!(%{name: "Aspen bedding", reorder_level: 2}, context.admin)
 
-      {view, _html} = open(context.conn, context.path)
+      session =
+        context.conn
+        |> open(context.path)
+        |> assert_has(item_row("Meadow hay") |> link("Meadow hay"))
+        |> assert_has(item_row("Meadow hay"), text: "Food")
+        |> assert_has(item_row("Meadow hay"), text: "10 bag")
+        |> assert_has(item_row("Meadow hay"), state: "ok", text: "In stock")
+        |> assert_has(item_row("Aspen bedding"), state: "alert", text: "Order more")
+        # A member adds no item.
+        |> refute_has(button("Add the item"))
 
-      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
-      assert has_element?(view, hay <> " a", "Meadow hay")
-      assert has_element?(view, hay <> " td", "Food")
-      assert has_element?(view, hay <> " td", "10 bag")
-      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
-      assert has_element?(view, "tbody tr:first-child td", "Aspen bedding")
-      assert has_element?(view, "tbody tr:first-child [data-state=alert]", "Order more")
-      # A member adds no item.
-      refute has_element?(view, "#new-item")
+      assert shown(session) == ["Aspen bedding", "Meadow hay"]
     end
 
     test "says so when there is no item", context do
       :ok = Inventory.remove_item(context.hay, context.admin)
-      {_view, html} = open(context.conn, context.path)
-      assert html =~ "The inventory has no item yet."
+
+      context.conn
+      |> open(context.path)
+      |> assert_has(items(), text: "The inventory has no item yet.")
     end
 
     test "gets an item from an administrator, and opens its page", context do
-      {view, _html} = open(context.admin_conn, context.path)
-
-      html = view |> form("#item", item: %{name: ""}) |> render_submit()
-      assert has_element?(view, "main p[role=alert]", "Name is required")
-      refute html =~ "Rescord.Inventory"
-
-      {view, html} =
-        submit(view, context.admin_conn, "#item",
-          item: %{
-            name: "Guinea pig pellets",
-            category_id: context.lists.item_category.food,
-            unit_id: context.lists.unit.kg,
-            reorder_level: "5"
-          }
-        )
-
-      assert html =~ "Guinea pig pellets"
-      assert has_element?(view, "dd", "0 kg")
-      assert has_element?(view, "[data-state=alert]", "Order more")
-      assert has_element?(view, "#short li", "wants 5 kg or more")
+      context.admin_conn
+      |> open(context.path)
+      |> fill_in("Name", with: "")
+      |> send_form("Add the item")
+      |> assert_has(main() |> alert(), text: "Name is required")
+      |> refute_has(main(), text: "Rescord.Inventory")
+      |> fill_in("Name", with: "Guinea pig pellets")
+      |> select("Category", option: "Food")
+      |> select("Unit that you count it in", option: "kg")
+      |> fill_in("Order more when the stock is below", with: "5")
+      |> send_form("Add the item")
+      |> assert_has(main() |> heading("Guinea pig pellets", level: 1))
+      |> assert_has(stock() |> definition("In stock"), text: "0 kg")
+      |> assert_has(stock() |> definition("State"), state: "alert", text: "Order more")
+      |> assert_has(stock() |> item(~r/wants 5 kg or more/))
     end
 
     test "gets a medication with its strength, which the page of the item shows", context do
-      {view, _html} = open(context.admin_conn, context.path)
+      strength = main() |> region("Stock") |> definition("Strength")
+      calculator = main() |> link("Calculate a dose with this strength")
 
-      # The guards of the dose calculator read the number.
-      view
-      |> form("#item", item: %{name: "Meloxicam suspension", strength: "1,5"})
-      |> render_submit()
+      session =
+        context.admin_conn
+        |> open(context.path)
+        |> fill_in("Name", with: "Meloxicam suspension")
+        # The guards of the dose calculator read the number.
+        |> fill_in("Amount", with: "1,5")
+        |> send_form("Add the item")
+        |> assert_has(main() |> alert(), text: "The strength: Write the number with digits")
 
-      assert has_element?(
-               view,
-               "main p[role=alert]",
-               "The strength: Write the number with digits"
-             )
+      # The refused form keeps what the person typed.
+      assert value(session, field("Name")) == "Meloxicam suspension"
+      assert value(session, field("Amount")) == "1,5"
 
-      assert has_element?(view, "#item_name[value='Meloxicam suspension']")
-      assert has_element?(view, "#item_strength[value='1,5']")
+      session =
+        session
+        |> select("Category", option: "Medication")
+        |> fill_in("Amount", with: "1.5")
+        |> select("Unit", option: "mg")
+        |> select("In each", option: "mL")
+        |> send_form("Add the item")
+        |> assert_has(strength, text: "1.5 mg in each mL")
 
-      {view, _html} =
-        submit(view, context.admin_conn, "#item",
-          item: %{
-            name: "Meloxicam suspension",
-            category_id: context.lists.item_category.medication,
-            strength: "1.5",
-            strength_unit: "mg",
-            strength_per: "mL"
-          }
-        )
-
-      assert has_element?(view, "#item-strength", "1.5 mg in each mL")
-
-      assert has_element?(
-               view,
-               "a[href*='/tools/dose?item=']",
-               "Calculate a dose with this strength"
-             )
+      assert href(session, calculator) =~ "/tools/dose?item="
 
       # The form of the item has the strength, and an empty field removes it.
-      assert has_element?(view, "#item_strength[value='1.5']")
-      assert has_element?(view, "#item_strength_unit option[selected]", "mg")
-      assert has_element?(view, "#item_strength_per option[selected]", "mL")
+      changes = keep("Change the item")
+      assert value(session, changes |> field("Amount")) == "1.5"
+      assert value(session, changes |> field("Unit of the strength")) == "mg"
+      assert value(session, changes |> field("The strength is in each")) == "mL"
 
-      {view, _html} =
-        submit(view, context.admin_conn, "#item-form",
-          item: %{strength: "50", strength_unit: "mg", strength_per: "tablet"}
-        )
-
-      assert has_element?(view, "#item-strength", "50 mg in each tablet")
-
-      view |> form("#item-form", item: %{strength: "0"}) |> render_submit()
-
-      assert has_element?(
-               view,
-               "main p[role=alert]",
-               "The strength: The strength must be above zero."
-             )
-
-      {view, _html} = submit(view, context.admin_conn, "#item-form", item: %{strength: ""})
-      refute has_element?(view, "#item-strength")
-      refute has_element?(view, "a", "Calculate a dose with this strength")
+      session
+      |> within(changes, fn form ->
+        form
+        |> fill_in("Amount", with: "50")
+        |> select("In each", option: "tablet")
+        |> send_form("Save the item")
+      end)
+      |> assert_has(strength, text: "50 mg in each tablet")
+      |> within(changes, &(&1 |> fill_in("Amount", with: "0") |> send_form("Save the item")))
+      |> assert_has(main() |> alert(), text: "The strength: The strength must be above zero.")
+      |> within(changes, &(&1 |> fill_in("Amount", with: "") |> send_form("Save the item")))
+      |> refute_has(strength)
+      |> refute_has(calculator)
     end
 
     test "has no strength and no link to the calculator for an item that is no medication",
          context do
-      {view, _html} = open(context.admin_conn, context.item_path)
+      session =
+        context.admin_conn
+        |> open(context.item_path)
+        |> refute_has(stock() |> definition("Strength"))
+        |> refute_has(link("Calculate a dose with this strength"))
 
-      refute has_element?(view, "#item-strength")
-      refute has_element?(view, "a", "Calculate a dose with this strength")
-      assert has_element?(view, "#item_strength:not([value])")
+      assert value(session, keep("Change the item") |> field("Amount")) == nil
 
       # A form with no strength leaves the item with none.
-      {_view, _html} =
-        submit(view, context.admin_conn, "#item-form", item: %{name: "Timothy hay"})
+      session
+      |> within(keep("Change the item"), fn form ->
+        form |> fill_in("Name", with: "Timothy hay") |> send_form("Save the item")
+      end)
 
       assert {:ok, %{item: %{strength: nil, name: "Timothy hay"}}} =
                Inventory.item_stock(context.hay.id, context.options)
     end
 
     test "does not take an item from a member who sends the event", context do
-      {view, _html} = open(context.conn, context.path)
+      context.conn
+      |> open(context.path)
+      |> unwrap(&render_submit(&1, "add", %{"item" => %{"name" => "Pellets"}}))
+      |> assert_has(main() |> alert(), text: "You cannot do that")
 
-      render_submit(view, "add", %{"item" => %{"name" => "Pellets"}})
-
-      assert has_element?(view, "main p[role=alert]", "You cannot do that")
       assert {:ok, [_hay]} = Inventory.stock(context.options)
     end
   end
@@ -257,47 +271,42 @@ defmodule RescordWeb.InventoryPagesTest do
     end
 
     test "reads the search, the filters and the sort from the address", context do
-      for {parameters, shown, hidden} <- [
-            {"", ["Aspen bedding", "Meadow hay", "Meloxicam"], []},
-            {"?search=hay", ["Meadow hay"], ["Aspen bedding", "Meloxicam"]},
-            {"?category_id=#{context.lists.item_category.bedding}", ["Aspen bedding"],
-             ["Meadow hay", "Meloxicam"]},
-            {"?state=attention", ["Aspen bedding", "Meloxicam"], ["Meadow hay"]},
-            {"?state=short", ["Aspen bedding"], ["Meadow hay", "Meloxicam"]},
-            {"?state=expired", ["Meloxicam"], ["Meadow hay", "Aspen bedding"]},
-            {"?state=expired&search=hay", [], ["Meadow hay", "Aspen bedding", "Meloxicam"]},
+      for {parameters, shown} <- [
+            {"", ["Aspen bedding", "Meadow hay", "Meloxicam"]},
+            {"?search=hay", ["Meadow hay"]},
+            {"?category_id=#{context.lists.item_category.bedding}", ["Aspen bedding"]},
+            {"?state=attention", ["Aspen bedding", "Meloxicam"]},
+            {"?state=short", ["Aspen bedding"]},
+            {"?state=expired", ["Meloxicam"]},
+            {"?state=expired&search=hay", []},
             # A value that is no choice changes nothing, and makes no fault.
-            {"?state=nothing&category_id=x&page=x", ["Aspen bedding", "Meadow hay", "Meloxicam"],
-             []}
+            {"?state=nothing&category_id=x&page=x", ["Aspen bedding", "Meadow hay", "Meloxicam"]},
+            {"?sort=-name", ["Meloxicam", "Meadow hay", "Aspen bedding"]}
           ] do
-        {_view, html} = open(context.conn, context.path <> parameters)
-        rows = rows(html)
-
-        for name <- shown, do: assert(rows =~ name, "#{parameters} hides #{name}")
-        for name <- hidden, do: refute(rows =~ name, "#{parameters} shows #{name}")
+        session = open(context.conn, context.path <> parameters)
+        assert shown(session) == shown, "#{parameters} shows #{inspect(shown(session))}"
       end
-
-      {_view, html} = open(context.conn, context.path <> "?sort=-name")
-      rows = rows(html)
-      assert :binary.match(rows, "Meloxicam") < :binary.match(rows, "Aspen bedding")
     end
 
     test "writes a filter into the address, and says when nothing matches", context do
-      {view, _html} = open(context.conn, context.path)
+      session =
+        context.conn
+        |> open(context.path)
+        |> unwrap(fn view ->
+          view
+          |> element("#items-filter-form")
+          |> render_change(%{"filters" => %{"state" => "short"}})
 
-      view
-      |> element("#items-filter-form")
-      |> render_change(%{"filters" => %{"state" => "short"}})
+          assert assert_patch(view) =~ "state=short"
+          render_async(view)
+        end)
 
-      assert assert_patch(view) =~ "state=short"
+      assert shown(session) == ["Aspen bedding"]
 
-      rows = view |> render_async() |> rows()
-      assert rows =~ "Aspen bedding"
-      refute rows =~ "Meadow hay"
-
-      {_view, html} = open(context.conn, context.path <> "?state=soon")
-      assert html =~ "No item matches the search and the filters."
-      refute html =~ "The inventory has no item yet."
+      context.conn
+      |> open(context.path <> "?state=soon")
+      |> assert_has(items(), text: "No item matches the search and the filters.")
+      |> refute_has(items(), text: "The inventory has no item yet.")
     end
 
     test "shows the state of each item of a page, and has pages", context do
@@ -305,42 +314,34 @@ defmodule RescordWeb.InventoryPagesTest do
         Inventory.add_item!(%{name: "Bowl #{number}"}, context.admin)
       end
 
-      {view, html} = open(context.conn, context.path)
-      rows = rows(html)
-
       # 29 items: the first page has 25, in the order of the names.
-      assert has_element?(view, "#items button[title='Next page']")
-      assert rows =~ "Aspen bedding"
-      assert rows =~ "Bowl 33"
-      refute rows =~ "Bowl 34"
-      refute rows =~ "Meadow hay"
+      session =
+        context.conn
+        |> open(context.path)
+        |> assert_has("#items button[title='Next page']")
 
-      {view, html} = open(context.conn, context.path <> "?page=2")
-      rows = rows(html)
-      assert rows =~ "Meadow hay"
-      refute rows =~ "Aspen bedding"
+      assert shown(session) == ["Aspen bedding" | Enum.map(10..33, &"Bowl #{&1}")]
 
-      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
-      assert has_element?(view, hay <> " td", "10 bag")
-      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
+      session = open(context.conn, context.path <> "?page=2")
+      assert shown(session) == ["Bowl 34", "Bowl 35", "Meadow hay", "Meloxicam"]
 
-      meloxicam = ~s|#items tr[data-item-id="#{context.meloxicam.id}"]|
-      assert has_element?(view, meloxicam <> " [data-state=alert]", "past its expiry date")
+      session
+      |> assert_has(item_row("Meadow hay"), text: "10 bag")
+      |> assert_has(item_row("Meadow hay"), state: "ok", text: "In stock")
+      |> assert_has(item_row("Meloxicam"), state: "alert", text: "past its expiry date")
     end
 
     test "offers each category as a choice of the filter, and each fault", context do
-      {view, _html} = open(context.conn, context.path)
+      session = open(context.conn, context.path)
 
       for words <- ["Any category", "Food", "Bedding", "Medication"] do
-        assert has_element?(view, "#items-filter-category_id-options label", words)
+        assert_has(session, "#items-filter-category_id-options label", text: words)
       end
 
       for {words, value} <- InventoryWords.fault_options() do
-        assert has_element?(
-                 view,
-                 ~s|#items-filter-state-options input[value="#{value}"] + span|,
-                 words
-               )
+        assert_has(session, ~s|#items-filter-state-options input[value="#{value}"] + span|,
+          text: words
+        )
       end
     end
   end
@@ -360,26 +361,29 @@ defmodule RescordWeb.InventoryPagesTest do
           context.options
         )
 
-      old = lot!(context, %{code: "A-0", quantity: 1, expires_on: Date.add(context.today, -3)})
+      lot!(context, %{code: "A-0", quantity: 1, expires_on: Date.add(context.today, -3)})
 
-      {view, _html} = open(context.conn, context.item_path)
+      session = open(context.conn, context.item_path)
+      assert in_stock(session) == "11 bag"
 
-      assert has_element?(view, "dd", "11 bag")
-      assert has_element?(view, "#lot-#{lot.id} td", "Lot B-1")
-      assert has_element?(view, "#lot-#{lot.id} [data-state=info]", "Expires soon")
-      assert has_element?(view, "#lot-#{lot.id} li", "Feed shed: 6 bag")
-      assert has_element?(view, "#lot-#{lot.id} li", "Clinic room: 4 bag")
-      assert has_element?(view, "#lot-#{old.id} [data-state=alert]", "Past its expiry date")
-      assert has_element?(view, "dd [data-state=alert]", "Has stock past its expiry date")
-      # The lot that expires first is at the top.
-      assert has_element?(view, "#lots tbody tr:first-child td", "Lot A-0")
-
-      assert has_element?(view, "#history td", "Moved out")
-      assert has_element?(view, "#history td", "Moved in")
-      assert has_element?(view, "#history td", "−4")
-      assert has_element?(view, "#history td", to_string(context.member.email))
+      session
+      |> assert_has(lot_row("Lot B-1"), state: "info", text: "Expires soon")
+      |> assert_has(lot_row("Lot B-1") |> item("Feed shed: 6 bag"))
+      |> assert_has(lot_row("Lot B-1") |> item("Clinic room: 4 bag"))
+      |> assert_has(lot_row("Lot A-0"), state: "alert", text: "Past its expiry date")
+      |> assert_has(stock() |> definition("State"),
+        state: "alert",
+        text: "Has stock past its expiry date"
+      )
+      |> assert_has(movement("Moved out"))
+      |> assert_has(movement("Moved in"), text: "+4")
+      |> assert_has(movement("Moved out"), text: "−4")
+      |> assert_has(movement("Moved out"), text: to_string(context.member.email))
       # The page shows the words of a kind, and not its atom.
-      refute has_element?(view, "#history td", ~r/^\s*moved\s*$/)
+      |> refute_has(history() |> row(~r/\bmoved\b/))
+
+      # The lot that expires first is at the top.
+      assert [_heads, "Lot A-0" <> _ | _] = names(session, stock() |> row(~r/./))
     end
 
     test "names a root user who recorded a movement, to that user", context do
@@ -389,31 +393,34 @@ defmodule RescordWeb.InventoryPagesTest do
         tenant: context.organisation
       )
 
-      {view, _html} = open(sign_in(build_conn(), context.root), context.item_path)
-      assert has_element?(view, "#history td", to_string(context.root.email))
+      build_conn()
+      |> sign_in(context.root)
+      |> open(context.item_path)
+      |> assert_has(movement("Received"), text: to_string(context.root.email))
 
       # A member reads that the person is the operator (ADR 0105).
-      {view, _html} = open(context.conn, context.item_path)
-      assert has_element?(view, "#history td", "Rescord operator")
+      context.conn
+      |> open(context.item_path)
+      |> assert_has(movement("Received"), text: "Rescord operator")
     end
 
     test "says so when the item has no stock, and has no form to take stock", context do
-      {view, html} = open(context.conn, context.item_path)
-
-      assert html =~ "There is no stock of this item."
-      assert html =~ "Nothing happened to the stock of this item yet."
-      assert has_element?(view, "#receive")
-      refute has_element?(view, "#use")
-      refute has_element?(view, "#move")
-      refute has_element?(view, "#count")
+      context.conn
+      |> open(context.item_path)
+      |> assert_has(stock(), text: "There is no stock of this item.")
+      |> assert_has(history(), text: "Nothing happened to the stock of this item yet.")
+      |> assert_has(record("Stock came in"))
+      |> refute_has(record("Stock was used"))
+      |> refute_has(record("Stock moved to another place"))
+      |> refute_has(record("I counted the stock"))
     end
 
     test "goes to the inventory when the item of the address is not there", context do
       for id <- [Ash.UUID.generate(), "not-an-id"] do
-        assert {:error, {:live_redirect, %{to: to}}} =
-                 live(context.conn, context.path <> "/#{id}")
-
-        assert to == context.path
+        context.conn
+        |> visit(context.path <> "/#{id}")
+        |> assert_path(context.path)
+        |> assert_has(alert(), text: "That item is not in the inventory.")
       end
     end
 
@@ -426,11 +433,10 @@ defmodule RescordWeb.InventoryPagesTest do
           context.options
         )
 
-      {view, _html} = open(context.conn, context.item_path)
-
-      refute has_element?(view, "#lots")
-      assert has_element?(view, "#empty-lots summary", "Lots with nothing left (1)")
-      assert has_element?(view, "#empty-lots li", "Lot B-1")
+      context.conn
+      |> open(context.item_path)
+      |> refute_has(stock() |> table(nil))
+      |> assert_has(stock() |> details("Lots with nothing left (1)") |> item("Lot B-1"))
     end
   end
 
@@ -449,202 +455,225 @@ defmodule RescordWeb.InventoryPagesTest do
       {:ok, old: old, new: new, week_ago: week_ago}
     end
 
-    defp movements(html) do
-      html
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#history tbody tr")
-      |> Enum.count()
+    # The filter of the history is a control of Cinder.
+    defp filter_history(session, filters) do
+      unwrap(session, fn view ->
+        view |> element("#history-filter-form") |> render_change(%{"filters" => filters})
+        render_async(view)
+      end)
     end
 
     test "shows a page of 25 movements, the newest first, and the next page", context do
-      {view, html} = open(context.conn, context.item_path)
+      session = open(context.conn, context.item_path)
 
-      assert movements(html) == 25
-      assert has_element?(view, "#history tbody tr:first-child td", "Used")
-      refute has_element?(view, "#history td", "Thrown out")
+      assert [newest | _] = movements(session)
+      assert length(movements(session)) == 25
+      assert newest =~ "Used"
+      refute_has(session, movement("Thrown out"))
 
-      view |> element("#history [phx-click=goto_page][title='Next page']") |> render_click()
-      html = render_async(view)
+      session =
+        unwrap(session, fn view ->
+          view |> element("#history [phx-click=goto_page][title='Next page']") |> render_click()
+          render_async(view)
+        end)
 
-      assert movements(html) == 4
-      assert has_element?(view, "#history td", "Thrown out")
+      assert length(movements(session)) == 4
+      assert_has(session, movement("Thrown out"))
     end
 
     test "narrows the movements to a kind, to a lot and to dates", context do
-      {view, _html} = open(context.conn, context.item_path)
-      filters = element(view, "#history-filter-form")
+      session = context.conn |> open(context.item_path) |> filter_history(%{"kind" => "received"})
+      assert length(movements(session)) == 2
+      refute_has(session, movement("Used"))
 
-      render_change(filters, %{"filters" => %{"kind" => "received"}})
-      html = render_async(view)
-      assert movements(html) == 2
-      refute has_element?(view, "#history td", "Used")
-
-      render_change(filters, %{"filters" => %{"kind" => "", "lot_id" => context.new.id}})
-      html = render_async(view)
-      assert movements(html) == 1
-      assert has_element?(view, "#history td", "Lot B-1")
+      session = filter_history(session, %{"kind" => "", "lot_id" => context.new.id})
+      assert [only] = movements(session)
+      assert only =~ "Lot B-1"
 
       day = context.week_ago |> DateTime.to_date() |> Date.to_iso8601()
 
-      render_change(filters, %{
-        "filters" => %{"lot_id" => "", "happened_at_from" => day, "happened_at_to" => day}
-      })
+      session =
+        filter_history(session, %{
+          "lot_id" => "",
+          "happened_at_from" => day,
+          "happened_at_to" => day
+        })
 
-      html = render_async(view)
-      assert movements(html) == 1
-      assert has_element?(view, "#history td", "Thrown out")
+      assert [only] = movements(session)
+      assert only =~ "Thrown out"
 
-      render_change(filters, %{
-        "filters" => %{"kind" => "counted", "happened_at_from" => "", "happened_at_to" => ""}
-      })
-
-      assert render_async(view) =~ "No movement matches the filters."
+      session
+      |> filter_history(%{"kind" => "counted", "happened_at_from" => "", "happened_at_to" => ""})
+      |> assert_has(history(), text: "No movement matches the filters.")
     end
 
     test "says so for an item with no movement", context do
       nothing = Inventory.add_item!(%{name: "Aspen bedding"}, context.admin)
-      {_view, html} = open(context.conn, context.path <> "/" <> nothing.id)
 
-      assert html =~ "Nothing happened to the stock of this item yet."
+      context.conn
+      |> open(context.path <> "/" <> nothing.id)
+      |> assert_has(history(), text: "Nothing happened to the stock of this item yet.")
     end
 
     test "does not put its filters into the address", context do
-      {view, _html} = open(context.conn, context.item_path)
-
-      view
-      |> element("#history-filter-form")
-      |> render_change(%{"filters" => %{"kind" => "received"}})
-
-      render_async(view)
-      refute_patched(view, context.item_path <> "?kind=received")
+      context.conn
+      |> open(context.item_path)
+      |> filter_history(%{"kind" => "received"})
+      |> unwrap(fn view ->
+        refute_patched(view, context.item_path <> "?kind=received")
+        render_async(view)
+      end)
     end
   end
 
   describe "a member on the page of an item" do
     test "records a new lot that came in", context do
-      {view, _html} = open(context.conn, context.item_path)
       expires = Date.add(context.today, 90)
 
-      {view, _html} =
-        submit(view, context.conn, "#receive-form",
-          receive: %{
-            code: "B-7",
-            expires_on: Date.to_iso8601(expires),
-            quantity: "12.5",
-            location_id: context.shed.id
-          }
-        )
+      context.conn
+      |> open(context.item_path)
+      |> within(record("Stock came in"), fn form ->
+        form
+        |> fill_in("Code on the pack of a new lot, if it has one", with: "B-7")
+        |> fill_in("Expiry date of a new lot, if it has one", with: Date.to_iso8601(expires))
+        |> fill_in("How much came in, in bag", with: "12.5")
+        |> select("Where it is now", option: "Feed shed")
+        |> send_form("Record the stock")
+      end)
+      |> assert_has(lot_row("Lot B-7") |> item("Feed shed: 12.5 bag"))
+      |> assert_has(movement("Received"), text: "+12.5")
 
-      assert has_element?(view, "#lots td", "Lot B-7")
-      assert has_element?(view, "#lots li", "Feed shed: 12.5 bag")
-      assert has_element?(view, "#history td", "Received")
-      assert has_element?(view, "#history td", "+12.5")
       assert [%{lot: %{expires_on: ^expires}}] = stock!(context).lots
     end
 
     test "records more of a lot that is there", context do
-      lot = lot!(context)
-      {view, _html} = open(context.conn, context.item_path)
+      lot!(context)
 
-      {_view, _html} =
-        submit(view, context.conn, "#receive-form",
-          receive: %{lot_id: lot.id, quantity: "5", location_id: context.clinic.id}
-        )
+      context.conn
+      |> open(context.item_path)
+      |> within(record("Stock came in"), fn form ->
+        form
+        |> select("Lot", option: "Lot B-1")
+        |> fill_in("How much came in, in bag", with: "5")
+        |> select("Where it is now", option: "Clinic room")
+        |> send_form("Record the stock")
+      end)
 
       assert level(context) == "15"
       assert [_one_lot] = stock!(context).lots
     end
 
     test "records a use, a discard and a move", context do
-      lot = lot!(context)
-      source = "#{lot.id}|#{context.shed.id}"
-      {view, _html} = open(context.conn, context.item_path)
+      lot!(context)
+      source = "Lot B-1, Feed shed"
 
-      assert has_element?(view, "#use-form option", "Lot B-1, Feed shed: 10 bag")
+      session =
+        context.conn
+        |> open(context.item_path)
+        |> within(record("Stock was used"), fn form ->
+          assert value(form, field("From which lot and place")) == "Lot B-1, Feed shed: 10 bag"
 
-      {view, _html} =
-        submit(view, context.conn, "#use-form", use: %{source: source, quantity: "2"})
+          form
+          |> select("From which lot and place", option: source, exact_option: false)
+          |> fill_in("How much was used, in bag", with: "2")
+          |> send_form("Record the use")
+        end)
+        |> assert_has(movement("Used"), text: "−2")
 
-      assert has_element?(view, "#history td", "Used")
       assert level(context) == "8"
 
-      {view, _html} =
-        submit(view, context.conn, "#discard-form",
-          discard: %{source: source, quantity: "1", note: "Wet"}
-        )
+      session =
+        session
+        |> within(record("Stock was thrown out"), fn form ->
+          form
+          |> select("From which lot and place", option: source, exact_option: false)
+          |> fill_in("How much was thrown out, in bag", with: "1")
+          |> fill_in("Why", with: "Wet")
+          |> send_form("Record the discard")
+        end)
+        |> assert_has(movement("Thrown out"), text: "Wet")
 
-      assert has_element?(view, "#history td", "Thrown out")
-      assert has_element?(view, "#history td", "Wet")
+      session
+      |> within(record("Stock moved to another place"), fn form ->
+        form
+        |> select("From which lot and place", option: source, exact_option: false)
+        |> select("To which place", option: "Clinic room")
+        |> fill_in("How much moved, in bag", with: "3")
+        |> send_form("Record the move")
+      end)
+      |> assert_has(lot_row("Lot B-1") |> item("Feed shed: 4 bag"))
+      |> assert_has(lot_row("Lot B-1") |> item("Clinic room: 3 bag"))
 
-      {view, _html} =
-        submit(view, context.conn, "#move-form",
-          move: %{source: source, to_location_id: context.clinic.id, quantity: "3"}
-        )
-
-      assert has_element?(view, "#lots li", "Feed shed: 4 bag")
-      assert has_element?(view, "#lots li", "Clinic room: 3 bag")
       assert level(context) == "7"
     end
 
     test "can take more than is there, and the page asks for a count", context do
-      lot = lot!(context)
-      {view, _html} = open(context.conn, context.item_path)
-      refute has_element?(view, "#below-zero")
+      lot!(context)
+      below_zero = stock() |> item(~r/^Lot B-1, Feed shed: the record has/)
 
-      {view, _html} =
-        submit(view, context.conn, "#use-form",
-          use: %{source: "#{lot.id}|#{context.shed.id}", quantity: "11"}
-        )
-
-      assert level(context) == "-1"
-      assert has_element?(view, "#below-zero li", "Feed shed")
-      assert has_element?(view, "[data-state=alert]", "Count the stock")
-
-      {view, _html} =
-        submit(view, context.conn, "#count-form",
-          count: %{lot_id: lot.id, location_id: context.shed.id, counted: "2"}
-        )
+      context.conn
+      |> open(context.item_path)
+      |> refute_has(below_zero)
+      |> within(record("Stock was used"), fn form ->
+        form
+        |> fill_in("How much was used, in bag", with: "11")
+        |> send_form("Record the use")
+      end)
+      |> assert_has(below_zero)
+      |> assert_has(stock() |> definition("State"), state: "alert", text: "Count the stock")
+      |> tap(fn _session -> assert level(context) == "-1" end)
+      |> within(record("I counted the stock"), fn form ->
+        form
+        |> select("Lot", option: "Lot B-1")
+        |> select("Place", option: "Feed shed")
+        |> fill_in("How much is there, in bag", with: "2")
+        |> send_form("Record the count")
+      end)
+      |> refute_has(below_zero)
 
       assert level(context) == "2"
-      refute has_element?(view, "#below-zero")
     end
 
     test "records a count, and the history says what it found", context do
-      lot = lot!(context)
-      {view, _html} = open(context.conn, context.item_path)
+      lot!(context)
 
-      {view, _html} =
-        submit(view, context.conn, "#count-form",
-          count: %{lot_id: lot.id, location_id: context.shed.id, counted: "7"}
-        )
-
-      assert has_element?(view, "#history td", "Counted: less than the record")
-      assert has_element?(view, "#history td", "−3")
-      assert has_element?(view, "#lots li", "Feed shed: 7 bag")
+      context.conn
+      |> open(context.item_path)
+      |> within(record("I counted the stock"), fn form ->
+        form
+        |> select("Place", option: "Feed shed")
+        |> fill_in("How much is there, in bag", with: "7")
+        |> send_form("Record the count")
+      end)
+      |> assert_has(movement("Counted: less than the record"), text: "−3")
+      |> assert_has(lot_row("Lot B-1") |> item("Feed shed: 7 bag"))
     end
 
     test "gives the time that a thing happened, which is not after now", context do
-      lot = lot!(context)
-      source = "#{lot.id}|#{context.shed.id}"
-      {view, _html} = open(context.conn, context.item_path)
-
+      lot!(context)
       tomorrow = Date.to_iso8601(Date.add(context.today, 1)) <> "T08:00"
 
-      view
-      |> form("#use-form", use: %{source: source, quantity: "1", at: tomorrow})
-      |> render_submit()
+      context.conn
+      |> open(context.item_path)
+      |> within(record("Stock was used"), fn form ->
+        form
+        |> fill_in("How much was used, in bag", with: "1")
+        |> fill_in("When, if not now", with: tomorrow)
+        |> send_form("Record the use")
+      end)
+      |> assert_has(record("Stock was used") |> alert(), text: "The time cannot be after now")
 
-      assert has_element?(view, "main p[role=alert]", "The time cannot be after now")
       assert level(context) == "10"
     end
 
     test "does not take a source that the page did not offer", context do
       lot!(context)
-      {view, _html} = open(context.conn, context.item_path)
+      session = open(context.conn, context.item_path)
 
       for source <- ["", "x", "#{Ash.UUID.generate()}|", "|#{context.shed.id}"] do
-        render_submit(view, "use", %{"use" => %{"source" => source, "quantity" => "1"}})
-        assert has_element?(view, "main p[role=alert]")
+        session
+        |> unwrap(&render_submit(&1, "use", %{"use" => %{"source" => source, "quantity" => "1"}}))
+        |> assert_has(main() |> alert())
       end
 
       assert level(context) == "10"
@@ -660,7 +689,7 @@ defmodule RescordWeb.InventoryPagesTest do
         )
 
       lot!(context)
-      {view, _html} = open(context.conn, context.item_path)
+      session = open(context.conn, context.item_path)
       source = "#{other.id}|#{context.shed.id}"
 
       for {event, fields} <- [
@@ -670,8 +699,9 @@ defmodule RescordWeb.InventoryPagesTest do
             {"count", %{"count" => %{"lot_id" => other.id, "counted" => "0"}}},
             {"receive", %{"receive" => %{"lot_id" => other.id, "quantity" => "1"}}}
           ] do
-        render_submit(view, event, fields)
-        assert has_element?(view, "main p[role=alert]", "Choose a lot of Meadow hay")
+        session
+        |> unwrap(&render_submit(&1, event, fields))
+        |> assert_has(main() |> alert(), text: "Choose a lot of Meadow hay")
       end
 
       {:ok, %{level: level}} = Inventory.item_stock(pellets.id, context.options)
@@ -679,17 +709,15 @@ defmodule RescordWeb.InventoryPagesTest do
     end
 
     test "has no form to change the item, to set a level, or to remove the item", context do
-      {view, _html} = open(context.conn, context.item_path)
-
-      refute has_element?(view, "#edit-item")
-      refute has_element?(view, "#reorder")
-      refute has_element?(view, "#remove-item")
-
-      render_submit(view, "revise", %{"item" => %{"name" => "Hay"}})
-      assert has_element?(view, "main p[role=alert]", "You cannot do that")
-
-      render_click(view, "remove", %{})
-      assert has_element?(view, "main p[role=alert]", "You cannot do that")
+      context.conn
+      |> open(context.item_path)
+      |> refute_has(main() |> details("Change the item"))
+      |> refute_has(main() |> details(~r/^Reorder levels in a location/))
+      |> refute_has(main() |> details("Remove the item"))
+      |> unwrap(&render_submit(&1, "revise", %{"item" => %{"name" => "Hay"}}))
+      |> assert_has(main() |> alert(), text: "You cannot do that")
+      |> unwrap(&render_click(&1, "remove", %{}))
+      |> assert_has(main() |> alert(), text: "You cannot do that")
 
       assert {:ok, %{item: %{name: "Meadow hay"}}} =
                Inventory.item_stock(context.hay.id, context.options)
@@ -699,19 +727,24 @@ defmodule RescordWeb.InventoryPagesTest do
   describe "an administrator on the page of an item" do
     test "changes the item, with the form that has its facts", context do
       {:ok, _} = Inventory.revise_item(context.hay, %{reorder_level: "2.5"}, context.admin)
-      {view, _html} = open(context.admin_conn, context.item_path)
+      changes = keep("Change the item")
+      reorder_level = "Order more when the stock is below"
+      session = open(context.admin_conn, context.item_path)
 
-      assert has_element?(view, "#item_name[value='Meadow hay']")
-      assert has_element?(view, "#item_reorder_level[value='2.5']")
-      assert has_element?(view, "#item_unit_id option[selected]", "bag")
+      assert value(session, changes |> field("Name")) == "Meadow hay"
+      assert value(session, changes |> field(reorder_level)) == "2.5"
+      assert value(session, changes |> field("Unit that you count it in")) == "bag"
 
-      {view, html} =
-        submit(view, context.admin_conn, "#item-form",
-          item: %{name: "Timothy hay", reorder_level: ""}
-        )
-
-      assert html =~ "Timothy hay"
-      refute has_element?(view, "#short")
+      session
+      |> assert_has(stock() |> item(~r/is good to use/))
+      |> within(changes, fn form ->
+        form
+        |> fill_in("Name", with: "Timothy hay")
+        |> fill_in(reorder_level, with: "")
+        |> send_form("Save the item")
+      end)
+      |> assert_has(main() |> heading("Timothy hay", level: 1))
+      |> refute_has(stock() |> item(~r/is good to use/))
 
       assert {:ok, %{item: %{reorder_level: nil}}} =
                Inventory.item_stock(context.hay.id, context.options)
@@ -719,53 +752,59 @@ defmodule RescordWeb.InventoryPagesTest do
 
     test "gives the item a reorder level in a location, and removes it", context do
       lot!(context)
-      {view, _html} = open(context.admin_conn, context.item_path)
+      levels = keep(~r/^Reorder levels in a location/)
 
-      {view, _html} =
-        submit(view, context.admin_conn, "#reorder-form",
-          reorder: %{location_id: context.clinic.id, quantity: "3"}
-        )
+      set_level = fn session, quantity ->
+        within(session, levels, fn form ->
+          form
+          |> select("Location", option: "Clinic room")
+          |> fill_in("Bring more to this location when the stock there is below",
+            with: quantity
+          )
+          |> send_form("Save the level")
+        end)
+      end
 
-      assert has_element?(view, "#wanted li", "Clinic room: bring more when")
-      assert has_element?(view, "#short li", "Clinic room has 0 bag that is good to use")
-      assert has_element?(view, "dd [data-state=alert]", "Order more")
-
-      {view, _html} =
-        submit(view, context.admin_conn, "#reorder-form",
-          reorder: %{location_id: context.clinic.id, quantity: ""}
-        )
-
-      refute has_element?(view, "#wanted")
-      refute has_element?(view, "#short")
+      context.admin_conn
+      |> open(context.item_path)
+      |> set_level.("3")
+      |> assert_has(levels |> item(~r/^Clinic room: bring more when/))
+      |> assert_has(stock() |> item(~r/^Clinic room has 0 bag that is good to use/))
+      |> assert_has(stock() |> definition("State"), state: "alert", text: "Order more")
+      |> set_level.("")
+      |> refute_has(levels |> item(~r/bring more when/))
+      |> refute_has(stock() |> item(~r/is good to use/))
     end
 
     test "keeps the capitals of the name of a location that starts a line", context do
       ward = Locations.add_location!(%{name: "ICU ward B"}, context.admin)
-      lot = lot!(context, %{location_id: ward.id})
-      {view, _html} = open(context.admin_conn, context.item_path)
+      lot!(context, %{location_id: ward.id})
+      levels = keep(~r/^Reorder levels in a location/)
 
-      {view, _html} =
-        submit(view, context.admin_conn, "#reorder-form",
-          reorder: %{location_id: ward.id, quantity: "20"}
+      context.admin_conn
+      |> open(context.item_path)
+      |> within(levels, fn form ->
+        form
+        |> select("Location", option: "ICU ward B")
+        |> fill_in("Bring more to this location when the stock there is below",
+          with: "20"
         )
-
-      assert has_element?(view, "#lot-#{lot.id} li", "ICU ward B: 10 bag")
-      assert has_element?(view, "#history td", "ICU ward B")
-      assert has_element?(view, "#wanted li", "ICU ward B: bring more when")
-      assert has_element?(view, "#short li", "ICU ward B has 10 bag that is good to use")
+        |> send_form("Save the level")
+      end)
+      |> assert_has(lot_row("Lot B-1") |> item("ICU ward B: 10 bag"))
+      |> assert_has(movement("Received"), text: "ICU ward B")
+      |> assert_has(levels |> item(~r/^ICU ward B: bring more when/))
+      |> assert_has(stock() |> item(~r/^ICU ward B has 10 bag that is good to use/))
     end
 
     test "removes the item", context do
-      {view, _html} = open(context.admin_conn, context.item_path)
-
-      {:ok, _view, html} =
-        view
-        |> element("#remove-item button")
-        |> render_click()
-        |> follow_redirect(context.admin_conn)
-
-      assert html =~ "Meadow hay is not in the inventory now."
-      assert html =~ "The inventory has no item yet."
+      context.admin_conn
+      |> open(context.item_path)
+      |> click(keep("Remove the item") |> button("Remove Meadow hay"))
+      |> settle()
+      |> assert_path(context.path)
+      |> assert_has(status(), text: "Meadow hay is not in the inventory now.")
+      |> assert_has(items(), text: "The inventory has no item yet.")
     end
   end
 
@@ -774,86 +813,103 @@ defmodule RescordWeb.InventoryPagesTest do
   # find what changed after it (ADR 0096, "With Cinder").
   describe "the pages hear what another person changed (ADR 0096)" do
     test "the inventory shows a new item, a new level and a removal", context do
-      {view, html} = open(context.conn, context.path)
-      refute rows(html) =~ "Aspen bedding"
-      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
-      assert has_element?(view, hay <> " [data-state=none]", "None in stock")
+      session =
+        context.conn
+        |> open(context.path)
+        |> assert_has(item_row("Meadow hay"), state: "none", text: "None in stock")
+
+      assert shown(session) == ["Meadow hay"]
 
       bedding = Inventory.add_item!(%{name: "Aspen bedding"}, context.admin)
-      assert rows(render_changes(view)) =~ "Aspen bedding"
+      assert session |> render_changes() |> shown() == ["Aspen bedding", "Meadow hay"]
 
       # A delivery of another member changes the level of the hay.
       lot!(context)
-      render_changes(view)
-      assert has_element?(view, hay <> " td", "10 bag")
-      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
+
+      session
+      |> render_changes()
+      |> assert_has(item_row("Meadow hay"), text: "10 bag")
+      |> assert_has(item_row("Meadow hay"), state: "ok", text: "In stock")
 
       :ok = Inventory.remove_item(bedding, context.admin)
-      refute rows(render_changes(view)) =~ "Aspen bedding"
+      assert session |> render_changes() |> shown() == ["Meadow hay"]
     end
 
     test "the inventory keeps its filter when it reads again", context do
-      {view, html} = open(context.conn, context.path <> "?state=short")
-      assert html =~ "No item matches the search and the filters."
+      session =
+        context.conn
+        |> open(context.path <> "?state=short")
+        |> assert_has(items(), text: "No item matches the search and the filters.")
 
       # The bedding wants two and has none, so it is short. The filter reads
       # the stock as of the new instant too.
       Inventory.add_item!(%{name: "Aspen bedding", reorder_level: 2}, context.admin)
       Inventory.add_item!(%{name: "Wire brush"}, context.admin)
 
-      html = rows(render_changes(view))
-      assert html =~ "Aspen bedding"
-      refute html =~ "Meadow hay"
-      refute html =~ "Wire brush"
+      assert session |> render_changes() |> shown() == ["Aspen bedding"]
     end
 
     test "the page of an item shows the stock and the history of another member", context do
-      {view, html} = open(context.conn, context.item_path)
-      assert html =~ "There is no stock of this item."
-      refute has_element?(view, "#use")
+      session =
+        context.conn
+        |> open(context.item_path)
+        |> assert_has(stock(), text: "There is no stock of this item.")
+        |> refute_has(record("Stock was used"))
 
       lot = lot!(context)
+      session = render_changes(session)
+      assert in_stock(session) == "10 bag"
 
-      html = render_changes(view)
-      assert has_element?(view, "dd", "10 bag")
-      assert has_element?(view, "#lot-#{lot.id} li", "Feed shed: 10 bag")
-      assert has_element?(view, "#history td", "Lot B-1")
-      refute html =~ "Nothing happened to the stock of this item yet."
+      session
+      |> assert_has(lot_row("Lot B-1") |> item("Feed shed: 10 bag"))
+      |> assert_has(movement("Lot B-1"))
+      |> refute_has(history(), text: "Nothing happened to the stock of this item yet.")
+
       # The forms that take stock out are there now, with the new lot.
-      assert has_element?(view, "#use-form option[value=\"#{lot.id}|#{context.shed.id}\"]")
+      assert value(session, record("Stock was used") |> field("From which lot and place")) ==
+               "Lot B-1, Feed shed: 10 bag"
 
       Inventory.use_stock!(
         %{lot_id: lot.id, location_id: context.shed.id, quantity: 3},
         context.admin
       )
 
-      render_changes(view)
-      assert has_element?(view, "dd", "7 bag")
-      assert has_element?(view, "#history td", "−3")
+      session = render_changes(session)
+      assert in_stock(session) == "7 bag"
+      assert_has(session, movement("Used"), text: "−3")
     end
 
     test "the page of an item leaves its forms alone when it reads again", context do
-      {view, _html} = open(context.conn, context.item_path)
       tomorrow = Date.to_iso8601(Date.add(context.today, 1)) <> "T08:00"
+      came_in = record("Stock came in")
 
-      view
-      |> form("#receive-form", receive: %{quantity: "4", code: "C-9", at: tomorrow})
-      |> render_submit()
-
-      assert has_element?(view, "#receive [role=alert]", "The time cannot be after now")
+      session =
+        context.conn
+        |> open(context.item_path)
+        |> within(came_in, fn form ->
+          form
+          |> fill_in("How much came in, in bag", with: "4")
+          |> fill_in("Code on the pack of a new lot, if it has one", with: "C-9")
+          |> fill_in("When it came in, if not now", with: tomorrow)
+          |> send_form("Record the stock")
+        end)
+        |> assert_has(came_in |> alert(), text: "The time cannot be after now")
 
       lot!(context)
-      render_changes(view)
+      session = render_changes(session)
+      assert in_stock(session) == "10 bag"
 
-      assert has_element?(view, "dd", "10 bag")
       # The refused form keeps what the person typed, and why it was refused.
-      assert has_element?(view, ~s|#receive-form input[name="receive[code]"][value="C-9"]|)
-      assert has_element?(view, "#receive [role=alert]", "The time cannot be after now")
+      assert value(session, came_in |> field("Code on the pack of a new lot, if it has one")) ==
+               "C-9"
+
+      assert_has(session, came_in |> alert(), text: "The time cannot be after now")
     end
 
+    # The page sends the person away by itself, so the test holds the view.
     test "the page of an item goes to the inventory when another person removes it",
          context do
-      {view, _html} = open(context.conn, context.item_path)
+      {:ok, view, _html} = live(context.conn, context.item_path)
       :ok = Inventory.remove_item(context.hay, context.admin)
 
       {path, flash} = assert_redirect(view)
@@ -866,53 +922,54 @@ defmodule RescordWeb.InventoryPagesTest do
     test "are a list that a member reads, with no form", context do
       Inventory.add_supplier!(%{name: "Valley Feeds", contact: "07 5550 0100"}, context.admin)
 
-      {view, _html} = open(context.conn, context.path <> "/suppliers")
-
-      assert has_element?(view, "tbody td", "Valley Feeds")
-      assert has_element?(view, "tbody td", "07 5550 0100")
-      refute has_element?(view, "#new-supplier")
-      refute has_element?(view, "th", "Actions")
-
-      render_submit(view, "add", %{"supplier" => %{"name" => "X"}})
-      assert has_element?(view, "main p[role=alert]", "You cannot do that")
+      context.conn
+      |> open(context.path <> "/suppliers")
+      |> assert_has(main() |> row(~r/^Valley Feeds\b/), text: "07 5550 0100")
+      |> refute_has(main() |> details("New supplier"))
+      |> refute_has(main() |> row(~r/^Supplier\b/), text: "Actions")
+      |> unwrap(&render_submit(&1, "add", %{"supplier" => %{"name" => "X"}}))
+      |> assert_has(main() |> alert(), text: "You cannot do that")
     end
 
     test "are kept by an administrator", context do
-      path = context.path <> "/suppliers"
-      {view, html} = open(context.admin_conn, path)
-      assert html =~ "There is no supplier yet."
+      supplier = fn name -> main() |> row(~r/^#{name}\b/) end
 
-      {view, _html} =
-        submit(view, context.admin_conn, "#supplier",
-          supplier: %{name: "Valley Feeds", contact: "07 5550 0100"}
+      session =
+        context.admin_conn
+        |> open(context.path <> "/suppliers")
+        |> assert_has(main(), text: "There is no supplier yet.")
+        |> fill_in("Name", with: "Valley Feeds")
+        |> fill_in("How to reach it: a telephone number, an address, a person",
+          with: "07 5550 0100"
         )
+        |> send_form("Add the supplier")
+        |> assert_has(supplier.("Valley Feeds"))
 
-      assert has_element?(view, "tbody td", "Valley Feeds")
-      {:ok, [supplier]} = Inventory.suppliers(context.options)
-
-      {view, _html} =
-        submit(view, context.admin_conn, "#change-#{supplier.id}",
-          change: %{name: "Valley Stockfeeds"}
-        )
-
-      assert has_element?(view, "tbody td", "Valley Stockfeeds")
-      assert has_element?(view, "tbody td", "07 5550 0100")
-
-      {_view, html} = submit(view, context.admin_conn, "#remove-#{supplier.id}", %{})
-      assert html =~ "There is no supplier yet."
+      session
+      |> within(supplier.("Valley Feeds"), fn row ->
+        row
+        |> fill_in("Name of Valley Feeds", with: "Valley Stockfeeds")
+        |> send_form("Save the supplier")
+      end)
+      |> assert_has(supplier.("Valley Stockfeeds"), text: "07 5550 0100")
+      |> click(supplier.("Valley Stockfeeds") |> button("Remove Valley Stockfeeds"))
+      |> settle()
+      |> assert_has(main(), text: "There is no supplier yet.")
     end
 
     test "are in the form of a new lot", context do
-      supplier = Inventory.add_supplier!(%{name: "Valley Feeds"}, context.admin)
-      {view, _html} = open(context.conn, context.item_path)
+      Inventory.add_supplier!(%{name: "Valley Feeds"}, context.admin)
 
-      {view, _html} =
-        submit(view, context.conn, "#receive-form",
-          receive: %{supplier_id: supplier.id, quantity: "1"}
-        )
-
-      assert has_element?(view, "#lots td small", "From Valley Feeds")
-      assert has_element?(view, "#lots li", "No place in particular: 1 bag")
+      context.conn
+      |> open(context.item_path)
+      |> within(record("Stock came in"), fn form ->
+        form
+        |> select("Supplier of a new lot", option: "Valley Feeds")
+        |> fill_in("How much came in, in bag", with: "1")
+        |> send_form("Record the stock")
+      end)
+      |> assert_has(lot_row("A lot with no code"), text: "From Valley Feeds")
+      |> assert_has(lot_row("A lot with no code") |> item("No place in particular: 1 bag"))
     end
   end
 

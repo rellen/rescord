@@ -36,11 +36,14 @@ defmodule RescordWeb.ReportComponents do
   """
   attr :organisation, :any, required: true
   attr :can_change?, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def paper_setting(assigns) do
     ~H"""
     <section aria-labelledby="paper-heading">
       <h2 id="paper-heading">Paper of the reports</h2>
+      <.problems list={@problems} at={@problems_at} here={:paper} />
       <p>
         A report of {@organisation.name} is a PDF on
         <strong>{ReportWords.paper_name(@organisation.paper_size)}</strong>

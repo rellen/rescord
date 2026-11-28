@@ -25,6 +25,7 @@ defmodule Rescord.Lists.Grants do
           [
             {Rescord.Lists.MeasureKind, :set_units, :all},
             {Rescord.Lists.MeasureKind, :set_standard_unit, :all},
+            {Rescord.Lists.MeasureKind, :set_range, :all},
             {Rescord.Lists.ItemCategory, :set_soon_days, :all}
           ]
     }

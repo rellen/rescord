@@ -17,11 +17,12 @@ defmodule Rescord.Ruby.UsageTest do
   import Ecto.Query, only: [from: 2]
   import ExUnit.CaptureLog
   import Rescord.AccountsFixtures
+  import Rescord.ClockFixtures
   import Rescord.ResidentsFixtures
   import Rescord.RubyFixtures
 
   alias Rescord.{Accounts, Ruby}
-  alias Rescord.Ruby.{Allowance, Message, Replies, ScriptedModel, Usage}
+  alias Rescord.Ruby.{Allowance, Message, ScriptedModel, Usage}
 
   setup do
     root = root!()
@@ -85,6 +86,9 @@ defmodule Rescord.Ruby.UsageTest do
   describe "the use" do
     test "gets the tokens and the price of each reply, in one row for a member, a day and a model",
          context do
+      # The row is of the UTC day of the reply.
+      clear_of_edge(:timer.hours(24))
+
       ScriptedModel.script([
         {:tool, "find_residents", %{}},
         {:text, "Biscuit is in your care."},
@@ -211,6 +215,9 @@ defmodule Rescord.Ruby.UsageTest do
 
   describe "the allowance of a month" do
     test "past it, say refuses with the reason, and no model is called", context do
+      # The allowance is of the UTC month of each reply.
+      clear_of_edge(:timer.hours(24))
+
       # One cent: a reply of 5,000 millionths leaves room, and two do not.
       allow!(context, 1)
       ScriptedModel.script([{:text, "Yes."}, {:text, "Yes."}])
@@ -269,7 +276,9 @@ defmodule Rescord.Ruby.UsageTest do
 
       # The limit of a request of this provider is 60,000 tokens.
       reply = reply_of(context, conversation)
-      :ok = Replies.close(reply, %{prompt_tokens: 59_990}, context.organisation)
+      # The reply is complete, so it takes no write of Ruby: the test sets the
+      # count of its tokens.
+      Ash.Seed.update!(reply, %{prompt_tokens: 59_990})
 
       # 31 bytes are 11 tokens, at three bytes for a token.
       long = String.duplicate("a", 31)
@@ -317,6 +326,9 @@ defmodule Rescord.Ruby.UsageTest do
     end
 
     test "is 6 messages a minute: the seventh is refused, and another person is not", context do
+      # The seven messages are in one window of a minute.
+      clear_of_edge(:timer.minutes(1), :timer.seconds(5))
+
       for _ <- 1..6, do: assert({:ok, _message} = say_in_new(context.as_ana))
 
       assert {:error, error} = say_in_new(context.as_ana)
@@ -328,9 +340,13 @@ defmodule Rescord.Ruby.UsageTest do
     end
 
     test "is 120 messages a day", context do
+      clear_of_edge(:timer.hours(24))
+
       # 119 of the day are used, with none of this minute.
       key = "ruby/say/day/" <> context.ana.id
-      {:allow, 119} = Rescord.RateLimit.hit(key, :timer.hours(24), 120, 119)
+
+      for count <- 1..119,
+          do: {:allow, ^count} = Rescord.RateLimit.hit(key, :timer.hours(24), 120)
 
       assert {:ok, _message} = say_in_new(context.as_ana)
 

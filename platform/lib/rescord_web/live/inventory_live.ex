@@ -100,7 +100,10 @@ defmodule RescordWeb.InventoryLive do
     with {:ok, strength} <- read_strength(fields),
          {:ok, item} <-
            Inventory.add_item(Map.put(attributes, :strength, strength), options(socket)) do
-      {:noreply, push_navigate(socket, to: item_path(socket.assigns.organisation, item))}
+      {:noreply,
+       socket
+       |> put_flash(:info, "#{item.name} is added to the inventory.")
+       |> push_navigate(to: item_path(socket.assigns.organisation, item))}
     else
       {:error, words} when is_binary(words) ->
         {:noreply, assign(socket, problems: [words], form: typed_form(fields, as: :item))}
@@ -150,7 +153,9 @@ defmodule RescordWeb.InventoryLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
+
+      <.new_item :if={@can_add?} form={@form} categories={@categories} units={@units} />
 
       <.items_table
         organisation={@organisation}
@@ -160,8 +165,6 @@ defmodule RescordWeb.InventoryLive do
         categories={@all_categories}
         with_fault={@with_fault}
       />
-
-      <.new_item :if={@can_add?} form={@form} categories={@categories} units={@units} />
     </Layouts.app>
     """
   end

@@ -108,9 +108,21 @@ defmodule Rescord.Metrics do
         tags: [:feature, :kind],
         description: "The uses of each feature, as the usage counts have them (ADR 0098)"
       ),
+      counter("rescord.scan.count",
+        event_name: [:rescord, :scan, :stop],
+        tags: [:result],
+        description: "The scans of PDFs by clamd: clean, found harmful, or a fault of clamd"
+      ),
       counter("rescord.photo.refused.count",
         event_name: [:rescord, :photos, :refused],
         description: "The photos that waited too long for a slot of libvips"
+      ),
+      last_value("rescord.health.level",
+        event_name: [:rescord, :health, :check],
+        measurement: :level,
+        tags: [:check],
+        description:
+          "The worst level of a sanity check at its last run: 0 passes, 1 note, 2 fails, 3 could not run (ADR 0114)"
       ),
       last_value("rescord.vm.memory.bytes",
         event_name: [:vm, :memory],

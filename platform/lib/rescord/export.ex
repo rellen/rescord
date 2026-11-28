@@ -100,6 +100,9 @@ defmodule Rescord.Export do
       "The usage counts are of the whole server, with no organisation in them (ADR 0098).",
     Rescord.Usage.Settings =>
       "What the server does with its usage counts is a setting of the server (ADR 0098).",
+    Rescord.Health.Result =>
+      "What a sanity check found is a count and some ids for the root users of the server " <>
+        "(ADR 0114), and no record of the rescue.",
     Rescord.Comments.Follow =>
       "Who follows a record is a setting of each member for their notifications (ADR 0106).",
     Rescord.Notifications.Notification =>
@@ -112,7 +115,9 @@ defmodule Rescord.Export do
     Rescord.Notifications.NtfyTopic =>
       "The topic of ntfy of a person is a secret, and of no organisation.",
     Rescord.Notifications.Settings =>
-      "The channels of the notifications are a setting of the server, with its keys (ADR 0106)."
+      "The channels of the notifications are a setting of the server, with its keys (ADR 0106).",
+    Rescord.Storage.Scan.Settings =>
+      "The virus scan of the PDFs is a setting of the server (issue 37, ADR 0113)."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."

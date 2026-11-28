@@ -151,6 +151,47 @@ defmodule Rescord.Accounts.OrganisationTest do
       assert_no_email_sent()
     end
 
+    test "needs an address with one @, no space and 254 characters at most (ADR 0115)", %{
+      root: root,
+      organisation: organisation
+    } do
+      {_member, administrator} = member!(organisation, :administrator, root)
+      options = [actor: administrator, tenant: organisation]
+
+      for address <- [
+            "kim",
+            "kim@",
+            "@example.org",
+            "kim lee@example.org",
+            "a@b@example.org",
+            String.duplicate("a", 250) <> "@x.org"
+          ] do
+        assert {:error, %Ash.Error.Invalid{}} = Accounts.invite_member(address, options),
+               "#{inspect(address)} was taken"
+      end
+
+      assert {:ok, _member} = Accounts.invite_member("kim.lee@example.org", options)
+    end
+
+    test "is 50 in an hour at most from one person (ADR 0115)", %{
+      root: root,
+      organisation: organisation
+    } do
+      {_member, administrator} = member!(organisation, :administrator, root)
+      options = [actor: administrator, tenant: organisation]
+
+      for _ <- 1..50 do
+        assert {:ok, _member} = Accounts.invite_member(unique_address(), options)
+      end
+
+      assert {:error, %Ash.Error.Forbidden{errors: [%AshRateLimiter.LimitExceeded{} | _]}} =
+               Accounts.invite_member(unique_address(), options)
+
+      # The root user, who invited the administrator, has a count of their own.
+      assert {:ok, _member} =
+               Accounts.invite_administrator(unique_address(), actor: root, tenant: organisation)
+    end
+
     test "has an email that no person sends by hand", %{root: root, organisation: organisation} do
       {_member, administrator} = member!(organisation, :administrator, root)
 

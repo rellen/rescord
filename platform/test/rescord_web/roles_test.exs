@@ -14,7 +14,7 @@ defmodule RescordWeb.RolesTest do
     <header><hgroup><h1><svg aria-hidden="true"><title>icon</title></svg> Meadow hay</h1></hgroup></header>
     <section aria-labelledby="lots-heading">
       <h2 id="lots-heading"><svg aria-hidden="true"></svg> Lots</h2>
-      <ul>
+      <ul aria-label="The lots">
         <li id="lot-1">B-1 <button aria-label="Take off B-1"><svg aria-hidden="true"></svg> Take off</button></li>
         <li id="lot-2">B-2 <button aria-label="Take off B-2"><svg aria-hidden="true"></svg> Take off</button></li>
       </ul>
@@ -29,9 +29,29 @@ defmodule RescordWeb.RolesTest do
     <article aria-labelledby="note-heading">
       <header><h3 id="note-heading">A note</h3></header>
       <p role="status">Saved</p>
+      <details data-confirm-step>
+        <summary aria-label="Delete the note A note"><svg aria-hidden="true"></svg> Delete</summary>
+        <button data-variant="danger">Delete the note A note</button>
+      </details>
     </article>
     <p role="alert">The quantity is not a number.</p>
     <figure><img src="/hay.webp" alt="A bale of hay" /><figcaption>The bale</figcaption></figure>
+    <dl>
+      <div><dt>In stock</dt><dd>11 bag</dd></div>
+      <div><dt>State</dt><dd><span data-state="alert">Order more</span></dd></div>
+    </dl>
+    <details open>
+      <summary><svg aria-hidden="true"></svg> Stock was used</summary>
+      <label><input type="checkbox" name="use[all]" checked /> All of it</label>
+      <label><input type="checkbox" name="use[wet]" /> It was wet</label>
+      <form>
+        <label for="use_source">From which lot and place</label>
+        <select id="use_source"><option>Lot B-1</option><option selected>Lot B-2</option></select>
+        <label for="use_note">Note</label>
+        <textarea id="use_note">Wet</textarea>
+        <button>Record the use</button>
+      </form>
+    </details>
     <img src="/line.svg" alt="" />
   </main>
   <footer><nav aria-label="About Rescord"><a href="/colophon">Colophon</a></nav></footer>
@@ -79,10 +99,52 @@ defmodule RescordWeb.RolesTest do
     refute has?(@page, item(~r/^B-2\b/) |> button("Take off B-1"))
   end
 
+  test "a form is found in its part, and gives its attributes" do
+    assert attribute(@page, region("Lots") |> form(nil), "id") == "new-lot"
+    assert [_, _] = all(@page, main() |> form(nil))
+    refute has?(@page, form("The lots"))
+    assert attribute(@page, region("Lots") |> form(nil), "action") == nil
+    assert attribute(@page, list("The lots"), "aria-label") == "The lots"
+  end
+
+  test "a list is found by its label, and its items in it" do
+    assert names(@page, list("The lots") |> item(nil)) == ["B-1 Take off", "B-2 Take off"]
+    refute has?(@page, list("Other lots"))
+    assert playwright(list("The lots")) == ~s(internal:role=list[name="The lots"s])
+  end
+
   test "an image is named by its alt, and a figure by its caption" do
     assert names(@page, image(~r/./)) == ["A bale of hay"]
     assert src(@page, figure("The bale") |> image("A bale of hay")) == "/hay.webp"
     assert playwright(image("A bale of hay")) == ~s(internal:role=img[name="A bale of hay"s])
+  end
+
+  test "a definition is found by its term, and a disclosure by its summary" do
+    assert text(@page, definition("In stock")) == "11 bag"
+    refute has?(@page, definition("Order more"))
+    assert_has(@page, definition("State"), state: "alert", text: "Order more")
+    refute_has(@page, definition("State"), state: "ok")
+    refute_has(@page, definition("In stock"), state: "alert")
+    used = main() |> details("Stock was used")
+    assert has?(@page, used |> button("Record the use"))
+    assert value(@page, used |> field("From which lot and place")) == "Lot B-2"
+    assert value(@page, used |> field("Note")) == "Wet"
+    assert value(@page, field("Quantity")) == nil
+    assert open?(@page, used)
+    assert checked?(@page, used |> field("All of it"))
+    refute checked?(@page, used |> field("It was wet"))
+
+    # A confirm step is named by the label of its summary.
+    step = article("A note") |> details("Delete the note A note")
+    refute open?(@page, step)
+    assert has?(@page, step |> button("Delete the note A note"))
+    refute has?(@page, details("Delete"))
+
+    assert playwright(details("Stock was used")) ==
+             ~s|xpath=.//details[summary[@aria-label="Stock was used" or normalize-space()="Stock was used"]]|
+
+    assert playwright(definition("In stock")) ==
+             ~s|xpath=.//dd[preceding-sibling::dt[1][normalize-space()="In stock"]]|
   end
 
   test "one raises for none or for more than one" do

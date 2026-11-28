@@ -87,6 +87,18 @@ defmodule Rescord.CommentsTest do
                write(context, context.sam, %{body: String.duplicate("a", 4_001)})
     end
 
+    test "is 10 in a minute at most for one writer (ADR 0115)", context do
+      for n <- 1..10 do
+        assert {:ok, _} = write(context, context.kim, %{body: "Note #{n}"})
+      end
+
+      assert {:error, %Ash.Error.Forbidden{errors: [%AshRateLimiter.LimitExceeded{} | _]}} =
+               write(context, context.kim, %{body: "One too many"})
+
+      # Another writer has a count of their own.
+      assert {:ok, _} = write(context, context.sam, %{body: "Mine still goes"})
+    end
+
     test "names exactly one record", context do
       fields = %{
         body: "Two at once",

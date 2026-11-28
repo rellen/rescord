@@ -93,7 +93,7 @@ defmodule RescordWeb.ResidentPagesTest do
       {view, html} = open(conn, ~p"/root/lists")
 
       assert html =~ "Species"
-      assert html =~ "The list is empty."
+      assert html =~ "The list has no value yet."
 
       {view, html} = submit(view, conn, "#add-species", value: %{name: "Guinea pig"})
       assert html =~ "Guinea pig"
@@ -231,6 +231,45 @@ defmodule RescordWeb.ResidentPagesTest do
       {_view, html} = open(context.conn, context.base <> "/lists")
       assert html =~ "Standard unit: kg. Rescord shows each measurement in it"
       refute html =~ ~s(phx-submit="set_standard_unit")
+    end
+
+    test "have the range of a kind of measurement, which an administrator sets (ADR 0117)",
+         context do
+      lists = lists!(context.organisation, context.root)
+      admin = [actor: context.administrator, tenant: context.organisation]
+      weight = lists.measure_kind.weight
+      conn = build_conn() |> sign_in(context.administrator)
+
+      # No standard unit: no range.
+      {_view, html} = open(conn, context.base <> "/lists")
+      refute html =~ "Range of Weight"
+
+      {:ok, _} = Lists.set_standard_unit(weight, lists.unit.g, admin)
+      {view, html} = open(conn, context.base <> "/lists")
+      assert html =~ "A measurement outside this range is refused"
+      refute html =~ "Range: "
+
+      {view, html} =
+        submit(view, conn, "#range-#{weight}", range: %{lowest: "50", highest: "80000"})
+
+      assert html =~ "Range: 50 to 80,000 g"
+      kind = Ash.get!(Lists.MeasureKind, weight, admin)
+      assert {Decimal.to_integer(kind.lowest), Decimal.to_integer(kind.highest)} == {50, 80_000}
+
+      # The lowest is not above the highest.
+      html =
+        view |> form("#range-#{weight}", range: %{lowest: "5", highest: "4"}) |> render_submit()
+
+      assert html =~ "Highest must not be below the lowest"
+
+      # Empty fields take the range away.
+      {_view, html} = submit(view, conn, "#range-#{weight}", range: %{lowest: "", highest: ""})
+      refute html =~ "Range: "
+      assert Ash.get!(Lists.MeasureKind, weight, admin).lowest == nil
+
+      # A member has no form.
+      {_view, html} = open(context.conn, context.base <> "/lists")
+      refute html =~ ~s(phx-submit="set_range")
     end
 
     test "take no standard unit for a value of another list, or from a member", context do
@@ -562,6 +601,27 @@ defmodule RescordWeb.ResidentPagesTest do
 
       assert [resident] = Residents.residents!([load: [:name, :status]] ++ context.options)
       assert {resident.name, resident.status} == {"Biscuit", :in_care}
+    end
+
+    test "puts today in the date of the arrival when a person chooses how it came", context do
+      today = Date.to_iso8601(Rescord.Accounts.today(context.organisation))
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+
+      refute has_element?(view, "#resident input[name='resident[arrived_on]'][value='#{today}']")
+
+      view |> form("#resident", resident: %{arrival_kind: "stray"}) |> render_change()
+
+      assert has_element?(view, "#resident input[name='resident[arrived_on]'][value='#{today}']")
+
+      # A date that the person typed stays.
+      view
+      |> form("#resident", resident: %{arrival_kind: "stray", arrived_on: "2026-09-12"})
+      |> render_change()
+
+      assert has_element?(
+               view,
+               "#resident input[name='resident[arrived_on]'][value='2026-09-12']"
+             )
     end
 
     test "records a resident that is expected, with only a species", context do

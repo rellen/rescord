@@ -4,15 +4,16 @@ defmodule RescordWeb.ReportPagesTest do
   the links, each PDF with its headers and its name, a day that is not
   right, and the answer for a person who may not read the organisation. It
   holds the paper too (ADR 0093): the control of the page, and the paper of
-  an address.
+  an address. The tests of the page find what a person finds (ADR 0107).
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest, only: [element: 2, render_change: 2]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
   import Rescord.StorageFixtures
@@ -49,132 +50,156 @@ defmodule RescordWeb.ReportPagesTest do
     conn.resp_body
   end
 
+  # A part of the page, by its heading.
+  defp part(name), do: main() |> region(name)
+
+  # Where the form of a part sends, and the name and the value of one of its fields.
+  defp sends(session, part, label) do
+    field = part |> field(label)
+
+    {attribute(session, part |> form(nil), "action"), attribute(session, field, "name"),
+     value(session, field)}
+  end
+
+  @forms ["Register of residents", "Arrivals and departures", "Tasks of a day", "Expenses"]
+
+  # The paper that each form of a report sends, in a field that no person sees.
+  defp papers(session) do
+    for name <- @forms do
+      session
+      |> one(part(name) |> form(nil))
+      |> LazyHTML.query(~s(input[type="hidden"][name="paper"]))
+      |> LazyHTML.attribute("value")
+    end
+  end
+
   test "the page has a form or a link for each report, and the menu names it", context do
     %{conn: conn, home: home, today: today} = context
-    {:ok, view, _html} = live(conn, "#{home}/reports")
 
-    assert has_element?(view, "h1", "Reports")
-    assert has_element?(view, ~s(#site-menu a[href="#{home}/reports"][aria-current="true"]))
+    session =
+      conn
+      |> visit("#{home}/reports")
+      |> assert_has(main() |> heading(level: 1), text: "Reports")
 
-    assert has_element?(view, ~s(form#register[action="#{home}/reports/register.pdf"]))
-    assert has_element?(view, ~s(input#register-on[name="on"][value="#{today}"][max="#{today}"]))
-    assert has_element?(view, ~s(label[for="register-on"]), "In care on")
+    assert attribute(session, navigation("Site") |> link("Reports"), "aria-current") == "true"
 
-    assert has_element?(view, ~s(form#movements[action="#{home}/reports/movements.pdf"]))
-    assert has_element?(view, ~s(input#movements-from[name="from"]))
-    assert has_element?(view, ~s(input#movements-to[name="to"][value="#{today}"]))
-    assert has_element?(view, "#movements-periods a", "Last month")
-    assert has_element?(view, "#movements-periods a", "This year so far")
+    register = part("Register of residents")
+    assert sends(session, register, "In care on") == {"#{home}/reports/register.pdf", "on", today}
+    assert attribute(session, register |> field("In care on"), "max") == today
 
-    assert has_element?(view, ~s(form#task-sheet[action="#{home}/reports/tasks.pdf"]))
-    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=a4"]))
-    assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf?paper=a4"]))
+    movements = part("Arrivals and departures")
+    movements_pdf = "#{home}/reports/movements.pdf"
+    assert {^movements_pdf, "from", _} = sends(session, movements, "From")
+    assert sends(session, movements, "To") == {"#{home}/reports/movements.pdf", "to", today}
+    assert has?(session, movements |> link("Last month"))
+    assert has?(session, movements |> link("This year so far"))
 
-    assert has_element?(view, ~s(form#expenses[action="#{home}/reports/expenses.pdf"]))
-    assert has_element?(view, ~s(input#expenses-from[name="from"]))
-    assert has_element?(view, ~s(input#expenses-to[name="to"][value="#{today}"]))
-    assert has_element?(view, "#expenses-periods a", "Last year")
-    assert has_element?(view, ~s(a[href="#{home}/residents"]), "Choose a resident")
+    assert sends(session, part("Tasks of a day"), "Day") ==
+             {"#{home}/reports/tasks.pdf", "on", today}
+
+    assert href(session, part("Stock") |> link("Make the stock report")) ==
+             "#{home}/reports/stock.pdf?paper=a4"
+
+    assert href(session, part("Housing") |> link("Make the housing report")) ==
+             "#{home}/reports/housing.pdf?paper=a4"
+
+    expenses = part("Expenses")
+    expenses_pdf = "#{home}/reports/expenses.pdf"
+    assert {^expenses_pdf, "from", _} = sends(session, expenses, "From")
+    assert sends(session, expenses, "To") == {"#{home}/reports/expenses.pdf", "to", today}
+    assert has?(session, expenses |> link("Last year"))
+    assert href(session, part("One resident") |> link("Choose a resident")) == "#{home}/residents"
 
     # No form of the page has a method other than GET, and none speaks to
     # the page itself.
-    refute has_element?(view, "main form[method=post]")
-    refute has_element?(view, "main form[phx-submit]")
+    session
+    |> refute_has("main form[method=post]")
+    |> refute_has("main form[phx-submit]")
   end
 
   test "the page chooses the paper of each of its reports", context do
     %{conn: conn, home: home} = context
-    {:ok, view, _html} = live(conn, "#{home}/reports")
+    paper = part("Paper")
 
     # The paper of the organisation is chosen at first, and each form and
     # each link sends it.
-    assert has_element?(view, ~s(form#paper[action="#{home}/reports"]))
-    assert has_element?(view, ~s(label[for="paper-size"]), "Paper")
-    assert has_element?(view, ~s(select#paper-size[name="paper"] option[value="a4"][selected]))
-    assert has_element?(view, ~s(select#paper-size option[value="us_letter"]), "US Letter")
-    assert has_element?(view, "form#paper noscript button", "Use this paper")
-
-    for form <- ~w(register movements task-sheet expenses) do
-      assert has_element?(view, ~s(form##{form} input[type="hidden"][name="paper"][value="a4"]))
-    end
-
-    assert has_element?(view, ~s(#movements-periods a[href*="paper=a4"]), "Last month")
-    assert has_element?(view, ~s(#expenses-periods a[href*="paper=a4"]), "Last year")
+    session = visit(conn, "#{home}/reports")
+    assert attribute(session, paper |> form(nil), "action") == "#{home}/reports"
+    assert value(session, paper |> field("Paper")) == "A4"
+    assert_has(session, paper |> field("Paper"), text: "US Letter")
+    assert_has(session, paper |> button("Use this paper"))
+    assert papers(session) == [["a4"], ["a4"], ["a4"], ["a4"]]
+    assert href(session, part("Arrivals and departures") |> link("Last month")) =~ "paper=a4"
+    assert href(session, part("Expenses") |> link("Last year")) =~ "paper=a4"
 
     # The other paper goes into the address, and then into each form and link.
-    view |> element("form#paper") |> render_change(%{"paper" => "us_letter"})
-    assert_patch(view, "#{home}/reports?paper=us_letter")
+    session =
+      session
+      |> select("Paper", option: "US Letter")
+      |> assert_path("#{home}/reports", query_params: %{"paper" => "us_letter"})
+      |> assert_has(paper, text: "Each report of this page is on US Letter paper.")
 
-    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
-    assert has_element?(view, "main p", "Each report of this page is on US Letter paper.")
+    assert value(session, paper |> field("Paper")) == "US Letter"
+    assert papers(session) == [["us_letter"], ["us_letter"], ["us_letter"], ["us_letter"]]
 
-    for form <- ~w(register movements task-sheet expenses) do
-      assert has_element?(
-               view,
-               ~s(form##{form} input[type="hidden"][name="paper"][value="us_letter"])
-             )
-    end
+    assert href(session, part("Stock") |> link("Make the stock report")) ==
+             "#{home}/reports/stock.pdf?paper=us_letter"
 
-    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=us_letter"]))
-    assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf?paper=us_letter"]))
-    assert has_element?(view, ~s(#movements-periods a[href*="paper=us_letter"]), "Last month")
+    assert href(session, part("Housing") |> link("Make the housing report")) ==
+             "#{home}/reports/housing.pdf?paper=us_letter"
+
+    assert href(session, part("Arrivals and departures") |> link("Last month")) =~
+             "paper=us_letter"
 
     # A paper that Rescord does not have changes nothing, in an event and
     # in the address.
-    view |> element("form#paper") |> render_change(%{"paper" => "a3"})
-    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
+    session =
+      unwrap(session, &(&1 |> element("form#paper") |> render_change(%{"paper" => "a3"})))
 
-    {:ok, view, _html} = live(conn, "#{home}/reports?paper=a3")
-    assert has_element?(view, ~s(select#paper-size option[value="a4"][selected]))
+    assert value(session, paper |> field("Paper")) == "US Letter"
+    assert conn |> visit("#{home}/reports?paper=a3") |> value(paper |> field("Paper")) == "A4"
 
     # The paper of the organisation is the one that the page chooses first.
     {:ok, _organisation} =
       Accounts.set_organisation_paper_size(context.organisation, :us_letter, actor: context.root)
 
-    {:ok, view, _html} = live(conn, "#{home}/reports")
-    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
-    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=us_letter"]))
+    session = visit(conn, "#{home}/reports")
+    assert value(session, paper |> field("Paper")) == "US Letter"
+
+    assert href(session, part("Stock") |> link("Make the stock report")) ==
+             "#{home}/reports/stock.pdf?paper=us_letter"
   end
 
   test "the pages of the records link to their reports", context do
     %{conn: conn, home: home, biscuit: biscuit} = context
+    record = "#{home}/residents/#{biscuit.id}/record.pdf"
 
-    {:ok, view, _html} = live(conn, "#{home}/residents/#{biscuit.id}")
-    assert has_element?(view, "#documents h2", "On paper")
+    session = visit(conn, "#{home}/residents/#{biscuit.id}")
+    documents = part("On paper")
 
-    assert has_element?(
-             view,
-             ~s(form#record[action="#{home}/residents/#{biscuit.id}/record.pdf"])
-           )
+    assert sends(session, documents, "The record holds") ==
+             {record, "journal", "Its medical history"}
 
-    assert has_element?(view, ~s(select#record-journal[name="journal"] option[value="all"]))
-    assert has_element?(view, ~s(input#record-photos[type="checkbox"][name="photos"]))
+    assert_has(session, documents |> field("The record holds"), text: "Its whole journal")
+    assert sends(session, documents, "With its photos") == {record, "photos", "true"}
 
     # The record and the cage card share the control of the paper, so the
     # card is a second button of the form, with an address of its own.
-    assert has_element?(view, ~s(select#record-paper[name="paper"] option[value="a4"][selected]))
-    assert has_element?(view, ~s(select#record-paper option[value="us_letter"]), "US Letter")
+    assert sends(session, documents, "Paper") == {record, "paper", "A4"}
+    assert_has(session, documents |> field("Paper"), text: "US Letter")
+    card = documents |> form(nil) |> button("Make the cage card (PDF)")
+    assert attribute(session, card, "type") == "submit"
+    assert attribute(session, card, "formaction") == "#{home}/residents/#{biscuit.id}/card.pdf"
 
-    assert has_element?(
-             view,
-             ~s(form#record button#cage-card[type="submit"][formaction="#{home}/residents/#{biscuit.id}/card.pdf"])
-           )
-
-    {:ok, view, _html} = live(conn, "#{home}/residents")
-    assert has_element?(view, ~s(a#register-report[href="#{home}/reports/register.pdf"]))
-
-    {:ok, view, _html} = live(conn, "#{home}/tasks")
-
-    assert has_element?(
-             view,
-             ~s(a#task-sheet[href="#{home}/reports/tasks.pdf?on=#{context.today}"])
-           )
-
-    {:ok, view, _html} = live(conn, "#{home}/inventory")
-    assert has_element?(view, ~s(a#stock-report[href="#{home}/reports/stock.pdf"]))
-
-    {:ok, view, _html} = live(conn, "#{home}/housing")
-    assert has_element?(view, ~s(a#housing-report[href="#{home}/reports/housing.pdf"]))
+    for {page, words, report} <- [
+          {"residents", "Register (PDF)", "reports/register.pdf"},
+          {"tasks", "Sheet (PDF)", "reports/tasks.pdf?on=#{context.today}"},
+          {"inventory", "Stock report (PDF)", "reports/stock.pdf"},
+          {"housing", "Housing report (PDF)", "reports/housing.pdf"}
+        ] do
+      assert conn |> visit("#{home}/#{page}") |> href(main() |> link(words)) ==
+               "#{home}/#{report}"
+    end
   end
 
   test "each path sends its PDF, with a name for the file", context do
@@ -281,15 +306,15 @@ defmodule RescordWeb.ReportPagesTest do
     tomorrow = today |> Date.from_iso8601!() |> Date.add(1) |> Date.to_iso8601()
 
     for {path, params, words} <- [
-          {"register.pdf", %{"on" => "soon"}, "The date is not a date."},
+          {"register.pdf", %{"on" => "soon"}, "Give a date as a day, a month and a year."},
           {"register.pdf", %{"on" => tomorrow}, "The day is after today."},
-          {"tasks.pdf", %{"on" => "31/01/2026"}, "The date is not a date."},
-          {"movements.pdf", %{}, "Give the first day and the last day."},
-          {"movements.pdf", %{"from" => today}, "Give the first day and the last day."},
+          {"tasks.pdf", %{"on" => "31/01/2026"}, "Give a date as a day, a month and a year."},
+          {"movements.pdf", %{}, "Give a day in From and a day in To."},
+          {"movements.pdf", %{"from" => today}, "Give a day in From and a day in To."},
           {"movements.pdf", %{"from" => today, "to" => "2026-01-01"},
            "The last day is before the first day."},
           {"movements.pdf", %{"from" => today, "to" => tomorrow}, "The last day is after today."},
-          {"expenses.pdf", %{"to" => today}, "Give the first day and the last day."},
+          {"expenses.pdf", %{"to" => today}, "Give a day in From and a day in To."},
           {"expenses.pdf", %{"from" => today, "to" => "2026-01-01"},
            "The last day is before the first day."}
         ] do

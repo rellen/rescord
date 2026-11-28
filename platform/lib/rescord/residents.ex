@@ -317,6 +317,54 @@ defmodule Rescord.Residents do
     end
   end
 
+  @doc "The residents in care at the end of each day of stays: `Rescord.Residents.Census.by_day/3`."
+  defdelegate in_care_by_day(stays, first, last), to: Rescord.Residents.Census, as: :by_day
+
+  @doc "The arrivals and departures of each week of stays: `Rescord.Residents.Census.by_week/2`."
+  defdelegate moves_by_week(stays, mondays), to: Rescord.Residents.Census, as: :by_week
+
+  @doc """
+  The stay of each resident that the actor of `opts` reads (ADR 0118): when
+  it arrived and how, and when it left and how, or `nil` while it is in
+  care. A resident with no arrival has no stay.
+
+  Returns a map for each:
+  `%{id: id, name: name, species_id: id, arrived_on: date, arrival_kind: kind,
+  departed_on: date | nil, departure_kind: kind | nil}`, the earliest
+  arrival first. `:species` of `opts` reads only the residents of one
+  species.
+  """
+  @spec stays(keyword) :: {:ok, [map]} | {:error, term}
+  def stays(opts \\ []) do
+    {species_id, opts} = Keyword.pop(opts, :species)
+
+    query =
+      Resident
+      |> Ash.Query.filter(not is_nil(arrival.arrived_on))
+      |> Ash.Query.select([:id, :species_id])
+      |> Ash.Query.load([:name, arrival: [:arrived_on, :kind], departure: [:departed_on, :kind]])
+
+    query =
+      if species_id, do: Ash.Query.filter(query, species_id == ^species_id), else: query
+
+    with {:ok, residents} <- Ash.read(query, opts) do
+      {:ok,
+       residents
+       |> Enum.map(fn resident ->
+         %{
+           id: resident.id,
+           name: resident.name,
+           species_id: resident.species_id,
+           arrived_on: resident.arrival.arrived_on,
+           arrival_kind: resident.arrival.kind,
+           departed_on: resident.departure && resident.departure.departed_on,
+           departure_kind: resident.departure && resident.departure.kind
+         }
+       end)
+       |> Enum.sort_by(&{Date.to_gregorian_days(&1.arrived_on), &1.name || "", &1.id})}
+    end
+  end
+
   defp history(resource, attribute, resident_id, opts) do
     # The policy of the versions refuses each actor: the resident decides.
     case resident(resident_id, opts) do

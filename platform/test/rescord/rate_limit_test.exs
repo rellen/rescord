@@ -50,4 +50,18 @@ defmodule Rescord.RateLimitTest do
 
     assert {:allow, 1} = Rescord.RateLimit.hit(key, 50, 1)
   end
+
+  test "the window slides: a call counts for its period from its own time (ADR 0115)" do
+    key = "test/slide/#{address()}"
+
+    assert {:allow, 1} = Rescord.RateLimit.hit(key, 1_000, 2)
+    Process.sleep(700)
+    assert {:allow, 2} = Rescord.RateLimit.hit(key, 1_000, 2)
+    Process.sleep(500)
+
+    # The first call is over a second old, the second is not. A fixed window
+    # that turned in between would count from zero, and allow both of these.
+    assert {:allow, 2} = Rescord.RateLimit.hit(key, 1_000, 2)
+    assert {:deny, _wait} = Rescord.RateLimit.hit(key, 1_000, 2)
+  end
 end

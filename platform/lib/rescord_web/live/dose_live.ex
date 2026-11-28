@@ -378,11 +378,8 @@ defmodule RescordWeb.DoseLive do
       ruby={@ruby?}
       section={:tools}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/tools"}>Tools</.link>
-      </nav>
-
       <.header icon={Icons.section(:dose)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/tools"}>Tools</:crumb>
         Dose calculator
         <:subtitle>A body weight times a dose rate, with each step of the arithmetic.</:subtitle>
       </.header>

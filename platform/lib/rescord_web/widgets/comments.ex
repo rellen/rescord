@@ -299,17 +299,22 @@ defmodule RescordWeb.Widgets.Comments do
                   <button type="submit">Save the change</button>
                 </form>
               </details>
-              <button
+              <.confirm
                 :if={MapSet.member?(@state.can_delete, comment.id)}
-                type="button"
-                data-variant="secondary"
-                phx-click={event("delete")}
-                phx-value-widget={@state.key}
-                phx-value-comment_id={comment.id}
-                data-confirm="Delete this comment? Its words go for good."
+                id={"delete-comment-#{comment.id}"}
+                summary="Delete"
               >
-                Delete
-              </button>
+                <p>Its words go for good.</p>
+                <.button
+                  type="button"
+                  variant="danger"
+                  phx-click={event("delete")}
+                  phx-value-widget={@state.key}
+                  phx-value-comment_id={comment.id}
+                >
+                  Delete the comment
+                </.button>
+              </.confirm>
             </footer>
           </article>
         </li>
@@ -331,7 +336,7 @@ defmodule RescordWeb.Widgets.Comments do
           rows="3"
           maxlength="4000"
           required
-          hint="Up to 4,000 characters. **Bold**, *italics*, a list with - or 1., and a link with [words](https://…). Each member who follows this gets a notification."
+          hint="Up to 4,000 characters. **Bold**, *italics*, a list with - or 1., and a link with [words](https://…). Each member who gets notifications for this gets one."
         />
         <details :if={@state.others != []} id={"comment-tell-#{@state.key}"}>
           <summary>Tell someone</summary>
@@ -347,7 +352,7 @@ defmodule RescordWeb.Widgets.Comments do
               {email}
             </label>
             <small>
-              A member who is told gets a notification, and follows this from then on. A member who cannot open this record gets none.
+              A member who is told gets a notification, and gets notifications for this from then on. A member who cannot open this record gets none.
             </small>
           </fieldset>
         </details>

@@ -256,6 +256,27 @@ defmodule Rescord.Ruby do
   def available?(_nobody, _tenant), do: false
 
   @doc """
+  Deletes each conversation of the person of `opts` for real, with its
+  messages: "Remove all of your conversations". The conversations of
+  another member stay, whatever the power of the person. The rows of the
+  use stay: they hold counts and no words.
+  """
+  @spec remove_conversations(keyword) :: :ok | {:error, term}
+  def remove_conversations(opts) do
+    Conversation
+    |> Ash.Query.for_read(:mine, %{}, opts)
+    |> Ash.bulk_destroy(
+      :remove,
+      %{},
+      Keyword.merge(opts, strategy: [:atomic, :stream], return_errors?: true)
+    )
+    |> case do
+      %Ash.BulkResult{status: :success} -> :ok
+      %Ash.BulkResult{errors: errors} -> {:error, errors}
+    end
+  end
+
+  @doc """
   The record that a conversation is about, from its reference, such as
   `resident:<id>`, read as the person of `opts`: its reference, its kind
   and its name. A resident, a group, a location and an item can be what a

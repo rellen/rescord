@@ -29,22 +29,35 @@ defmodule RescordWeb.UsageComponents do
         no person, no organisation and no record. You decide whether the counts stay here or go
         to one address that you name.
       </p>
+      <%!-- Each term with its definition in a div, as <.list> draws them. --%>
       <dl id="usage-status">
-        <dt>Mode</dt>
-        <dd>{UsageWords.mode(@settings.mode)}</dd>
-        <dt>Address</dt>
-        <dd>{@settings.endpoint || "None"}</dd>
-        <dt>Format</dt>
-        <dd>{UsageWords.format(@settings.format)}</dd>
-        <dt>Token</dt>
-        <dd>{UsageWords.token(@settings)}</dd>
-        <dt :if={@settings.mode == :send}>Last day sent</dt>
-        <dd :if={@settings.mode == :send}>{UsageWords.day(@settings.last_sent_day)}</dd>
-        <dt :if={@settings.mode == :send}>Last send</dt>
-        <dd :if={@settings.mode == :send}>
-          <.state kind={@kind}>{@words}</.state>
-          <span :if={@settings.last_attempt_at}>{UsageWords.time(@settings.last_attempt_at)}</span>
-        </dd>
+        <div>
+          <dt>Mode</dt>
+          <dd>{UsageWords.mode(@settings.mode)}</dd>
+        </div>
+        <div>
+          <dt>Address</dt>
+          <dd>{@settings.endpoint || "None"}</dd>
+        </div>
+        <div>
+          <dt>Format</dt>
+          <dd>{UsageWords.format(@settings.format)}</dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>{UsageWords.token(@settings)}</dd>
+        </div>
+        <div :if={@settings.mode == :send}>
+          <dt>Last day sent</dt>
+          <dd>{UsageWords.day(@settings.last_sent_day)}</dd>
+        </div>
+        <div :if={@settings.mode == :send}>
+          <dt>Last send</dt>
+          <dd>
+            <.state kind={@kind}>{@words}</.state>
+            <span :if={@settings.last_attempt_at}>{UsageWords.time(@settings.last_attempt_at)}</span>
+          </dd>
+        </div>
       </dl>
     </section>
     """
@@ -107,7 +120,7 @@ defmodule RescordWeb.UsageComponents do
           <% end %>
         </fieldset>
 
-        <p :for={{nil, words} <- @problems} role="alert">{words}</p>
+        <.problems list={for {nil, words} <- @problems, do: words} />
 
         <footer>
           <.button type="submit" variant="primary" phx-disable-with="Saving">Save</.button>
@@ -146,15 +159,13 @@ defmodule RescordWeb.UsageComponents do
         />
         <footer>
           <.button type="submit" phx-disable-with="Saving">Save the token</.button>
-          <.button
-            :if={@settings.token_set_at}
-            type="button"
-            phx-click="forget_token"
-            data-confirm="Delete the token? A send then has none."
-          >
-            <.icon name="trash" /> Delete the token
-          </.button>
         </footer>
+        <.confirm :if={@settings.token_set_at} id="usage-delete-token" summary="Delete the token">
+          <p>A send then has no token.</p>
+          <.button type="button" variant="danger" phx-click="forget_token">
+            Delete the token
+          </.button>
+        </.confirm>
       </form>
     </section>
 
@@ -242,10 +253,10 @@ defmodule RescordWeb.UsageComponents do
       <h3>What is never in it</h3>
       <ul id="usage-never">
         <li>who did it: no user, member, role, address of a client or browser;</li>
-        <li>where: no organisation, name of a rescue or host name;</li>
+        <li>where: no organisation, its name, or host name;</li>
         <li>what: no record, name, text that a person typed, file name or search;</li>
         <li>when, closer than the day;</li>
-        <li>how many records a rescue has, or how many people use the server.</li>
+        <li>how many records an organisation has, or how many people use the server.</li>
       </ul>
       <p>
         A day with one person on the server still says what that person used on that day. That is
@@ -326,23 +337,23 @@ defmodule RescordWeb.UsageComponents do
         A new id cuts the tie between what was sent before and what comes next. Deleting the counts
         empties the table of the counts on this server, and sends nothing.
       </p>
-      <footer>
-        <.button
-          :if={@settings.installation_id}
-          id="usage-new-installation"
-          phx-click="new_installation"
-          data-confirm="Make a new id? A receiver cannot tie the days to come to the days before."
-        >
+      <.confirm
+        :if={@settings.installation_id}
+        id="usage-new-installation-step"
+        summary="Make a new id"
+        icon="arrow-path"
+      >
+        <p>A receiver cannot tie the days to come to the days before.</p>
+        <.button id="usage-new-installation" variant="danger" phx-click="new_installation">
           Make a new id
         </.button>
-        <.button
-          id="usage-forget"
-          phx-click="forget_counts"
-          data-confirm="Delete each count that this server stored?"
-        >
-          <.icon name="trash" /> Delete the counts
+      </.confirm>
+      <.confirm id="usage-forget-step" summary="Delete the counts">
+        <p>Each count that this server stored goes. Nothing is sent.</p>
+        <.button id="usage-forget" variant="danger" phx-click="forget_counts">
+          Delete the counts
         </.button>
-      </footer>
+      </.confirm>
     </section>
     """
   end

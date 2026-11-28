@@ -174,11 +174,8 @@ defmodule RescordWeb.RubySettingsLive do
       ruby={@ruby?}
       section={:settings}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/settings"}>Settings</.link>
-      </nav>
-
       <.header icon={Icons.section(:ruby)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/settings"}>Settings</:crumb>
         Ruby
         <:subtitle>
           The assistant of {@organisation.name}. {RubyWords.standing(@status)}

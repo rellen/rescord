@@ -24,7 +24,16 @@ defmodule Rescord.Journal do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Lists, Rescord.Residents, Rescord.Locations]
+
+    deps [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Lists,
+      Rescord.Residents,
+      Rescord.Locations,
+      Rescord.Storage.Scan
+    ]
+
     # A page reads a series of measurements, which is no resource.
     exports [Rescord.Journal.Series, Rescord.Journal.Series.Point, Rescord.Journal.Standard]
   end
@@ -423,6 +432,75 @@ defmodule Rescord.Journal do
         {:error, error}
     end
   end
+
+  @doc """
+  The new cases of each condition in each week that starts on one of
+  `mondays`, the oldest first, and the cases of each that go on now
+  (ADR 0119). A case is an episode (ADR 0083); it goes on while it has no
+  end and its resident is in care or away, as `conditions_now/1` counts.
+
+  Returns `%{conditions: rows, weeks: totals, new: number, ongoing: number}`.
+  A row is `%{condition: value, weeks: [count], new: number, ongoing:
+  number}`, with a count for each of `mondays`, for each condition with a
+  new case in those weeks or a case that goes on; the most new cases first.
+  `weeks` holds the new cases of all the conditions in each week.
+  """
+  @spec conditions_by_week([Date.t(), ...], keyword) :: {:ok, map} | {:error, term}
+  def conditions_by_week([first | _] = mondays, opts \\ []) do
+    Episode
+    |> Ash.Query.filter(started_on >= ^first or is_nil(ended_on))
+    |> Ash.Query.select([:id, :condition_id, :resident_id, :started_on, :ended_on])
+    |> Ash.Query.load(condition: [:label], resident: [:status])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, episodes} -> {:ok, by_week(episodes, mondays)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp by_week(episodes, mondays) do
+    known = MapSet.new(mondays)
+
+    rows =
+      episodes
+      |> Enum.group_by(& &1.condition_id)
+      |> Enum.map(fn {_id, [first | _] = of_condition} ->
+        counts =
+          of_condition
+          |> Enum.map(&Date.beginning_of_week(&1.started_on))
+          |> Enum.filter(&MapSet.member?(known, &1))
+          |> Enum.frequencies()
+
+        weeks = Enum.map(mondays, &Map.get(counts, &1, 0))
+
+        %{
+          condition: first.condition,
+          weeks: weeks,
+          new: Enum.sum(weeks),
+          ongoing: Enum.count(of_condition, &goes_on?/1)
+        }
+      end)
+      |> Enum.reject(&(&1.new == 0 and &1.ongoing == 0))
+      |> Enum.sort_by(&{-&1.new, -&1.ongoing, String.downcase(to_string(&1.condition.label))})
+
+    totals =
+      case rows do
+        [] -> Enum.map(mondays, fn _ -> 0 end)
+        rows -> rows |> Enum.map(& &1.weeks) |> Enum.zip_with(&Enum.sum/1)
+      end
+
+    %{
+      conditions: rows,
+      weeks: totals,
+      new: Enum.sum(totals),
+      ongoing: rows |> Enum.map(& &1.ongoing) |> Enum.sum()
+    }
+  end
+
+  defp goes_on?(episode),
+    do:
+      is_nil(episode.ended_on) and not is_nil(episode.resident) and
+        episode.resident.status in [:in_care, :away]
 
   @doc """
   The ongoing episode of a condition that a resident has, or `nil`: the one

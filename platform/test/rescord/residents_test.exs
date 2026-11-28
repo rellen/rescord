@@ -15,6 +15,8 @@ defmodule Rescord.ResidentsTest do
 
   alias Rescord.Residents
 
+  doctest Rescord.Residents.Census
+
   setup do
     root = root!()
     organisation = organisation!(root, "Wattle Creek")
@@ -732,6 +734,48 @@ defmodule Rescord.ResidentsTest do
 
       assert Enum.map(versions, &{&1.version_action_name, &1.user_id}) ==
                [{:add, context.member.id}, {:remove, context.administrator.id}]
+    end
+  end
+
+  describe "the stays (ADR 0118)" do
+    test "are each arrival and departure, the earliest first, and narrow to a species",
+         context do
+      today = Rescord.Accounts.today(context.organisation)
+
+      sage =
+        resident!(context.lists, context.options, %{
+          name: "Sage",
+          arrived_on: Date.add(today, -10),
+          species_id: context.lists.species.rabbit
+        })
+
+      biscuit = resident!(context.lists, context.options, %{arrived_on: Date.add(today, -3)})
+
+      {:ok, _} =
+        Residents.record_departure(
+          %{resident_id: sage.id, kind: :release, departed_on: Date.add(today, -1)},
+          context.options
+        )
+
+      assert {:ok, [first, second]} = Residents.stays(context.options)
+
+      assert %{
+               id: id,
+               name: "Sage",
+               arrival_kind: :surrender,
+               departure_kind: :release
+             } = first
+
+      assert id == sage.id
+      assert first.departed_on == Date.add(today, -1)
+      assert %{name: "Biscuit", departed_on: nil, departure_kind: nil} = second
+      assert second.id == biscuit.id
+
+      assert {:ok, [%{name: "Sage"}]} =
+               Residents.stays([species: context.lists.species.rabbit] ++ context.options)
+
+      assert Residents.in_care_by_day([first, second], Date.add(today, -2), today) ==
+               [{Date.add(today, -2), 2}, {Date.add(today, -1), 1}, {today, 1}]
     end
   end
 end

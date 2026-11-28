@@ -1,7 +1,8 @@
 defmodule RescordWeb.ReportsLive do
   @moduledoc """
   The reports of an organisation, at `/o/<short name>/reports` (ADR 0076):
-  documents for paper, each a PDF.
+  documents for paper, each a PDF. It starts with the pages of insights,
+  charts on the screen (ADR 0116).
 
   Each form is a plain `GET` to `RescordWeb.ReportController`, because a
   page of LiveView cannot send a file. The reports of one resident, its
@@ -14,6 +15,7 @@ defmodule RescordWeb.ReportsLive do
 
   use RescordWeb, :live_view
 
+  import RescordWeb.InsightComponents, only: [insights: 1]
   import RescordWeb.ReportComponents, only: [paper_control: 1]
 
   alias Rescord.Accounts
@@ -82,8 +84,15 @@ defmodule RescordWeb.ReportsLive do
     >
       <.header icon={Icons.section(:reports)}>
         Reports
-        <:subtitle>Documents of {@organisation.name} for paper, each a PDF</:subtitle>
+        <:subtitle>
+          Charts of {@organisation.name} on the screen, and documents for paper, each a PDF
+        </:subtitle>
       </.header>
+
+      <section aria-labelledby="insights-heading">
+        <h2 id="insights-heading"><.icon name={Icons.section(:insights)} /> Insights</h2>
+        <.insights organisation={@organisation} />
+      </section>
 
       <section aria-labelledby="paper-heading">
         <h2 id="paper-heading"><.icon name="printer" /> Paper</h2>
@@ -160,7 +169,7 @@ defmodule RescordWeb.ReportsLive do
 
       <section aria-labelledby="tasks-heading">
         <h2 id="tasks-heading"><.icon name={Icons.section(:tasks)} /> Tasks of a day</h2>
-        <p>The tasks that are due on one day, each with a box to tick, and the late ones.</p>
+        <p>The tasks that are due on one day, each with a box to tick, and the overdue ones.</p>
         <form id="task-sheet" action={~p"/o/#{@organisation.short_name}/reports/tasks.pdf"}>
           <.input id="task-sheet-on" name="on" type="date" label="Day" value={@today} required />
           <input type="hidden" name="paper" value={@paper_value} />
@@ -171,8 +180,8 @@ defmodule RescordWeb.ReportsLive do
       <section aria-labelledby="stock-heading">
         <h2 id="stock-heading"><.icon name={Icons.section(:inventory)} /> Stock</h2>
         <p>
-          The stock of each item with its lots, what needs somebody first, and a column for
-          a count.
+          The stock of each item and its lots: first the items to order, to count or that
+          expire soon, then the others, with a column to write a count.
         </p>
         <p>
           <a

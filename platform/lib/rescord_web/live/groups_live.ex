@@ -47,9 +47,9 @@ defmodule RescordWeb.GroupsLive do
     case Residents.form_group(attributes, options(socket)) do
       {:ok, group} ->
         {:noreply,
-         push_navigate(socket,
-           to: ~p"/o/#{socket.assigns.organisation.short_name}/groups/#{group.id}"
-         )}
+         socket
+         |> put_flash(:info, "The group is added.")
+         |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/groups/#{group.id}")}
 
       {:error, error} ->
         {:noreply,
@@ -82,15 +82,15 @@ defmodule RescordWeb.GroupsLive do
         <:subtitle>The residents that {@organisation.name} manages together</:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
+
+      <.new_group :if={@can_form?} form={@form} kinds={@kinds} residents={@residents} />
 
       <p :if={@groups == []}>
         No group yet. A group is residents you care for together, such as a litter.{if @can_form?,
           do: " Make one with New group below."}
       </p>
       <.groups_table :if={@groups != []} groups={@groups} organisation={@organisation} />
-
-      <.new_group :if={@can_form?} form={@form} kinds={@kinds} residents={@residents} />
     </Layouts.app>
     """
   end

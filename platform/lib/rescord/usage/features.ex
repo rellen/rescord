@@ -55,9 +55,13 @@ defmodule Rescord.Usage.Features do
     locations: :housing,
     notifications: :notifications,
     photos: :photos,
+    # The requests to erase data are a part of the members (ADR 0105).
+    privacy: :members,
     reports: :reports,
     residents: :residents,
     ruby: :assistant,
+    # The virus scan of the PDFs is a setting of the server (issue 37).
+    scan: :server,
     tasks: :tasks,
     transfers: :transfers
   }
@@ -69,6 +73,7 @@ defmodule Rescord.Usage.Features do
     {:accounts, :token} => nil,
     {:journal, :episode} => :conditions,
     {:notifications, :settings} => :server,
+    {:privacy, :instance_settings} => :server,
     {:journal, :diagnosis} => :conditions,
     {:journal, :measurement} => :measurements,
     {:residents, :family} => :groups,
@@ -81,7 +86,9 @@ defmodule Rescord.Usage.Features do
   # The domains whose actions are never counted, with the reason.
   @left_out %{
     # Its own writes: a count of the counts.
-    usage: "the usage counts themselves"
+    usage: "the usage counts themselves",
+    # It reads the database with SQL, and runs no action of a person.
+    health: "the sanity checks of the server, which run on their own"
   }
 
   @doc "Each feature, in the order of the page."

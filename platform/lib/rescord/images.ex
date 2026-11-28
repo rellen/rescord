@@ -70,6 +70,13 @@ defmodule Rescord.Images do
   def display_side, do: @display_side
 
   @doc """
+  The version of libvips that runs, as the NIF of vix: what reads each
+  photo. `bin/check` and the colophon name it (issue 37).
+  """
+  @spec libvips_version() :: String.t()
+  def libvips_version, do: Vix.Vips.version()
+
+  @doc """
   Blocks the operations of libvips that its authors do not trust with a
   file from outside, such as the loaders of SVG and of CSV. The application
   calls it at its start.
@@ -155,6 +162,18 @@ defmodule Rescord.Images do
       {:error, %RefusedFile{} = error} -> {:error, error}
       {:error, _reason} -> refused(:unreadable)
     end
+  end
+
+  @doc """
+  A photo written again from its pixels, as `prepare/1` writes it: turned
+  as its EXIF says, with no metadata and nothing after the image, and at
+  most `max_side/0` pixels on a side. The job of an imported transfer
+  calls it for each photo of the copy, which another server sent
+  (issue 37). It goes through the slots of `Rescord.Images.Limit`.
+  """
+  @spec clean(binary) :: {:ok, binary} | {:error, RefusedFile.t()}
+  def clean(bytes) when is_binary(bytes) do
+    with {:ok, prepared} <- prepare(bytes), do: {:ok, prepared.bytes}
   end
 
   @doc """

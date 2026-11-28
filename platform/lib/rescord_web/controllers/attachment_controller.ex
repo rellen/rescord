@@ -11,7 +11,9 @@ defmodule RescordWeb.AttachmentController do
   The answer names the type that Rescord found in the first bytes of the
   file, and puts the page in a sandbox, so a file cannot run code in the
   pages of Rescord. The browser pipeline already tells the browser not to
-  guess another type (`nosniff`).
+  guess another type (`nosniff`). The browser of the person keeps the file
+  for a week (`RescordWeb.FileCache`), but a journal photo of 0.1.0 that
+  the job of the images has not cleaned, whose bytes will change.
 
   The read with the grants of the person is a second guard: the person is a
   member of the organisation before it, and each role reads the files, so
@@ -22,6 +24,7 @@ defmodule RescordWeb.AttachmentController do
   use RescordWeb, :controller
 
   alias Rescord.{Accounts, Journal}
+  alias RescordWeb.FileCache
 
   def show(conn, %{"organisation" => short_name, "id" => id}) when is_binary(id) do
     with %{} = user <- conn.assigns[:current_user],
@@ -32,7 +35,7 @@ defmodule RescordWeb.AttachmentController do
       conn
       |> put_resp_content_type(attachment.content_type, nil)
       |> put_resp_header("content-security-policy", "sandbox; default-src 'none'; img-src 'self'")
-      |> put_resp_header("cache-control", "private, no-store")
+      |> FileCache.put(FileCache.stable?(attachment))
       |> put_resp_header("content-disposition", disposition(attachment.name))
       |> send_resp(200, bytes)
     else

@@ -1,5 +1,5 @@
 // Keeps the focus of the keyboard in its place when LiveView changes the
-// page (ADR 0090, ADR 0110).
+// page (ADR 0090, ADR 0111).
 //
 // Two things took the focus away, and gave it to the top of the page, where
 // a person who uses the keyboard or a screen reader starts again:
@@ -24,7 +24,7 @@
 // LiveView can keep the element of a row and put another record in it. A
 // button there then acts on the other record, so the focus leaves it even
 // when the page still has the focus: it goes to the row of its record, or,
-// when that record is gone, to the heading of the collection (ADR 0110).
+// when that record is gone, to the heading of the collection (ADR 0111).
 //
 // Otherwise neither moves the focus when the page still has it.
 
@@ -116,7 +116,14 @@ function focusPlace(element: HTMLElement): boolean {
   return document.activeElement === element
 }
 
+// The heading of the page, or the field that a page names with `autofocus`:
+// a form that the person goes on with, such as the measurement after a
+// measurement (ADR 0111). A browser gives that field the focus on a load of
+// a document, and this does it on a live page.
 function focusHeading(): void {
+  const field = Array.from(document.querySelectorAll<HTMLElement>("main [autofocus]")).find(inPage)
+  if (field && give(field)) return
+
   const heading = document.querySelector<HTMLElement>("main h1")
   if (heading) focusPlace(heading)
 }

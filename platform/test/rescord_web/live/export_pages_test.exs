@@ -2,15 +2,16 @@ defmodule RescordWeb.ExportPagesTest do
   @moduledoc """
   Holds the page of the export (ADR 0054) and its download: the form for a
   role with the power `export`, the words for one without it, the ZIP, and
-  a refusal that goes back to the page.
+  a refusal that goes back to the page. The page is found as a person finds
+  it (ADR 0107); the download is no page, so it stays a request.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -34,18 +35,21 @@ defmodule RescordWeb.ExportPagesTest do
 
   test "an administrator chooses a date, today at first, and downloads a ZIP", context do
     conn = sign_in(build_conn(), context.administrator)
-    {:ok, view, _html} = live(conn, context.path)
+    download = main() |> region("Download")
 
-    assert has_element?(view, "h1", "Export the data")
-    assert has_element?(view, ~s(form#export[action="#{context.path}"][method="post"]))
+    session =
+      conn
+      |> visit(context.path)
+      |> assert_has(main() |> heading("Export the data", level: 1))
+      # The form is a plain request, as the answer is a file and no page.
+      |> assert_has(~s(form[action="#{context.path}"][method="post"]))
+      |> assert_has(download |> button("Download the export"))
+      |> refute_has(main(), text: "Your role cannot export the data")
 
-    assert has_element?(
-             view,
-             ~s(input#export-on[type="date"][value="#{context.today}"][max="#{context.today}"])
-           )
-
-    assert has_element?(view, ~s(label[for="export-on"]), "As of the end of")
-    refute has_element?(view, "#no-export")
+    day = one(session, download |> field("Day"))
+    assert value(session, download |> field("Day")) == context.today
+    assert LazyHTML.attribute(day, "type") == ["date"]
+    assert LazyHTML.attribute(day, "max") == [context.today]
 
     conn = post(conn, context.path, %{"export" => %{"on" => context.today}})
 
@@ -65,10 +69,12 @@ defmodule RescordWeb.ExportPagesTest do
 
   test "a member without the power reads why, and a post goes back with words", context do
     conn = sign_in(build_conn(), context.member)
-    {:ok, view, _html} = live(conn, context.path)
 
-    assert has_element?(view, "#no-export", "Your role cannot export the data")
-    refute has_element?(view, "form#export")
+    conn
+    |> visit(context.path)
+    |> assert_has(main(), text: "Your role cannot export the data")
+    |> refute_has(main() |> region("Download"))
+    |> refute_has(main() |> field("Day"))
 
     conn = post(conn, context.path, %{"export" => %{"on" => context.today}})
     assert redirected_to(conn) == context.path
@@ -80,7 +86,9 @@ defmodule RescordWeb.ExportPagesTest do
 
     conn = post(conn, context.path, %{"export" => %{"on" => "soon"}})
     assert redirected_to(conn) == context.path
-    assert Phoenix.Flash.get(conn.assigns.flash, :error) == "The date is not a date."
+
+    assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+             "Give a date as a day, a month and a year."
 
     tomorrow = context.today |> Date.from_iso8601!() |> Date.add(1) |> Date.to_iso8601()
 
@@ -99,8 +107,10 @@ defmodule RescordWeb.ExportPagesTest do
   end
 
   test "the page of the organisation links to the export", context do
-    conn = sign_in(build_conn(), context.member)
-    {:ok, view, _html} = live(conn, ~p"/o/#{context.organisation.short_name}")
-    assert has_element?(view, ~s(a[href="#{context.path}"]), "Export the data")
+    session =
+      build_conn() |> sign_in(context.member) |> visit(~p"/o/#{context.organisation.short_name}")
+
+    parts = main() |> navigation("The parts of Wattle Creek")
+    assert href(session, parts |> link("Export the data")) == context.path
   end
 end

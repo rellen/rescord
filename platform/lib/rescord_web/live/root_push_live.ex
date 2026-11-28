@@ -120,11 +120,8 @@ defmodule RescordWeb.RootPushLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/root"}>Root</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:notifications)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
         Notifications on devices
         <:subtitle>
           <.state :if={@settings.push_on} kind="ok">Devices on</.state>
@@ -141,7 +138,7 @@ defmodule RescordWeb.RootPushLive do
       <section aria-labelledby="keys-heading">
         <h2 id="keys-heading">The keys of this server</h2>
         <p>
-          A push service delivers a notification of this server only with its key. The private key is encrypted in the database, and no page shows it.
+          Apple, Google, Mozilla and Microsoft deliver the notifications of this server to phones and browsers only when they carry its key. The private key is encrypted in the database, and no page shows it.
         </p>
         <dl :if={@settings.vapid_public_key}>
           <dt>Public key</dt>
@@ -152,20 +149,19 @@ defmodule RescordWeb.RootPushLive do
         <p :if={is_nil(@settings.vapid_public_key)}>
           <button type="button" phx-click="make-keys">Make the keys</button>
         </p>
-        <details :if={@settings.vapid_public_key} id="new-keys">
-          <summary>Make new keys</summary>
+        <.confirm
+          :if={@settings.vapid_public_key}
+          id="new-keys"
+          summary="Make new keys"
+          icon="arrow-path"
+        >
           <p>
             Each device stops getting notifications, and each person turns them on again on the device. Do this only when the private key may have left the server.
           </p>
-          <button
-            type="button"
-            data-variant="danger"
-            phx-click="make-keys"
-            data-confirm="Make new keys? Each device stops getting notifications."
-          >
+          <.button type="button" variant="danger" phx-click="make-keys">
             Make new keys and end each subscription
-          </button>
-        </details>
+          </.button>
+        </.confirm>
       </section>
 
       <.form for={@form} id="push-settings" phx-submit="save">
@@ -217,16 +213,12 @@ defmodule RescordWeb.RootPushLive do
         />
         <footer>
           <button type="submit">Save the token</button>
-          <button
-            :if={@settings.ntfy_token_set_at}
-            type="button"
-            data-variant="secondary"
-            phx-click="forget-token"
-          >
-            Forget the token
-          </button>
         </footer>
       </form>
+      <.confirm :if={@settings.ntfy_token_set_at} id="ntfy-delete-token" summary="Delete the token">
+        <p>A send to ntfy then has no token.</p>
+        <.button type="button" variant="danger" phx-click="forget-token">Delete the token</.button>
+      </.confirm>
     </Layouts.app>
     """
   end

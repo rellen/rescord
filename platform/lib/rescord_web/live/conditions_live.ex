@@ -121,11 +121,8 @@ defmodule RescordWeb.ConditionsLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
-      </nav>
-
       <.header icon={Icons.section(:conditions)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
         Conditions
         <:subtitle>What the residents of {@organisation.name} have, and what they had</:subtitle>
       </.header>

@@ -49,20 +49,52 @@ defmodule RescordWeb.TransferWords do
   """
   def failure(:file_missing),
     do:
-      "A photo or a file of the resident is no longer in the store of this refuge. " <>
+      "A photo or a file of the resident is gone from this organisation. " <>
         "Send it again when the file is back, or withdraw it and send the resident again."
 
   def failure(:interrupted),
     do:
-      "The copy of the files stopped when the server stopped, and did not start again. " <>
+      "Rescord stopped while it sent the files, and did not start again. " <>
         "Send it again, or withdraw it."
 
   def failure(:store_refused),
     do:
-      "The store of the files did not answer, and Rescord stopped trying. " <>
+      "Rescord could not reach the files, and stopped trying. " <>
         "Send it again, or withdraw it."
 
   def failure(_other), do: "The files did not arrive."
+
+  @doc """
+  Why the files of an import do not open yet, in words for the refuge that
+  imported it, or `nil` when they open (issue 37).
+  """
+  def files_check(%{} = transfer) do
+    cond do
+      Rescord.Transfers.files_open?(transfer) ->
+        nil
+
+      is_nil(transfer.files_check_failure) ->
+        "Rescord checks the files of the copy. They open when the check ends."
+
+      true ->
+        check_failure(transfer.files_check_failure)
+    end
+  end
+
+  defp check_failure(:infected),
+    do:
+      "The virus scan found something harmful in a PDF of the copy, so its files stay closed. " <>
+        "Decline the transfer, and tell the refuge that sent it."
+
+  defp check_failure(:unscanned),
+    do:
+      "The virus scan did not answer, so the files of the copy stay closed. " <>
+        "Check them again when the person who runs the server says that it answers."
+
+  defp check_failure(_unreadable),
+    do:
+      "A photo or a file of the copy cannot be read, so its files stay closed. " <>
+        "Decline the transfer, or ask the refuge that sent it for a new file."
 
   @doc "The state of a partnership or a transfer, in words, and its kind for a badge."
   def state(:asked), do: {"Asked", "info"}

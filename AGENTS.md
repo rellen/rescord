@@ -874,13 +874,37 @@ hand (ADR 0073). Read it before you write a migration. In short:
   A line of help for one field is the `hint` of `<.input>`, which ties
   the line to the field with `aria-describedby`.
   `<.problems list={@problems} />` says
-  what an action refused. Draw it in the form that the person sent when
-  that form is far down the page, and below the header in each other case.
+  what an action refused, and nothing else draws an alert of a form
+  (issue 35). Draw it in the form that the person sent when that form is
+  far down the page, and below the header in each other case. A page of
+  several forms keeps where the refusal was (`problems_at`) and gives each
+  form `<.problems list={@problems} at={@problems_at} here={:its_place} />`,
+  so the words show at one place only. An upload error is
+  `<.problems list={Enum.map(upload_errors(@upload), &words/1)} />` too.
   In a page test, look for the alert of
   the page with `assert_has(session, main() |> alert())` of
   `RescordWeb.Roles`: the layout always holds a hidden element with
   `role="alert"`, so a search of the text for that role finds one on each
   page.
+- **One way for each pattern of a page** (issue 35). A person who learnt one
+  page knows the next one (WCAG 3.2.3 and 3.2.4), so each of these has one
+  shape:
+  - **The way back** is the breadcrumb of the header, never a button or a
+    paragraph: `<:crumb navigate={...}>Residents</:crumb>` in `<.header>`,
+    one for each page above this one, the section first. A page of the
+    first level has none.
+  - **An action that removes, ends, withdraws, revokes or makes a key
+    again** is behind a step: `<.confirm id summary label>` with a `<p>`
+    that says what happens and a `<.button variant="danger">` that names
+    the verb and the thing ("Remove the photo of 3 May"). Never
+    `data-confirm`, and no step before an answer (decline) or an action that
+    a button beside it undoes (retire and restore).
+  - **A write that succeeds says so** with a flash, also when the page
+    opens again: "The placement is recorded.", "The routine Feed the hens
+    is paused." A sentence, the thing first, the verb in the past
+    participle, a full stop.
+  - **"New"** is the first part below the header and its problems, above
+    the table or list of the page.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
@@ -933,6 +957,35 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - The measurements of a resident are series:
     `Rescord.Journal.series/2`, which chooses the unit and converts. A
     page writes a value and a change with `RescordWeb.MeasurementWords`.
+  - **A heat map is a table** (ADR 0116): `heat_table/1`, which stays a
+    grid on a phone. Each header has short words that show and whole words
+    for a screen reader, and each cell its value in words. Its ground is a
+    step of `--heat-1` to `--heat-4`, from `Chart.level/2` or
+    `Chart.share_level/3`, and never a state: a cell that needs a look
+    has a dot. The words of a page say "stronger", never "darker": the
+    ramp runs the other way in the dark scheme.
+- **Insights** (ADR 0116, issue 36). A page of insights is below
+  `/o/:organisation/insights/`, with `section={:reports}` and a card in
+  `RescordWeb.InsightComponents.insights/1`, which the page of the
+  reports shows. Its counts are functions of their domains that read as
+  the actor, select only what they count, and group in Elixir, as
+  `Rescord.Tasks.days/3` does. No chart counts the work of a named
+  person. "On time" is done by the due time plus one hour, and a week
+  starts on a Monday.
+  - The residents in care on a day are those that arrived on that day or
+    before and had not left by then (ADR 0118): count with
+    `Rescord.Residents.stays/1` and `Rescord.Residents.Census`, never
+    with a rule of your own. The room of the housing is
+    `Rescord.Locations.room/1`.
+  - A table of counts is `heat_table/1` with the variant `"numbers"`; a
+    count that is no step of the ramp, such as a total, has the level
+    `:total` (ADR 0119).
+  - A line that holds its value to the next day is `line_chart/1` with
+    `step`, a value to compare with is a `rules` line, and two counts of
+    one column are `updown_bars/1`: the first above the middle line, the
+    second below it.
+  - An insight page passes `ruby={@ruby?}` and has its way back as a
+    `<:crumb>` of the header, as each page does.
 - **Tools** (ADR 0072). A tool is a page below `/o/:organisation/tools`
   that helps with a piece of work and stores nothing: a card in
   `RescordWeb.ToolComponents.tools/1`, a route, and a LiveView with
@@ -1236,7 +1289,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
 | `platform/lib/rescord_web/live_changes.ex` | a page listens for the changes of its domains, waits a moment, and reads once (ADR 0096) |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
-| `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
+| `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, the line chart and the sparkline as SVG (ADR 0080), and the heat map as a table (ADR 0116) |
 | `platform/lib/rescord_web/controllers/catalogue_html.ex`, `catalogue_html/examples/` | the catalogue of the components at `/dev/components`, and a template for each example (ADR 0095) |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |

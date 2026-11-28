@@ -159,7 +159,6 @@ defmodule Rescord.Transfers.Files do
   end
 
   @doc "A file that the copy of a transfer names, or `nil`."
-
   @spec named(map, String.t()) :: map | nil
   def named(snapshot, file_id) do
     snapshot

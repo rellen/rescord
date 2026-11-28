@@ -30,7 +30,10 @@ defmodule RescordWeb.RubyChatComponents do
         Ask about the residents, the tasks and the supplies of {@organisation.name}. Ruby reads
         the records that you can read, and no other.
       </p>
-      <p>The administrators of {@organisation.name} can read what you ask Ruby.</p>
+      <p>
+        The administrators of {@organisation.name}, whose role can change its settings,
+        can read what you ask Ruby.
+      </p>
       <p>
         <small>Ruby is a computer program, and it can be wrong. It gives no veterinary advice.</small>
       </p>
@@ -53,6 +56,11 @@ defmodule RescordWeb.RubyChatComponents do
           </.link>
         </li>
       </ul>
+      <p :if={@recent != []}>
+        <.link navigate={~p"/o/#{@organisation.short_name}/ruby/conversations"} id="ruby-all">
+          All your conversations
+        </.link>
+      </p>
     </section>
     """
   end
@@ -72,6 +80,35 @@ defmodule RescordWeb.RubyChatComponents do
       </span>
       <span><small>About</small> {@about.label}</span>
     </.link>
+    """
+  end
+
+  @doc """
+  What a person changes of a conversation, each closed in a `<details>`:
+  its name, and its removal, which says that nothing brings it back.
+  """
+  attr :name_form, :any, required: true
+
+  def manage(assigns) do
+    ~H"""
+    <div id="ruby-manage" data-manage>
+      <details id="ruby-rename" open={@name_form.errors != []}>
+        <summary>Change the name</summary>
+        <.form for={@name_form} id="ruby-name" phx-submit="rename">
+          <.input field={@name_form[:title]} type="text" label="Name of the conversation" />
+          <button type="submit">Save the name</button>
+        </.form>
+      </details>
+      <.confirm id="ruby-remove" summary="Remove this conversation">
+        <p>
+          Rescord deletes this conversation for real, with its messages. Nobody can bring it
+          back.
+        </p>
+        <.button type="button" variant="danger" phx-click="remove">
+          Remove this conversation
+        </.button>
+      </.confirm>
+    </div>
     """
   end
 

@@ -100,7 +100,14 @@ defmodule RescordWeb.JournalLive do
   def handle_params(params, uri, socket) do
     # Only a condition of this resident: the page has them in hand.
     episode = Enum.find(socket.assigns.episodes, &(&1.id == params["episode"]))
-    kind = if params["new"] == "diagnosis", do: "diagnosis", else: "general"
+    # `?new=<kind>` opens the form with that kind (ADR 0111): `?new=diagnosis`
+    # from a condition, and any other kind for a link that names one.
+    new =
+      Enum.find_value(JournalWords.options(:kind), fn {_word, kind} ->
+        kind == params["new"] && kind
+      end)
+
+    kind = new || "general"
 
     {:noreply,
      socket
@@ -108,7 +115,7 @@ defmodule RescordWeb.JournalLive do
        episode: episode,
        entry: one_entry(socket, params["entry"]),
        query: query_of(uri),
-       open_form?: params["new"] == "diagnosis"
+       open_form?: new != nil
      )
      |> assign_form(%{"kind" => kind, "episode_id" => (episode && episode.id) || ""})
      |> comments_of()}
@@ -229,7 +236,8 @@ defmodule RescordWeb.JournalLive do
              chronic: fields["chronic"] == "true"
            }),
          {:ok, _entry} <- Journal.write_entry_with_files(facts, files(socket), options(socket)) do
-      {:noreply, push_navigate(socket, to: here(socket))}
+      {:noreply,
+       socket |> put_flash(:info, "The entry is written.") |> push_navigate(to: here(socket))}
     else
       {:error, error} ->
         {:noreply,
@@ -284,8 +292,14 @@ defmodule RescordWeb.JournalLive do
           |> put_about(fields)
 
         case Journal.correct_entry(entry, changes, options(socket)) do
-          {:ok, _entry} -> {:noreply, push_navigate(socket, to: here(socket))}
-          {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+          {:ok, _entry} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "The entry is corrected.")
+             |> push_navigate(to: here(socket))}
+
+          {:error, error} ->
+            {:noreply, assign(socket, problems: Accounts.error_messages(error))}
         end
     end
   end
@@ -294,13 +308,18 @@ defmodule RescordWeb.JournalLive do
   # conditions of a resident (ADR 0083).
   def handle_event("track", %{"entry_id" => id}, socket) when is_binary(id) do
     case entry(socket, id) do
-      nil -> {:noreply, socket}
-      entry -> entry |> Journal.track_entry(options(socket)) |> after_episode(socket)
+      nil ->
+        {:noreply, socket}
+
+      entry ->
+        entry
+        |> Journal.track_entry(options(socket))
+        |> after_episode(socket, "The condition is started.")
     end
   end
 
   def handle_event("resolve_episode", %{"episode" => fields}, socket) when is_map(fields) do
-    with_episode(socket, fn episode ->
+    with_episode(socket, "The condition is resolved.", fn episode ->
       Journal.resolve_episode(
         episode,
         %{ended_on: non_blank(fields["ended_on"])},
@@ -310,11 +329,15 @@ defmodule RescordWeb.JournalLive do
   end
 
   def handle_event("reopen_episode", _params, socket) do
-    with_episode(socket, &Journal.reopen_episode(&1, options(socket)))
+    with_episode(
+      socket,
+      "The condition is open again.",
+      &Journal.reopen_episode(&1, options(socket))
+    )
   end
 
   def handle_event("revise_episode", %{"episode" => fields}, socket) when is_map(fields) do
-    with_episode(socket, fn episode ->
+    with_episode(socket, "The condition is saved.", fn episode ->
       changes = %{
         started_on: non_blank(fields["started_on"]),
         chronic: fields["chronic"] == "true",
@@ -359,7 +382,8 @@ defmodule RescordWeb.JournalLive do
     with {:ok, %{} = attachment} <-
            Journal.attachment_of(socket.assigns.resident.id, id, options(socket)),
          :ok <- Journal.remove_attachment(attachment, options(socket)) do
-      {:noreply, push_navigate(socket, to: here(socket))}
+      {:noreply,
+       socket |> put_flash(:info, "The file is taken off.") |> push_navigate(to: here(socket))}
     else
       {:error, %{} = error} ->
         {:noreply, assign(socket, problems: Accounts.error_messages(error))}
@@ -376,15 +400,19 @@ defmodule RescordWeb.JournalLive do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   # Runs an action on the condition that the page shows.
-  defp with_episode(%{assigns: %{episode: nil}} = socket, _action), do: {:noreply, socket}
+  defp with_episode(%{assigns: %{episode: nil}} = socket, _words, _action),
+    do: {:noreply, socket}
 
-  defp with_episode(socket, action),
-    do: socket.assigns.episode |> action.() |> after_episode(socket)
+  defp with_episode(socket, words, action),
+    do: socket.assigns.episode |> action.() |> after_episode(socket, words)
 
-  defp after_episode(result, socket) do
+  defp after_episode(result, socket, words) do
     case result do
-      {:ok, _record} -> {:noreply, push_navigate(socket, to: here(socket))}
-      {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+      {:ok, _record} ->
+        {:noreply, socket |> put_flash(:info, words) |> push_navigate(to: here(socket))}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
     end
   end
 
@@ -456,13 +484,11 @@ defmodule RescordWeb.JournalLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>{name(
-          @resident
-        )}</.link>
-      </nav>
-
       <.header icon={Icons.section(:journal)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>
+          {name(@resident)}
+        </:crumb>
         Journal of {name(@resident)}
         <:subtitle>{subtitle(@episode)}, the newest first</:subtitle>
         <:actions>
@@ -475,7 +501,7 @@ defmodule RescordWeb.JournalLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.condition_nav
         episodes={@episodes}

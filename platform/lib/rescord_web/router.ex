@@ -19,7 +19,7 @@ defmodule RescordWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {RescordWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug RescordWeb.SecurityHeaders
     plug :fetch_current_user
   end
 
@@ -27,6 +27,12 @@ defmodule RescordWeb.Router do
   # (ADR 0110). Anyone else goes to `/`, before any part of the route runs.
   pipeline :root do
     plug :require_root
+  end
+
+  # Oban Web has an inline script and `style` attributes: its own policy,
+  # with a nonce of each response (ADR 0115).
+  pipeline :oban_web do
+    plug RescordWeb.SecurityHeaders, oban: true
   end
 
   pipeline :api do
@@ -110,8 +116,12 @@ defmodule RescordWeb.Router do
       # The usage counts of the server (ADR 0098).
       live "/root/usage", RootUsageLive
       live "/root/privacy", RootPrivacyLive
+      # The sanity checks of the server (ADR 0115).
+      live "/root/health", RootHealthLive
       # The channels of the notifications: Web Push and ntfy (ADR 0106).
       live "/root/push", RootPushLive
+      # The virus scan of the PDFs (issue 37).
+      live "/root/scan", RootScanLive
     end
 
     # The pages of one organisation, which the path names (ADR 0011).
@@ -131,6 +141,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/settings", SettingsLive
       live "/o/:organisation/settings/ruby", RubySettingsLive
       live "/o/:organisation/ruby", RubyLive, :start
+      live "/o/:organisation/ruby/conversations", RubyConversationsLive
       live "/o/:organisation/ruby/:conversation_id", RubyLive, :conversation
       live "/o/:organisation/export", ExportLive
       live "/o/:organisation/reports", ReportsLive
@@ -146,6 +157,9 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/inventory/:id", ItemLive
       live "/o/:organisation/tools", ToolsLive
       live "/o/:organisation/tools/dose", DoseLive
+      live "/o/:organisation/insights/care", CareInsightsLive
+      live "/o/:organisation/insights/residents", ResidentsInsightsLive
+      live "/o/:organisation/insights/conditions", ConditionsInsightsLive
       live "/o/:organisation/expenses", ExpensesLive
       live "/o/:organisation/expenses/new", ExpenseFormLive, :new
       live "/o/:organisation/expenses/:id", ExpenseLive
@@ -173,9 +187,10 @@ defmodule RescordWeb.Router do
   # routes, its files too; the hook guards the page each time it connects;
   # and the resolver says which actions a root user may take.
   scope "/root" do
-    pipe_through [:browser, :root]
+    pipe_through [:browser, :root, :oban_web]
 
     oban_dashboard("/oban",
+      csp_nonce_assign_key: :csp_nonce,
       on_mount: @sandbox_hooks ++ [{RescordWeb.UserAuth, :require_root}],
       resolver: RescordWeb.ObanResolver,
       logo_path: "/root"

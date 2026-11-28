@@ -159,6 +159,11 @@ defmodule Rescord.Transfers.ExportImportTest do
 
       assert imported.parts == [:photos]
       {:ok, _accepted} = Transfers.accept_transfer(imported, actor: context.banksia_admin)
+
+      # The files open after the job that cleans them (issue 37), which
+      # writes the new sizes in the copy.
+      assert %{success: 1} = Oban.drain_queue(queue: :transfers)
+      {:ok, imported} = Transfers.transfer(imported.id, actor: context.banksia_admin)
       assert_photos(imported, context.banksia, context.banksia_member, context, made)
     end
 
@@ -324,12 +329,22 @@ defmodule Rescord.Transfers.ExportImportTest do
 
       {:ok, _accepted} = Transfers.accept_transfer(imported, actor: context.banksia_admin)
 
-      assert {:ok, %{"name" => "card.jpg"}, bytes} =
+      # The files open after the job that cleans them (issue 37).
+      assert {:error, :not_found} =
                Transfers.transfer_file(context.banksia, imported.id, file_meta["id"],
                  actor: context.banksia_member
                )
 
-      assert bytes == stored_jpeg()
+      assert %{success: 1} = Oban.drain_queue(queue: :transfers)
+
+      assert {:ok, %{"name" => "card.jpg"} = cleaned_meta, bytes} =
+               Transfers.transfer_file(context.banksia, imported.id, file_meta["id"],
+                 actor: context.banksia_member
+               )
+
+      # The photo is written again from its pixels, with its new size.
+      assert Rescord.Images.type_of(bytes) == "image/jpeg"
+      assert cleaned_meta["size"] == byte_size(bytes)
 
       # The refuge that sent it reads its record of the export.
       assert {:ok, [%{state: :exported}]} =

@@ -24,6 +24,7 @@ defmodule RescordWeb.RootLive do
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
      |> assign(providers: Ruby.providers!(actor: socket.assigns.current_user))
      |> assign(usage_mode: Rescord.Usage.settings(actor: socket.assigns.current_user).mode)
+     |> assign(health: Rescord.Health.summary(actor: socket.assigns.current_user))
      |> assign_roots()}
   end
 
@@ -97,7 +98,12 @@ defmodule RescordWeb.RootLive do
          {:ok, _user} <- Accounts.revoke_root(root, actor: actor) do
       # Each open page of that user has the user as a root user still.
       RescordWeb.UserAuth.disconnect(root.id)
-      {:noreply, socket |> assign(problems: []) |> assign_roots()}
+
+      {:noreply,
+       socket
+       |> assign(problems: [])
+       |> put_flash(:info, "#{root.email} is an ordinary user now.")
+       |> assign_roots()}
     else
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
       nil -> {:noreply, socket}
@@ -119,10 +125,11 @@ defmodule RescordWeb.RootLive do
         <:subtitle>The organisations of Rescord, and the users who manage Rescord itself.</:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <p><.link navigate={~p"/root/push"}>Set the notifications on devices and ntfy</.link>.</p>
+      <p><.link navigate={~p"/root/scan"}>Set the virus scan of the PDFs</.link>.</p>
       <p>
         <.link navigate={~p"/root/privacy"}>Privacy of the server</.link>: what the notices say
         about it, and the erasure of an account.
@@ -131,6 +138,9 @@ defmodule RescordWeb.RootLive do
       <.root_line providers={@providers} />
       <p id="usage-line">
         Usage counts: {RescordWeb.UsageWords.mode(@usage_mode)}. <a href={~p"/root/usage"}>See the counts, and where they go</a>.
+      </p>
+      <p id="health-line">
+        Sanity checks: {RescordWeb.HealthWords.summary(@health)}. <a href={~p"/root/health"}>See what the checks found</a>.
       </p>
 
       <.organisations

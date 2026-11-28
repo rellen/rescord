@@ -72,14 +72,13 @@ defmodule RescordWeb.TimelineLive do
       section={:residents}
     >
       <.header icon={Icons.section(:timeline)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
+        <:crumb navigate={resident_path(@organisation, @resident)}>{name(@resident)}</:crumb>
         Timeline of {name(@resident)}
         <:subtitle>
           The journal entries and the changes that Rescord recorded, the newest first
         </:subtitle>
         <:actions>
-          <.link navigate={resident_path(@organisation, @resident)} data-variant="secondary">
-            <.icon name="chevron-left" /> The resident
-          </.link>
           <.link
             navigate={resident_path(@organisation, @resident) <> "/journal"}
             data-variant="secondary"
@@ -93,7 +92,7 @@ defmodule RescordWeb.TimelineLive do
         Nothing yet. The journal entries, and the changes to the stay, the location and the groups of the resident, show here.
       </p>
 
-      <ol :if={@events != []} id="timeline">
+      <ol :if={@events != []} id="timeline" aria-label="The events">
         <.timeline_event
           :for={event <- @events}
           event={event}

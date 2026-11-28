@@ -95,11 +95,16 @@ defmodule RescordWeb.Features.AccessibilityTest do
       address = "root.#{unquote(scheme)}.#{unquote(viewport.width)}@wattle-creek.example.org"
       root = root!(address)
       Rescord.UsageFixtures.usage!(root)
+      # A result of each scope, so that the page of the checks has its tables.
+      Rescord.Health.run_check(Rescord.Health.Checks.Clock)
 
       session = sign_in_with_link(session, address)
 
       found =
-        Enum.flat_map(~w(/root /root/ruby /root/usage), &problems(visit(session, &1), &1))
+        Enum.flat_map(
+          ~w(/root /root/ruby /root/usage /root/health),
+          &problems(visit(session, &1), &1)
+        )
 
       assert found == [], Enum.join(found, "\n\n")
     end
@@ -210,7 +215,7 @@ defmodule RescordWeb.Features.AccessibilityTest do
 
   # A task of an earlier day that is still open is in the list of today,
   # and leaves it when it is done. LiveView then puts the next task in its
-  # row, so a second press would act on that task (ADR 0110).
+  # row, so a second press would act on that task (ADR 0111).
   @tag browser_context_opts: [viewport: @phone]
   test "the focus goes to the heading of the list when the row of its button leaves it",
        %{conn: session, home: home, organisation: organisation, root: root} = context do
@@ -232,6 +237,28 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> press("tbody button:focus", "Enter")
     |> assert_has("#day-heading:focus")
     |> refute_has("tbody button:focus")
+  end
+
+  # A person who weighs one resident after another opens the form, types,
+  # and goes on with the next value (ADR 0111).
+  @tag browser_context_opts: [viewport: @wide]
+  test "a form that a person opens takes the focus, and Ctrl+Enter sends it from a note",
+       %{conn: session, pages: pages} = context do
+    measurements = Enum.find(pages, &(&1 =~ ~r{/residents/[^/]+/measurements$}))
+
+    session
+    |> sign_in_as_administrator(context, "focus.form")
+    |> visit(measurements)
+    |> assert_connected()
+    |> evaluate(~s|document.querySelector("#record > summary").focus()|)
+    |> press("#record > summary", "Enter")
+    |> assert_has("#measurement select[name='measurement[measure_kind_id]']:focus")
+    |> select("What was measured", option: "Weight")
+    |> fill_in("Value", with: "1110")
+    |> fill_in("Note", with: "After breakfast")
+    |> press("#measurement textarea", "Control+Enter")
+    |> assert_has("[role=status]", text: "The measurement is recorded.")
+    |> assert_has("#record[open] input[name='measurement[value]']:focus")
   end
 
   @tag browser_context_opts: [viewport: @phone]
@@ -374,10 +401,15 @@ defmodule RescordWeb.Features.AccessibilityTest do
   defp spaced do
     """
     (async () => {
-      const style = document.createElement("style");
-      style.textContent = `* { line-height: 1.5 !important; letter-spacing: 0.12em !important;
-        word-spacing: 0.16em !important; } p { margin-block-end: 2em !important; }`;
-      document.head.append(style);
+      // A sheet of the script, not a <style> element: the policy of the page
+      // refuses an inline style (ADR 0115).
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(`* { line-height: 1.5 !important; letter-spacing: 0.12em !important;
+        word-spacing: 0.16em !important; } p { margin-block-end: 2em !important; }`);
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+      if (getComputedStyle(document.body).letterSpacing === "normal") {
+        throw new Error("the text spacing of WCAG 1.4.12 did not apply");
+      }
 
       const live = document.querySelector("[data-phx-main]");
       for (let i = 0; live && !live.classList.contains("phx-connected") && i < 100; i++) {

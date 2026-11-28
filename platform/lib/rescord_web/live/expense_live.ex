@@ -254,11 +254,8 @@ defmodule RescordWeb.ExpenseLive do
       ruby={@ruby?}
       section={:expenses}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/expenses"}>Expenses</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:expenses)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/expenses"}>Expenses</:crumb>
         {@expense.description}
         <:subtitle>Expense {@expense.number}</:subtitle>
         <:actions>
@@ -269,14 +266,17 @@ defmodule RescordWeb.ExpenseLive do
           >
             <.icon name="pencil" /> Change
           </.link>
-          <.button
+          <.confirm
             :if={@can.withdraw?}
-            type="button"
-            phx-click="withdraw"
-            data-confirm="Withdraw the expense? It leaves the lists."
+            id="withdraw-expense"
+            summary="Withdraw"
+            icon="arrow-uturn-left"
           >
-            <.icon name="arrow-uturn-left" /> Withdraw
-          </.button>
+            <p>The expense leaves the lists.</p>
+            <.button type="button" variant="danger" phx-click="withdraw">
+              Withdraw the expense
+            </.button>
+          </.confirm>
         </:actions>
       </.header>
 

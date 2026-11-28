@@ -46,7 +46,8 @@ config :rescord, Oban,
   # too, with two jobs at one time, so that a large transfer cannot take
   # the queue of the emails (ADR 0100). The job that completes the files of
   # the photos runs one at a time (issue 34).
-  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2, images: 1],
+  # The sanity checks run one at a time, in a queue of their own (ADR 0114).
+  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2, images: 1, health: 1],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Rescord.Repo,
@@ -67,7 +68,12 @@ config :rescord, Oban,
       {"53 3 * * *", Rescord.Privacy.Workers.Daily},
       # The display files of the photos, and the journal photos of 0.1.0
       # that still carry their metadata (issue 34).
-      {"53 * * * *", Rescord.Images.Workers.Complete}
+      {"53 * * * *", Rescord.Images.Workers.Complete},
+      # The sanity checks that are due, each hour (ADR 0114, issue 38).
+      {"47 * * * *", Rescord.Health.Workers.Run},
+      # The conversations of Ruby past their days or of a member who left,
+      # and a reply that lost its job (ADR 0069).
+      {"17 * * * *", Rescord.Ruby.Workers.Tidy}
     ]
   ]
 
@@ -190,7 +196,9 @@ config :rescord,
     Rescord.Usage,
     Rescord.Comments,
     Rescord.Notifications,
-    Rescord.Privacy
+    Rescord.Privacy,
+    Rescord.Health,
+    Rescord.Storage.Scan
   ],
   # The module of the web layer that words the reports (ADR 0076).
   report_wording: RescordWeb.ReportWords,

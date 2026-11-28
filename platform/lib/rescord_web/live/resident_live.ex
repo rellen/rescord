@@ -27,7 +27,11 @@ defmodule RescordWeb.ResidentLive do
 
         {:ok,
          socket
-         |> assign(problems: [], today: Rescord.Accounts.today(socket.assigns.organisation))
+         |> assign(
+           problems: [],
+           problems_at: nil,
+           today: Rescord.Accounts.today(socket.assigns.organisation)
+         )
          |> assign(identifier_kinds: Enum.map(kinds, &{to_string(&1.label), &1.id}))
          |> assign_forms()
          |> Comments.assign_widget(:comments, {:resident, socket.assigns.resident.id})}
@@ -133,7 +137,7 @@ defmodule RescordWeb.ResidentLive do
       note: non_blank(params["note"])
     }
     |> Residents.record_arrival(options(socket))
-    |> after_write(socket, "The arrival is recorded.")
+    |> after_write(socket, :stay, "The arrival is recorded.")
   end
 
   def handle_event("record_departure", %{"departure" => params}, socket) when is_map(params) do
@@ -144,7 +148,7 @@ defmodule RescordWeb.ResidentLive do
       note: non_blank(params["note"])
     }
     |> Residents.record_departure(options(socket))
-    |> after_write(socket, "The departure is recorded.")
+    |> after_write(socket, :stay, "The departure is recorded.")
   end
 
   def handle_event("withdraw_departure", _params, socket) do
@@ -153,12 +157,14 @@ defmodule RescordWeb.ResidentLive do
         {:noreply, socket}
 
       departure ->
-        departure |> Residents.withdraw_departure(options(socket)) |> after_write(socket)
+        departure
+        |> Residents.withdraw_departure(options(socket))
+        |> after_write(socket, :stay, "The departure is withdrawn.")
     end
   end
 
   def handle_event("start_absence", %{"absence" => params}, socket) when is_map(params) do
-    at(socket, params["at"], fn options ->
+    at(socket, params["at"], "The absence is recorded.", fn options ->
       Residents.start_absence(
         %{
           resident_id: socket.assigns.resident.id,
@@ -176,7 +182,12 @@ defmodule RescordWeb.ResidentLive do
         {:noreply, socket}
 
       absence ->
-        at(socket, get_in(params, ["back", "at"]), &Residents.finish_absence(absence, &1))
+        at(
+          socket,
+          get_in(params, ["back", "at"]),
+          "The resident is back.",
+          &Residents.finish_absence(absence, &1)
+        )
     end
   end
 
@@ -187,7 +198,7 @@ defmodule RescordWeb.ResidentLive do
       value: params["value"]
     }
     |> Residents.add_identifier(options(socket))
-    |> after_write(socket)
+    |> after_write(socket, :identifiers, "The identifier is added.")
   end
 
   def handle_event("record_parent", %{"parent" => params}, socket) when is_map(params) do
@@ -197,13 +208,18 @@ defmodule RescordWeb.ResidentLive do
       role: params["role"]
     }
     |> Residents.record_parent(options(socket))
-    |> after_write(socket)
+    |> after_write(socket, :relations, "The parent is recorded.")
   end
 
   def handle_event("remove_parent", %{"id" => id}, socket) when is_binary(id) do
     case Enum.find(socket.assigns.relations.parents, &(&1.id == id)) do
-      nil -> {:noreply, socket}
-      link -> link |> Residents.remove_parent(options(socket)) |> after_write(socket)
+      nil ->
+        {:noreply, socket}
+
+      link ->
+        link
+        |> Residents.remove_parent(options(socket))
+        |> after_write(socket, :relations, "The parent is removed.")
     end
   end
 
@@ -220,13 +236,13 @@ defmodule RescordWeb.ResidentLive do
       {:ok, %{id: family_id}} ->
         %{resident_id: socket.assigns.resident.id, family_id: family_id}
         |> Residents.add_to_family(options(socket))
-        |> after_write(socket)
+        |> after_write(socket, :relations, "The resident is in the family.")
 
       {:error, :nothing} ->
-        {:noreply, assign(socket, problems: ["Choose a family, or give a new one a name"])}
+        {:noreply, refuse(socket, :relations, ["Choose a family, or give a new one a name."])}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+        {:noreply, refuse(socket, :relations, Rescord.Accounts.error_messages(error))}
     end
   end
 
@@ -236,7 +252,9 @@ defmodule RescordWeb.ResidentLive do
         {:noreply, socket}
 
       membership ->
-        membership |> Residents.remove_from_family(options(socket)) |> after_write(socket)
+        membership
+        |> Residents.remove_from_family(options(socket))
+        |> after_write(socket, :relations, "The resident is out of the family.")
     end
   end
 
@@ -249,7 +267,7 @@ defmodule RescordWeb.ResidentLive do
          |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/residents")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+        {:noreply, refuse(socket, :removal, Rescord.Accounts.error_messages(error))}
     end
   end
 
@@ -260,7 +278,9 @@ defmodule RescordWeb.ResidentLive do
         {:noreply, socket}
 
       identifier ->
-        identifier |> Residents.remove_identifier(options(socket)) |> after_write(socket)
+        identifier
+        |> Residents.remove_identifier(options(socket))
+        |> after_write(socket, :identifiers, "The identifier is removed.")
     end
   end
 
@@ -275,26 +295,37 @@ defmodule RescordWeb.ResidentLive do
   # the page keeps what the person typed.
   # Runs a write at the time that the member gave, which is a local time of
   # the organisation and never after now, or at this instant with no time.
-  defp at(socket, text, write) do
+  defp at(socket, text, words, write) do
     case Rescord.Accounts.instant(socket.assigns.organisation, text) do
       {:ok, nil} ->
-        socket |> options() |> write.() |> after_write(socket)
+        socket |> options() |> write.() |> after_write(socket, :stay, words)
 
       {:ok, instant} ->
-        ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
+        ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket, :stay, words)
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+        {:noreply, refuse(socket, :stay, Rescord.Accounts.error_messages(error))}
     end
   end
 
-  defp after_write(result, socket, words \\ nil) do
+  # The problems of a refused write, with the part of the page whose form
+  # was sent: the part draws them (issue 35). A person can send the event of
+  # the removal, which the page does not draw for them: the problems are
+  # then below the header.
+  defp refuse(socket, :removal, problems) do
+    at = if can?(socket.assigns.role, :resident, :remove), do: :removal, else: :page
+    assign(socket, problems: problems, problems_at: at)
+  end
+
+  defp refuse(socket, at, problems), do: assign(socket, problems: problems, problems_at: at)
+
+  defp after_write(result, socket, at, words) do
     case result do
       {:error, error} ->
-        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
+        {:noreply, refuse(socket, at, Rescord.Accounts.error_messages(error))}
 
       _done ->
-        socket = if words, do: put_flash(socket, :info, words), else: socket
+        socket = put_flash(socket, :info, words)
 
         {:noreply,
          push_navigate(socket,
@@ -315,11 +346,8 @@ defmodule RescordWeb.ResidentLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:residents)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
         {@resident.name || "A resident with no name"}
         <:subtitle>
           {@resident.species.label} · {ResidentWords.sex(@resident.sex)} ·
@@ -358,7 +386,7 @@ defmodule RescordWeb.ResidentLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} at={@problems_at} here={:page} />
 
       <RescordWeb.PhotoComponents.profile
         photo={@profile_photo}
@@ -376,6 +404,8 @@ defmodule RescordWeb.ResidentLive do
         arrival_form={@arrival_form}
         absence_form={@absence_form}
         departure_form={@departure_form}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
       <RescordWeb.ConditionComponents.resident_conditions
@@ -400,6 +430,8 @@ defmodule RescordWeb.ResidentLive do
         parent_form={@parent_form}
         family_form={@family_form}
         other_families={@other_families}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
       <.identifiers
@@ -407,6 +439,8 @@ defmodule RescordWeb.ResidentLive do
         role={@role}
         identifier_kinds={@identifier_kinds}
         identifier_form={@identifier_form}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
       <.facts_history
@@ -420,7 +454,11 @@ defmodule RescordWeb.ResidentLive do
         resident={@resident}
       />
       <Comments.render state={@comments} record={@resident.name || "this resident"} />
-      <.removal :if={can?(@role, :resident, :remove)} />
+      <.removal
+        :if={can?(@role, :resident, :remove)}
+        problems={@problems}
+        problems_at={@problems_at}
+      />
     </Layouts.app>
     """
   end

@@ -330,7 +330,10 @@ defmodule RescordWeb.ItemLive do
   defp write(socket, form, fields, action) do
     with {:ok, instant} <- Accounts.instant(socket.assigns.organisation, fields["at"]),
          {:ok, _record} <- action.(instant, options(socket)) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply,
+       socket
+       |> put_flash(:info, done(form, socket.assigns.item.name))
+       |> push_navigate(to: path(socket))}
     else
       {:error, words} when is_binary(words) ->
         {:noreply, refuse(socket, form, fields, [words])}
@@ -339,6 +342,15 @@ defmodule RescordWeb.ItemLive do
         {:noreply, refuse(socket, form, fields, Accounts.error_messages(error))}
     end
   end
+
+  # What a form did, for the flash after it (issue 35).
+  defp done(:receive, name), do: "The stock of #{name} is received."
+  defp done(:use, name), do: "The use of #{name} is recorded."
+  defp done(:discard, name), do: "The discard of #{name} is recorded."
+  defp done(:move, name), do: "The move of #{name} is recorded."
+  defp done(:count, name), do: "The count of #{name} is recorded."
+  defp done(:item, _name), do: "The item is saved."
+  defp done(:reorder, name), do: "The reorder level of #{name} is set."
 
   # The problems are beside the form that the person sent. A person can send
   # the event of a form that the page did not draw for them: the problems
@@ -375,22 +387,19 @@ defmodule RescordWeb.ItemLive do
       ruby={@ruby?}
       section={:inventory}
     >
-      <.header>
+      <.header icon={Icons.section(:inventory)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/inventory"}>Inventory</:crumb>
         {@item.name}
         <:subtitle>
           {(@item.category && @item.category.label) || "An item of the inventory"}
         </:subtitle>
-        <:actions>
+        <:actions :if={@ruby?}>
           <.link
-            :if={@ruby?}
             navigate={~p"/o/#{@organisation.short_name}/ruby?#{[about: "item:#{@item.id}"]}"}
             data-variant="secondary"
             id="ask-ruby"
           >
             <.icon name={Icons.section(:ruby)} /> Ask Ruby
-          </.link>
-          <.link navigate={~p"/o/#{@organisation.short_name}/inventory"} data-variant="secondary">
-            <.icon name="archive-box" /> The inventory
           </.link>
         </:actions>
       </.header>

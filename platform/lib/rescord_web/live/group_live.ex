@@ -83,7 +83,7 @@ defmodule RescordWeb.GroupLive do
   @impl true
   def handle_event("join", %{"member" => %{"resident_id" => resident_id} = fields}, socket)
       when is_binary(resident_id) do
-    at(socket, fields["at"], fn options ->
+    at(socket, fields["at"], "The resident is in the group.", fn options ->
       Residents.join_group(
         %{resident_id: non_blank(resident_id), group_id: socket.assigns.group.id},
         options
@@ -94,8 +94,16 @@ defmodule RescordWeb.GroupLive do
   def handle_event("leave", %{"member_id" => id} = params, socket) when is_binary(id) do
     # Only a member of this group: the page has them in hand.
     case Enum.find(socket.assigns.group.members, &(&1.id == id)) do
-      nil -> {:noreply, socket}
-      member -> at(socket, get_in(params, ["leave", "at"]), &Residents.leave_group(member, &1))
+      nil ->
+        {:noreply, socket}
+
+      member ->
+        at(
+          socket,
+          get_in(params, ["leave", "at"]),
+          "The resident is out of the group.",
+          &Residents.leave_group(member, &1)
+        )
     end
   end
 
@@ -108,7 +116,7 @@ defmodule RescordWeb.GroupLive do
 
     socket.assigns.group
     |> Residents.revise_group(attributes, options(socket))
-    |> after_write(socket)
+    |> after_write(socket, "The group is saved.")
   end
 
   def handle_event("close", _params, socket) do
@@ -132,13 +140,13 @@ defmodule RescordWeb.GroupLive do
 
   # Runs a write at the time that the member gave, which is a local time of
   # the organisation and never after now, or at this instant with no time.
-  defp at(socket, text, write) do
+  defp at(socket, text, words, write) do
     case Rescord.Accounts.instant(socket.assigns.organisation, text) do
       {:ok, nil} ->
-        socket |> options() |> write.() |> after_write(socket)
+        socket |> options() |> write.() |> after_write(socket, words)
 
       {:ok, instant} ->
-        ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket)
+        ([as_of: instant] ++ options(socket)) |> write.() |> after_write(socket, words)
 
       {:error, error} ->
         {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
@@ -146,10 +154,11 @@ defmodule RescordWeb.GroupLive do
   end
 
   # Opens the page again after a write, so that its forms are empty.
-  defp after_write({:error, error}, socket),
+  defp after_write({:error, error}, socket, _words),
     do: {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
 
-  defp after_write(_done, socket), do: {:noreply, push_navigate(socket, to: path(socket))}
+  defp after_write(_done, socket, words),
+    do: {:noreply, socket |> put_flash(:info, words) |> push_navigate(to: path(socket))}
 
   @impl true
   def render(assigns) do
@@ -162,11 +171,8 @@ defmodule RescordWeb.GroupLive do
       ruby={@ruby?}
       section={:groups}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/groups"}>Groups</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:groups)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/groups"}>Groups</:crumb>
         {Residents.group_name(@group)}
         <:subtitle>{Residents.words(@group) || "No relation is recorded"}</:subtitle>
         <:actions :if={@group.members != []}>
@@ -179,7 +185,7 @@ defmodule RescordWeb.GroupLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.about_group
         group={@group}

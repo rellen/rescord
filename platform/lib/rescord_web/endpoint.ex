@@ -1,20 +1,30 @@
 defmodule RescordWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :rescord
 
-  # The session will be stored in the cookie and signed,
-  # this means its contents can be read but not tampered with.
-  # Set :encryption_salt if you would also like to encrypt it.
+  # The session is in a signed cookie: a person can read it, and cannot
+  # change it. In production the cookie goes over HTTPS only (`secure`,
+  # ADR 0115); a test and a machine of a developer use plain HTTP.
   @session_options [
     store: :cookie,
     key: "_rescord_key",
     signing_salt: "fbm4RLRI",
-    same_site: "Lax"
+    same_site: "Lax",
+    http_only: true,
+    secure: Application.compile_env(:rescord, :secure_session_cookie, false)
   ]
 
   # `:user_agent` carries the database transaction of a browser test to a
   # LiveView (ADR 0023). Outside the tests nothing reads it.
+  #
+  # A frame of the socket holds one event of a page, or one chunk of an
+  # upload (64 kB). With no limit, a client could send a frame of any size,
+  # and the server would read it all before an action refuses the words
+  # (ADR 0115).
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [:user_agent, session: @session_options]],
+    websocket: [
+      connect_info: [:user_agent, session: @session_options],
+      max_frame_size: 1_000_000
+    ],
     longpoll: [connect_info: [:user_agent, session: @session_options]]
 
   # In the tests only: a request of the browser of a browser test uses the

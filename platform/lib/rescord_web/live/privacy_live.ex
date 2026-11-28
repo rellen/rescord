@@ -216,7 +216,7 @@ defmodule RescordWeb.PrivacyLive do
         <:subtitle>Requests to erase data in {@organisation.name}</:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <section id="own-data" aria-labelledby="own-heading">
         <h2 id="own-heading">Your data</h2>
@@ -236,14 +236,18 @@ defmodule RescordWeb.PrivacyLive do
           today={@today}
           empty=""
         />
-        <.button
+        <.confirm
           :if={@member && not Enum.any?(@own, &(&1.state == :received))}
-          id="ask"
-          phx-click="ask"
-          data-confirm={"Ask #{@organisation.name} to erase your data? A person there answers within one month, and the erasure cannot be undone."}
+          id="ask-step"
+          summary={"Ask #{@organisation.name} to erase my data"}
         >
-          Ask {@organisation.name} to erase my data
-        </.button>
+          <p>
+            A person there answers within one month, and the erasure cannot be undone.
+          </p>
+          <.button id="ask" variant="danger" phx-click="ask">
+            Ask {@organisation.name} to erase my data
+          </.button>
+        </.confirm>
       </section>
 
       <section :if={@can_manage?} id="open" aria-labelledby="open-heading">
@@ -294,14 +298,17 @@ defmodule RescordWeb.PrivacyLive do
             ~p"/privacy/#{@organisation.notice_id}"
           )}</.link>
         </p>
-        <.button
+        <.confirm
           :if={@can_new_notice?}
-          id="new-notice-id"
-          phx-click="new_notice_id"
-          data-confirm="Make a new link? The old link stops working at once."
+          id="new-notice-step"
+          summary="Make a new link"
+          icon="arrow-path"
         >
-          Make a new link
-        </.button>
+          <p>The old link stops working at once.</p>
+          <.button id="new-notice-id" variant="danger" phx-click="new_notice_id">
+            Make a new link and end the old one
+          </.button>
+        </.confirm>
       </section>
     </Layouts.app>
     """

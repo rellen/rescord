@@ -240,7 +240,7 @@ defmodule RescordWeb.NotificationsLive do
       ruby={@ruby?}
       section={:notifications}
     >
-      <.header>
+      <.header icon={Icons.section(:notifications)}>
         Notifications
         <:subtitle>
           {if @inbox == 0, do: "Nothing new", else: "#{@inbox} new"}, for {@organisation.name}
@@ -257,7 +257,7 @@ defmodule RescordWeb.NotificationsLive do
       <section aria-labelledby="list-heading">
         <h2 id="list-heading">The newest</h2>
         <p :if={@notifications == []}>
-          You have no notification. When a member tells you about a comment, or writes on a record that you follow, it is here.
+          You have no notification yet. One comes here when a member tells you about a comment, or when somebody comments on a record where you pressed Get notifications for this.
         </p>
         <ul :if={@notifications != []} data-notifications>
           <li
@@ -283,7 +283,7 @@ defmodule RescordWeb.NotificationsLive do
           </li>
         </ul>
         <p>
-          <small>A notification goes 30 days after you read it, and after 90 days in any case.</small>
+          <small>Rescord deletes a notification 30 days after you read it, or 90 days after it came.</small>
         </p>
       </section>
 
@@ -298,7 +298,7 @@ defmodule RescordWeb.NotificationsLive do
         >
           <div data-when="ask">
             <p>
-              This browser can show the notifications of Rescord when the page is closed. A notification says only that there is something new, and for which refuge: no name and no words of a comment.
+              This browser can show the notifications of Rescord when the page is closed. A notification says only that there is something new, and for which organisation: no name and no words of a comment.
             </p>
             <p>
               <button type="button" data-push-action="on">Get notifications on this device</button>
@@ -351,25 +351,36 @@ defmodule RescordWeb.NotificationsLive do
                 </span>
               </small>
             </span>
-            <button
-              type="button"
-              data-variant="secondary"
-              phx-click="remove-device"
-              phx-value-device={device.id}
-              aria-label={"Remove #{CommentWords.device(device.device)}, since #{since(@organisation, device.inserted_at)}"}
+            <.confirm
+              id={"remove-device-#{device.id}"}
+              summary="Remove"
+              label={"Remove #{CommentWords.device(device.device)}, since #{since(@organisation, device.inserted_at)}"}
             >
-              Remove
-            </button>
+              <p>The device gets no more notifications until you turn them on there again.</p>
+              <.button
+                type="button"
+                variant="danger"
+                phx-click="remove-device"
+                phx-value-device={device.id}
+              >
+                Remove {CommentWords.device(device.device)}, since {since(
+                  @organisation,
+                  device.inserted_at
+                )}
+              </.button>
+            </.confirm>
           </li>
         </ul>
-        <p><small>A device gets the notifications of each refuge that you are a member of.</small></p>
+        <p>
+          <small>A device gets the notifications of each organisation that you are a member of.</small>
+        </p>
       </section>
 
       <section :if={@offer.ntfy} aria-labelledby="ntfy-heading">
         <h2 id="ntfy-heading">ntfy</h2>
         <div :if={is_nil(@ntfy)}>
           <p>
-            Rescord can send your notifications to a topic of ntfy, which the ntfy app on a phone or a computer shows. A notification says only that there is something new, and for which refuge.
+            ntfy is a free app for phones and computers that shows alerts. Rescord can send your notifications there, to a private address of your own. A notification says only that there is something new, and for which organisation.
           </p>
           <p><button type="button" phx-click="ntfy-start">Get notifications on ntfy</button></p>
         </div>
@@ -381,10 +392,18 @@ defmodule RescordWeb.NotificationsLive do
               Anyone who has the address can read what Rescord sends there. Keep it to yourself; a new address stops the old one.
             </small>
           </p>
-          <p>
-            <button type="button" data-variant="secondary" phx-click="ntfy-renew">New address</button>
-            <button type="button" data-variant="secondary" phx-click="ntfy-stop">Stop notifications on ntfy</button>
-          </p>
+          <.confirm id="ntfy-renew-step" summary="New address" icon="arrow-path">
+            <p>The old address stops. Subscribe to the new one in the ntfy app.</p>
+            <.button type="button" variant="danger" phx-click="ntfy-renew">
+              Make a new address
+            </.button>
+          </.confirm>
+          <.confirm id="ntfy-stop-step" summary="Stop notifications on ntfy" icon="no-symbol">
+            <p>Rescord sends nothing more to the address.</p>
+            <.button type="button" variant="danger" phx-click="ntfy-stop">
+              Stop notifications on ntfy
+            </.button>
+          </.confirm>
         </div>
       </section>
 

@@ -44,6 +44,8 @@ defmodule Rescord.Ruby.Conversation do
       description "The conversations of the actor, the newest first"
       filter expr(owner_id == ^actor(:id))
       prepare build(sort: [last_message_at: :desc, id: :desc])
+      # "Your conversations" pages it by number, with the count of pages.
+      pagination offset?: true, keyset?: true, countable: true, required?: false
     end
 
     read :of_member do
@@ -137,6 +139,13 @@ defmodule Rescord.Ruby.Conversation do
       on :member_erased, :remove_of_erased_member,
         action: :remove,
         get_by: [owner_id: :user_id]
+    end
+  end
+
+  aggregates do
+    count :message_count, :messages do
+      public? true
+      description "How many messages the conversation holds, of the member and of Ruby"
     end
   end
 end

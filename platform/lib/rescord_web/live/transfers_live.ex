@@ -209,19 +209,24 @@ defmodule RescordWeb.TransfersLive do
   end
 
   def handle_event(event, %{"id" => id}, socket)
-      when event in ["accept", "decline", "withdraw", "send_again"] and is_binary(id) do
+      when event in ["accept", "decline", "withdraw", "send_again", "check_again"] and
+             is_binary(id) do
     action =
       case event do
         "accept" -> &Transfers.accept_transfer/2
         "decline" -> &Transfers.decline_transfer/2
         "withdraw" -> &Transfers.withdraw_transfer/2
         "send_again" -> &Transfers.send_transfer_again/2
+        "check_again" -> &Transfers.check_transfer_again/2
       end
 
     with %{} = transfer <-
            Enum.find(socket.assigns.received ++ socket.assigns.sent, &(&1.id == id)),
          {:ok, _transfer} <- action.(transfer, actor: socket.assigns.current_user) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply,
+       socket
+       |> put_flash(:info, answer_words(event, transfer))
+       |> push_navigate(to: path(socket))}
     else
       nil ->
         {:noreply, socket}
@@ -233,6 +238,19 @@ defmodule RescordWeb.TransfersLive do
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  # What a press on a transfer did, as the message of the page (issue 35).
+  defp answer_words("accept", transfer),
+    do: "The transfer of #{transfer.resident_name} is accepted."
+
+  defp answer_words("decline", transfer),
+    do: "The transfer of #{transfer.resident_name} is declined."
+
+  defp answer_words("withdraw", transfer),
+    do: "The transfer of #{transfer.resident_name} is withdrawn."
+
+  defp answer_words("send_again", transfer),
+    do: "The transfer of #{transfer.resident_name} is sent again."
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -259,10 +277,8 @@ defmodule RescordWeb.TransfersLive do
       organisation={@organisation}
       inbox={@inbox}
       ruby={@ruby?}
+      section={:home}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</.link>
-      </nav>
       <.copy transfer={@transfer} organisation={@organisation} />
       <Comments.render state={@comments} record="this transfer" partner? />
     </Layouts.app>
@@ -277,8 +293,10 @@ defmodule RescordWeb.TransfersLive do
       organisation={@organisation}
       inbox={@inbox}
       ruby={@ruby?}
+      section={:home}
     >
       <.header icon={Icons.section(:transfers)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}"}>{@organisation.name}</:crumb>
         Transfers
         <:subtitle>The residents that {@organisation.name} sent and received</:subtitle>
         <:actions>
@@ -288,12 +306,12 @@ defmodule RescordWeb.TransfersLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.transfers_table
         id="received"
         title="Received"
-        empty="No refuge has sent a resident yet."
+        empty="No partner refuge has sent you a resident yet. When one does, it waits here for your answer."
         transfers={@received}
         organisation={@organisation}
         can_answer?={@can_answer?}
@@ -303,7 +321,7 @@ defmodule RescordWeb.TransfersLive do
       <.transfers_table
         id="sent"
         title="Sent"
-        empty="This refuge has sent no resident yet."
+        empty="You have sent no resident yet."
         transfers={@sent}
         organisation={@organisation}
         can_answer?={false}

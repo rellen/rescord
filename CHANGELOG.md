@@ -201,6 +201,31 @@ release (ADR 0047).
     adds the function `oban_count_estimate`, with which the new page of
     the jobs for a root user estimates how many jobs wait in a queue. It
     changes no row.
+  - `20261128132658_add_the_health_results`, in the database: adds the
+    table of what each sanity check found at its last run (ADR 0114). It
+    is empty until the first run, an hour or less after the start. It
+    changes no row.
+  - `20261128134238_add_the_settings_of_the_scan`, in the database: adds
+    the table of the settings of the virus scan of the PDFs, with its
+    history (issue 37). Both stay empty until a root user saves the
+    settings at `/root/scan`, so no PDF is scanned and nothing changes
+    after the upgrade. It changes no row.
+  - `20261128140645_add_the_check_of_imported_files`, in the database:
+    adds two empty columns to the transfers, for the check of the files of
+    an import (issue 37). It changes no row.
+  - `20261128140700_count_the_imported_files_as_checked`, in the
+    database: sets the new `files_checked_at` to the time of the upgrade
+    for each transfer that this server imported from a transfer file, so
+    their files open as before. Only a new import waits for the check.
+    It writes no version of the history of a transfer, and changes no
+    other row.
+  - `20261128141450_add_measure_kind_ranges`, in each organisation: adds
+    two empty columns to the measure kinds, for the lowest and the
+    highest value of a measurement of the kind (ADR 0117). It changes no
+    row.
+- After the upgrade, the sanity checks run by themselves each hour
+  (issue 38, ADR 0114). Their first run can find faults that were there
+  before the upgrade: read them at `/root/health`.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -339,9 +364,81 @@ release (ADR 0047).
   each character that a URL may not hold as a `%` code, such as `%20`
   for a space and `%5E` for `^`. A URL that worked before keeps working
   when it has no such character.
+- The session cookie now goes over HTTPS only (ADR 0115). Rescord in
+  production already sends each request of plain HTTP to HTTPS, so no step
+  is needed behind a proxy with TLS. A browser takes such a cookie on
+  `http://localhost` too, except Safari: open Rescord on a machine of
+  its own by its HTTPS address.
+- A prescription now needs a last day on or after its first day
+  (ADR 0115). A prescription from before the upgrade with a last day
+  before its first one cannot be corrected until a person gives it right
+  days. To find such rows, run this in each schema of an organisation
+  (`org_` and the id): `SELECT entry_id FROM prescriptions WHERE ends_on <
+  starts_on;`. No row changes at the upgrade.
+- A new or changed email address of a user, and the address of an
+  invitation, now needs one `@`, no space and 254 characters at most
+  (ADR 0115). An address from before the upgrade stays as it is.
+- A new measurement in a unit of mass, volume or length (such as g, kg,
+  lb, mL or cm), or a correction of its value, unit or kind, is now
+  refused at 0 or below (ADR 0117). A measurement from before the
+  upgrade stays as it is, with its chart, and its words can still be
+  corrected: nothing needs to be cleaned by hand.
 
 ### Added
 
+- An administrator can give a kind of measurement with a standard unit a
+  range, on the page Lists, under "Measure kind": the lowest and the
+  highest value, in the standard unit (ADR 0117, issue 41). A measurement
+  outside the range is refused in any unit that converts to it, so a
+  weight typed in kg for g does not reach the journal or the chart. A new
+  standard unit converts the range, or takes it away when the two units
+  measure different things. With no range, a kind works as before.
+- The page of the reports starts with "Insights", charts of the records
+  on the screen (issue 36, ADR 0116). The first is "Care, day by day": a
+  square for each day of the last 26 weeks, stronger in colour for a
+  larger share of the tasks of the day done by their time or within an
+  hour after it, with a dot on a day with a task skipped or overdue, and
+  the tasks of each day of the next two weeks. A kind of task narrows
+  both, and a press on a day says its counts with a link to its tasks.
+  Each member can open it. It counts the tasks of the refuge, and never
+  the work of one person.
+- The second insight, "Residents in care" (issue 36, ADR 0118): the
+  residents in care at the end of each day of the last year as a line,
+  with a dashed line at the room that the capacities of the locations
+  give, the arrivals and departures of each week as bars above and below
+  a line, the counts of each week as a table, and four figures: in care
+  today, the arrivals and the departures of the year, and the days on
+  which the refuge had more residents than room. A species narrows them.
+  Each member can open it.
+- The third insight, "Conditions by week" (issue 36, ADR 0119): a table
+  with a row for each condition and a column for each of the last 12
+  weeks, with the new cases of the week, stronger in colour for more, the
+  cases that go on now, and the totals. Each member can open it.
+- Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
+  the server each hour, in transactions that cannot write, and keeps what
+  each found: a level, a count and some ids, never a value of a row. A
+  root user reads them at `/root/health`, `/root` has a line for them,
+  `bin/check` fails when one fails or when they stopped running, and the
+  metric `rescord.health.level` gives the level of each. The first checks
+  are of the server: the vault, secrets that a setting says are set and
+  are not, organisations where nobody can manage the members, a server
+  with no root user, stuck and failed jobs, hourly jobs that stopped,
+  migrations that have not run, and the clock of the server against the
+  clock of the database.
+- A virus scan of the PDFs, with clamd, which a root user turns on at
+  `/root/scan` with the address of clamd: `host:port` or the path of a
+  Unix socket. Then each PDF of a journal entry or of an expense goes to
+  clamd before Rescord keeps it. A file that clamd finds harmful is
+  refused, and so is each PDF while clamd does not answer. A photo is not
+  scanned, since Rescord writes it again from its pixels. clamd is not in
+  the image: `docs/self-hosting.md` shows how to run it beside Rescord.
+  `bin/check` says whether the scan is on and clamd answers, and the
+  metrics count the scans (issue 37, ADR 0113).
+- `bin/check` names the version of libvips that reads the photos, and the
+  colophon shows it to a person who is signed in, so an operator can
+  compare it with an advisory. A weekly workflow of the repository,
+  `libvips.yml`, reports when Hex has a newer `vix` or `image`, which can
+  bring a fix of libvips (issue 37, ADR 0113).
 - A photo of a resident and a photo of the journal open as a display file
   of 1600 pixels at most, a WebP image of a few hundred kilobytes, in
   place of the photo of up to 4096 pixels, which costs a phone a few
@@ -570,6 +667,16 @@ release (ADR 0047).
   is about that record: the page of Ruby names it, with a link back, and
   offers things to ask about it, and Ruby knows which record the member
   means. A person who cannot ask Ruby sees none of these links.
+- A member finds their conversations with Ruby on a new page, "Your
+  conversations" (`/o/<organisation>/ruby/conversations`), the newest
+  first, with a search in their names, and each with the record that it
+  is about and how many messages it holds. The page says that the
+  administrators can read what a member asks Ruby and how many days a
+  conversation stays. A member gives a conversation a new name, removes
+  one, or removes all of theirs. Each hour a job deletes the
+  conversations past the days of the settings and those of a person who
+  is no member any more, and ends a reply that lost its job, so that its
+  conversation takes the next message.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.
@@ -655,6 +762,9 @@ release (ADR 0047).
   `RESCORD_METRICS_PORT` names a port. Rescord
   then answers `GET /metrics` on that port, which is not the port of the
   pages and has no sign-in, so keep it inside the network of the server.
+  The metrics listen on `127.0.0.1` unless `RESCORD_METRICS_ADDRESS`
+  names another address, such as `0.0.0.0` in a container or `::` for a
+  collector on another machine (ADR 0117), and `bin/check` says where.
   No label holds the id of a person or the name of an organisation.
   `docs/self-hosting.md`, "The metrics", has the steps.
 - `RESCORD_LOG_LEVEL` sets how much the log holds: `debug`, `info` (the
@@ -732,12 +842,40 @@ release (ADR 0047).
 
 ### Changed
 
+- The forms take fewer keys. A form that a person opens gives the focus to
+  its first field, and Ctrl or Cmd with Enter sends a form from its note.
+  After a measurement, the form stays open with the same kind and unit,
+  and the value has the focus, so a run of weights is a value and Enter
+  each. The new task form is above the tasks of the day. The date of an
+  arrival is today once a person chooses how the resident came. Stock
+  that came in asks for the quantity and the place right after the lot.
+  A new expense from the expenses of a resident is for that resident
+  (ADR 0111).
 - A HEIC or an AVIF photo, which Rescord cannot read, is refused with
   words that say what to do: on an iPhone, pick it from Photos, which
   sends a JPEG, or set the camera to Most Compatible; elsewhere, save it as
   a JPEG first. The forms of the photos, the journal and the receipts say
   so for a file that the browser refuses, and Rescord for a file whose
   first bytes are those of HEIF (issue 34).
+- The browser of a person keeps a photo, its thumbnail, its display file,
+  a journal file and a receipt for a week, in its own cache and no shared
+  one, so a page with the same photos opens faster on a slow line. Before,
+  it kept none. A journal photo of Rescord 0.1.0 that the job has not
+  cleaned yet, the files of a transfer, the reports and the exports are
+  still kept nowhere. A sign-out asks the browser to clear what it kept
+  (`Clear-Site-Data`), so a shared computer does not keep the photos of
+  the last person; a browser that does not know the header keeps them
+  until the week is over (issue 34, ADR 0112).
+- The pages work the same way everywhere (issue 35). Each inner page has a
+  breadcrumb at the top for the way back, in place of the buttons and
+  links such as "The inventory" and "‹ The resident". Each action that
+  removes, ends, withdraws or revokes something opens a short step first
+  that says what happens, with a red button that names the thing; a
+  single click no longer removes a photo, a receipt, a comment, a device,
+  a member or a feed. The problems of a form show beside the form that
+  was sent, once. Each write that works says so in a message at the top of
+  the page. The form for a new record is right below the header, also on
+  the members page.
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is
@@ -918,6 +1056,33 @@ release (ADR 0047).
   residents in care have 3 ongoing conditions", and its filter of the
   state says "Ongoing or chronic". The resident page links to its
   measurements even before the first one (ADR 0108).
+- The pages of the tasks, the routines, the journal, the lists, the
+  calendar feeds, the reports and the export help more: "Count the days
+  from", the days ahead of a routine, the members of a task, the warning
+  days of an expiry, the day of an export and the notes of a feed have a
+  line of help, and an empty list says what to do next. The filter "Who"
+  of the tasks offers "Given to me" and "Open to anybody". The Lists page
+  says what its lists are for. A task past its time is "overdue" on every
+  page. A report or an export with a wrong date says "Give a date as a
+  day, a month and a year", and one with no range says "Give a day in
+  From and a day in To" (ADR 0108).
+- The pages of the inventory, the expenses, the transfers and the
+  partners help more: a lot, the reorder levels, the member who paid, a
+  partner card and its fingerprint, and the short name of a refuge to
+  ask have a line of help. The send of a resident says that it sends a
+  copy and that the resident stays on your list, the export says what to
+  do with the file, and the partners page says which refuges are on
+  another server. The copy of a resident names the refuge that sent it,
+  not "the first refuge", and a transfer that did not arrive says why in
+  plain words (ADR 0108).
+- The pages of the members, the settings, the notifications, the root
+  user and Ruby help more: the email and the role of an invitation, the
+  short name of a new organisation (which cannot change), a new root
+  user and the limits of a provider of Ruby have a line of help. The
+  notifications page explains ntfy, and says "Get notifications for
+  this", the words of the button, rather than "follow". The pages name
+  the organisation, not "the refuge" or "the rescue", for the
+  organisation itself (ADR 0108).
 
 ### Fixed
 
@@ -929,13 +1094,13 @@ release (ADR 0047).
   The focus goes to the heading of the list. After a measurement, a
   journal entry, a movement of stock, the button Clear of a filter and
   the links to another day, the focus now stays near, and no longer goes
-  to the top of the page (ADR 0110).
+  to the top of the page (ADR 0111).
 - A weight, a measurement or a quantity of stock typed with a comma, such
   as "1,2", is now refused. Before, the browser dropped the comma and the
-  value was 12. An arrow key no longer changes such a number (ADR 0110).
+  value was 12. An arrow key no longer changes such a number (ADR 0111).
 - The skip link now gives the focus to the content, and the menu of a
   phone closes when the Tab key leaves it. Before, the open menu hid the
-  link that had the focus (ADR 0110).
+  link that had the focus (ADR 0111).
 - The table "Owed to members" of the expense report put every person who
   had left in one row "A person who left". Each payer has their own row
   now (ADR 0105).
@@ -974,14 +1139,40 @@ release (ADR 0047).
 
 ### Security
 
+- The photos of a transfer file from another server are written again
+  from their pixels after the import, with no metadata and nothing after
+  the image, as each photo that a person sends already is, and its PDFs
+  go to the virus scan when it is on. Until that check ends, its files do
+  not open, and the page says so. A file that fails keeps each file of
+  the copy closed, with the reason; the receiver can decline the
+  transfer, or check the files again after the scan did not answer
+  (issue 37, ADR 0113).
 - A journal photo that Rescord 0.1.0 kept as it was sent, with its EXIF
   block and the GPS position where it was taken, is cleaned after the
   upgrade by a job, as each photo has been since 0.2.0: the file is
   written again with no metadata, and its copies in the transfers on the
   server too. See the upgrade notes for what the job cannot reach
   (issue 34).
+- Each page now has a strict Content-Security-Policy (ADR 0115): a page
+  runs only the scripts of the site and loads only its styles, fonts and
+  images, and a form sends only to the site. The words that people write
+  were escaped already; the policy is a second wall behind that, so a
+  script or an image of another site that got into a page does not run
+  or load. Each page also has a Permissions-Policy that turns off the
+  camera, the microphone, the location, payment and USB for scripts. A
+  photo from the camera of a phone still works: that is a file of the
+  form.
+  Oban Web, for root users, gets a nonce for its own script and allows
+  the `style` attributes of its bars.
+- One person sends 10 comments in a minute and 50 invitations in an hour
+  at most (ADR 0115), so a member cannot send notifications or email
+  without end. The limit of sign-in links for one client now counts an
+  IPv6 network of 64 bits as one client, as one home or server has. The
+  socket of the pages takes a message of 1 MB at most.
+- Each rate limit now counts the calls of the last period, at each call
+  (ADR 0115). Before, the count started again at the turn of each
+  period, so twice the limit could pass in a few seconds across the turn.
 - The history of a record is closed to each request that asks for it by
-
   itself. Rescord keeps each change of a record as a version, and the
   versions had no rule of their own about who reads them. A page shows the
   history of a resident only after the resident has passed the rules of

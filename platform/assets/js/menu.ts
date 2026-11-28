@@ -1,7 +1,7 @@
 // The menu of the site is a popover on a narrow screen (ADR 0061). The
 // browser closes it on Escape and on a press outside it, but not when the
 // Tab key takes the focus out of it: the open menu then covers the control
-// that has the focus (WCAG 2.4.11). `listen` closes it then (ADR 0110).
+// that has the focus (WCAG 2.4.11). `listen` closes it then (ADR 0111).
 
 function open(popover: HTMLElement): boolean {
   try {

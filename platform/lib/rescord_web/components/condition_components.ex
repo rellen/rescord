@@ -258,14 +258,13 @@ defmodule RescordWeb.ConditionComponents do
         </form>
       </details>
 
-      <details :if={@can.remove} id="remove-condition-details">
-        <summary><.icon name="trash" /> Remove this condition</summary>
+      <.confirm :if={@can.remove} id="remove-condition-details" summary="Remove this condition">
         <p>
           Remove a condition only when somebody recorded it by mistake. Its entries stay in the
           journal, about no condition. For a condition that is over, mark it as resolved.
         </p>
-        <.button phx-click="remove_episode">Remove the condition</.button>
-      </details>
+        <.button variant="danger" phx-click="remove_episode">Remove the condition</.button>
+      </.confirm>
     </article>
     """
   end

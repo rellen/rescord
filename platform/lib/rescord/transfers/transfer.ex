@@ -42,6 +42,13 @@ defmodule Rescord.Transfers.Transfer do
   No person runs `copy_files`, `progress`, `deliver` or `fail`: their
   policy is the signal alone (ADR 0067).
 
+  An import keeps its files closed until a job has checked them
+  (issue 37): `import` emits `:transfer_imported`, and the job runs
+  `check_files`, which writes each photo of the copy again with no
+  metadata and scans each PDF when the virus scan is on. `files_checked`
+  then writes `files_checked_at`, or the reason of a file that failed,
+  `files_check_failure`. No person runs either.
+
   The record is outside the schemas of the two refuges. The transfer does
   not change the record of the resident at the refuge that sends it: that
   refuge records the departure itself.
@@ -101,6 +108,8 @@ defmodule Rescord.Transfers.Transfer do
       argument :organisation_id, :uuid, allow_nil?: false
       argument :file, :binary, allow_nil?: false, sensitive?: true
       change Changes.ImportTransfer
+      change Changes.StartCheck
+      emit Rescord.Transfers.Signals, :transfer_imported, dynamic?: true
     end
 
     update :accept do
@@ -153,6 +162,55 @@ defmodule Rescord.Transfers.Transfer do
     # It writes the count in each state that has sources, so the file check
     # names each file that a job put, after a withdraw too. The count never
     # goes back: two jobs of the same transfer can write it (ADR 0100).
+    update :check_again do
+      description "Checks the files of an import again, after the virus scan did not answer"
+      accept []
+      require_atomic? false
+
+      change filter(
+               expr(
+                 not is_nil(remote_partner_id) and not is_nil(to_organisation_id) and
+                   files_check_failure == :unscanned
+               )
+             )
+
+      change set_attribute(:files_check_failure, nil)
+      change Changes.StartCheck
+      emit Rescord.Transfers.Signals, :transfer_imported, dynamic?: true
+    end
+
+    action :check_files do
+      description "Cleans the photos of an imported transfer and scans its PDFs. A job runs this for `:transfer_imported`, and no role has a grant for it"
+
+      argument :signal, :struct,
+        allow_nil?: false,
+        constraints: [instance_of: Rescord.Transfers.Signals.TransferImported]
+
+      run Rescord.Transfers.Actions.CheckFiles
+    end
+
+    update :files_checked do
+      description "Ends the check of the files of an imported transfer: they open, or the reason that they do not"
+      accept []
+      require_atomic? false
+
+      argument :failure, :atom,
+        allow_nil?: true,
+        constraints: [one_of: [:unreadable, :infected, :unscanned]]
+
+      change filter(expr(is_nil(files_checked_at) and is_nil(files_check_failure)))
+
+      change fn changeset, _context ->
+        case Ash.Changeset.get_argument(changeset, :failure) do
+          nil ->
+            Ash.Changeset.force_change_attribute(changeset, :files_checked_at, DateTime.utc_now())
+
+          failure ->
+            Ash.Changeset.force_change_attribute(changeset, :files_check_failure, failure)
+        end
+      end
+    end
+
     update :progress do
       description "Writes how many files of a transfer whose files a job copies are in the store"
       accept []
@@ -214,7 +272,11 @@ defmodule Rescord.Transfers.Transfer do
       authorize_if signal_in(Rescord.Transfers.Signals, :transfer_started)
     end
 
-    policy action([:accept, :decline, :import]) do
+    policy action([:check_files, :files_checked]) do
+      authorize_if signal_in(Rescord.Transfers.Signals, :transfer_imported)
+    end
+
+    policy action([:accept, :decline, :import, :check_again]) do
       authorize_if {Checks.PowerIn, side: :to}
     end
   end
@@ -326,6 +388,20 @@ defmodule Rescord.Transfers.Transfer do
       description "Why a transfer that failed did not arrive"
     end
 
+    attribute :files_checked_at, :utc_datetime_usec do
+      public? true
+      writable? false
+
+      description "When the job cleaned the photos and scanned the PDFs of an import. Its files open only after it (issue 37)"
+    end
+
+    attribute :files_check_failure, :atom do
+      public? true
+      writable? false
+      constraints one_of: [:unreadable, :infected, :unscanned]
+      description "Why the files of an import failed their check, and stay closed"
+    end
+
     attribute :sent_by_id, :uuid, public?: true, writable?: false
     attribute :answered_by_id, :uuid, public?: true, writable?: false
     attribute :answered_at, :utc_datetime_usec, public?: true, writable?: false
@@ -361,6 +437,9 @@ defmodule Rescord.Transfers.Transfer do
   signals_in do
     from Rescord.Transfers.Signals do
       on :transfer_started, :copy_files,
+        delivery: {AshOban.Signals, queue: :transfers, max_attempts: 10, shared_context: [:job]}
+
+      on :transfer_imported, :check_files,
         delivery: {AshOban.Signals, queue: :transfers, max_attempts: 10, shared_context: [:job]}
     end
   end

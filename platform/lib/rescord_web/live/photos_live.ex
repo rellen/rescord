@@ -324,15 +324,11 @@ defmodule RescordWeb.PhotosLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
-        ›
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>
-          {@resident.name || "A resident with no name"}
-        </.link>
-      </nav>
-
       <.header icon={Icons.section(:photos)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>
+          {@resident.name || "A resident with no name"}
+        </:crumb>
         {@page_title}
         <:subtitle>
           {length(@items)} {if length(@items) == 1, do: "photo", else: "photos"}
@@ -342,14 +338,17 @@ defmodule RescordWeb.PhotosLive do
       <.problems :if={@problems_at == :page} list={@problems} />
 
       <.profile photo={@profile} organisation={@organisation} resident={@resident} />
-      <.button
+      <.confirm
         :if={@profile && @can.profile?}
-        type="button"
-        phx-click="clear_profile"
-        data-confirm="Leave the resident with no profile picture?"
+        id="clear-profile"
+        summary="No profile picture"
+        icon="x-mark"
       >
-        No profile picture
-      </.button>
+        <p>The photo stays. The resident shows no picture.</p>
+        <.button type="button" variant="danger" phx-click="clear_profile">
+          No profile picture
+        </.button>
+      </.confirm>
 
       <.albums
         albums={@albums}

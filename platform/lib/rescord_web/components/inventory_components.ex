@@ -210,6 +210,20 @@ defmodule RescordWeb.InventoryComponents do
           label="Lot"
           prompt="A new lot"
           options={@lots}
+          hint="A lot is one batch, often with its own code and expiry date. Choose a lot that is here when more of the same batch came in."
+        />
+        <.input
+          field={@form[:quantity]}
+          type="decimal"
+          label={quantity_label("How much came in", @item)}
+          required
+        />
+        <.input
+          field={@form[:location_id]}
+          type="select"
+          label="Where it is now"
+          prompt="No place in particular"
+          options={@places}
         />
         <.input
           field={@form[:code]}
@@ -228,19 +242,6 @@ defmodule RescordWeb.InventoryComponents do
           label="Supplier of a new lot"
           prompt="Not recorded"
           options={@suppliers}
-        />
-        <.input
-          field={@form[:quantity]}
-          type="decimal"
-          label={quantity_label("How much came in", @item)}
-          required
-        />
-        <.input
-          field={@form[:location_id]}
-          type="select"
-          label="Where it is now"
-          prompt="No place in particular"
-          options={@places}
         />
         <.input
           field={@form[:at]}
@@ -550,7 +551,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:reorder_level]}
           type="decimal"
-          label="Order more when the stock is below, if you give a number"
+          label="Order more when the stock is below"
+          hint="Optional. The item shows Order more when its stock, in every location together, is below this number."
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
@@ -592,7 +594,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:quantity]}
           type="decimal"
-          label="Bring more when the stock there is below. No number removes the level"
+          label="Bring more to this location when the stock there is below"
+          hint="Leave it empty to take the level off this location."
         />
         <footer><.button type="submit">Save the level</.button></footer>
       </.form>
@@ -605,14 +608,13 @@ defmodule RescordWeb.InventoryComponents do
 
   def remove_item(assigns) do
     ~H"""
-    <details id="remove-item">
-      <summary><.icon name="trash" /> Remove the item</summary>
+    <.confirm id="remove-item" summary="Remove the item">
       <p>
         The item leaves the inventory. Its lots and what happened to its stock stay in the
         history.
       </p>
-      <.button phx-click="remove">Remove {@item.name}</.button>
-    </details>
+      <.button variant="danger" phx-click="remove">Remove {@item.name}</.button>
+    </.confirm>
     """
   end
 
@@ -721,7 +723,7 @@ defmodule RescordWeb.InventoryComponents do
         />
         <:empty :let={found}>
           <p :if={found.filtered?}>No item matches the search and the filters.</p>
-          <p :if={not found.filtered?}>The inventory has no item yet.</p>
+          <p :if={not found.filtered?}>The inventory has no item yet. Add one with New item below.</p>
         </:empty>
         <:col :let={item} field="name" label="Item" sort search>
           <.link navigate={item_path(@organisation, item)}>{item.name}</.link>
@@ -777,7 +779,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:reorder_level]}
           type="decimal"
-          label="Order more when the stock is below, if you give a number"
+          label="Order more when the stock is below"
+          hint="Optional. The item shows Order more when its stock, in every location together, is below this number."
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
@@ -880,14 +883,17 @@ defmodule RescordWeb.InventoryComponents do
 
   def remove_supplier(assigns) do
     ~H"""
-    <details id={"remove-details-#{@supplier.id}"}>
-      <summary><.icon name="trash" /> Remove</summary>
+    <.confirm
+      id={"remove-details-#{@supplier.id}"}
+      summary="Remove"
+      label={"Remove the supplier #{@supplier.name}"}
+    >
       <form id={"remove-#{@supplier.id}"} phx-submit="remove">
         <input type="hidden" name="supplier_id" value={@supplier.id} />
         <p>The lots that name this supplier keep their history.</p>
-        <.button type="submit">Remove {@supplier.name}</.button>
+        <.button type="submit" variant="danger">Remove {@supplier.name}</.button>
       </form>
-    </details>
+    </.confirm>
     """
   end
 

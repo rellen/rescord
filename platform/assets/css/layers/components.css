@@ -814,8 +814,10 @@ main > section + nav {
  *   <ul data-tools>
  *     <li><a href="…">Dose calculator</a> <small>A body weight times…</small></li>
  *   </ul>
+ *
+ * The list of the pages of insights (ADR 0116) has the same cards.
  */
-ul[data-tools] {
+ul:is([data-tools], [data-insights]) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
   gap: 0.5rem;
@@ -824,7 +826,7 @@ ul[data-tools] {
   list-style: none;
 }
 
-ul[data-tools] > li {
+ul:is([data-tools], [data-insights]) > li {
   position: relative;
   display: grid;
   gap: 0.25rem;
@@ -836,34 +838,34 @@ ul[data-tools] > li {
   border-radius: var(--radius);
 }
 
-ul[data-tools] a {
+ul:is([data-tools], [data-insights]) a {
   font-weight: 600;
   color: var(--text);
   text-decoration: none;
 }
 
-ul[data-tools] a::after {
+ul:is([data-tools], [data-insights]) a::after {
   position: absolute;
   inset: 0;
   content: "";
 }
 
 /* The focus is around the card that the link fills. */
-ul[data-tools] a:focus-visible {
+ul:is([data-tools], [data-insights]) a:focus-visible {
   outline: none;
 }
 
-ul[data-tools] > li:has(a:focus-visible) {
+ul:is([data-tools], [data-insights]) > li:has(a:focus-visible) {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
-ul[data-tools] small {
+ul:is([data-tools], [data-insights]) small {
   color: var(--muted);
 }
 
 @media (hover: hover) {
-  ul[data-tools] > li:hover {
+  ul:is([data-tools], [data-insights]) > li:hover {
     border-color: var(--accent);
   }
 }
@@ -1190,6 +1192,36 @@ figure[data-chart] > figcaption {
   color: var(--muted);
 }
 
+/* A rule across the plot at a value, such as the room of the housing
+   (ADR 0118): dashed, so it is apart from the line of the values. */
+[data-plot] line[data-rule] {
+  stroke: var(--field);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+/* Bars above and below a line (ADR 0118): the count above is the lead
+   colour, and the count below the colour of an edge, with the key in
+   words beside them. */
+svg[data-bars] {
+  display: block;
+  inline-size: 100%;
+  block-size: 4rem;
+  overflow: visible;
+}
+
+svg[data-bars] rect[data-up] {
+  fill: var(--accent);
+}
+
+svg[data-bars] rect[data-down] {
+  fill: var(--field);
+}
+
+svg[data-bars] line {
+  stroke: var(--border);
+}
+
 /* A sparkline: the line alone, beside a value that the page writes. */
 svg[data-spark] {
   flex: none;
@@ -1201,6 +1233,345 @@ svg[data-spark] {
 
 svg[data-spark] > circle {
   fill: var(--accent);
+}
+
+/* ----------------------------------------------------------- heat maps */
+
+/*
+ * A heat map is a table (ADR 0116): each cell is a value, and its ground
+ * is a step of one ramp of the lead colour, --heat-1 to --heat-4. The
+ * table is its own text alternative, so a screen reader reads a cell with
+ * its row and its column. It stays a grid on a phone: the rules that make
+ * a table a list of cards (ADR 0061) do not apply to it.
+ *
+ *   <table data-heat>              squares; the words of a cell are hidden
+ *   <table data-heat="numbers">    the words of each cell show
+ *
+ * A cell with a dot (data-mark) needs a look: the sign is a shape, and
+ * never a colour alone. The step is no state: more is not good or bad.
+ */
+table[data-heat] {
+  display: table;
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 0.6875rem;
+}
+
+table[data-heat] > caption {
+  display: table-caption;
+  caption-side: bottom;
+  padding-block: 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-align: start;
+}
+
+table[data-heat] > thead {
+  position: static;
+  display: table-header-group;
+  inline-size: auto;
+  block-size: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+
+table[data-heat] > tbody {
+  display: table-row-group;
+}
+
+table[data-heat] tr {
+  display: table-row;
+  padding: 0;
+  border: 0;
+}
+
+@media (hover: hover) {
+  table[data-heat] tbody tr:hover {
+    background: none;
+  }
+}
+
+table[data-heat] :is(th, td) {
+  position: relative;
+  display: table-cell;
+  padding: 0;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The whole words of a header are for a screen reader; the short ones show. */
+table[data-heat] [data-words] {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+table[data-heat] tbody th {
+  inline-size: 2.25rem;
+  padding-inline-end: 0.25rem;
+  text-align: end;
+}
+
+/* The head of a week shows its month only where a month starts, and its
+   words run on over the next weeks. */
+table[data-heat] thead th {
+  block-size: 1.1rem;
+  overflow: visible;
+  text-align: start;
+  vertical-align: bottom;
+}
+
+table[data-heat] thead :is(td, th):first-child {
+  inline-size: 2.25rem;
+}
+
+/* The corner above the names of the rows is no cell of a value. */
+table[data-heat] thead td {
+  box-shadow: none;
+}
+
+table[data-heat] td {
+  block-size: 1.05rem;
+  background: transparent;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+table[data-heat] td[data-level="1"] {
+  background: var(--heat-1);
+  box-shadow: none;
+}
+
+table[data-heat] td[data-level="2"] {
+  background: var(--heat-2);
+  box-shadow: none;
+}
+
+table[data-heat] td[data-level="3"] {
+  background: var(--heat-3);
+  box-shadow: none;
+}
+
+table[data-heat] td[data-level="4"] {
+  background: var(--heat-4);
+  box-shadow: none;
+}
+
+/* A cell with no value, such as a day to come, is not drawn. */
+table[data-heat] td[data-level="none"] {
+  box-shadow: none;
+}
+
+table[data-heat] td[data-mark]::after {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 0.3rem;
+  block-size: 0.3rem;
+  margin: -0.15rem 0 0 -0.15rem;
+  content: "";
+  background: var(--text);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+
+/* The words of a square are for a screen reader. */
+table[data-heat]:not([data-heat="numbers"]) td > span {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Today has a dashed edge, and the cell that the person chose a full one. */
+table[data-heat] td[data-today] {
+  outline: 2px dashed var(--text);
+  outline-offset: 1px;
+}
+
+table[data-heat] td[data-selected] {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+table[data-heat] td[phx-click] {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  table[data-heat] td[phx-click]:hover {
+    outline: 2px solid var(--field);
+    outline-offset: 1px;
+  }
+}
+
+/* A table of counts shows each count, in the colour that its step needs. */
+table[data-heat="numbers"] {
+  font-size: 0.8125rem;
+  border-spacing: 3px;
+  max-inline-size: 40rem;
+}
+
+table[data-heat="numbers"] td {
+  block-size: 2.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-align: center;
+}
+
+table[data-heat="numbers"] td[data-level="3"] {
+  font-weight: 700;
+  color: var(--on-heat-3);
+}
+
+table[data-heat="numbers"] td[data-level="4"] {
+  font-weight: 700;
+  color: var(--on-accent);
+}
+
+table[data-heat="numbers"] thead th {
+  block-size: auto;
+  padding-block-end: 0.25rem;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: normal;
+  text-align: center;
+}
+
+table[data-heat="numbers"] tbody th {
+  inline-size: 3.5rem;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: normal;
+  hyphens: auto;
+  text-align: start;
+}
+
+table[data-heat="numbers"] thead :is(td, th):first-child {
+  inline-size: 3.5rem;
+}
+
+/* A wider screen has room for the whole name of a row. */
+@media (min-width: 40rem) {
+  table[data-heat="numbers"] tbody th,
+  table[data-heat="numbers"] thead :is(td, th):first-child {
+    inline-size: 8rem;
+  }
+}
+
+/* A count that is no step of the ramp, such as a total (ADR 0119), has no
+   ground and no edge, and its number is strong. A count of none is quiet. */
+table[data-heat="numbers"] td[data-level="total"] {
+  font-weight: 700;
+  box-shadow: none;
+}
+
+table[data-heat="numbers"] td[data-level="0"] {
+  color: var(--muted);
+}
+
+/* The day of the month, small in the corner of the cell of a count. Its
+   words are not for a screen reader: the headers of the cell say the day. */
+table[data-heat="numbers"] td[data-day]::before {
+  position: absolute;
+  inset-block-start: 0.2rem;
+  inset-inline-start: 0.3rem;
+  font-size: 0.625rem;
+  font-weight: 400;
+  content: attr(data-day);
+  content: attr(data-day) / "";
+}
+
+/* The key of a chart: a swatch and its words, side by side. */
+p[data-key] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.875rem;
+  align-items: center;
+  margin-block: 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+p[data-key] > span {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+p[data-key] [data-swatch] {
+  position: relative;
+  inline-size: 0.9rem;
+  block-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+p[data-key] [data-swatch="1"] {
+  background: var(--heat-1);
+}
+
+p[data-key] [data-swatch="2"] {
+  background: var(--heat-2);
+}
+
+p[data-key] [data-swatch="3"] {
+  background: var(--heat-3);
+}
+
+p[data-key] [data-swatch="4"] {
+  background: var(--heat-4);
+  border-color: var(--heat-4);
+}
+
+p[data-key] [data-swatch="mark"]::after {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  inline-size: 0.3rem;
+  block-size: 0.3rem;
+  margin: -0.15rem 0 0 -0.15rem;
+  content: "";
+  background: var(--text);
+  border-radius: 50%;
+}
+
+p[data-key] [data-swatch="line"],
+p[data-key] [data-swatch="rule"] {
+  block-size: 0;
+  border: 0;
+  border-block-start: 2px solid var(--accent);
+  border-radius: 0;
+}
+
+p[data-key] [data-swatch="rule"] {
+  border-block-start: 2px dashed var(--field);
+}
+
+p[data-key] [data-swatch="up"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+p[data-key] [data-swatch="down"] {
+  background: var(--field);
+  border-color: var(--field);
+}
+
+/* The day that the person chose, below the key. */
+p[data-key] + p[data-picked] {
+  margin-block-start: 0.75rem;
 }
 
 /* ---------------------------------------------------------- measurements */
@@ -1457,13 +1828,13 @@ dl[data-figures] dt {
   color: var(--muted);
 }
 
-dl[data-figures] dd[data-money] {
+dl[data-figures] dd:is([data-money], [data-value]) {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
-dl[data-figures] dd:not([data-money]) {
+dl[data-figures] dd:not([data-money], [data-value]) {
   font-size: 0.875rem;
   color: var(--muted);
 }
@@ -1773,6 +2144,8 @@ pre[data-wrap] {
  *   main[data-ruby]          the page of Ruby
  *   a[data-ruby]             the link to Ruby in the site bar
  *   a[data-about]            what a conversation is about: a resident, an item
+ *   a[data-conversation]     one conversation in the list of a member
+ *   [data-manage]            the name of a conversation and its removal
  *   section[data-log]        the conversation
  *   ol[data-chat]            its messages
  *   article[data-from]       one message, from "member" or from "ruby"
@@ -1870,10 +2243,11 @@ main[data-ruby] {
   grid-template-areas:
     "head"
     "about"
+    "manage"
     "log"
     "problem"
     "say";
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto auto 1fr auto auto;
   grid-template-columns: minmax(0, 1fr);
   padding-block-end: 0;
 }
@@ -1883,19 +2257,21 @@ main[data-ruby] > header {
   margin-block-end: 1rem;
 }
 
-main[data-ruby] > nav[aria-label="Breadcrumb"] {
-  grid-area: head;
-  align-self: start;
-}
-
-/* The breadcrumb and the header share the first row: the header starts
-   below the line of the breadcrumb. */
-main[data-ruby] > nav[aria-label="Breadcrumb"] + header {
-  padding-block-start: 1.75rem;
-}
-
 main[data-ruby] > [data-about] {
   grid-area: about;
+}
+
+/* The name of a conversation and its removal: two closed lines below the
+   header, out of the way of the messages. */
+main[data-ruby] > [data-manage] {
+  display: grid;
+  grid-area: manage;
+  gap: 0.5rem;
+  margin-block-end: 1.25rem;
+}
+
+main[data-ruby] > [data-manage] > details {
+  margin: 0;
 }
 
 main[data-ruby] > section:not([data-composer]) {
@@ -1942,7 +2318,7 @@ main[data-ruby] [role="status"][data-quiet],
 
 /* ------------------------------------------- what a conversation is about */
 
-a[data-about] {
+:is(a[data-about], a[data-conversation]) {
   display: flex;
   gap: 0.625rem;
   align-items: center;
@@ -1956,28 +2332,33 @@ a[data-about] {
   border-radius: var(--radius);
 }
 
-a[data-about] > span:not([data-portrait]),
+:is(a[data-about], a[data-conversation]) > span:not([data-portrait]),
 ul[data-links] a > span:not([data-portrait]) {
   display: grid;
   flex: 1;
   min-inline-size: 0;
 }
 
-a[data-about] small,
+:is(a[data-about], a[data-conversation]) small,
 ul[data-links] a small {
   font-size: 0.8125rem;
   font-weight: 400;
   color: var(--muted);
 }
 
-a[data-about]::after {
+:is(a[data-about], a[data-conversation])::after {
   color: var(--accent);
   content: "\203A";
   content: "\203A" / "";
 }
 
+a[data-conversation] {
+  margin-block-end: 0.5rem;
+  font-weight: 600;
+}
+
 @media (hover: hover) {
-  a[data-about]:hover {
+  :is(a[data-about], a[data-conversation]):hover {
     border-color: var(--accent);
   }
 }

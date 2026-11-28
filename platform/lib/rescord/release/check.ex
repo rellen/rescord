@@ -5,14 +5,21 @@ defmodule Rescord.Release.Check do
     * the database answers, and is PostgreSQL 18 or later;
     * the migrations that have not run, which the next start runs;
     * the store takes a file, gives it back, and deletes it;
+    * the version of libvips that reads the photos (issue 37), to compare
+      with an advisory;
+    * where the metrics listen, if they are on (issue 41);
     * the SMTP server takes the connection and the user, with the TLS of
       the settings, and sends nothing;
     * the values that the secret of the server encrypts open with it
       (ADR 0068);
+    * the virus scan of the PDFs: off, or on with a clamd that answers
+      (issue 37);
     * each provider of the assistant has what a request needs (ADR 0069).
       This check reads the database, sends no request and decrypts no key;
     * what the server does with its usage counts, and what the last send
       found (ADR 0098). It sends nothing;
+    * what the sanity checks found at their last run, and whether they still
+      run (ADR 0114). It runs no check;
     * with an address, a short email reaches that address.
 
   `Rescord.Release.check/1` runs the checks and prints them, and
@@ -24,7 +31,8 @@ defmodule Rescord.Release.Check do
   start before a check could name it.
   """
 
-  alias Rescord.{Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
+  alias Rescord.{Health, Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
+  alias Rescord.Storage.Scan
 
   @typedoc """
   The result of a check: `:ok`, `:note` for something to know that is not a
@@ -48,10 +56,10 @@ defmodule Rescord.Release.Check do
     # the next start runs them.
     of_the_database =
       if match?({:ok, _name, _words}, migrations),
-        do: [vault() | assistant()] ++ [usage()],
+        do: [vault(), scan() | assistant()] ++ [usage(), health()],
         else: []
 
-    [database(), migrations, store(), smtp()] ++
+    [database(), migrations, store(), libvips(), metrics(), smtp()] ++
       of_the_database ++
       if address, do: [test_email(address)], else: []
   end
@@ -133,6 +141,77 @@ defmodule Rescord.Release.Check do
     end
   rescue
     error -> {:fail, "store", Exception.message(error)}
+  end
+
+  @doc """
+  The version of libvips that runs, as the NIF of vix (issue 37). A fault
+  of libvips or of a decoder is fixed only by a new version of vix, so an
+  operator compares this version with an advisory.
+  """
+  @spec libvips() :: result
+  def libvips do
+    {:note, "libvips", "#{Rescord.Images.libvips_version()} reads the photos"}
+  rescue
+    error -> {:fail, "libvips", "does not load: #{Exception.message(error)}"}
+  end
+
+  @doc """
+  Where the metrics listen (issue 41): off with no port, ok on a loopback
+  address, and a note on another address, which a collector on another
+  machine reads and which has no sign-in.
+
+      iex> Rescord.Release.Check.metrics(nil)
+      {:note, "metrics", "off: RESCORD_METRICS_PORT names no port"}
+
+      iex> Rescord.Release.Check.metrics(port: 9568, ip: {127, 0, 0, 1})
+      {:ok, "metrics", "GET /metrics on 127.0.0.1 port 9568, this machine only"}
+
+      iex> Rescord.Release.Check.metrics(port: 9568, ip: {0, 0, 0, 0, 0, 0, 0, 0})
+      {:note, "metrics", "GET /metrics on :: port 9568, with no sign-in: keep the port inside the network of the server"}
+  """
+  @spec metrics(keyword | nil) :: result
+  def metrics(settings \\ Application.get_env(:rescord, RescordWeb.Telemetry)) do
+    case settings[:port] do
+      nil ->
+        {:note, "metrics", "off: RESCORD_METRICS_PORT names no port"}
+
+      port ->
+        ip = Keyword.get(settings, :ip, {127, 0, 0, 1})
+        where = "GET /metrics on #{:inet.ntoa(ip)} port #{port}"
+
+        if loopback?(ip),
+          do: {:ok, "metrics", where <> ", this machine only"},
+          else:
+            {:note, "metrics",
+             where <> ", with no sign-in: keep the port inside the network of the server"}
+    end
+  end
+
+  defp loopback?({127, _, _, _}), do: true
+  defp loopback?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
+  defp loopback?(_ip), do: false
+
+  @doc """
+  The virus scan of the PDFs (issue 37): a note when it is off, and with it
+  on, whether clamd answers a `PING`. It sends no file.
+  """
+  @spec scan() :: result
+  def scan do
+    case Scan.settings() do
+      %{scan_on: true, address: address} ->
+        case Scan.ping(address) do
+          :ok ->
+            {:ok, "scan", "clamd at #{address} answers"}
+
+          {:fault, words} ->
+            {:fail, "scan", "on, and clamd at #{address} #{words}: each PDF is refused"}
+        end
+
+      _off ->
+        {:note, "scan", "off: no PDF is scanned. A root user turns it on at /root/scan"}
+    end
+  rescue
+    error -> {:fail, "scan", "cannot read the settings: #{Exception.message(error)}"}
   end
 
   @doc """
@@ -262,6 +341,41 @@ defmodule Rescord.Release.Check do
     end
   rescue
     _error -> {:fail, "usage", "cannot read the settings of the usage counts"}
+  end
+
+  @stale_hours 3
+
+  @doc """
+  What the sanity checks found at their last run (ADR 0114): a check that
+  fails is a fault, and so is a newest run older than 3 hours, since the job
+  of the checks has then stopped. No run yet is a note: a new server runs
+  them in its first hour. It reads the results, and runs no check.
+  """
+  @spec health() :: result
+  def health do
+    summary = Health.summary(authorize?: false)
+
+    cond do
+      is_nil(summary.checked_at) ->
+        {:note, "checks", "no sanity check has run yet: the server runs them each hour"}
+
+      DateTime.diff(DateTime.utc_now(), summary.checked_at, :hour) >= @stale_hours ->
+        {:fail, "checks",
+         "the newest run of the sanity checks was on #{day(summary.checked_at)}: " <>
+           "the job of the checks has stopped"}
+
+      summary.fail > 0 ->
+        titles = Enum.map_join(summary.failing, "; ", &Health.describe(&1).title)
+        {:fail, "checks", "#{summary.fail} fail: #{titles}. See /root/health"}
+
+      summary.unknown > 0 ->
+        {:note, "checks", "#{summary.unknown} could not run. See /root/health"}
+
+      true ->
+        {:ok, "checks", "each sanity check passes"}
+    end
+  rescue
+    _error -> {:fail, "checks", "cannot read the results of the sanity checks"}
   end
 
   @doc """

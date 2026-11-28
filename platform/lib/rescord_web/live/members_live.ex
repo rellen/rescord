@@ -92,13 +92,16 @@ defmodule RescordWeb.MembersLive do
       )
       when is_binary(id) and is_binary(role_id) do
     case offered(socket, role_id) do
-      nil -> {:noreply, socket}
-      role_id -> change(socket, id, &Accounts.set_member_role(&1, role_id, &2))
+      nil ->
+        {:noreply, socket}
+
+      role_id ->
+        change(socket, id, &Accounts.set_member_role(&1, role_id, &2), "The role is given.")
     end
   end
 
   def handle_event("remove", %{"id" => id}, socket) when is_binary(id) do
-    {:noreply, socket} = change(socket, id, &Accounts.remove_member/2)
+    {:noreply, socket} = change(socket, id, &Accounts.remove_member/2, "The member is removed.")
     {:noreply, assign_former(socket)}
   end
 
@@ -118,13 +121,17 @@ defmodule RescordWeb.MembersLive do
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
-  defp change(socket, id, action) do
+  defp change(socket, id, action, words) do
     with {:ok, %{} = member} <- Accounts.member(id, options(socket)),
          :ok <- done(action.(member, options(socket))) do
       # Each open page of that user has the role as it was.
       RescordWeb.UserAuth.disconnect(member.user_id)
 
-      {:noreply, socket |> assign(problems: []) |> Cinder.Refresh.refresh_table("members")}
+      {:noreply,
+       socket
+       |> assign(problems: [])
+       |> put_flash(:info, words)
+       |> Cinder.Refresh.refresh_table("members")}
     else
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
       _not_found -> {:noreply, socket}
@@ -163,7 +170,9 @@ defmodule RescordWeb.MembersLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
+
+      <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />
 
       <.members_table
         current_user={@current_user}
@@ -174,8 +183,6 @@ defmodule RescordWeb.MembersLive do
         url_state={@url_state}
         can_erase?={@can_erase?}
       />
-
-      <.invite_form :if={@can_invite?} invite_form={@invite_form} roles={@roles} />
 
       <.former_members
         former={@former}
