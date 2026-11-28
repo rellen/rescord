@@ -75,6 +75,8 @@ defmodule RescordWeb.ListsLive do
                 retired?: &1.retired,
                 unit_ids: Map.get(&1, :unit_ids, []),
                 standard_unit_id: Map.get(&1, :standard_unit_id),
+                lowest: Map.get(&1, :lowest),
+                highest: Map.get(&1, :highest),
                 soon_days: Map.get(&1, :soon_days)
               }
             ),
@@ -161,6 +163,14 @@ defmodule RescordWeb.ListsLive do
       end
 
     value_write(socket, :measure_kind, id, &Lists.set_standard_unit(&1, unit_id, options(socket)))
+  end
+
+  def handle_event("set_range", %{"value_id" => id} = params, socket) when is_binary(id) do
+    range = Map.get(params, "range", %{})
+    lowest = non_blank(range["lowest"])
+    highest = non_blank(range["highest"])
+
+    value_write(socket, :measure_kind, id, &Lists.set_range(&1, lowest, highest, options(socket)))
   end
 
   def handle_event("set_soon_days", %{"value_id" => id} = params, socket) when is_binary(id) do

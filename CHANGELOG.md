@@ -219,6 +219,10 @@ release (ADR 0047).
     their files open as before. Only a new import waits for the check.
     It writes no version of the history of a transfer, and changes no
     other row.
+  - `20261128141450_add_measure_kind_ranges`, in each organisation: adds
+    two empty columns to the measure kinds, for the lowest and the
+    highest value of a measurement of the kind (ADR 0117). It changes no
+    row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -374,9 +378,21 @@ release (ADR 0047).
 - A new or changed email address of a user, and the address of an
   invitation, now needs one `@`, no space and 254 characters at most
   (ADR 0115). An address from before the upgrade stays as it is.
+- A new measurement in a unit of mass, volume or length (such as g, kg,
+  lb, mL or cm), or a correction of its value, unit or kind, is now
+  refused at 0 or below (ADR 0117). A measurement from before the
+  upgrade stays as it is, with its chart, and its words can still be
+  corrected: nothing needs to be cleaned by hand.
 
 ### Added
 
+- An administrator can give a kind of measurement with a standard unit a
+  range, on the page Lists, under "Measure kind": the lowest and the
+  highest value, in the standard unit (ADR 0117, issue 41). A measurement
+  outside the range is refused in any unit that converts to it, so a
+  weight typed in kg for g does not reach the journal or the chart. A new
+  standard unit converts the range, or takes it away when the two units
+  measure different things. With no range, a kind works as before.
 - The page of the reports starts with "Insights", charts of the records
   on the screen (issue 36, ADR 0116). The first is "Care, day by day": a
   square for each day of the last 26 weeks, stronger in colour for a

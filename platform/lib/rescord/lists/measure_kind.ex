@@ -38,6 +38,20 @@ defmodule Rescord.Lists.MeasureKind do
       public? true
       description "The units that a measurement of this kind can have. None: each unit"
     end
+
+    # The range is in the standard unit (ADR 0117), and only a kind with
+    # one has a range.
+    attribute :lowest, :decimal do
+      public? true
+
+      description "The lowest value of a measurement of this kind, in its standard unit. None: no lowest"
+    end
+
+    attribute :highest, :decimal do
+      public? true
+
+      description "The highest value of a measurement of this kind, in its standard unit. None: no highest"
+    end
   end
 
   relationships do
@@ -67,6 +81,16 @@ defmodule Rescord.Lists.MeasureKind do
       accept [:standard_unit_id]
 
       validate Rescord.Lists.Validations.StandardUnit
+      change Rescord.Lists.Changes.RangeFollowsStandardUnit
+    end
+
+    update :set_range do
+      description "Gives the lowest and the highest value of a measurement of this kind, in its standard unit, or takes them away"
+      # The validation reads the standard unit of the record.
+      require_atomic? false
+      accept [:lowest, :highest]
+
+      validate Rescord.Lists.Validations.Range
     end
   end
 end

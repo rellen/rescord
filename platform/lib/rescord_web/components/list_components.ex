@@ -164,6 +164,34 @@ defmodule RescordWeb.ListComponents do
         <.button type="submit">Save the standard unit of {@value.label}</.button>
       </form>
     </details>
+    <small :if={@standard && (@value.lowest || @value.highest)}>
+      Range: {range_words(@value, @standard.label)}
+    </small>
+    <details :if={@can_change? and @standard} id={"range-details-#{@value.id}"}>
+      <summary>Range of {@value.label}</summary>
+      <form id={"range-#{@value.id}"} phx-submit="set_range">
+        <input type="hidden" name="value_id" value={@value.id} />
+        <p>
+          A measurement outside this range is refused, so a mistake of the unit (kg for g)
+          does not reach the journal. Leave them empty for no range.
+        </p>
+        <.input
+          id={"range-#{@value.id}-lowest"}
+          name="range[lowest]"
+          type="decimal"
+          label={"The lowest #{@value.label}, in #{@standard.label}"}
+          value={plain_number(@value.lowest)}
+        />
+        <.input
+          id={"range-#{@value.id}-highest"}
+          name="range[highest]"
+          type="decimal"
+          label={"The highest #{@value.label}, in #{@standard.label}"}
+          value={plain_number(@value.highest)}
+        />
+        <.button type="submit">Save the range of {@value.label}</.button>
+      </form>
+    </details>
     """
   end
 
@@ -199,6 +227,24 @@ defmodule RescordWeb.ListComponents do
       </form>
     </details>
     """
+  end
+
+  # A decimal as a field holds it: no group separator, no exponent.
+  defp plain_number(nil), do: nil
+  defp plain_number(value), do: value |> Decimal.normalize() |> Decimal.to_string(:normal)
+
+  # The range of a measure kind in its standard unit (ADR 0117).
+  defp range_words(%{lowest: lowest, highest: highest}, unit) do
+    case {lowest, highest} do
+      {nil, highest} ->
+        "at most #{RescordWeb.Locale.number(highest)} #{unit}"
+
+      {lowest, nil} ->
+        "at least #{RescordWeb.Locale.number(lowest)} #{unit}"
+
+      {lowest, highest} ->
+        "#{RescordWeb.Locale.number(lowest)} to #{RescordWeb.Locale.number(highest)} #{unit}"
+    end
   end
 
   # The names of the units of a kind, in the order of the list of units.

@@ -64,6 +64,7 @@ defmodule Rescord.Journal.JournalEntry do
       validate Journal.Validations.KindHasItsFacts
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+      validate Journal.Validations.Value, before_action?: true
 
       validate compare(:ends_on, greater_than_or_equal_to: :starts_on),
         where: [present([:starts_on, :ends_on])],
@@ -96,6 +97,7 @@ defmodule Rescord.Journal.JournalEntry do
       change Journal.Changes.HappenedAt
       validate Journal.Validations.SameResident, before_action?: true
       validate Journal.Validations.UnitOfKind, before_action?: true
+      validate Journal.Validations.Value, before_action?: true
 
       validate compare(:ends_on, greater_than_or_equal_to: :starts_on),
         where: [present([:starts_on, :ends_on])],

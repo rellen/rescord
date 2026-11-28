@@ -251,6 +251,20 @@ defmodule Rescord.Lists do
   end
 
   @doc """
+  Gives a measure kind of the organisation the lowest and the highest value
+  of a measurement, in its standard unit (ADR 0117). A measurement outside
+  the range is refused. `nil` takes a bound away. Only a kind with a
+  standard unit takes a range.
+  """
+  def set_range(measure_kind_id, lowest, highest, opts \\ []) do
+    with {:ok, kind} <- Ash.get(Rescord.Lists.MeasureKind, measure_kind_id, opts) do
+      kind
+      |> Ash.Changeset.for_update(:set_range, %{lowest: lowest, highest: highest}, opts)
+      |> Ash.update()
+    end
+  end
+
+  @doc """
   The units that a measurement of a kind can have, from the units of the
   organisation, each with its `label` (ADR 0094).
 

@@ -233,6 +233,45 @@ defmodule RescordWeb.ResidentPagesTest do
       refute html =~ ~s(phx-submit="set_standard_unit")
     end
 
+    test "have the range of a kind of measurement, which an administrator sets (ADR 0117)",
+         context do
+      lists = lists!(context.organisation, context.root)
+      admin = [actor: context.administrator, tenant: context.organisation]
+      weight = lists.measure_kind.weight
+      conn = build_conn() |> sign_in(context.administrator)
+
+      # No standard unit: no range.
+      {_view, html} = open(conn, context.base <> "/lists")
+      refute html =~ "Range of Weight"
+
+      {:ok, _} = Lists.set_standard_unit(weight, lists.unit.g, admin)
+      {view, html} = open(conn, context.base <> "/lists")
+      assert html =~ "A measurement outside this range is refused"
+      refute html =~ "Range: "
+
+      {view, html} =
+        submit(view, conn, "#range-#{weight}", range: %{lowest: "50", highest: "80000"})
+
+      assert html =~ "Range: 50 to 80,000 g"
+      kind = Ash.get!(Lists.MeasureKind, weight, admin)
+      assert {Decimal.to_integer(kind.lowest), Decimal.to_integer(kind.highest)} == {50, 80_000}
+
+      # The lowest is not above the highest.
+      html =
+        view |> form("#range-#{weight}", range: %{lowest: "5", highest: "4"}) |> render_submit()
+
+      assert html =~ "Highest must not be below the lowest"
+
+      # Empty fields take the range away.
+      {_view, html} = submit(view, conn, "#range-#{weight}", range: %{lowest: "", highest: ""})
+      refute html =~ "Range: "
+      assert Ash.get!(Lists.MeasureKind, weight, admin).lowest == nil
+
+      # A member has no form.
+      {_view, html} = open(context.conn, context.base <> "/lists")
+      refute html =~ ~s(phx-submit="set_range")
+    end
+
     test "take no standard unit for a value of another list, or from a member", context do
       lists = lists!(context.organisation, context.root)
       admin = [actor: context.administrator, tenant: context.organisation]

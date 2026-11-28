@@ -55,3 +55,51 @@ anyone who asks.
 - In a container, `127.0.0.1` is the container itself, so a collector
   outside it needs `0.0.0.0` with the port published to the machine
   alone.
+
+## The ranges of the measurements
+
+### Context
+
+A measurement took any decimal (`Rescord.Journal.Measurement`, `value`).
+A weight of `-5 kg`, `0 g` or `1095 kg` for a kitten was stored, charted
+and exported. A mistake of the unit (kg for g) is the most likely error,
+and a chart then shows a jump of a thousand times. The measure kinds are
+values that each organisation names, so Rescord cannot know the right
+range of a kind.
+
+### Decision
+
+- **A rule that always holds** (`Rescord.Journal.Validations.Value`, on
+  `write` and `correct`): a measurement in a unit of mass, length or
+  volume is more than 0. A temperature can be below 0 in Celsius, and a
+  count or a score can be 0, so the other units, and a unit that Rescord
+  does not know, have no such rule (judgement call 6).
+- **A range that the organisation gives**: `lowest` and `highest` of
+  `Rescord.Lists.MeasureKind`, decimals, both optional, in the standard
+  unit of the kind. The action `set_range` has the grant of
+  `set_standard_unit`, and `Rescord.Lists.Validations.Range` refuses a
+  range with no standard unit (judgement call 7) and a lowest above the
+  highest. The page Lists has the two fields under the standard unit.
+- **The check** converts the value to the standard unit with
+  `Rescord.Units.convert/3`, and refuses a value outside the range with
+  "is outside the range of Weight: 50 g to 80000 g". The range is given
+  in the standard unit, as it is stored, not in the unit that the person
+  typed. A unit that does not convert to the standard unit is not checked
+  against the range. Outside the range is refused, not a warning
+  (judgement call 5): a warning that a volunteer clicks past would still
+  put the mistake in the chart.
+- **A new standard unit** converts the range to it when the two units
+  have the same dimension, and empties it otherwise, or when the kind has
+  no standard unit any more (`Rescord.Lists.Changes.RangeFollowsStandardUnit`).
+- **A measurement from before stays**, with its chart. A correction is
+  checked only when it gives the value, the unit or the kind, as with the
+  standard unit (ADR 0094).
+
+### Consequences
+
+- The tenant migration `20261128141450_add_measure_kind_ranges` adds two
+  empty columns, and changes no row. No kind has a range until an
+  administrator gives one.
+- The message of the range is in the words of the validation, as the
+  message of the unit is, because the error of a fact of an entry loses
+  the values beside its message on the way out.
