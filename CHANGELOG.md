@@ -427,6 +427,15 @@ release (ADR 0047).
   kind of movement and on the lot, and a sort on the time. Before, it
   showed the newest 100 movements and had no way to the older ones
   (ADR 0084).
+- The inventory page now has a search on the name of an item, a filter
+  on the category, and a filter on the state of the stock: each item
+  that needs attention, or only the items below a reorder level, with
+  stock past its expiry date, with stock that expires soon, or below
+  zero. The items are in pages of 25, 50 or 100, and the address holds
+  the search and the filters, so the address that ends in `?state=short`
+  is the list of what to order. The page also reads less: the stock
+  movements of the items that it shows, and not of each item
+  (ADR 0088).
 
 ### Fixed
 

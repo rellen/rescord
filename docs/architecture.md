@@ -104,8 +104,9 @@ We do not write those by hand.
   arrives.
 - A collection that is the page keeps its search, its filters, its sort
   and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
-  residents, the members, the organisations. A collection that is a part
-  of a page does not: the stock history of an item.
+  residents, the members, the organisations, the items of the inventory.
+  A collection that is a part of a page does not: the stock history of
+  an item.
 - Cinder is for a collection that needs a filter, a sort or pages. A
   short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
@@ -377,7 +378,9 @@ table (ADR 0025).
   and reorder levels. Rescord stores no level:
   `Rescord.Inventory.stock/1` adds the stock movements of each lot in each
   place. A movement out takes no more than the level, and a count writes
-  the difference.
+  the difference. The calculation `stock` of an item gives the same for
+  the items of one read, so a page of the inventory reads the movements
+  of the items that it shows (ADR 0088).
 - **The status is a calculation** from the arrival, the departure and an
   absence, at the instant of the read. Rescord stores no status.
 - **A read as of a past instant** takes `as_of:` in the options of a function

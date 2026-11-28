@@ -77,6 +77,11 @@ defmodule RescordWeb.InventoryPagesTest do
 
   defp level(context), do: InventoryWords.plain(stock!(context).level)
 
+  # The rows of the table of a page, with no control of the collection.
+  defp rows(html) do
+    html |> LazyHTML.from_fragment() |> LazyHTML.query("tbody") |> LazyHTML.to_html()
+  end
+
   test "the pages do not open for a user of another organisation, or with no sign-in", context do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
@@ -94,10 +99,11 @@ defmodule RescordWeb.InventoryPagesTest do
 
       {view, _html} = open(context.conn, context.path)
 
-      assert has_element?(view, "#item-#{context.hay.id} a", "Meadow hay")
-      assert has_element?(view, "#item-#{context.hay.id} td", "Food")
-      assert has_element?(view, "#item-#{context.hay.id} td", "10 bag")
-      assert has_element?(view, "#item-#{context.hay.id} [data-state=ok]", "In stock")
+      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
+      assert has_element?(view, hay <> " a", "Meadow hay")
+      assert has_element?(view, hay <> " td", "Food")
+      assert has_element?(view, hay <> " td", "10 bag")
+      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
       assert has_element?(view, "tbody tr:first-child td", "Aspen bedding")
       assert has_element?(view, "tbody tr:first-child [data-state=alert]", "Order more")
       # A member adds no item.
@@ -217,6 +223,125 @@ defmodule RescordWeb.InventoryPagesTest do
 
       assert has_element?(view, "main p[role=alert]", "You cannot do that")
       assert {:ok, [_hay]} = Inventory.stock(context.options)
+    end
+  end
+
+  describe "the items as a collection (ADR 0088)" do
+    setup context do
+      lists = context.lists
+
+      # Hay has stock. The bedding has none and wants two. The medication
+      # has stock that is past its expiry date.
+      lot!(context)
+
+      bedding =
+        Inventory.add_item!(
+          %{name: "Aspen bedding", category_id: lists.item_category.bedding, reorder_level: 2},
+          context.admin
+        )
+
+      meloxicam =
+        Inventory.add_item!(
+          %{name: "Meloxicam", category_id: lists.item_category.medication},
+          context.admin
+        )
+
+      lot!(context, %{
+        item_id: meloxicam.id,
+        code: "M-1",
+        quantity: 3,
+        expires_on: Date.add(context.today, -1)
+      })
+
+      {:ok, bedding: bedding, meloxicam: meloxicam}
+    end
+
+    test "reads the search, the filters and the sort from the address", context do
+      for {parameters, shown, hidden} <- [
+            {"", ["Aspen bedding", "Meadow hay", "Meloxicam"], []},
+            {"?search=hay", ["Meadow hay"], ["Aspen bedding", "Meloxicam"]},
+            {"?category_id=#{context.lists.item_category.bedding}", ["Aspen bedding"],
+             ["Meadow hay", "Meloxicam"]},
+            {"?state=attention", ["Aspen bedding", "Meloxicam"], ["Meadow hay"]},
+            {"?state=short", ["Aspen bedding"], ["Meadow hay", "Meloxicam"]},
+            {"?state=expired", ["Meloxicam"], ["Meadow hay", "Aspen bedding"]},
+            {"?state=expired&search=hay", [], ["Meadow hay", "Aspen bedding", "Meloxicam"]},
+            # A value that is no choice changes nothing, and makes no fault.
+            {"?state=nothing&category_id=x&page=x", ["Aspen bedding", "Meadow hay", "Meloxicam"],
+             []}
+          ] do
+        {_view, html} = open(context.conn, context.path <> parameters)
+        rows = rows(html)
+
+        for name <- shown, do: assert(rows =~ name, "#{parameters} hides #{name}")
+        for name <- hidden, do: refute(rows =~ name, "#{parameters} shows #{name}")
+      end
+
+      {_view, html} = open(context.conn, context.path <> "?sort=-name")
+      rows = rows(html)
+      assert :binary.match(rows, "Meloxicam") < :binary.match(rows, "Aspen bedding")
+    end
+
+    test "writes a filter into the address, and says when nothing matches", context do
+      {view, _html} = open(context.conn, context.path)
+
+      view
+      |> element("#items-filter-form")
+      |> render_change(%{"filters" => %{"state" => "short"}})
+
+      assert assert_patch(view) =~ "state=short"
+
+      rows = view |> render_async() |> rows()
+      assert rows =~ "Aspen bedding"
+      refute rows =~ "Meadow hay"
+
+      {_view, html} = open(context.conn, context.path <> "?state=soon")
+      assert html =~ "No item matches the search and the filters."
+      refute html =~ "The inventory has no item yet."
+    end
+
+    test "shows the state of each item of a page, and has pages", context do
+      for number <- 10..35 do
+        Inventory.add_item!(%{name: "Bowl #{number}"}, context.admin)
+      end
+
+      {view, html} = open(context.conn, context.path)
+      rows = rows(html)
+
+      # 29 items: the first page has 25, in the order of the names.
+      assert has_element?(view, "#items button[title='Next page']")
+      assert rows =~ "Aspen bedding"
+      assert rows =~ "Bowl 33"
+      refute rows =~ "Bowl 34"
+      refute rows =~ "Meadow hay"
+
+      {view, html} = open(context.conn, context.path <> "?page=2")
+      rows = rows(html)
+      assert rows =~ "Meadow hay"
+      refute rows =~ "Aspen bedding"
+
+      hay = ~s|#items tr[data-item-id="#{context.hay.id}"]|
+      assert has_element?(view, hay <> " td", "10 bag")
+      assert has_element?(view, hay <> " [data-state=ok]", "In stock")
+
+      meloxicam = ~s|#items tr[data-item-id="#{context.meloxicam.id}"]|
+      assert has_element?(view, meloxicam <> " [data-state=alert]", "past its expiry date")
+    end
+
+    test "offers each category as a choice of the filter, and each fault", context do
+      {view, _html} = open(context.conn, context.path)
+
+      for words <- ["Any category", "Food", "Bedding", "Medication"] do
+        assert has_element?(view, "#items-filter-category_id-options label", words)
+      end
+
+      for {words, value} <- InventoryWords.fault_options() do
+        assert has_element?(
+                 view,
+                 ~s|#items-filter-state-options input[value="#{value}"] + span|,
+                 words
+               )
+      end
     end
   end
 

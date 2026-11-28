@@ -304,9 +304,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
     one for `found.filtered?`, and one for a collection with nothing yet.
   - What a row shows is a load of the query, or a thing that the page reads
     once for the organisation: the page does not see the rows of Cinder.
+    Give the loads in the option `query` (`query: [load: [...]]`): the
+    option `load` of a `query_to_` function does nothing to the query.
     A field that Elixir calculates takes no sort and no filter of Cinder.
     For a search on one, the domain narrows the query, as
-    `Rescord.Accounts.members_with_email/2` does.
+    `Rescord.Accounts.members_with_email/2` does. For a filter on one, a
+    `<:filter>` slot takes a function in `fn`, and the domain narrows
+    the query, as `Rescord.Inventory.with_fault/3` does (ADR 0088). Make
+    that function once, in `mount`, and find the value of the address
+    in a fixed list: never make an atom from it.
   - When the query needs a filter that the web layer cannot write, the
     domain has a function that returns the query, as
     `Rescord.Inventory.query_to_history/2` does.

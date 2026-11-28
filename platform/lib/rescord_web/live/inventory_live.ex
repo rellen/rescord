@@ -5,18 +5,24 @@ defmodule RescordWeb.InventoryLive do
 
   Each member reads the inventory. An administrator adds an item here. The
   page of an item has its lots and what happened to its stock.
+
+  The items are a collection (ADR 0088): a search on the name, a filter on
+  the category and on the state of the stock, and pages. The address holds
+  them (ADR 0084), so `?state=short` is the list of the items to order.
+  Cinder reads those parameters, and this page reads none of them.
   """
 
   use RescordWeb, :live_view
+  use Cinder.UrlSync
 
   import RescordWeb.InventoryComponents
 
   alias Rescord.{Accounts, Inventory, Lists}
+  alias RescordWeb.InventoryWords
 
   @impl true
   def mount(_params, _session, socket) do
     options = options(socket)
-    {:ok, stock} = Inventory.stock(options)
     can_add? = Inventory.role_can?(socket.assigns.role, :item, :add)
 
     {categories, units} =
@@ -32,7 +38,8 @@ defmodule RescordWeb.InventoryLive do
      assign(socket,
        page_title: "Inventory",
        problems: [],
-       stock: stock,
+       all_categories: all_categories(options),
+       with_fault: &with_fault(&1, &2, options),
        can_add?: can_add?,
        categories: categories,
        units: units,
@@ -45,6 +52,28 @@ defmodule RescordWeb.InventoryLive do
   end
 
   defp choices(values), do: Enum.map(values, &{to_string(&1.label), &1.id})
+
+  # Each category of the organisation, as the choices of the filter. A
+  # category that an administrator retired is one of them: an item can
+  # still have it.
+  defp all_categories(options) do
+    case Lists.values(:item_category, options) do
+      {:ok, values} -> choices(values)
+      {:error, _error} -> []
+    end
+  end
+
+  # The filter on the state of the stock. The value comes from the address
+  # or from the form of the filter: a value that names no fault changes
+  # nothing.
+  defp with_fault(query, %{value: value}, options) do
+    case InventoryWords.fault_of(value) do
+      nil -> query
+      fault -> Inventory.with_fault(query, fault, options)
+    end
+  end
+
+  defp with_fault(query, _filter, _options), do: query
 
   @impl true
   def handle_event("add", %{"item" => fields}, socket) when is_map(fields) do
@@ -109,7 +138,13 @@ defmodule RescordWeb.InventoryLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <.items_table stock={@stock} organisation={@organisation} />
+      <.items_table
+        organisation={@organisation}
+        user={@current_user}
+        url_state={@url_state}
+        categories={@all_categories}
+        with_fault={@with_fault}
+      />
 
       <.new_item :if={@can_add?} form={@form} categories={@categories} units={@units} />
     </Layouts.app>
