@@ -90,11 +90,8 @@ defmodule RescordWeb.RootScanLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/root"}>Root</.link>
-      </nav>
-
       <.header>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
         Virus scan
         <:subtitle>
           <.state :if={@settings.scan_on} kind="ok">On</.state>

@@ -267,11 +267,8 @@ defmodule RescordWeb.CareInsightsLive do
       inbox={@inbox}
       section={:reports}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/reports"}>Reports</.link>
-      </nav>
-
       <.header icon={Icons.section(:insights)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/reports"}>Reports</:crumb>
         Care, day by day
         <:subtitle>Are the routines of {@organisation.name} kept?</:subtitle>
       </.header>
