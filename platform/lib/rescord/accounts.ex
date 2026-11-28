@@ -780,6 +780,36 @@ defmodule Rescord.Accounts do
   def error_messages(error) when is_exception(error), do: error_messages(%{errors: [error]})
   def error_messages(_error), do: ["That did not work"]
 
+  @doc """
+  The messages of an error that name a field, each with its field, in the
+  words of `error_messages/1`: a form shows each one at its field
+  (ADR 0111). A message that names no field is not in the list.
+
+      iex> error = Ash.Error.Changes.Required.exception(field: :name)
+      iex> Rescord.Accounts.field_errors(%{errors: [error]})
+      [name: "Name is required"]
+  """
+  @spec field_errors(term) :: [{atom, String.t()}]
+  def field_errors(%{errors: errors}) when is_list(errors) do
+    Enum.flat_map(errors, fn
+      %{errors: [_ | _]} = inner ->
+        field_errors(inner)
+
+      error ->
+        case field_of(error) do
+          nil -> []
+          field -> Enum.map(error_messages(%{errors: [error]}), &{field, &1})
+        end
+    end)
+  end
+
+  def field_errors(error) when is_exception(error), do: field_errors(%{errors: [error]})
+  def field_errors(_error), do: []
+
+  defp field_of(%{field: field}) when is_atom(field) and not is_nil(field), do: field
+  defp field_of(%{fields: [field | _]}) when is_atom(field), do: field
+  defp field_of(_error), do: nil
+
   # An error of Rescord itself (ADR 0077, E2) says its words after the name
   # of its field, when it has one, and with no bread crumbs of Ash in front.
   defp message(%module{} = error) do

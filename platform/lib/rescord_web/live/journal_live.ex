@@ -185,7 +185,7 @@ defmodule RescordWeb.JournalLive do
 
   defp search(query, _columns, text), do: Journal.with_text(query, text)
 
-  defp assign_form(socket, fields) do
+  defp assign_form(socket, fields, error \\ nil) do
     fields = text_fields(fields)
     kind = JournalWords.kind_of(fields["kind"]) || :general
     measure_kind = fields["measure_kind_id"]
@@ -200,7 +200,7 @@ defmodule RescordWeb.JournalLive do
         else: fields
 
     assign(socket,
-      form: typed_form(fields, as: :entry),
+      form: typed_form(fields, as: :entry, error: error),
       kind: kind,
       measure_kind: measure_kind,
       units: RescordWeb.MeasurementUnits.options(units, measure_kind),
@@ -241,7 +241,7 @@ defmodule RescordWeb.JournalLive do
     else
       {:error, error} ->
         {:noreply,
-         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
+         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields, error)}
     end
   end
 

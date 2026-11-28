@@ -80,10 +80,10 @@ defmodule RescordWeb.ResidentFormLive do
     )
   end
 
-  defp assign_form(socket, fields) do
+  defp assign_form(socket, fields, error \\ nil) do
     fields = text_fields(fields)
 
-    assign(socket, form: typed_form(fields, as: :resident), fields: fields)
+    assign(socket, form: typed_form(fields, as: :resident, error: error), fields: fields)
   end
 
   defp fields_of(resident) do
@@ -154,7 +154,7 @@ defmodule RescordWeb.ResidentFormLive do
         {:noreply,
          socket
          |> assign(problems: Rescord.Accounts.error_messages(error))
-         |> assign_form(fields)}
+         |> assign_form(fields, error)}
     end
   end
 

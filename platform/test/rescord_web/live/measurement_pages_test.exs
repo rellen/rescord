@@ -732,6 +732,19 @@ defmodule RescordWeb.MeasurementPagesTest do
         })
 
       assert html =~ "Unit is not a unit that Rescord converts to g, the unit of this kind"
+
+      # The field says it too, and a screen reader hears it there (ADR 0111).
+      assert has_element?(
+               view,
+               "#measurement select[name='measurement[unit_id]'][aria-invalid=true][aria-describedby^=measurement_unit_id-error]"
+             )
+
+      assert has_element?(
+               view,
+               "#measurement_unit_id-error",
+               "Unit is not a unit that Rescord converts"
+             )
+
       assert {:ok, []} = Journal.entries(context.biscuit.id, context.options)
     end
 

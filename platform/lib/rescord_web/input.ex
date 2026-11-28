@@ -12,6 +12,11 @@ defmodule RescordWeb.Input do
   (`use RescordWeb, :live_view`). `text_fields/1` gives the fields that
   `typed_form/2` keeps, for a page that reads them itself. A page reads one
   field with `Shoddy.Strings.non_blank/1`.
+
+  A page that an action refused passes the error as `error:`, and each
+  message of the error that names a field is shown at that field, with
+  `aria-invalid` (ADR 0111). `Rescord.Accounts.error_messages/1` still gives
+  the whole list for the problems of the page.
   """
 
   @doc """
@@ -26,6 +31,12 @@ defmodule RescordWeb.Input do
       %{}
   """
   @spec typed_form(term, keyword) :: Phoenix.HTML.Form.t()
-  def typed_form(fields, opts),
-    do: Phoenix.Component.to_form(Shoddy.Maps.text_fields(fields), opts)
+  def typed_form(fields, opts) do
+    {error, opts} = Keyword.pop(opts, :error)
+
+    errors =
+      for {field, message} <- Rescord.Accounts.field_errors(error), do: {field, {message, []}}
+
+    Phoenix.Component.to_form(Shoddy.Maps.text_fields(fields), Keyword.put(opts, :errors, errors))
+  end
 end

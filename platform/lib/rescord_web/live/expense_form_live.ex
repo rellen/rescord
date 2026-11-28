@@ -123,7 +123,8 @@ defmodule RescordWeb.ExpenseFormLive do
     end
   end
 
-  defp assign_form(socket, fields), do: assign(socket, form: typed_form(fields, as: :expense))
+  defp assign_form(socket, fields, error \\ nil),
+    do: assign(socket, form: typed_form(fields, as: :expense, error: error))
 
   defp fields_of(expense) do
     %{
@@ -163,7 +164,7 @@ defmodule RescordWeb.ExpenseFormLive do
         {:noreply,
          socket
          |> assign(problems: Accounts.error_messages(error))
-         |> assign_form(fields)}
+         |> assign_form(fields, error)}
     end
   end
 

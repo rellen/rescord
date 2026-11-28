@@ -80,6 +80,21 @@ The maintainer chose these on 28 November 2026, with the bugs above.
 - The list of the expenses of one resident records a new expense of that
   resident.
 
+### Problems at their fields
+
+- `Rescord.Accounts.field_errors/1` gives each message of an error that
+  names a field, in the words of `error_messages/1`. `typed_form/2` takes
+  the error as `error:`, so `<.input>` shows the message at its field,
+  with `aria-invalid` and `aria-describedby`. The forms of a measurement,
+  a journal entry, a resident, an expense, a task and the movements of an
+  item do so. The page still lists every problem.
+- `forms.ts` notes the form that a person sends. After the patch of a
+  refusal, the first field with a problem takes the focus, unless the
+  person went on elsewhere. A problem with no field is scrolled into
+  sight.
+- The place and the look of the list of problems are the work of issue
+  35, not of this ADR.
+
 ## Consequences
 
 - The browser test of ADR 0090 holds the row that leaves and the menu of

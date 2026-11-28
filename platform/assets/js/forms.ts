@@ -1,5 +1,7 @@
 // The forms of a person who types (ADR 0111).
 //
+//   - A form that the server refused gives the focus to its first field
+//     with a problem (`showProblem`, after each patch).
 //   - A form in a <details>: when a person opens it from its summary, the
 //     focus goes to its first field, so they type at once. A <details>
 //     that LiveView opens again after a patch (ADR 0031) keeps the focus
@@ -43,4 +45,44 @@ export function listen(target: Document = document): void {
     event.preventDefault()
     field.form.requestSubmit()
   })
+}
+
+// The form that a person sent last, and when.
+let sent: {form: HTMLFormElement; at: number} | null = null
+
+/** Notes each form that a person sends, for `showProblem`. */
+export function watch(target: Document = document): void {
+  target.addEventListener(
+    "submit",
+    (event: Event) => {
+      if (event.target instanceof HTMLFormElement) sent = {form: event.target, at: performance.now()}
+    },
+    true
+  )
+}
+
+/**
+ * Runs after a patch. When the server refused the form that the person
+ * just sent, the first field with a problem (`aria-invalid`) takes the
+ * focus, so the person hears it and types at once. A problem with no field
+ * is scrolled into sight. Nothing moves when the person went on elsewhere.
+ */
+export function showProblem(): void {
+  const last = sent
+  sent = null
+
+  if (!last || !last.form.isConnected || performance.now() - last.at > 10000) return
+
+  const active = document.activeElement
+  if (active && active !== document.body && !last.form.contains(active)) return
+
+  const wrong = Array.from(last.form.querySelectorAll<HTMLElement>('[aria-invalid="true"]')).find(shows)
+
+  if (wrong) {
+    wrong.focus()
+    return
+  }
+
+  const alert = Array.from(document.querySelectorAll<HTMLElement>('main [role="alert"]')).find(shows)
+  alert?.scrollIntoView({block: "nearest"})
 }

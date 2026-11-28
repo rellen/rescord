@@ -603,6 +603,26 @@ defmodule RescordWeb.ResidentPagesTest do
       assert {resident.name, resident.status} == {"Biscuit", :in_care}
     end
 
+    test "marks each field that the action refused, with its problem", context do
+      {view, _html} = open(context.conn, context.base <> "/residents/new")
+
+      # The browser sends each field of the form, an empty one too.
+      html =
+        render_submit(view, "save", %{
+          "resident" => %{"name" => "Pip", "species_id" => "", "arrival_kind" => "stray"}
+        })
+
+      assert html =~ "Species is required"
+
+      assert has_element?(
+               view,
+               "#resident select[name='resident[species_id]'][aria-invalid=true][aria-describedby^=resident_species_id-error]"
+             )
+
+      assert has_element?(view, "#resident_species_id-error", "Species is required")
+      refute has_element?(view, "#resident input[name='resident[name]'][aria-invalid]")
+    end
+
     test "puts today in the date of the arrival when a person chooses how it came", context do
       today = Date.to_iso8601(Rescord.Accounts.today(context.organisation))
       {view, _html} = open(context.conn, context.base <> "/residents/new")

@@ -848,6 +848,10 @@ release (ADR 0047).
 
 ### Changed
 
+- A form that Rescord refuses now marks each field with a problem and
+  says the problem under it, and that field gets the focus. Before, the
+  problems were only in a list at the top of the page, which can be out
+  of sight, and the focus stayed on the button (ADR 0111).
 - The forms take fewer keys. A form that a person opens gives the focus to
   its first field, and Ctrl or Cmd with Enter sends a form from its note.
   After a measurement, the form stays open with the same kind and unit,

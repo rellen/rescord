@@ -115,7 +115,7 @@ defmodule RescordWeb.MeasurementsLive do
   # standard unit it is the unit of the newest measurement of that kind,
   # when the form offers it: a person who weighs in grams does not choose
   # grams each day.
-  defp assign_form(socket, fields) do
+  defp assign_form(socket, fields, error \\ nil) do
     fields = text_fields(fields)
     kind_id = fields["measure_kind_id"]
     units = MeasurementUnits.options(socket.assigns.measurement_units, kind_id)
@@ -127,7 +127,7 @@ defmodule RescordWeb.MeasurementsLive do
         else: fields
 
     assign(socket,
-      form: typed_form(fields, as: :measurement),
+      form: typed_form(fields, as: :measurement, error: error),
       form_kind: kind_id,
       units: units,
       unit_needed?: MeasurementUnits.needed?(socket.assigns.measurement_units, kind_id)
@@ -180,7 +180,7 @@ defmodule RescordWeb.MeasurementsLive do
     else
       {:error, error} ->
         {:noreply,
-         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
+         socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields, error)}
     end
   end
 

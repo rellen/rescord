@@ -261,6 +261,25 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> assert_has("#record[open] input[name='measurement[value]']:focus")
   end
 
+  # A number field dropped the comma, so "1,2" was 12 (ADR 0111). Now the
+  # journal refuses it, and the field says so and has the focus.
+  @tag browser_context_opts: [viewport: @phone]
+  test "a refused form gives the focus to its first wrong field",
+       %{conn: session, pages: pages} = context do
+    measurements = Enum.find(pages, &(&1 =~ ~r{/residents/[^/]+/measurements$}))
+
+    session
+    |> sign_in_as_administrator(context, "focus.problem")
+    |> visit(measurements)
+    |> assert_connected()
+    |> evaluate(~s|document.querySelector("#record > summary").click()|)
+    |> select("What was measured", option: "Weight")
+    |> fill_in("Value", with: "1,2")
+    |> press("#measurement input[name='measurement[value]']", "Enter")
+    |> assert_has("#measurement input[name='measurement[value]'][aria-invalid=true]:focus")
+    |> assert_has("#measurement_value-error", text: "Value is invalid")
+  end
+
   @tag browser_context_opts: [viewport: @phone]
   test "the menu of a phone closes when the Tab key leaves it",
        %{conn: session, home: home} = context do
