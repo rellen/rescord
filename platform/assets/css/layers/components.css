@@ -3156,6 +3156,7 @@ meter {
     grid-template-areas:
       "head"
       "about"
+      "manage"
       "log"
       "problem"
       "say";
@@ -3167,6 +3168,7 @@ meter {
     grid-template-areas:
       "aside head"
       "aside about"
+      "aside manage"
       "aside log"
       "aside problem"
       "aside say";
