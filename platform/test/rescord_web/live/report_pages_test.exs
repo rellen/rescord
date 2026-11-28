@@ -67,6 +67,11 @@ defmodule RescordWeb.ReportPagesTest do
     assert has_element?(view, ~s(form#task-sheet[action="#{home}/reports/tasks.pdf"]))
     assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf"]))
     assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf"]))
+
+    assert has_element?(view, ~s(form#expenses[action="#{home}/reports/expenses.pdf"]))
+    assert has_element?(view, ~s(input#expenses-from[name="from"]))
+    assert has_element?(view, ~s(input#expenses-to[name="to"][value="#{today}"]))
+    assert has_element?(view, "#expenses-periods a", "Last year")
     assert has_element?(view, ~s(a[href="#{home}/residents"]), "Choose a resident")
 
     # No form of the page has a method other than GET, and none speaks to
@@ -129,6 +134,13 @@ defmodule RescordWeb.ReportPagesTest do
 
     body =
       conn
+      |> get("#{home}/reports/expenses.pdf", %{"from" => "2026-01-01", "to" => "2026-01-31"})
+      |> pdf("expenses-2026-01-01-to-2026-01-31.pdf")
+
+    assert body =~ "Expenses, Wattle Creek"
+
+    body =
+      conn
       |> get("#{home}/residents/#{biscuit.id}/record.pdf", %{
         "journal" => "all",
         "photos" => "true"
@@ -162,7 +174,10 @@ defmodule RescordWeb.ReportPagesTest do
           {"movements.pdf", %{"from" => today}, "Give the first day and the last day."},
           {"movements.pdf", %{"from" => today, "to" => "2026-01-01"},
            "The last day is before the first day."},
-          {"movements.pdf", %{"from" => today, "to" => tomorrow}, "The last day is after today."}
+          {"movements.pdf", %{"from" => today, "to" => tomorrow}, "The last day is after today."},
+          {"expenses.pdf", %{"to" => today}, "Give the first day and the last day."},
+          {"expenses.pdf", %{"from" => today, "to" => "2026-01-01"},
+           "The last day is before the first day."}
         ] do
       conn = get(conn, "#{home}/reports/#{path}", params)
       assert redirected_to(conn) == "#{home}/reports"

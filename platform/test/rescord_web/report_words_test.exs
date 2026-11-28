@@ -257,4 +257,84 @@ defmodule RescordWeb.ReportWordsTest do
     assert pen_3.groups == [%{name: "Biscuit and Pepper", members: ~w(Biscuit Pepper)}]
     assert housing.unplaced == ["Clover"]
   end
+
+  test "the expenses of a period, for a person who manages them", context do
+    period = %{from: Date.add(context.today, -30), to: context.today}
+    expenses = data(%{context | options: context.admin}, :expenses, period)
+
+    assert expenses.frame.title == "Expenses"
+    assert expenses.frame.subtitle == "From #{date(context, 30)} to #{date(context, 0)}"
+    assert expenses.scope == "Each expense of the organisation with a payment in these days."
+
+    assert value(expenses.summary, "Expenses in these days") == "5"
+    assert value(expenses.summary, "Approved or paid back") == "$312.20"
+    assert value(expenses.summary, "Wait for a decision") == "$42.50"
+    assert value(expenses.summary, "To pay back now") == "$186.00"
+
+    assert expenses.by_state == [
+             %{label: "Waits for a decision", count: "1", amount: "$42.50"},
+             %{label: "To pay back", count: "1", amount: "$186.00"},
+             %{label: "Approved", count: "1", amount: "$95.00"},
+             %{label: "Paid back", count: "1", amount: "$31.20"},
+             %{label: "Declined", count: "1", amount: "$60.00"}
+           ]
+
+    assert expenses.by_category == [
+             %{label: "Feed", count: "2", amount: "$126.20"},
+             %{label: "Veterinary", count: "1", amount: "$186.00"}
+           ]
+
+    assert expenses.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+
+    # The newest payment is first.
+    assert Enum.map(expenses.expenses, & &1.description) == [
+             "Guinea pig pellets",
+             "Fuel for the vet run",
+             "Vet consult for Biscuit",
+             "A new carrier",
+             "Meadow hay, 10 bags"
+           ]
+
+    vet = Enum.find(expenses.expenses, &(&1.description == "Vet consult for Biscuit"))
+
+    assert %{
+             date: date(context, 5),
+             payee: "Northside Vet Clinic",
+             category: "Veterinary",
+             resident: "Biscuit",
+             paid_by: "mel@example.org",
+             state: "To pay back",
+             receipts: "1",
+             amount: "$186.00"
+           } == Map.delete(vet, :description) |> Map.delete(:number)
+
+    assert vet.number =~ ~r/^\d+$/
+
+    hay = Enum.find(expenses.expenses, &(&1.description == "Meadow hay, 10 bags"))
+    assert %{paid_by: "Wattle Creek", state: "Approved", resident: nil, receipts: "0"} = hay
+  end
+
+  test "the expenses of a period hold only what the person reads", context do
+    period = %{from: Date.add(context.today, -30), to: context.today}
+    expenses = data(context, :expenses, period)
+
+    assert expenses.scope =~ "Only the expenses that mel@example.org recorded or paid."
+    assert value(expenses.summary, "Expenses in these days") == "3"
+
+    assert Enum.sort(Enum.map(expenses.expenses, & &1.description)) == [
+             "A new carrier",
+             "Fuel for the vet run",
+             "Vet consult for Biscuit"
+           ]
+
+    assert expenses.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+
+    # A period with no expense, and what the organisation owes now is still there.
+    old = %{from: Date.add(context.today, -60), to: Date.add(context.today, -40)}
+    none = data(context, :expenses, old)
+    assert none.expenses == []
+    assert none.by_state == []
+    assert value(none.summary, "Approved or paid back") == "$0.00"
+    assert none.owed == [%{label: "mel@example.org", count: "1", amount: "$186.00"}]
+  end
 end

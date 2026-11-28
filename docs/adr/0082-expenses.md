@@ -186,7 +186,16 @@ Two powers, in the area "Expenses" of the roles page (ADR 0024):
   `<name>_currency`. The export reads as the person, so `expenses.csv`
   holds each expense only for a person who manages the expenses; the
   README says so. The files of the receipts are not in the ZIP.
-- **PDF**: one more report of `Rescord.Reports` (ADR 0076), "Expenses".
+- **PDF**: one more report of `Rescord.Reports` (ADR 0076), "Expenses",
+  with a first day and a last day:
+  `/o/<short name>/reports/expenses.pdf`. It holds the sums by state, the
+  sums by category of the expenses that are approved or paid back, what
+  the organisation owes to each member now, and the list. It reads as the
+  person, as each report does, so a person who does not manage the
+  expenses gets their own, and the document says which of the two it
+  holds. Each role can make it, because it gives a role nothing new. The
+  page of the expenses links to it with the dates of its filter, or with
+  this month. The period can end after today.
 
 ## Not in this work
 

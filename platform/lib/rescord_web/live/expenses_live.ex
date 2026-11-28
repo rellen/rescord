@@ -41,24 +41,38 @@ defmodule RescordWeb.ExpensesLive do
        people: Map.new(members, &{&1.user_id, to_string(&1.email)}),
        categories: for(value <- categories, do: {to_string(value.label), value.id}),
        resident: nil,
-       limits: %{}
+       limits: %{},
+       period: period(%{}, socket.assigns.organisation)
      )}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
+    limits =
+      for {key, value} <- params, key in @limits, is_binary(value), into: %{}, do: {key, value}
+
     {:noreply,
      assign(socket,
        resident: resident(socket, params["resident"]),
-       limits:
-         for(
-           {key, value} <- params,
-           key in @limits,
-           is_binary(value),
-           into: %{},
-           do: {key, value}
-         )
+       limits: limits,
+       period: period(limits, socket.assigns.organisation)
      )}
+  end
+
+  # The first and the last day of the report as PDF: the dates of the filter
+  # when it has both, or else this month until today.
+  defp period(limits, organisation) do
+    today = Accounts.today(organisation)
+
+    with text when is_binary(text) <- limits["incurred_on"],
+         [from, to] <- String.split(text, ","),
+         {:ok, from} <- Date.from_iso8601(from),
+         {:ok, to} <- Date.from_iso8601(to),
+         true <- Date.compare(from, to) != :gt do
+      {from, to}
+    else
+      _no_period -> {Date.beginning_of_month(today), today}
+    end
   end
 
   defp resident(socket, id) when is_binary(id) do
@@ -192,6 +206,15 @@ defmodule RescordWeb.ExpensesLive do
           download
         >
           These expenses as CSV
+        </a>
+        <a
+          id="expenses-pdf"
+          href={
+            ~p"/o/#{@organisation.short_name}/reports/expenses.pdf?#{[from: Date.to_iso8601(elem(@period, 0)), to: Date.to_iso8601(elem(@period, 1))]}"
+          }
+          data-variant="secondary"
+        >
+          Report of {ResidentWords.date(elem(@period, 0))} to {ResidentWords.date(elem(@period, 1))} as PDF
         </a>
       </p>
     </Layouts.app>

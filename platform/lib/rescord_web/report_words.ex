@@ -28,7 +28,8 @@ defmodule RescordWeb.ReportWords do
     movements: ReportWords.Movements,
     task_sheet: ReportWords.TaskSheet,
     stock: ReportWords.Stock,
-    housing: ReportWords.Housing
+    housing: ReportWords.Housing,
+    expenses: ReportWords.Expenses
   }
 
   @doc """

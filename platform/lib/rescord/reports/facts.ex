@@ -27,7 +27,8 @@ defmodule Rescord.Reports.Facts do
     movements: Facts.Movements,
     task_sheet: Facts.TaskSheet,
     stock: Facts.Stock,
-    housing: Facts.Housing
+    housing: Facts.Housing,
+    expenses: Facts.Expenses
   }
 
   @doc "The facts of `report`, or the error of the read that failed."

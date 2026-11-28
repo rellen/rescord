@@ -141,6 +141,20 @@ defmodule RescordWeb.ExpensePagesTest do
       assert html =~ "Fuel"
       refute html =~ "Vet consult for Biscuit"
       assert has_element?(view, "p[data-downloads] a[href*='expenses.csv?status=declined']")
+
+      # The report as PDF has a period: this month until today, or the dates
+      # of the filter.
+      today = Rescord.Accounts.today(context.organisation)
+      month = "from=#{Date.beginning_of_month(today)}&to=#{today}"
+      assert has_element?(view, "a#expenses-pdf[href$='reports/expenses.pdf?#{month}']")
+
+      {view, _html} = open(context.conn, context.path <> "?incurred_on=2026-10-01,2026-10-31")
+
+      assert has_element?(
+               view,
+               "a#expenses-pdf[href$='reports/expenses.pdf?from=2026-10-01&to=2026-10-31']",
+               "Report of 1 October 2026 to 31 October 2026 as PDF"
+             )
     end
 
     test "holds the expenses of one resident", context do

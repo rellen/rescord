@@ -34,7 +34,8 @@ defmodule Rescord.Reports do
       Rescord.Journal,
       Rescord.Photos,
       Rescord.Tasks,
-      Rescord.Inventory
+      Rescord.Inventory,
+      Rescord.Expenses
     ]
 
     # The web layer words the facts (`Rescord.Reports.Wording`).
@@ -50,10 +51,20 @@ defmodule Rescord.Reports do
       define :task_sheet, action: :task_sheet
       define :stock, action: :stock
       define :housing, action: :housing
+      define :expenses, action: :expenses, args: [:from, :to]
     end
   end
 
-  @reports [:resident_record, :cage_card, :register, :movements, :task_sheet, :stock, :housing]
+  @reports [
+    :resident_record,
+    :cage_card,
+    :register,
+    :movements,
+    :task_sheet,
+    :stock,
+    :housing,
+    :expenses
+  ]
 
   @doc "The reports, each by the name of its action."
   @spec reports() :: [atom]

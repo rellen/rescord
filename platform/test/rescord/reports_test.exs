@@ -42,7 +42,8 @@ defmodule Rescord.ReportsTest do
       movements: Reports.movements(Date.add(today, -90), today, options),
       task_sheet: Reports.task_sheet(options),
       stock: Reports.stock(options),
-      housing: Reports.housing(options)
+      housing: Reports.housing(options),
+      expenses: Reports.expenses(Date.add(today, -90), today, options)
     ]
   end
 
@@ -69,7 +70,8 @@ defmodule Rescord.ReportsTest do
         movements: "Arrivals and departures",
         task_sheet: "Tasks of the day",
         stock: "Stock",
-        housing: "Housing"
+        housing: "Housing",
+        expenses: "Expenses"
       }
 
       for {report, result} <- reports do
@@ -223,6 +225,7 @@ defmodule Rescord.ReportsTest do
       end
 
       pdf!(Reports.movements(Date.add(context.today, -30), context.today, context.options))
+      pdf!(Reports.expenses(Date.add(context.today, -30), context.today, context.options))
     end
 
     test "the reports of a resident with few facts render", context do
@@ -268,6 +271,14 @@ defmodule Rescord.ReportsTest do
 
       assert {:error, %Ash.Error.Invalid{errors: [%{field: :to, message: "is after today"}]}} =
                Reports.movements(context.today, tomorrow, context.options)
+
+      assert {:error, %Ash.Error.Invalid{errors: [error]}} =
+               Reports.expenses(context.today, Date.add(context.today, -1), context.options)
+
+      assert %{field: :to, message: "is before the first day"} = error
+
+      # A period of the expenses can end after today: this year, for example.
+      pdf!(Reports.expenses(context.today, tomorrow, context.options))
 
       # The tasks of tomorrow are a fair question.
       pdf!(Reports.task_sheet(%{on: tomorrow}, context.options))

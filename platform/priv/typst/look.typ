@@ -134,10 +134,13 @@
 
 // A table of records. `columns` are the widths, `head` the words of the
 // header, which each page repeats, and `rows` a list of lists of cells.
-#let records(columns, head, rows, size: 9pt) = {
+// `aligns` is the side of each column, such as `(left, right)`, for a table
+// with a column of numbers.
+#let records(columns, head, rows, size: 9pt, aligns: auto) = {
   set text(size: size)
   table(
     columns: columns,
+    align: aligns,
     stroke: (x, y) => (bottom: 0.5pt + edge),
     inset: (x: 1.8mm, y: 2mm),
     fill: (x, y) => if y == 0 { wash },

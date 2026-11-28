@@ -69,6 +69,7 @@ defmodule RescordWeb.Router do
     get "/o/:organisation/reports/tasks.pdf", ReportController, :task_sheet
     get "/o/:organisation/reports/stock.pdf", ReportController, :stock
     get "/o/:organisation/reports/housing.pdf", ReportController, :housing
+    get "/o/:organisation/reports/expenses.pdf", ReportController, :expenses
 
     # The files of the receipts of the expenses, and the expenses as a CSV
     # file (ADR 0082).

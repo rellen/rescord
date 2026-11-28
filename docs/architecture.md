@@ -597,7 +597,7 @@ is in the export, or `Rescord.Export.excluded/0` says why not.
 
 ### Reports
 
-**A report is a PDF that an action writes** (ADR 0076). Each of the seven
+**A report is a PDF that an action writes** (ADR 0076). Each of the eight
 reports is a generic action of `Rescord.Reports.Report`, a resource with
 no table, and returns an `AshTypst.Document`. `Rescord.Reports.Render`
 runs it in three steps. A module below `Rescord.Reports.Facts` reads the

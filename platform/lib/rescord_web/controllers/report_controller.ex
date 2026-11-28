@@ -8,7 +8,8 @@ defmodule RescordWeb.ReportController do
     * `/o/<short name>/reports/register.pdf`, with `on`;
     * `/o/<short name>/reports/movements.pdf`, with `from` and `to`;
     * `/o/<short name>/reports/tasks.pdf`, with `on`;
-    * `/o/<short name>/reports/stock.pdf` and `/o/<short name>/reports/housing.pdf`.
+    * `/o/<short name>/reports/stock.pdf` and `/o/<short name>/reports/housing.pdf`;
+    * `/o/<short name>/reports/expenses.pdf`, with `from` and `to`.
 
   Each is a `GET`, so a link and a form with no script can ask for one, and
   a download goes through a controller, because a page of LiveView cannot
@@ -99,6 +100,20 @@ defmodule RescordWeb.ReportController do
       options
       |> Reports.housing()
       |> answer(conn, organisation, "housing-#{day(nil, organisation)}.pdf")
+    end)
+  end
+
+  def expenses(conn, params) do
+    with_organisation(conn, params, fn organisation, options ->
+      with {:ok, %Date{} = from} <- date(params["from"]),
+           {:ok, %Date{} = to} <- date(params["to"]) do
+        from
+        |> Reports.expenses(to, options)
+        |> answer(conn, organisation, "expenses-#{from}-to-#{to}.pdf")
+      else
+        {:ok, nil} -> {:error, "Give the first day and the last day."}
+        error -> error
+      end
     end)
   end
 

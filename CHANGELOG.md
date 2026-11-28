@@ -308,6 +308,10 @@ release (ADR 0047).
 - The list of the expenses downloads as a CSV file, with the filters of
   the page, for a spreadsheet or for the import of an accounting system.
   The amount is a plain number with the code of its currency beside it.
+- The expenses of a period are a new report as PDF, on the page Reports
+  and from a link below the list of the expenses: the sums by state and
+  by category, what the organisation owes to each member, and the list.
+  It holds what the person who makes it can read.
 - The lists page has a new list, "Expense category", and the page of the
   roles has a new area, "Expenses", with two powers. The page of a
   resident links to its expenses.

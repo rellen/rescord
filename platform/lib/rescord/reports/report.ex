@@ -60,6 +60,10 @@ defmodule Rescord.Reports.Report do
     template :housing do
       source "housing.typ"
     end
+
+    template :expenses do
+      source "expenses.typ"
+    end
   end
 
   rate_limit do
@@ -72,6 +76,7 @@ defmodule Rescord.Reports.Report do
     action :task_sheet, limit: 30, per: :timer.minutes(1), key: &__MODULE__.person_key/2
     action :stock, limit: 30, per: :timer.minutes(1), key: &__MODULE__.person_key/2
     action :housing, limit: 30, per: :timer.minutes(1), key: &__MODULE__.person_key/2
+    action :expenses, limit: 30, per: :timer.minutes(1), key: &__MODULE__.person_key/2
   end
 
   actions do
@@ -129,6 +134,14 @@ defmodule Rescord.Reports.Report do
     action :housing, AshTypst.Type.Document do
       description "The locations of the organisation, each with who lives there"
       run {Render, report: :housing}
+    end
+
+    action :expenses, AshTypst.Type.Document do
+      description "The expenses of a period that the person reads, with their sums, and what the organisation owes to each member"
+
+      argument :from, :date, allow_nil?: false
+      argument :to, :date, allow_nil?: false
+      run {Render, report: :expenses}
     end
   end
 

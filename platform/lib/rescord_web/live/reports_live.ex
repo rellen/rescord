@@ -145,6 +145,36 @@ defmodule RescordWeb.ReportsLive do
         </p>
       </section>
 
+      <section aria-labelledby="expenses-heading">
+        <h2 id="expenses-heading">Expenses</h2>
+        <p>
+          The expenses of a period that you can read, with their sums by state and by
+          category, and what the organisation owes to each member.
+        </p>
+        <form id="expenses" action={~p"/o/#{@organisation.short_name}/reports/expenses.pdf"}>
+          <.input
+            id="expenses-from"
+            name="from"
+            type="date"
+            label="From"
+            value={@month_start}
+            max={@today}
+            required
+          />
+          <.input id="expenses-to" name="to" type="date" label="To" value={@today} required />
+          <button type="submit">Make the report</button>
+        </form>
+        <ul id="expenses-periods">
+          <li :for={{words, from, to} <- @periods}>
+            <a href={
+              ~p"/o/#{@organisation.short_name}/reports/expenses.pdf?#{[from: Date.to_iso8601(from), to: Date.to_iso8601(to)]}"
+            }>
+              {words}
+            </a>
+          </li>
+        </ul>
+      </section>
+
       <section aria-labelledby="resident-heading">
         <h2 id="resident-heading">One resident</h2>
         <p>

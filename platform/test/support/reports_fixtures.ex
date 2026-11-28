@@ -15,13 +15,28 @@ defmodule Rescord.ReportsFixtures do
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
-  alias Rescord.{Accounts, Inventory, Journal, Lists, Locations, Photos, Residents, Tasks}
+  alias Rescord.{
+    Accounts,
+    Expenses,
+    Inventory,
+    Journal,
+    Lists,
+    Locations,
+    Photos,
+    Residents,
+    Tasks
+  }
 
   @doc """
   Makes the refuge Wattle Creek, and returns what a test needs of it: the
   organisation, its people, the options of a member and of an administrator,
   the lists, the day of today there, and the residents and the locations by
   their names.
+
+  The refuge has five expenses of the last ten days: one that the
+  organisation owes to the member, one that waits, one that an
+  administrator declined, one that the organisation paid, and one that it
+  paid back to the administrator.
 
   `picture` makes the bytes of a photo from the name of a resident and a
   number. It makes a plain photo of `Rescord.StorageFixtures` at first.
@@ -64,6 +79,7 @@ defmodule Rescord.ReportsFixtures do
     photos!(context, picture)
     tasks!(context)
     stock!(context)
+    expenses!(context)
     context
   end
 
@@ -312,6 +328,87 @@ defmodule Rescord.ReportsFixtures do
 
     clover = add.({"Clover", residents.clover}, 1, "In the run", 3)
     {:ok, _profile} = Photos.set_profile_photo(clover, options)
+  end
+
+  defp expenses!(%{lists: lists, options: options, admin: admin, today: today} = context) do
+    category = lists.expense_category
+
+    expense = fn facts, options ->
+      Expenses.submit_expense!(Map.merge(%{paid_by: :member}, facts), options)
+    end
+
+    vet =
+      expense.(
+        %{
+          amount: "186.00",
+          incurred_on: Date.add(today, -5),
+          payee: "Northside Vet Clinic",
+          description: "Vet consult for Biscuit",
+          category_id: category.veterinary,
+          resident_id: context.residents.biscuit.id
+        },
+        options
+      )
+
+    Expenses.attach_receipt!(
+      %{expense_id: vet.id, name: "receipt.jpg", content: Rescord.StorageFixtures.photo()},
+      options
+    )
+
+    Expenses.approve_expense!(vet, admin)
+
+    expense.(
+      %{
+        amount: "42.50",
+        incurred_on: Date.add(today, -3),
+        payee: "Creekside Fuel",
+        description: "Fuel for the vet run",
+        category_id: category.transport
+      },
+      options
+    )
+
+    carrier =
+      expense.(
+        %{
+          amount: "60.00",
+          incurred_on: Date.add(today, -8),
+          payee: "Pet Barn",
+          description: "A new carrier",
+          category_id: category.transport
+        },
+        options
+      )
+
+    Expenses.decline_expense!(carrier, "Use the carrier of the refuge.", admin)
+
+    Expenses.record_expense!(
+      %{
+        paid_by: :organisation,
+        amount: "95.00",
+        incurred_on: Date.add(today, -10),
+        payee: "Hilltop Produce",
+        description: "Meadow hay, 10 bags",
+        category_id: category.feed
+      },
+      admin
+    )
+
+    pellets =
+      expense.(
+        %{
+          amount: "31.20",
+          incurred_on: Date.add(today, -2),
+          payee: "Hilltop Produce",
+          description: "Guinea pig pellets",
+          category_id: category.feed
+        },
+        admin
+      )
+
+    pellets
+    |> Expenses.approve_expense!(admin)
+    |> Expenses.reimburse_expense!(%{reimbursement_reference: "Bank transfer 114"}, admin)
   end
 
   defp tasks!(context) do

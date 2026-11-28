@@ -583,6 +583,9 @@ each report, and a report holds what that member can read.
   count.
 - The housing report lists each location with the residents that live
   there.
+- The report of the expenses covers a period (section 5.14). It gives the
+  sums by state and by category, what the organisation owes to each
+  member, and the list of the expenses.
 
 ### 5.14 Expenses
 
