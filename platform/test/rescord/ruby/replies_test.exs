@@ -143,7 +143,9 @@ defmodule Rescord.Ruby.RepliesTest do
       assert text_of(question) == said.header <> "Who is in our care?"
 
       assert Enum.map(first.opts[:tools], & &1.name) |> Enum.sort() ==
-               ["find_residents", "get_task", "tasks_for_day"]
+               Enum.sort(
+                 for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: to_string(name)
+               )
 
       # The second request has the result of the tool: the resident of this
       # refuge, and none of the other one.
@@ -536,8 +538,10 @@ defmodule Rescord.Ruby.RepliesTest do
       assert [%{"text" => ^system, "cache_control" => %{"type" => "ephemeral", "ttl" => "1h"}}] =
                body["system"]
 
-      assert Enum.map(body["tools"], & &1["name"]) ==
-               ["find_residents", "get_task", "tasks_for_day"]
+      assert Enum.map(body["tools"], & &1["name"]) |> Enum.sort() ==
+               Enum.sort(
+                 for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: to_string(name)
+               )
 
       assert Jason.encode!(body["messages"]) =~ "rescue: Wattle Creek"
       assert Jason.encode!(body["messages"]) =~ "Who is in our care?"

@@ -62,7 +62,7 @@ defmodule Rescord.Ruby.Digests.TasksForDay do
            },
            "resident" => %{
              "type" => "string",
-             "description" => "The id of a resident, to keep only the tasks about it"
+             "description" => "The ref or the id of a resident, to keep only the tasks about it"
            },
            "state" => %{"type" => "string", "enum" => @states}
          },

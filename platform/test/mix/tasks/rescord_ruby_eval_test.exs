@@ -45,13 +45,14 @@ defmodule Mix.Tasks.Rescord.Ruby.EvalTest do
         &(&1.short_name =~ "ruby-eval-")
       )
 
-  # The three cases of the group `none`, each with a right answer.
+  # The four cases of the group `none`, each with a right answer.
   defp none_script do
     [
       {:tool, "find_residents", %{}},
       {:text, "The records hold no resident named Mango."},
       {:tool, "tasks_for_day", %{}},
       {:text, "Nothing is planned for that day."},
+      {:text, "The records hold no weight for Pepper."},
       {:text, "I cannot read the stock: the records that I read hold nothing about it."}
     ]
   end
@@ -127,13 +128,13 @@ defmodule Mix.Tasks.Rescord.Ruby.EvalTest do
       assert printed =~ ~r/The seeded rescue is ruby-eval-\d{14}-[0-9a-f]{4}\./
       assert printed =~ "none-no-such-resident: pass"
       assert printed =~ "none-no-tool: pass"
-      assert printed =~ "none        3/3     3/3     100%  yes"
+      assert printed =~ "none        4/4     4/4     100%  yes"
       # The key is in no line.
       refute printed =~ key()
 
       # The requests went with the key and the model of the flags.
       requests = ScriptedModel.requests()
-      assert length(requests) == 5
+      assert length(requests) == 6
       assert Enum.all?(requests, &(&1.opts[:api_key] == key()))
       assert Enum.all?(requests, &match?(%{id: "claude-haiku-5-5"}, &1.model))
 
@@ -141,7 +142,7 @@ defmodule Mix.Tasks.Rescord.Ruby.EvalTest do
       assert [name] = File.ls!(context.tmp_dir)
       assert name =~ ~r/\A\d{8}-\d{6}-claude-haiku-5-5\.txt\z/
       file = File.read!(Path.join(context.tmp_dir, name))
-      assert file =~ "none        3/3     3/3     100%  yes"
+      assert file =~ "none        4/4     4/4     100%  yes"
       refute file =~ key()
 
       assert [_rescue] = seeded()
@@ -203,7 +204,7 @@ defmodule Mix.Tasks.Rescord.Ruby.EvalTest do
 
       printed = printed()
       assert printed =~ "none-no-such-resident: fail (says, does_not_say)"
-      assert printed =~ "none        2/3     2/3     100%  no"
+      assert printed =~ "none        3/4     3/4     100%  no"
 
       # The file has the failed answer, for a person to read.
       assert [name] = File.ls!(context.tmp_dir)

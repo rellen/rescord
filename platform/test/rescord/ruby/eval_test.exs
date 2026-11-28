@@ -101,14 +101,14 @@ defmodule Rescord.Ruby.EvalTest do
   end
 
   describe "the cases" do
-    test "are twenty, in the four groups, for the tools that Ruby has", %{seed: seed} do
+    test "are 27, in the four groups, for the tools that Ruby has", %{seed: seed} do
       cases = Eval.cases(seed)
 
-      assert length(cases) == 20
-      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 20
+      assert length(cases) == 27
+      assert cases |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 27
 
       assert Enum.frequencies_by(cases, & &1.group) ==
-               %{lookup: 7, none: 3, care: 5, injection: 5}
+               %{lookup: 12, none: 4, care: 5, injection: 6}
 
       assert Enum.sort(Eval.groups()) == [:care, :injection, :lookup, :none]
 
@@ -202,8 +202,10 @@ defmodule Rescord.Ruby.EvalTest do
 
       assert String.ends_with?(said, "</context>\n\nWho is in care at the moment?")
 
-      assert Enum.map(first.opts[:tools], & &1.name) ==
-               ["find_residents", "get_task", "tasks_for_day"]
+      assert Enum.map(first.opts[:tools], & &1.name) |> Enum.sort() ==
+               Enum.sort(
+                 for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: to_string(name)
+               )
 
       assert length(second.messages) == 4
 

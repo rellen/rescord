@@ -17,7 +17,7 @@ defmodule Rescord.Locations do
 
   use Ash.Domain,
     otp_app: :rescord,
-    extensions: [AshBoundary, AshPaperTrail.Domain]
+    extensions: [AshBoundary, AshPaperTrail.Domain, AshAi]
 
   require Ash.Query
 
@@ -32,6 +32,27 @@ defmodule Rescord.Locations do
 
   paper_trail do
     include_versions? true
+  end
+
+  # The tools of the assistant (ADR 0069). A tool here is no tool of Ruby
+  # until `Rescord.Ruby.Catalogue` names it, and it runs as the member,
+  # with the policy of the action.
+  tools do
+    tool :find_locations, Rescord.Locations.Location, :read do
+      description """
+      Finds the places of the rescue (pens, rooms, paddocks and so on) by
+      name. Use it to turn a place that the person said into a location, and
+      then `housing` for who lives there. A missing field means that nothing
+      is recorded.
+      """
+
+      select [:id, :name, :capacity]
+      filterable_fields([:name])
+      sortable_fields([:name])
+      aggregatable_fields([])
+      action_parameters([:filter, :sort, :limit, :result_type])
+      annotations(read_only_hint: true)
+    end
   end
 
   resources do
