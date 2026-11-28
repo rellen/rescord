@@ -228,6 +228,14 @@ defmodule RescordWeb.Roles do
     end
   end
 
+  @doc "Whether the one checkbox or radio button that the locator finds is checked."
+  @spec checked?(source, t) :: boolean
+  def checked?(source, locator), do: source |> one(locator) |> LazyHTML.attribute("checked") != []
+
+  @doc "Whether the one disclosure (`details`) that the locator finds is open."
+  @spec open?(source, t) :: boolean
+  def open?(source, locator), do: source |> one(locator) |> LazyHTML.attribute("open") != []
+
   @doc "The accessible names of each element, in the order of the page."
   @spec names(source, t) :: [String.t()]
   def names(source, %__MODULE__{} = locator) do

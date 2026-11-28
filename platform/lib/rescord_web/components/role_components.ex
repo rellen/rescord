@@ -109,6 +109,8 @@ defmodule RescordWeb.RoleComponents do
         maxlength="60"
         required
       />
+      <%!-- A form with no box ticked still sends the field, as the albums of a photo do. --%>
+      <input type="hidden" name="role[powers][]" value="" />
       <fieldset :for={{area, powers} <- RoleWords.areas()} id={"#{@id}-#{area_id(area)}"}>
         <legend>{area}</legend>
         <label :for={power <- powers}>

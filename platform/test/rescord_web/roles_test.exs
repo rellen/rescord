@@ -36,8 +36,10 @@ defmodule RescordWeb.RolesTest do
       <div><dt>In stock</dt><dd>11 bag</dd></div>
       <div><dt>State</dt><dd><span data-state="alert">Order more</span></dd></div>
     </dl>
-    <details>
+    <details open>
       <summary><svg aria-hidden="true"></svg> Stock was used</summary>
+      <label><input type="checkbox" name="use[all]" checked /> All of it</label>
+      <label><input type="checkbox" name="use[wet]" /> It was wet</label>
       <form>
         <label for="use_source">From which lot and place</label>
         <select id="use_source"><option>Lot B-1</option><option selected>Lot B-2</option></select>
@@ -110,6 +112,9 @@ defmodule RescordWeb.RolesTest do
     assert value(@page, used |> field("From which lot and place")) == "Lot B-2"
     assert value(@page, used |> field("Note")) == "Wet"
     assert value(@page, field("Quantity")) == nil
+    assert open?(@page, used)
+    assert checked?(@page, used |> field("All of it"))
+    refute checked?(@page, used |> field("It was wet"))
 
     assert playwright(definition("In stock")) ==
              ~s|xpath=.//dd[preceding-sibling::dt[1][normalize-space()="In stock"]]|
