@@ -32,6 +32,20 @@ defmodule RescordWeb.RolesTest do
     </article>
     <p role="alert">The quantity is not a number.</p>
     <figure><img src="/hay.webp" alt="A bale of hay" /><figcaption>The bale</figcaption></figure>
+    <dl>
+      <div><dt>In stock</dt><dd>11 bag</dd></div>
+      <div><dt>State</dt><dd><span data-state="alert">Order more</span></dd></div>
+    </dl>
+    <details>
+      <summary><svg aria-hidden="true"></svg> Stock was used</summary>
+      <form>
+        <label for="use_source">From which lot and place</label>
+        <select id="use_source"><option>Lot B-1</option><option selected>Lot B-2</option></select>
+        <label for="use_note">Note</label>
+        <textarea id="use_note">Wet</textarea>
+        <button>Record the use</button>
+      </form>
+    </details>
     <img src="/line.svg" alt="" />
   </main>
   <footer><nav aria-label="About Rescord"><a href="/colophon">Colophon</a></nav></footer>
@@ -83,6 +97,22 @@ defmodule RescordWeb.RolesTest do
     assert names(@page, image(~r/./)) == ["A bale of hay"]
     assert src(@page, figure("The bale") |> image("A bale of hay")) == "/hay.webp"
     assert playwright(image("A bale of hay")) == ~s(internal:role=img[name="A bale of hay"s])
+  end
+
+  test "a definition is found by its term, and a disclosure by its summary" do
+    assert text(@page, definition("In stock")) == "11 bag"
+    refute has?(@page, definition("Order more"))
+    assert_has(@page, definition("State"), state: "alert", text: "Order more")
+    refute_has(@page, definition("State"), state: "ok")
+    refute_has(@page, definition("In stock"), state: "alert")
+    used = main() |> details("Stock was used")
+    assert has?(@page, used |> button("Record the use"))
+    assert value(@page, used |> field("From which lot and place")) == "Lot B-2"
+    assert value(@page, used |> field("Note")) == "Wet"
+    assert value(@page, field("Quantity")) == nil
+
+    assert playwright(definition("In stock")) ==
+             ~s|xpath=.//dd[preceding-sibling::dt[1][normalize-space()="In stock"]]|
   end
 
   test "one raises for none or for more than one" do

@@ -62,6 +62,8 @@ defmodule RescordWeb.Roles do
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
     figure: "figure",
+    details: "details",
+    definition: "dd",
     image: "img:not([alt=''])",
     row: "tr",
     item: "li",
@@ -97,6 +99,19 @@ defmodule RescordWeb.Roles do
 
   @doc "A table, by its name."
   def table(scope \\ nil, name), do: locate(scope, :table, name)
+
+  @doc """
+  A disclosure (`details`), by the words of its `summary`, as a person
+  finds the form or the list that it holds.
+  """
+  def details(scope \\ nil, name), do: locate(scope, :details, name)
+
+  @doc """
+  The definition (`dd`) of a term (`dt`) of a description list, by the
+  words of the term: `definition("In stock")`. The two are in one `div` of
+  the `dl`, as `<.list>` draws them.
+  """
+  def definition(scope \\ nil, term), do: locate(scope, :definition, term)
 
   @doc "A figure, by its name: the words of its `figcaption`."
   def figure(scope \\ nil, name), do: locate(scope, :figure, name)
@@ -188,6 +203,29 @@ defmodule RescordWeb.Roles do
   @spec src(source, t) :: String.t() | nil
   def src(source, locator) do
     source |> one(locator) |> LazyHTML.attribute("src") |> List.first()
+  end
+
+  @doc """
+  What the one field that the locator finds holds: the `value` of an input,
+  the words of a text area, or the words of the chosen option of a select
+  (the first option when none is chosen, as in a browser).
+  """
+  @spec value(source, t) :: String.t() | nil
+  def value(source, locator) do
+    node = one(source, locator)
+
+    case LazyHTML.tag(node) do
+      ["select"] ->
+        chosen = LazyHTML.query(node, "option[selected]")
+        options = if Enum.empty?(chosen), do: LazyHTML.query(node, "option"), else: chosen
+        options |> Enum.take(1) |> Enum.map_join(&visible_text/1)
+
+      ["textarea"] ->
+        LazyHTML.text(node)
+
+      _input ->
+        attribute(node, "value")
+    end
   end
 
   @doc "The accessible names of each element, in the order of the page."
@@ -297,7 +335,9 @@ defmodule RescordWeb.Roles do
 
   @doc """
   Asserts that the locator finds an element. Options: `text:` (words that
-  the element holds) and `count:`.
+  the element holds), `count:`, and `state:`, the kind of a state that the
+  element holds (`data-state`, ADR 0004), whose words `text:` then gives:
+  `assert_has(item_row("Meadow hay"), state: "alert", text: "Order more")`.
   """
   def assert_has(session, locator, opts \\ [])
 
@@ -341,7 +381,13 @@ defmodule RescordWeb.Roles do
   # `assert_has/3` of PhoenixTest.Playwright puts its selector in `css=`, so
   # a selector by role goes in `within/3`, and the assertion is on `:scope`.
   defp in_browser(session, locator, opts, assertion) do
-    PhoenixTest.within(session, playwright(locator), &assertion.(&1, ":scope", opts))
+    {selector, opts} =
+      case Keyword.pop(opts, :state) do
+        {nil, opts} -> {":scope", opts}
+        {kind, opts} -> {"[data-state=#{kind}]", opts}
+      end
+
+    PhoenixTest.within(session, playwright(locator), &assertion.(&1, selector, opts))
   rescue
     error in ExUnit.AssertionError ->
       reraise ExUnit.AssertionError,
@@ -352,12 +398,22 @@ defmodule RescordWeb.Roles do
   defp matches(session, locator, opts) do
     found = all(document(session), locator)
 
-    case Keyword.fetch(opts, :text) do
-      {:ok, %Regex{} = text} -> Enum.filter(found, &(visible_text(&1) =~ text))
-      {:ok, text} -> Enum.filter(found, &String.contains?(visible_text(&1), text))
-      :error -> found
+    case Keyword.fetch(opts, :state) do
+      {:ok, kind} ->
+        Enum.filter(found, fn node ->
+          node
+          |> LazyHTML.query("[data-state=#{kind}]")
+          |> Enum.any?(&holds?(&1, opts[:text]))
+        end)
+
+      :error ->
+        Enum.filter(found, &holds?(&1, opts[:text]))
     end
   end
+
+  defp holds?(_node, nil), do: true
+  defp holds?(node, %Regex{} = text), do: visible_text(node) =~ text
+  defp holds?(node, text), do: String.contains?(visible_text(node), text)
 
   defp found?(found, opts) do
     case Keyword.fetch(opts, :count) do
@@ -395,6 +451,13 @@ defmodule RescordWeb.Roles do
 
   defp playwright_one(%{role: :field, name: name}), do: "internal:label=#{pw_name(name)}"
 
+  # Playwright gives neither a name from its words, so these are XPath.
+  defp playwright_one(%{role: :details, name: name}),
+    do: "xpath=.//details[summary[normalize-space()=#{xpath_text(name)}]]"
+
+  defp playwright_one(%{role: :definition, name: name}),
+    do: "xpath=.//dd[preceding-sibling::dt[1][normalize-space()=#{xpath_text(name)}]]"
+
   defp playwright_one(%{role: :item, name: nil}), do: "internal:role=listitem"
 
   defp playwright_one(%{role: :item, name: name}),
@@ -415,6 +478,13 @@ defmodule RescordWeb.Roles do
   defp pw_name(%Regex{source: source}), do: "/#{source}/"
 
   defp pw_name(name), do: JSON.encode!(name) <> "s"
+
+  defp xpath_text(%Regex{} = name),
+    do: raise(ArgumentError, "a browser test finds #{inspect(name)} by its exact words")
+
+  defp xpath_text(text) do
+    if String.contains?(text, ~s(")), do: "'#{text}'", else: ~s("#{text}")
+  end
 
   defp pw_text(%Regex{source: source}), do: "/#{source}/"
   defp pw_text(text), do: JSON.encode!(text)
@@ -499,6 +569,16 @@ defmodule RescordWeb.Roles do
 
       role == :image ->
         fold(attribute(node, "alt") || "")
+
+      role == :details ->
+        node |> LazyHTML.child_nodes() |> LazyHTML.filter("summary") |> visible_text()
+
+      role == :definition ->
+        node
+        |> LazyHTML.parent_node()
+        |> LazyHTML.child_nodes()
+        |> LazyHTML.filter("dt")
+        |> visible_text()
 
       role == :figure ->
         node |> LazyHTML.query("figcaption") |> visible_text()
