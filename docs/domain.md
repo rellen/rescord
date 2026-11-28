@@ -593,6 +593,11 @@ An organisation makes reports for paper (ADR 0076). A report is a PDF. It
 is not a record, and Rescord keeps no copy of it. Each member can make
 each report, and a report holds what that member can read.
 
+A report is on A4 paper or on US Letter paper (ADR 0093). The settings of
+the organisation give the paper of its reports, which is A4 at first. An
+administrator changes it. A member can make one document on the other
+paper.
+
 - The record of a resident has its facts, its stay, its family and its
   groups. The member chooses the part of the journal: the medical history,
   all of it, or none. The member can add the photos. The record names no

@@ -19,10 +19,11 @@ defmodule RescordWeb.SettingsLive do
 
   import RescordWeb.AccountComponents
   import RescordWeb.ExpenseComponents, only: [currency_setting: 1, tax_setting: 1]
+  import RescordWeb.ReportComponents, only: [paper_setting: 1]
   import RescordWeb.RubyComponents, only: [settings_line: 1]
 
   alias Rescord.{Accounts, Ruby, Tasks}
-  alias RescordWeb.{TaskWords, TransferWords}
+  alias RescordWeb.{ReportWords, TaskWords, TransferWords}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -133,6 +134,27 @@ defmodule RescordWeb.SettingsLive do
     end
   end
 
+  def handle_event("save_paper", %{"paper" => %{"size" => size}}, socket) when is_binary(size) do
+    organisation = socket.assigns.organisation
+
+    # A text that names no paper goes on as it is, and the action refuses it.
+    case Accounts.set_organisation_paper_size(organisation, Accounts.paper_size(size) || size,
+           actor: socket.assigns.current_user
+         ) do
+      {:ok, organisation} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           "A report is on #{ReportWords.paper_name(organisation.paper_size)} now."
+         )
+         |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+    end
+  end
+
   def handle_event("save_parts", params, socket) do
     organisation = socket.assigns.organisation
 
@@ -227,6 +249,8 @@ defmodule RescordWeb.SettingsLive do
       />
 
       <.tax_setting organisation={@organisation} can_change?={@can_change?} />
+
+      <.paper_setting organisation={@organisation} can_change?={@can_change?} />
 
       <.days_ahead_setting
         organisation={@organisation}

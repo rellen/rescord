@@ -31,7 +31,11 @@ defmodule RescordWeb.ReportWordsTest do
       report,
       facts
       |> Map.delete(:files)
-      |> Map.merge(%{organisation: context.organisation, made_at: now})
+      |> Map.merge(%{
+        organisation: context.organisation,
+        made_at: now,
+        paper: arguments[:paper] || context.organisation.paper_size
+      })
     )
   end
 
@@ -47,6 +51,20 @@ defmodule RescordWeb.ReportWordsTest do
     assert frame.title == "Housing"
     assert frame.made =~ ~r/^Made on \d{1,2} \w+ \d{4}, \d{1,2}:\d\d (am|pm)$/
     assert %NaiveDateTime{} = frame.date
+  end
+
+  test "the frame names the paper as Typst does, and each paper has a name", context do
+    assert data(context, :housing).frame.paper == "a4"
+    assert data(context, :housing, %{paper: :us_letter}).frame.paper == "us-letter"
+
+    assert ReportWords.paper_options() == [{"A4", "a4"}, {"US Letter", "us_letter"}]
+
+    assert Enum.map(Rescord.Accounts.paper_sizes(), &ReportWords.paper_name/1) ==
+             ["A4", "US Letter"]
+
+    for {_name, value} <- ReportWords.paper_options() do
+      assert Rescord.Accounts.paper_size(value)
+    end
   end
 
   test "a report has the dates of the locale of its organisation", context do

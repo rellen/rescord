@@ -94,6 +94,11 @@ defmodule Rescord.Accounts.Organisation do
       change Rescord.Accounts.Changes.TrimTaxName
     end
 
+    update :set_paper_size do
+      description "Changes the paper of the reports of the organisation"
+      accept [:paper_size]
+    end
+
     update :rename do
       accept [:name]
     end
@@ -123,6 +128,7 @@ defmodule Rescord.Accounts.Organisation do
              :set_transfer_parts,
              :set_currency,
              :set_tax_name,
+             :set_paper_size,
              :export
            ]) do
       authorize_if Rescord.Accounts.Checks.GrantedInOrganisation
@@ -184,6 +190,15 @@ defmodule Rescord.Accounts.Organisation do
       constraints max_length: 12
 
       description "The name of the tax that an expense can hold, for example GST or VAT, or none: then the expenses record no tax (ADR 0089)"
+    end
+
+    attribute :paper_size, :atom do
+      allow_nil? false
+      default :a4
+      public? true
+      constraints one_of: [:a4, :us_letter]
+
+      description "The paper of a report when the person chooses no other: A4 or US Letter (ADR 0093)"
     end
 
     attribute :transfer_parts, {:array, :atom} do

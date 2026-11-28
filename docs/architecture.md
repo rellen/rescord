@@ -661,6 +661,14 @@ photos as virtual files. No text of a record is markup of Typst. Each role
 can make each report, and a person makes 30 in a minute at most.
 `RescordWeb.ReportController` sends a report for a `GET`.
 
+**A report is on A4 or on US Letter** (ADR 0093). The paper is the
+attribute `paper_size` of the organisation, A4 at first, which an
+administrator changes on the settings page. Each report action takes the
+optional argument `paper` for one document on the other paper, and each
+address of a report takes `paper`. The render puts the paper into the
+frame of the document, and `report` of `look.typ` sets the page from it:
+a template has one layout for both papers.
+
 ### Expenses
 
 **An organisation records its expenses, and Rescord is not its accounting

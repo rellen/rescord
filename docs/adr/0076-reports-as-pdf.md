@@ -90,7 +90,8 @@ program on the server.
   arrivals, minus the departures, is the number at the end. The facts of a
   resident are those of now. For a past day, its place and whether it was
   away are what the records held at the end of that day (ADR 0012).
-- **The look is one file**, `priv/typst/look.typ`: A4, the typeface of the
+- **The look is one file**, `priv/typst/look.typ`: A4 (and US Letter since
+  ADR 0093, which the organisation chooses), the typeface of the
   pages (Atkinson Hyperlegible, as OpenType files in `priv/typst/fonts`),
   the name of the organisation, a title, and a foot with the time of the
   request and "Page n of m". A render ignores the fonts of the server, so
@@ -130,6 +131,7 @@ program on the server.
 
 ## Not decided here
 
-- Paper other than A4, and a logo of the organisation on a report.
+- Paper other than A4 (ADR 0093 decides it: A4 or US Letter, a setting of
+  the organisation), and a logo of the organisation on a report.
 - A report by email, or made by a job on a schedule.
 - Reports of adoptions and of money: they wait for those records.

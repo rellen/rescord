@@ -846,6 +846,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
     never call `eval` in a template: the data is the value `d` alone.
   - The fonts of a report are the files of `priv/typst/fonts`. A report
     is not PDF/A.
+  - **A report is on A4 or on US Letter** (ADR 0093): the argument `paper`
+    of its action, or the paper of the organisation, which
+    `Rescord.Reports.Render` puts into `d.frame.paper`. A template never
+    names a paper. It has one layout for both: give a width as a fraction
+    of the page, or as a size that fits the smaller side of each paper,
+    and look at a new template on both. A new action takes the argument
+    `paper` as the others do, and its path passes `paper(params)`. A link
+    to a report with no `paper` gets the paper of the organisation.
   - To look at a report, render it in a scratch test with
     `Rescord.ReportsFixtures.refuge!/1`, write the bytes to a file, and
     read the pages as pictures (`pdftoppm -png`). Do not commit the

@@ -3,7 +3,8 @@ defmodule Rescord.ReportsTest do
   Holds the reports (ADR 0076): each action returns a PDF for a member of
   the organisation and for nobody else, it reads as that person, it renders
   with many records and with none, it refuses a day that is not right, and
-  a person makes at most 30 in a minute.
+  a person makes at most 30 in a minute. Each one is on the paper of the
+  organisation, or on the paper that the person asks for (ADR 0093).
 
   A test reads the title and the headings of a document in its bytes: Typst
   writes them as plain text. `RescordWeb.ReportWordsTest` holds the words of
@@ -30,22 +31,49 @@ defmodule Rescord.ReportsTest do
     :ok
   end
 
-  # Each report with the arguments that a test gives it.
-  defp each_report(resident_id, options) do
+  # Each report with the arguments that a test gives it. `more` holds the
+  # arguments that each report takes, such as the paper.
+  defp each_report(resident_id, options, more \\ %{}) do
     today = Accounts.today(options[:tenant])
 
     [
       resident_record:
-        Reports.resident_record(resident_id, %{journal: :all, photos: true}, options),
-      cage_card: Reports.cage_card(resident_id, options),
-      register: Reports.register(options),
-      movements: Reports.movements(Date.add(today, -90), today, options),
-      task_sheet: Reports.task_sheet(options),
-      stock: Reports.stock(options),
-      housing: Reports.housing(options),
-      expenses: Reports.expenses(Date.add(today, -90), today, options)
+        Reports.resident_record(
+          resident_id,
+          Map.merge(more, %{journal: :all, photos: true}),
+          options
+        ),
+      cage_card: Reports.cage_card(resident_id, more, options),
+      register: Reports.register(more, options),
+      movements: Reports.movements(Date.add(today, -90), today, more, options),
+      task_sheet: Reports.task_sheet(more, options),
+      stock: Reports.stock(more, options),
+      housing: Reports.housing(more, options),
+      expenses: Reports.expenses(Date.add(today, -90), today, more, options)
     ]
   end
+
+  # The sizes of the pages of a document, each as its width and its height
+  # in whole points, with one entry for the pages of one size. Typst writes
+  # the box of each page as plain text.
+  defp pages(pdf) do
+    for [_all, width, height] <- Regex.scan(~r/\/MediaBox ?\[0 0 ([\d.]+) ([\d.]+)\]/, pdf),
+        uniq: true do
+      {points(width), points(height)}
+    end
+  end
+
+  defp points(text) do
+    {number, ""} = Float.parse(text)
+    round(number)
+  end
+
+  # The pages of a report on a paper with these sides: the reports with wide
+  # tables, and the cage card, have the paper on its side.
+  defp on_paper(report, {short, long}) when report in [:cage_card, :register, :expenses],
+    do: [{long, short}]
+
+  defp on_paper(_report, {short, long}), do: [{short, long}]
 
   defp pdf!({:ok, %Document{format: :pdf, data: "%PDF-" <> _rest = pdf} = document}) do
     assert document.page_count >= 1
@@ -78,6 +106,42 @@ defmodule Rescord.ReportsTest do
         pdf = pdf!(result)
         assert pdf =~ "#{titles[report]}, Wattle Creek", "the title of #{report}"
       end
+    end
+
+    test "a report is on the paper of the organisation, or on the one that the person asks for",
+         context do
+      id = context.residents.biscuit.id
+      a4 = {595, 842}
+      letter = {612, 792}
+
+      # The paper of the organisation is A4 at first.
+      for {report, result} <- each_report(id, context.options) do
+        assert pages(pdf!(result)) == on_paper(report, a4), "#{report} on A4"
+      end
+
+      for {report, result} <- each_report(id, context.options, %{paper: :us_letter}) do
+        assert pages(pdf!(result)) == on_paper(report, letter), "#{report} on US Letter"
+      end
+
+      # The setting is the paper of a report with no paper of its own, also
+      # when the request names the organisation by its schema.
+      {:ok, organisation} =
+        Accounts.set_organisation_paper_size(context.organisation, :us_letter,
+          actor: context.administrator
+        )
+
+      options = Keyword.put(context.options, :tenant, organisation)
+      assert pages(pdf!(Reports.stock(options))) == [letter]
+      assert pages(pdf!(Reports.cage_card(id, options))) == [{792, 612}]
+      assert pages(pdf!(Reports.stock(%{paper: :a4}, options))) == [a4]
+
+      by_schema =
+        Keyword.put(context.options, :tenant, Accounts.Organisation.schema(organisation))
+
+      assert pages(pdf!(Reports.housing(by_schema))) == [letter]
+
+      # A paper that Rescord does not have is refused.
+      assert {:error, %Ash.Error.Invalid{}} = Reports.stock(%{paper: :a3}, options)
     end
 
     test "the record holds the part of the journal that the person asks for", context do

@@ -57,7 +57,8 @@ defmodule RescordWeb.ReportWords do
   @doc """
   The frame of a document: the name of the organisation, the title, a line
   below the title or `nil`, when the report was made in the time zone of the
-  organisation, and that time as the date of the document.
+  organisation, that time as the date of the document, and the paper of the
+  document as Typst names it (ADR 0093).
   """
   def frame(facts, title, subtitle \\ nil) do
     local = Accounts.local_time(facts.organisation, facts.made_at)
@@ -67,8 +68,27 @@ defmodule RescordWeb.ReportWords do
       title: title,
       subtitle: subtitle,
       made: "Made on #{JournalWords.time(local)}",
-      date: DateTime.to_naive(local)
+      date: DateTime.to_naive(local),
+      paper: typst_paper(facts.paper)
     }
+  end
+
+  # The name that Typst has for a paper.
+  defp typst_paper(:a4), do: "a4"
+  defp typst_paper(:us_letter), do: "us-letter"
+
+  @doc """
+  The name of a paper of a report (ADR 0093).
+
+      iex> RescordWeb.ReportWords.paper_name(:us_letter)
+      "US Letter"
+  """
+  def paper_name(:a4), do: "A4"
+  def paper_name(:us_letter), do: "US Letter"
+
+  @doc "The papers of a report as the options of a select: the name, and the value of a form."
+  def paper_options do
+    for paper <- Accounts.paper_sizes(), do: {paper_name(paper), Atom.to_string(paper)}
   end
 
   @doc "A text, or `nil` for an empty one and for none."

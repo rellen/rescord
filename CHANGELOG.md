@@ -100,6 +100,13 @@ release (ADR 0047).
     price and no word of a conversation, and a column to the messages of
     the conversations. Both are empty after the upgrade, because no
     member can ask the assistant yet. It changes no row.
+  - `20261128075805_add_the_paper_size_of_an_organisation`, in the
+    database: adds a column to the organisations, for the paper of the
+    reports. Each organisation that is there gets A4, which is the paper
+    that its reports had, and no other value of a row changes.
+- Each organisation has the paper A4 for its reports after the upgrade. An
+  administrator of a rescue that prints on US Letter changes it on the
+  settings page, in "Paper of the reports".
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -296,6 +303,13 @@ release (ADR 0047).
   opens in the browser, which prints it or saves it. The release now
   carries the Typst compiler, about 73 MB, and needs no new setting
   (ADR 0076).
+- A report is on A4 or on US Letter (ADR 0093). The settings page has the
+  new part "Paper of the reports", where an administrator chooses the
+  paper of the organisation: A4 at first. The page Reports and the part
+  "On paper" of the page of a resident have a control "Paper", with the
+  paper of the organisation chosen, so a person can make one document on
+  the other paper. The address of a report takes `paper=a4` or
+  `paper=us_letter`.
 - Rescord now knows what a unit of measure means, from its name. The
   lists page says for each unit of an organisation, and for each shared
   unit, whether Rescord can convert it: `kg` is a kilogram, a mass, and

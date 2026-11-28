@@ -20,14 +20,16 @@
 
 // The page of a report, with the name of the organisation and of the report
 // at the top of each page after the first, and the time and the page number
-// at the bottom. `frame` is the dictionary `d.frame`.
+// at the bottom. `frame` is the dictionary `d.frame`. The paper is
+// `frame.paper`, `a4` or `us-letter` (ADR 0093), and `flipped` turns it on
+// its side. A template has one layout for both papers: it gives a width as
+// a fraction of the page, or as a size that fits the smaller side of each.
 //
 // `title: false` leaves the title out of the first page, for a template that
 // writes its own, such as the cage card.
 #let report(
   frame,
   flipped: false,
-  paper: "a4",
   margin: (x: 16mm, top: 22mm, bottom: 20mm),
   title: true,
   body,
@@ -38,7 +40,7 @@
     date: frame.date,
   )
   set page(
-    paper: paper,
+    paper: frame.paper,
     flipped: flipped,
     margin: margin,
     header: context {

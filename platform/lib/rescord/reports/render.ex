@@ -8,7 +8,9 @@ defmodule Rescord.Reports.Render do
        when the caller turned the authorization off, the reads here still
        ask the policies.
     2. **The words.** `Rescord.Reports.Wording` turns the facts into the
-       data of the template: text that is ready to show.
+       data of the template: text that is ready to show. The facts hold
+       the paper of the document too (ADR 0093): the argument `paper`, or
+       the paper of the organisation when the person chose none.
     3. **The document.** The data goes to the template in the virtual file
        `data.typ`, as the value `d`, which `AshTypst.Code` encodes. No text
        becomes markup of Typst. The files of the facts, the photos, go in as
@@ -31,6 +33,7 @@ defmodule Rescord.Reports.Render do
     organisation = Rescord.Accounts.organisation_of(context.tenant)
     made_at = DateTime.utc_now()
     options = [actor: context.actor, tenant: organisation]
+    paper = input.arguments[:paper] || organisation.paper_size
 
     with {:ok, facts} <- Facts.read(report, input.arguments, options, made_at) do
       {files, facts} = Map.pop(facts, :files, %{})
@@ -38,7 +41,7 @@ defmodule Rescord.Reports.Render do
       data =
         Wording.module().data(
           report,
-          Map.merge(facts, %{organisation: organisation, made_at: made_at})
+          Map.merge(facts, %{organisation: organisation, made_at: made_at, paper: paper})
         )
 
       render(input.resource, report, data, files)

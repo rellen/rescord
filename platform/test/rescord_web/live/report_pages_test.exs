@@ -2,7 +2,9 @@ defmodule RescordWeb.ReportPagesTest do
   @moduledoc """
   Holds the page of the reports and the downloads (ADR 0076): the forms and
   the links, each PDF with its headers and its name, a day that is not
-  right, and the answer for a person who may not read the organisation.
+  right, and the answer for a person who may not read the organisation. It
+  holds the paper too (ADR 0093): the control of the page, and the paper of
+  an address.
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
@@ -65,8 +67,8 @@ defmodule RescordWeb.ReportPagesTest do
     assert has_element?(view, "#movements-periods a", "This year so far")
 
     assert has_element?(view, ~s(form#task-sheet[action="#{home}/reports/tasks.pdf"]))
-    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf"]))
-    assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf"]))
+    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=a4"]))
+    assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf?paper=a4"]))
 
     assert has_element?(view, ~s(form#expenses[action="#{home}/reports/expenses.pdf"]))
     assert has_element?(view, ~s(input#expenses-from[name="from"]))
@@ -78,6 +80,60 @@ defmodule RescordWeb.ReportPagesTest do
     # the page itself.
     refute has_element?(view, "main form[method=post]")
     refute has_element?(view, "main form[phx-submit]")
+  end
+
+  test "the page chooses the paper of each of its reports", context do
+    %{conn: conn, home: home} = context
+    {:ok, view, _html} = live(conn, "#{home}/reports")
+
+    # The paper of the organisation is chosen at first, and each form and
+    # each link sends it.
+    assert has_element?(view, ~s(form#paper[action="#{home}/reports"]))
+    assert has_element?(view, ~s(label[for="paper-size"]), "Paper")
+    assert has_element?(view, ~s(select#paper-size[name="paper"] option[value="a4"][selected]))
+    assert has_element?(view, ~s(select#paper-size option[value="us_letter"]), "US Letter")
+    assert has_element?(view, "form#paper noscript button", "Use this paper")
+
+    for form <- ~w(register movements task-sheet expenses) do
+      assert has_element?(view, ~s(form##{form} input[type="hidden"][name="paper"][value="a4"]))
+    end
+
+    assert has_element?(view, ~s(#movements-periods a[href*="paper=a4"]), "Last month")
+    assert has_element?(view, ~s(#expenses-periods a[href*="paper=a4"]), "Last year")
+
+    # The other paper goes into the address, and then into each form and link.
+    view |> element("form#paper") |> render_change(%{"paper" => "us_letter"})
+    assert_patch(view, "#{home}/reports?paper=us_letter")
+
+    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
+    assert has_element?(view, "main p", "Each report of this page is on US Letter paper.")
+
+    for form <- ~w(register movements task-sheet expenses) do
+      assert has_element?(
+               view,
+               ~s(form##{form} input[type="hidden"][name="paper"][value="us_letter"])
+             )
+    end
+
+    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=us_letter"]))
+    assert has_element?(view, ~s(a#housing[href="#{home}/reports/housing.pdf?paper=us_letter"]))
+    assert has_element?(view, ~s(#movements-periods a[href*="paper=us_letter"]), "Last month")
+
+    # A paper that Rescord does not have changes nothing, in an event and
+    # in the address.
+    view |> element("form#paper") |> render_change(%{"paper" => "a3"})
+    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
+
+    {:ok, view, _html} = live(conn, "#{home}/reports?paper=a3")
+    assert has_element?(view, ~s(select#paper-size option[value="a4"][selected]))
+
+    # The paper of the organisation is the one that the page chooses first.
+    {:ok, _organisation} =
+      Accounts.set_organisation_paper_size(context.organisation, :us_letter, actor: context.root)
+
+    {:ok, view, _html} = live(conn, "#{home}/reports")
+    assert has_element?(view, ~s(select#paper-size option[value="us_letter"][selected]))
+    assert has_element?(view, ~s(a#stock[href="#{home}/reports/stock.pdf?paper=us_letter"]))
   end
 
   test "the pages of the records link to their reports", context do
@@ -93,7 +149,16 @@ defmodule RescordWeb.ReportPagesTest do
 
     assert has_element?(view, ~s(select#record-journal[name="journal"] option[value="all"]))
     assert has_element?(view, ~s(input#record-photos[type="checkbox"][name="photos"]))
-    assert has_element?(view, ~s(a#cage-card[href="#{home}/residents/#{biscuit.id}/card.pdf"]))
+
+    # The record and the cage card share the control of the paper, so the
+    # card is a second button of the form, with an address of its own.
+    assert has_element?(view, ~s(select#record-paper[name="paper"] option[value="a4"][selected]))
+    assert has_element?(view, ~s(select#record-paper option[value="us_letter"]), "US Letter")
+
+    assert has_element?(
+             view,
+             ~s(form#record button#cage-card[type="submit"][formaction="#{home}/residents/#{biscuit.id}/card.pdf"])
+           )
 
     {:ok, view, _html} = live(conn, "#{home}/residents")
     assert has_element?(view, ~s(a#register-report[href="#{home}/reports/register.pdf"]))
@@ -160,6 +225,55 @@ defmodule RescordWeb.ReportPagesTest do
     conn
     |> get("#{home}/residents/#{biscuit.id}/card.pdf")
     |> pdf("biscuit-cage-card-#{today}.pdf")
+  end
+
+  test "a path sends its PDF on the paper of the address, or on the one of the organisation",
+       context do
+    %{conn: conn, home: home, today: today, biscuit: biscuit} = context
+    stock = "stock-#{today}.pdf"
+    a4 = "/MediaBox[0 0 595."
+    letter = "/MediaBox[0 0 612 792]"
+
+    assert conn |> get("#{home}/reports/stock.pdf") |> pdf(stock) =~ a4
+    assert conn |> get("#{home}/reports/stock.pdf", %{"paper" => "a4"}) |> pdf(stock) =~ a4
+
+    assert conn |> get("#{home}/reports/stock.pdf", %{"paper" => "us_letter"}) |> pdf(stock) =~
+             letter
+
+    # A value that names no paper is the same as none.
+    for other <- ["a3", "", "US Letter"] do
+      assert conn |> get("#{home}/reports/stock.pdf", %{"paper" => other}) |> pdf(stock) =~ a4
+    end
+
+    assert conn |> get("#{home}/reports/stock.pdf?paper[]=a4") |> pdf(stock) =~ a4
+
+    # Each path takes the paper. The cage card has it on its side.
+    for {path, more} <- [
+          {"reports/register.pdf", %{}},
+          {"reports/movements.pdf", %{"from" => "2026-01-01", "to" => "2026-01-31"}},
+          {"reports/tasks.pdf", %{}},
+          {"reports/housing.pdf", %{}},
+          {"reports/expenses.pdf", %{"from" => "2026-01-01", "to" => "2026-01-31"}},
+          {"residents/#{biscuit.id}/record.pdf", %{"journal" => "none"}},
+          {"residents/#{biscuit.id}/card.pdf", %{"journal" => "medical"}}
+        ] do
+      conn = get(conn, "#{home}/#{path}", Map.put(more, "paper", "us_letter"))
+      assert response(conn, 200) =~ ~r/\/MediaBox\[0 0 (612 792|792 612)\]/, path
+    end
+
+    body =
+      conn
+      |> get("#{home}/residents/#{biscuit.id}/card.pdf", %{"paper" => "us_letter"})
+      |> pdf("biscuit-cage-card-#{today}.pdf")
+
+    assert body =~ "/MediaBox[0 0 792 612]"
+
+    # With no paper in the address, the paper is the one of the organisation.
+    {:ok, _organisation} =
+      Accounts.set_organisation_paper_size(context.organisation, :us_letter, actor: context.root)
+
+    assert conn |> get("#{home}/reports/stock.pdf") |> pdf(stock) =~ letter
+    assert conn |> get("#{home}/reports/stock.pdf", %{"paper" => "a4"}) |> pdf(stock) =~ a4
   end
 
   test "a day that is not right goes back to the page with words", context do

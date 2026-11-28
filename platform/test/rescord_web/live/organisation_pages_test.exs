@@ -388,6 +388,49 @@ defmodule RescordWeb.OrganisationPagesTest do
     end
   end
 
+  describe "the paper of the reports, on the settings page" do
+    test "is A4 at first, and a member reads it with no form", context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      {view, _html} = open(context.conn, context.member, path)
+
+      assert has_element?(view, "h2#paper-heading", "Paper of the reports")
+      assert has_element?(view, "section[aria-labelledby=paper-heading] strong", "A4")
+      refute has_element?(view, "#paper")
+
+      # An event that the page did not offer is refused.
+      render_submit(view, "save_paper", %{"paper" => %{"size" => "us_letter"}})
+      assert has_element?(view, "main p[role=alert]")
+
+      assert {:ok, %{paper_size: :a4}} =
+               Accounts.organisation_by_short_name(context.organisation.short_name,
+                 actor: context.root
+               )
+    end
+
+    test "an administrator changes it, and a paper that the form did not offer is refused",
+         context do
+      path = ~p"/o/#{context.organisation.short_name}/settings"
+      conn = sign_in(context.conn, context.administrator)
+      {:ok, view, _html} = live(conn, path)
+
+      assert has_element?(view, "#paper option[value=a4][selected]")
+      assert has_element?(view, "#paper option[value=us_letter]", "US Letter")
+
+      render_submit(view, "save_paper", %{"paper" => %{"size" => "a3"}})
+      assert has_element?(view, "main p[role=alert]")
+
+      {:ok, view, html} =
+        view
+        |> form("#paper", paper: %{size: "us_letter"})
+        |> render_submit()
+        |> follow_redirect(conn)
+
+      assert html =~ "A report is on US Letter now."
+      assert has_element?(view, "section[aria-labelledby=paper-heading] strong", "US Letter")
+      assert has_element?(view, "#paper option[value=us_letter][selected]")
+    end
+  end
+
   describe "the days ahead of the tasks, on the settings page" do
     test "are 14 at first, and a member reads them with no form", context do
       path = ~p"/o/#{context.organisation.short_name}/settings"
