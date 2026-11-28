@@ -85,7 +85,7 @@ defmodule RescordWeb.TransferPagesTest do
 
   test "an administrator asks a refuge, and the other one accepts", context do
     {conn, view, _html} = open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/partners")
-    assert has_element?(view, "p", "This refuge has no partner yet.")
+    assert has_element?(view, "p", "There is no partner refuge yet.")
 
     {view, _html} =
       submit(view, conn, "#ask", partner: %{short_name: context.banksia.short_name})
@@ -164,7 +164,7 @@ defmodule RescordWeb.TransferPagesTest do
     {_conn, view, _html} =
       open(context.banksia_member, ~p"/o/#{context.banksia.short_name}/transfers")
 
-    assert has_element?(view, "#received p", "No refuge has sent a resident yet.")
+    assert has_element?(view, "#received p", "No partner refuge has sent you a resident yet.")
 
     {conn, view, _html} =
       open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
@@ -191,9 +191,9 @@ defmodule RescordWeb.TransferPagesTest do
              "About Respiratory infection"
            )
 
-    assert has_element?(view, "h2", "Stay at the first refuge")
+    assert has_element?(view, "h2", "Stay at Wattle Creek")
     assert has_element?(view, "h2", "Families and groups")
-    refute has_element?(view, "h2", "Placements at the first refuge")
+    refute has_element?(view, "h2", "Placements at Wattle Creek")
     assert has_element?(view, "p", "Shy at first, loves hay.")
   end
 
@@ -244,7 +244,7 @@ defmodule RescordWeb.TransferPagesTest do
     {conn, view, _html} =
       open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/settings")
 
-    assert has_element?(view, "p", "No other part.")
+    assert has_element?(view, "p", "No other part: only the facts and the medical history.")
 
     {_view, html} = submit(view, conn, "#parts", parts: %{keys: ["journal", "placements"]})
     assert html =~ "The other journal entries"
@@ -264,7 +264,7 @@ defmodule RescordWeb.TransferPagesTest do
       {_conn, view, _html} =
         open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/partners")
 
-      assert has_element?(view, "p", "This refuge has no partner yet.")
+      assert has_element?(view, "p", "There is no partner refuge yet.")
 
       {:ok, asked} =
         Transfers.ask_partner(context.wattle, context.banksia.short_name,
@@ -279,7 +279,7 @@ defmodule RescordWeb.TransferPagesTest do
       {_, stranger} = member!(other, :administrator, context.root)
       {_conn, outside, _html} = open(stranger, ~p"/o/#{other.short_name}/partners")
       Transfers.accept_partner!(asked, actor: context.banksia_admin)
-      assert has_element?(outside, "p", "This refuge has no partner yet.")
+      assert has_element?(outside, "p", "There is no partner refuge yet.")
     end
 
     test "shows a transfer that arrives, and its answer at the refuge that sent it", context do
@@ -374,7 +374,7 @@ defmodule RescordWeb.TransferPagesTest do
         open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
 
       assert has_element?(view, "#sent [data-state=alert]", "Not sent")
-      assert has_element?(view, "#sent td small", "did not answer")
+      assert has_element?(view, "#sent td small", "could not reach the files")
 
       # A member reads it, and has no button.
       {_conn, member_view, _html} =

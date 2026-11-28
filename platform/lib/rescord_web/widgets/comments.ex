@@ -331,7 +331,7 @@ defmodule RescordWeb.Widgets.Comments do
           rows="3"
           maxlength="4000"
           required
-          hint="Up to 4,000 characters. **Bold**, *italics*, a list with - or 1., and a link with [words](https://…). Each member who follows this gets a notification."
+          hint="Up to 4,000 characters. **Bold**, *italics*, a list with - or 1., and a link with [words](https://…). Each member who gets notifications for this gets one."
         />
         <details :if={@state.others != []} id={"comment-tell-#{@state.key}"}>
           <summary>Tell someone</summary>
@@ -347,7 +347,7 @@ defmodule RescordWeb.Widgets.Comments do
               {email}
             </label>
             <small>
-              A member who is told gets a notification, and follows this from then on. A member who cannot open this record gets none.
+              A member who is told gets a notification, and gets notifications for this from then on. A member who cannot open this record gets none.
             </small>
           </fieldset>
         </details>

@@ -42,12 +42,12 @@ defmodule RescordWeb.RubyWords do
 
   def about(:ollama),
     do:
-      "A model on a machine of your own. Ruby only reads with this service: it proposes no record."
+      "A model on a machine of your own. With this service Ruby only reads: it cannot offer to add or change a record."
 
   def about(:openai_compatible),
     do:
       "A server that speaks the chat API of OpenAI, such as llama.cpp or vLLM. " <>
-        "Ruby only reads with this service: it proposes no record."
+        "With this service Ruby only reads: it cannot offer to add or change a record."
 
   @doc "The efforts, as the options of a select."
   def efforts, do: for({effort, words} <- @efforts, do: {words, Atom.to_string(effort)})

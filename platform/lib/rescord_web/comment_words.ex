@@ -45,12 +45,12 @@ defmodule RescordWeb.CommentWords do
     do: "#{writer} told you about a comment on #{record(record)}"
 
   def notification(:comment, writer, record),
-    do: "A comment by #{writer} on #{record(record)} that you follow"
+    do: "A comment by #{writer} on #{record(record)}, where you get notifications"
 
   @doc "A kind of notification, for the boxes of the channels."
   @spec kind(atom) :: String.t()
   def kind(:told), do: "When somebody tells me about a comment"
-  def kind(:comment), do: "A new comment on a record that I follow"
+  def kind(:comment), do: "A new comment on a record I get notifications for"
 
   @doc "A channel, for the boxes of the channels."
   @spec channel(atom) :: String.t()

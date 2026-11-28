@@ -210,6 +210,7 @@ defmodule RescordWeb.InventoryComponents do
           label="Lot"
           prompt="A new lot"
           options={@lots}
+          hint="A lot is one batch, often with its own code and expiry date. Choose a lot that is here when more of the same batch came in."
         />
         <.input
           field={@form[:quantity]}
@@ -550,7 +551,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:reorder_level]}
           type="decimal"
-          label="Order more when the stock is below, if you give a number"
+          label="Order more when the stock is below"
+          hint="Optional. The item shows Order more when its stock, in every location together, is below this number."
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
@@ -592,7 +594,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:quantity]}
           type="decimal"
-          label="Bring more when the stock there is below. No number removes the level"
+          label="Bring more to this location when the stock there is below"
+          hint="Leave it empty to take the level off this location."
         />
         <footer><.button type="submit">Save the level</.button></footer>
       </.form>
@@ -721,7 +724,7 @@ defmodule RescordWeb.InventoryComponents do
         />
         <:empty :let={found}>
           <p :if={found.filtered?}>No item matches the search and the filters.</p>
-          <p :if={not found.filtered?}>The inventory has no item yet.</p>
+          <p :if={not found.filtered?}>The inventory has no item yet. Add one with New item below.</p>
         </:empty>
         <:col :let={item} field="name" label="Item" sort search>
           <.link navigate={item_path(@organisation, item)}>{item.name}</.link>
@@ -777,7 +780,8 @@ defmodule RescordWeb.InventoryComponents do
         <.input
           field={@form[:reorder_level]}
           type="decimal"
-          label="Order more when the stock is below, if you give a number"
+          label="Order more when the stock is below"
+          hint="Optional. The item shows Order more when its stock, in every location together, is below this number."
         />
         <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />

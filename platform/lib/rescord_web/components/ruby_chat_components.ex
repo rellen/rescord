@@ -30,7 +30,10 @@ defmodule RescordWeb.RubyChatComponents do
         Ask about the residents, the tasks and the supplies of {@organisation.name}. Ruby reads
         the records that you can read, and no other.
       </p>
-      <p>The administrators of {@organisation.name} can read what you ask Ruby.</p>
+      <p>
+        The administrators of {@organisation.name}, whose role can change its settings,
+        can read what you ask Ruby.
+      </p>
       <p>
         <small>Ruby is a computer program, and it can be wrong. It gives no veterinary advice.</small>
       </p>

@@ -141,7 +141,7 @@ defmodule RescordWeb.RootPushLive do
       <section aria-labelledby="keys-heading">
         <h2 id="keys-heading">The keys of this server</h2>
         <p>
-          A push service delivers a notification of this server only with its key. The private key is encrypted in the database, and no page shows it.
+          Apple, Google, Mozilla and Microsoft deliver the notifications of this server to phones and browsers only when they carry its key. The private key is encrypted in the database, and no page shows it.
         </p>
         <dl :if={@settings.vapid_public_key}>
           <dt>Public key</dt>

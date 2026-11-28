@@ -170,8 +170,13 @@ defmodule RescordWeb.ExpensesLive do
         tenant={@organisation}
         url_state={@url_state}
         search={[label: "Search", placeholder: "What it was for, or who was paid", fn: &search/3]}
-        empty_message="No expense is in this list."
       >
+        <:empty :let={found}>
+          <p :if={found.filtered?}>No expense matches the search and the filters.</p>
+          <p :if={not found.filtered?}>
+            No expense is recorded yet.{if @can_record?, do: " Use Record an expense at the top."}
+          </p>
+        </:empty>
         <:col :let={expense} field="description" label="Expense" sort search>
           <.link navigate={~p"/o/#{@organisation.short_name}/expenses/#{expense.id}"}>
             {expense.description}

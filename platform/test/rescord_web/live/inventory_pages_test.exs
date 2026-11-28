@@ -153,7 +153,7 @@ defmodule RescordWeb.InventoryPagesTest do
       |> fill_in("Name", with: "Guinea pig pellets")
       |> select("Category", option: "Food")
       |> select("Unit that you count it in", option: "kg")
-      |> fill_in("Order more when the stock is below, if you give a number", with: "5")
+      |> fill_in("Order more when the stock is below", with: "5")
       |> send_form("Add the item")
       |> assert_has(main() |> heading("Guinea pig pellets", level: 1))
       |> assert_has(stock() |> definition("In stock"), text: "0 kg")
@@ -728,7 +728,7 @@ defmodule RescordWeb.InventoryPagesTest do
     test "changes the item, with the form that has its facts", context do
       {:ok, _} = Inventory.revise_item(context.hay, %{reorder_level: "2.5"}, context.admin)
       changes = keep("Change the item")
-      reorder_level = "Order more when the stock is below, if you give a number"
+      reorder_level = "Order more when the stock is below"
       session = open(context.admin_conn, context.item_path)
 
       assert value(session, changes |> field("Name")) == "Meadow hay"
@@ -758,7 +758,7 @@ defmodule RescordWeb.InventoryPagesTest do
         within(session, levels, fn form ->
           form
           |> select("Location", option: "Clinic room")
-          |> fill_in("Bring more when the stock there is below. No number removes the level",
+          |> fill_in("Bring more to this location when the stock there is below",
             with: quantity
           )
           |> send_form("Save the level")
@@ -786,7 +786,7 @@ defmodule RescordWeb.InventoryPagesTest do
       |> within(levels, fn form ->
         form
         |> select("Location", option: "ICU ward B")
-        |> fill_in("Bring more when the stock there is below. No number removes the level",
+        |> fill_in("Bring more to this location when the stock there is below",
           with: "20"
         )
         |> send_form("Save the level")

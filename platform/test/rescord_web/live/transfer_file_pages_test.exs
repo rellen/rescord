@@ -164,7 +164,7 @@ defmodule RescordWeb.TransferFilePagesTest do
       open(context.banksia_member, ~p"/o/#{context.banksia.short_name}/transfers/#{transfer.id}")
 
     assert has_element?(view, "p", "A copy from Wattle Creek")
-    assert has_element?(view, "h2", "Stay at the first refuge")
+    assert has_element?(view, "h2", "Stay at Wattle Creek")
     [%{"files" => [photo]}] = transfer.snapshot["medical"]
     assert has_element?(view, "a", "card.jpg")
 

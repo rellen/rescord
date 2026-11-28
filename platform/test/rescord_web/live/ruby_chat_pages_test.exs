@@ -71,7 +71,7 @@ defmodule RescordWeb.RubyChatPagesTest do
       {:ok, view, html} = live(context.conn, context.path)
 
       assert html =~ "The assistant of Wattle Creek"
-      assert html =~ "The administrators of Wattle Creek can read what you ask Ruby."
+      assert html =~ "The administrators of Wattle Creek, whose role can change its settings"
       assert has_element?(view, "main[data-ruby] form#ruby-say[data-composer]")
       assert has_element?(view, "#ruby-send", "Send")
       refute main(view) =~ ~r/\sclass=/

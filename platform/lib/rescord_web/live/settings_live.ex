@@ -225,7 +225,9 @@ defmodule RescordWeb.SettingsLive do
     >
       <.header icon={Icons.section(:settings)}>
         Settings
-        <:subtitle>The settings of {@organisation.name}</:subtitle>
+        <:subtitle>
+          The time zone, language and region, money, paper, tasks and transfers of {@organisation.name}
+        </:subtitle>
       </.header>
 
       <p :for={problem <- @problems} role="alert">{problem}</p>

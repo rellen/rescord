@@ -1006,6 +1006,23 @@ release (ADR 0047).
   page. A report or an export with a wrong date says "Give a date as a
   day, a month and a year", and one with no range says "Give a day in
   From and a day in To" (ADR 0108).
+- The pages of the inventory, the expenses, the transfers and the
+  partners help more: a lot, the reorder levels, the member who paid, a
+  partner card and its fingerprint, and the short name of a refuge to
+  ask have a line of help. The send of a resident says that it sends a
+  copy and that the resident stays on your list, the export says what to
+  do with the file, and the partners page says which refuges are on
+  another server. The copy of a resident names the refuge that sent it,
+  not "the first refuge", and a transfer that did not arrive says why in
+  plain words (ADR 0108).
+- The pages of the members, the settings, the notifications, the root
+  user and Ruby help more: the email and the role of an invitation, the
+  short name of a new organisation (which cannot change), a new root
+  user and the limits of a provider of Ruby have a line of help. The
+  notifications page explains ntfy, and says "Get notifications for
+  this", the words of the button, rather than "follow". The pages name
+  the organisation, not "the refuge" or "the rescue", for the
+  organisation itself (ADR 0108).
 
 ### Fixed
 

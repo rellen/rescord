@@ -142,13 +142,20 @@ defmodule RescordWeb.AccountComponents do
     <section aria-labelledby="invite-heading">
       <h2 id="invite-heading"><.icon name="user-plus" /> Invite a person</h2>
       <.form for={@invite_form} id="invite" phx-submit="invite">
-        <.input field={@invite_form[:email]} type="email" label="Email address" required />
+        <.input
+          field={@invite_form[:email]}
+          type="email"
+          label="Email address"
+          hint="Rescord emails them a link to sign in. They need no password."
+          required
+        />
         <.input
           :if={@roles != []}
           field={@invite_form[:role_id]}
           type="select"
           label="Role"
           options={@roles}
+          hint="What they may do. You can change it later."
         />
         <footer>
           <.button type="submit"><.icon name="envelope" /> Send the invitation</.button>
@@ -196,6 +203,7 @@ defmodule RescordWeb.AccountComponents do
         <.input
           field={@organisation_form[:short_name]}
           label="Short name, for the address of its pages"
+          hint="Small letters, digits and hyphens, such as happy-paws. It is in the address of each page, and it cannot change later."
           autocapitalize="none"
           spellcheck="false"
           required
@@ -251,7 +259,13 @@ defmodule RescordWeb.AccountComponents do
 
       <.form for={@root_form} id="new-root" phx-submit="make_root">
         <h3>Make a user a root user</h3>
-        <.input field={@root_form[:email]} type="email" label="Email address of the user" required />
+        <.input
+          field={@root_form[:email]}
+          type="email"
+          label="Email address of the user"
+          hint="The person must have signed in once. A root user can do anything, in each organisation of this server."
+          required
+        />
         <footer>
           <.button type="submit">Make a root user</.button>
         </footer>
@@ -379,11 +393,13 @@ defmodule RescordWeb.AccountComponents do
     <section aria-labelledby="parts-heading">
       <h2 id="parts-heading">Transfers</h2>
       <p>
-        A copy of a resident that this refuge sends to a partner holds the facts and the medical
-        history always. It also holds these parts at first, and the person who sends it can
-        change them for each transfer.
+        When you send a resident to a partner refuge, the partner gets a copy of its record. The
+        copy always has the facts of the resident and its medical history. It also holds these
+        parts at first, and the member who sends it can change them each time.
       </p>
-      <p :if={@organisation.transfer_parts == []}>No other part.</p>
+      <p :if={@organisation.transfer_parts == []}>
+        No other part: only the facts and the medical history.
+      </p>
       <ul :if={@organisation.transfer_parts != []}>
         <li :for={part <- @organisation.transfer_parts}>{RescordWeb.TransferWords.part(part)}</li>
       </ul>

@@ -107,7 +107,8 @@ defmodule RescordWeb.ExpenseComponents do
         :if={@payers != []}
         field={@form[:payer_id]}
         type="select"
-        label="The member who paid, for an expense of another member"
+        label="Member who paid"
+        hint="The organisation pays this member back."
         prompt="Choose a member"
         options={@payers}
       />
@@ -182,8 +183,8 @@ defmodule RescordWeb.ExpenseComponents do
       <label for={@upload.ref}>Choose files, or take a photo</label>
       <.live_file_input upload={@upload} aria-describedby="receipt-files-hint" />
       <small id="receipt-files-hint">
-        A photo or a PDF, five at most, each 20 MB at most. Rescord removes the place and the
-        other metadata of a photo before it keeps it.
+        A photo or a PDF, five at most, each 20 MB at most. Rescord takes out the place where a
+        photo was taken, and other hidden details, before it keeps it.
       </small>
       <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
       <ul :if={@upload.entries != []}>
@@ -373,7 +374,7 @@ defmodule RescordWeb.ExpenseComponents do
           label="Reference (optional)"
           value=""
           maxlength="120"
-          hint="For example the words of the bank transfer."
+          hint="For example the reference of the bank payment."
         />
         <footer><.button type="submit">Record the payment</.button></footer>
       </form>

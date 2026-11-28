@@ -197,7 +197,9 @@ defmodule RescordWeb.RootUsageLive do
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
       <.header icon={Icons.section(:usage)}>
         Usage counts
-        <:subtitle>Which features the rescues on this server use, and where the counts go.</:subtitle>
+        <:subtitle>
+          Which features the organisations on this server use, and where the counts go.
+        </:subtitle>
       </.header>
 
       <p><a href={~p"/root"}>Back to the page of the server</a></p>

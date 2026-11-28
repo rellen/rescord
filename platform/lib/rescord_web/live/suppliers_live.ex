@@ -107,7 +107,9 @@ defmodule RescordWeb.SuppliersLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <p :if={@suppliers == []}>There is no supplier yet.</p>
+      <p :if={@suppliers == []}>
+        There is no supplier yet. A supplier is a shop or a person you get supplies from.
+      </p>
       <.suppliers_table
         :if={@suppliers != []}
         can_change?={@can_change?}

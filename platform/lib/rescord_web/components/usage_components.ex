@@ -255,10 +255,10 @@ defmodule RescordWeb.UsageComponents do
       <h3>What is never in it</h3>
       <ul id="usage-never">
         <li>who did it: no user, member, role, address of a client or browser;</li>
-        <li>where: no organisation, name of a rescue or host name;</li>
+        <li>where: no organisation, its name, or host name;</li>
         <li>what: no record, name, text that a person typed, file name or search;</li>
         <li>when, closer than the day;</li>
-        <li>how many records a rescue has, or how many people use the server.</li>
+        <li>how many records an organisation has, or how many people use the server.</li>
       </ul>
       <p>
         A day with one person on the server still says what that person used on that day. That is

@@ -149,7 +149,7 @@ defmodule RescordWeb.RubyComponents do
       </p>
       <p>
         <small>
-          The test sends one small question with the saved settings, and no record of a rescue.
+          The test sends one small question with the saved settings, and no record of an organisation.
           It costs a part of a cent at a hosted service. Save a change first.
         </small>
       </p>
@@ -256,6 +256,7 @@ defmodule RescordWeb.RubyComponents do
           problems={@problems}
           type="number"
           label="Tokens of one answer, at most"
+          hint="A token is about four letters. A longer answer is cut short."
           min="1"
         />
         <.field
@@ -264,6 +265,7 @@ defmodule RescordWeb.RubyComponents do
           problems={@problems}
           type="number"
           label="Tokens of one request, at most"
+          hint="The most that Ruby sends the model at once: the conversation and the records that it read."
           min="1"
         />
         <.field
@@ -271,6 +273,7 @@ defmodule RescordWeb.RubyComponents do
           name={:default_allowance}
           problems={@problems}
           label="Allowance of an organisation for a month, in US dollars, to start with"
+          hint="What a new organisation may spend on Ruby each month. Its administrators can change it."
           inputmode="decimal"
         />
 

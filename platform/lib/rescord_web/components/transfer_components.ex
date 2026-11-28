@@ -20,7 +20,7 @@ defmodule RescordWeb.TransferComponents do
     ~H"""
     <section aria-labelledby="partners-heading">
       <h2 id="partners-heading">Partnerships</h2>
-      <p :if={@partnerships == []}>This refuge has no partner yet.</p>
+      <p :if={@partnerships == []}>There is no partner refuge yet.</p>
       <div :if={@partnerships != []} data-scroll>
         <table>
           <thead>
@@ -90,7 +90,8 @@ defmodule RescordWeb.TransferComponents do
           id="ask-short-name"
           name="partner[short_name]"
           type="text"
-          label="The short name of the refuge, from the address of its pages"
+          label="Short name of the refuge"
+          hint="Ask the refuge for it: it is the word after /o/ in the address of its pages. The refuge becomes a partner when it accepts."
           value=""
           maxlength="40"
           autocapitalize="none"
@@ -117,7 +118,12 @@ defmodule RescordWeb.TransferComponents do
     ~H"""
     <section aria-labelledby="remote-heading">
       <h2 id="remote-heading">Refuges on other servers</h2>
-      <p :if={@remote == []}>This refuge has no partner on another server yet.</p>
+      <p>
+        A refuge that signs in at the same address as you is on this server, and becomes a
+        partner when you ask it. A refuge that uses Rescord at another address is on another
+        server: you swap partner cards with it.
+      </p>
+      <p :if={@remote == []}>There is no partner refuge on another server yet.</p>
       <div :if={@remote != []} data-scroll>
         <table>
           <thead>
@@ -152,8 +158,8 @@ defmodule RescordWeb.TransferComponents do
         <h3>The partner card of this refuge</h3>
         <p>
           Give this card to the refuge on the other server, by email or on paper. It holds no
-          secret. Before the first file, read the fingerprint to each other by phone or in person:
-          the two must match.
+          secret. Before the first file, read the fingerprint (the letters and numbers below) to
+          each other by phone or in person. If the two are not the same, do not use the card.
         </p>
         <.input
           id="own-card"
@@ -171,6 +177,7 @@ defmodule RescordWeb.TransferComponents do
             name="remote[card]"
             type="textarea"
             label="The partner card of the other refuge"
+            hint="Paste the text that the other refuge gave you."
             value=""
             maxlength="2000"
             required
@@ -194,10 +201,15 @@ defmodule RescordWeb.TransferComponents do
   def export_form(assigns) do
     ~H"""
     <section aria-labelledby="export-heading">
-      <h2 id="export-heading">Export a resident for another server</h2>
+      <h2 id="export-heading">Send a resident to a refuge on another server</h2>
+      <p>
+        Rescord makes a transfer file. Give it to the partner refuge, by email or on a USB stick,
+        and it adds the file on its page of the transfers.
+      </p>
       <p :if={@remote == []}>
-        This refuge has no partner on another server yet. Record one on the page of the partner
-        refuges first.
+        There is no partner refuge on another server yet. Record one on
+        <.link navigate={~p"/o/#{@organisation.short_name}/partners"}>the page of the partner refuges</.link>
+        first.
       </p>
       <.form
         :if={@remote != []}
@@ -261,8 +273,8 @@ defmodule RescordWeb.TransferComponents do
     <section aria-labelledby="import-heading">
       <h2 id="import-heading">Import a transfer file</h2>
       <p>
-        A file from a partner on another server waits for an answer here, as a transfer on this
-        server does.
+        Did a partner refuge on another server give you a transfer file? Its name ends in <code>.rescord</code>. Add it here, and it waits under Received for you to accept or
+        decline.
       </p>
       <form id="import" phx-submit="import" phx-change="choose_file">
         <label for={@upload.ref}>Transfer file</label>
@@ -406,8 +418,13 @@ defmodule RescordWeb.TransferComponents do
     ~H"""
     <section aria-labelledby="send-heading">
       <h2 id="send-heading">Send a resident</h2>
+      <p>
+        This sends a copy of the record of the resident to a partner refuge. The resident stays
+        on your list: record its departure yourself. The partner reads the copy once it accepts,
+        and the copy does not add the resident to its list.
+      </p>
       <p :if={@partners == []}>
-        This refuge has no partner yet. Ask a refuge on the page of the partner refuges first.
+        There is no partner refuge yet. Ask a refuge on the page of the partner refuges first.
       </p>
       <.form :if={@partners != []} for={@form} id="send" phx-submit="send">
         <.input
@@ -456,7 +473,8 @@ defmodule RescordWeb.TransferComponents do
       assign(assigns,
         copy: assigns.transfer.snapshot,
         facts: assigns.transfer.snapshot["facts"] || %{},
-        zone: assigns.organisation.time_zone
+        zone: assigns.organisation.time_zone,
+        sender: (assigns.transfer.from_organisation || assigns.transfer.remote_partner).name
       )
 
     ~H"""
@@ -496,8 +514,8 @@ defmodule RescordWeb.TransferComponents do
           term={identifier["kind"] || "Identifier"}
           value={identifier["value"]}
         />
-        <.fact term="Arrived at the first refuge" value={TransferWords.date(@facts["arrived_on"])} />
-        <.fact term="Status at the first refuge" value={TransferWords.value(@facts["status"])} />
+        <.fact term={"Arrived at #{@sender}"} value={TransferWords.date(@facts["arrived_on"])} />
+        <.fact term={"Status at #{@sender}"} value={TransferWords.value(@facts["status"])} />
       </dl>
     </section>
 
@@ -537,7 +555,7 @@ defmodule RescordWeb.TransferComponents do
     />
 
     <section :if={@copy["stay"]} aria-labelledby="copy-stay">
-      <h2 id="copy-stay">Stay at the first refuge</h2>
+      <h2 id="copy-stay">Stay at {@sender}</h2>
       <dl>
         <.fact
           term="Arrival"
@@ -561,7 +579,7 @@ defmodule RescordWeb.TransferComponents do
     </section>
 
     <section :if={@copy["placements"]} aria-labelledby="copy-placements">
-      <h2 id="copy-placements">Placements at the first refuge</h2>
+      <h2 id="copy-placements">Placements at {@sender}</h2>
       <p :if={@copy["placements"] == []}>No placement is recorded.</p>
       <ul :if={@copy["placements"] != []}>
         <li :for={placement <- @copy["placements"]}>

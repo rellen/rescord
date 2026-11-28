@@ -293,7 +293,7 @@ defmodule RescordWeb.TransfersLive do
       <.transfers_table
         id="received"
         title="Received"
-        empty="No refuge has sent a resident yet."
+        empty="No partner refuge has sent you a resident yet. When one does, it waits here for your answer."
         transfers={@received}
         organisation={@organisation}
         can_answer?={@can_answer?}
@@ -303,7 +303,7 @@ defmodule RescordWeb.TransfersLive do
       <.transfers_table
         id="sent"
         title="Sent"
-        empty="This refuge has sent no resident yet."
+        empty="You have sent no resident yet."
         transfers={@sent}
         organisation={@organisation}
         can_answer?={false}
