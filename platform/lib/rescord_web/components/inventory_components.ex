@@ -608,14 +608,13 @@ defmodule RescordWeb.InventoryComponents do
 
   def remove_item(assigns) do
     ~H"""
-    <details id="remove-item">
-      <summary><.icon name="trash" /> Remove the item</summary>
+    <.confirm id="remove-item" summary="Remove the item">
       <p>
         The item leaves the inventory. Its lots and what happened to its stock stay in the
         history.
       </p>
-      <.button phx-click="remove">Remove {@item.name}</.button>
-    </details>
+      <.button variant="danger" phx-click="remove">Remove {@item.name}</.button>
+    </.confirm>
     """
   end
 
@@ -884,14 +883,17 @@ defmodule RescordWeb.InventoryComponents do
 
   def remove_supplier(assigns) do
     ~H"""
-    <details id={"remove-details-#{@supplier.id}"}>
-      <summary><.icon name="trash" /> Remove</summary>
+    <.confirm
+      id={"remove-details-#{@supplier.id}"}
+      summary="Remove"
+      label={"Remove the supplier #{@supplier.name}"}
+    >
       <form id={"remove-#{@supplier.id}"} phx-submit="remove">
         <input type="hidden" name="supplier_id" value={@supplier.id} />
         <p>The lots that name this supplier keep their history.</p>
-        <.button type="submit">Remove {@supplier.name}</.button>
+        <.button type="submit" variant="danger">Remove {@supplier.name}</.button>
       </form>
-    </details>
+    </.confirm>
     """
   end
 

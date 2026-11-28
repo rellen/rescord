@@ -244,11 +244,10 @@ defmodule RescordWeb.GroupComponents do
 
   def close_group(assigns) do
     ~H"""
-    <details id="close-group">
-      <summary><.icon name="no-symbol" /> Close this group</summary>
+    <.confirm id="close-group" summary="Close this group" icon="no-symbol">
       <p>Close a group that is no more. Its history stays.</p>
-      <.button phx-click="close">Close the group</.button>
-    </details>
+      <.button variant="danger" phx-click="close">Close the group</.button>
+    </.confirm>
     """
   end
 

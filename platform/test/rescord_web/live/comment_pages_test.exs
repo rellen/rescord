@@ -213,7 +213,13 @@ defmodule RescordWeb.CommentPagesTest do
       assert html =~ "Clean the barn pens"
       assert html =~ "The hose leaks."
 
-      {:ok, view, _html} = live(context.conn, ~p"/o/#{context.short}/tasks")
+      # The day of the task: an hour from now is tomorrow after 11 PM in
+      # the organisation.
+      day = Rescord.Accounts.local_date(context.organisation, task.due_at)
+
+      {:ok, view, _html} =
+        live(context.conn, ~p"/o/#{context.short}/tasks?#{[day: Date.to_iso8601(day)]}")
+
       html = render_async(view)
       assert html =~ ~s(href="/o/#{context.short}/tasks/#{task.id}")
     end

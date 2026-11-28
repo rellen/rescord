@@ -57,6 +57,7 @@ defmodule RescordWeb.CatalogueHTML do
     {"Core components", "A table"},
     {"Core components", "States"},
     {"Core components", "What an action refused"},
+    {"Core components", "A step before an action that removes"},
     {"Core components", "Notices"},
     {"Core components", "Icons"},
     # ADR 0080.

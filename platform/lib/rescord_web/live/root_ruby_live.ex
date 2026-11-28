@@ -228,9 +228,8 @@ defmodule RescordWeb.RootRubyLive do
   def render(%{live_action: :index} = assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <nav aria-label="Breadcrumb"><.link navigate={~p"/root"}>Root</.link></nav>
-
       <.header icon={Icons.section(:ruby)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
         Ruby
         <:subtitle>
           The services that Ruby, the assistant, can think with on this server. An organisation
@@ -251,11 +250,9 @@ defmodule RescordWeb.RootRubyLive do
   def render(%{live_action: :new} = assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/root/ruby"}>Ruby on this server</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:ruby)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
+        <:crumb navigate={~p"/root/ruby"}>Ruby</:crumb>
         A new provider
         <:subtitle>The fields follow the service: choose it first.</:subtitle>
       </.header>
@@ -276,11 +273,9 @@ defmodule RescordWeb.RootRubyLive do
   def render(%{live_action: :provider} = assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/root/ruby"}>Ruby on this server</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:ruby)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
+        <:crumb navigate={~p"/root/ruby"}>Ruby</:crumb>
         {@provider.name}
         <:subtitle>A provider of this server, with the service {RubyWords.service(@kind)}.</:subtitle>
       </.header>

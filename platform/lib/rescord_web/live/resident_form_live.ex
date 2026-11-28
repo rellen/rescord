@@ -138,8 +138,15 @@ defmodule RescordWeb.ResidentFormLive do
 
     case result do
       {:ok, resident} ->
+        words =
+          if socket.assigns.resident,
+            do: "The details are saved.",
+            else: "The resident is registered."
+
         {:noreply,
-         push_navigate(socket,
+         socket
+         |> put_flash(:info, words)
+         |> push_navigate(
            to: ~p"/o/#{socket.assigns.organisation.short_name}/residents/#{resident.id}"
          )}
 
@@ -204,18 +211,21 @@ defmodule RescordWeb.ResidentFormLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:residents)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
+        <:crumb
+          :if={@resident}
+          navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}
+        >
+          {@resident.name || "A resident with no name"}
+        </:crumb>
         {@page_title}
         <:subtitle :if={is_nil(@resident)}>
           Each fact but the species can come later.
         </:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <p :if={@lists.species == []} role="status">
         The list of species is empty, and a resident needs a species. An administrator adds

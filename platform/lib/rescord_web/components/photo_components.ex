@@ -121,14 +121,12 @@ defmodule RescordWeb.PhotoComponents do
           <footer><.button type="submit">Rename</.button></footer>
         </form>
       </details>
-      <.button
-        :if={@can_remove?}
-        type="button"
-        phx-click="remove_album"
-        data-confirm={"Remove the album #{@album.name}? Its photos stay."}
-      >
-        <.icon name="trash" /> Remove the album
-      </.button>
+      <.confirm :if={@can_remove?} id="remove-album" summary="Remove the album">
+        <p>Its photos stay.</p>
+        <.button type="button" variant="danger" phx-click="remove_album">
+          Remove the album {@album.name}
+        </.button>
+      </.confirm>
     </div>
     """
   end
@@ -154,7 +152,7 @@ defmodule RescordWeb.PhotoComponents do
           <legend>Photos: JPEG, PNG, GIF or WebP, ten at most, each 20 MB at most</legend>
           <label for={@upload.ref}>Choose photos</label>
           <.live_file_input upload={@upload} />
-          <p :for={error <- upload_errors(@upload)} role="alert">{upload_words(error)}</p>
+          <.problems list={Enum.map(upload_errors(@upload), &upload_words/1)} />
           <ul :if={@upload.entries != []}>
             <li :for={entry <- @upload.entries} id={"new-photo-#{entry.ref}"}>
               {entry.client_name}
@@ -318,20 +316,22 @@ defmodule RescordWeb.PhotoComponents do
         </form>
       </details>
 
-      <footer :if={@make_profile? or @remove?}>
-        <.button :if={@make_profile?} type="button" phx-click="make_profile" phx-value-ref={@ref}>
+      <footer :if={@make_profile?}>
+        <.button type="button" phx-click="make_profile" phx-value-ref={@ref}>
           <.icon name="star" /> Make it the profile picture
         </.button>
-        <.button
-          :if={@remove?}
-          type="button"
-          phx-click="remove_photo"
-          phx-value-ref={@ref}
-          data-confirm="Remove this photo?"
-        >
-          Remove
-        </.button>
       </footer>
+      <.confirm
+        :if={@remove?}
+        id={"remove-photo-#{@ref}"}
+        summary="Remove"
+        label={"Remove the photo of #{photo_name(@item)}"}
+      >
+        <p>The photo leaves the resident and each album.</p>
+        <.button type="button" variant="danger" phx-click="remove_photo" phx-value-ref={@ref}>
+          Remove the photo of {photo_name(@item)}
+        </.button>
+      </.confirm>
     </article>
     """
   end
@@ -360,6 +360,10 @@ defmodule RescordWeb.PhotoComponents do
   end
 
   defp name(resident), do: resident.name || "a resident with no name"
+
+  # The words that tell one photo from the others: its caption, or its date.
+  defp photo_name(%{caption: caption}) when is_binary(caption), do: caption
+  defp photo_name(item), do: ResidentWords.date(item.taken_on)
 
   @doc "The link to a photo record."
   def photo_url(organisation, photo), do: ~p"/o/#{organisation.short_name}/photos/#{photo.id}"

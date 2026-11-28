@@ -172,13 +172,11 @@ defmodule RescordWeb.GroupMeasurementsLive do
       ruby={@ruby?}
       section={:groups}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/groups/#{@group.id}"}>{Residents.group_name(
-          @group
-        )}</.link>
-      </nav>
-
       <.header icon={Icons.section(:measurements)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/groups"}>Groups</:crumb>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/groups/#{@group.id}"}>
+          {Residents.group_name(@group)}
+        </:crumb>
         Measurements of {Residents.group_name(@group)}
         <:subtitle>
           A chart for each resident in the group, with the others in grey behind it

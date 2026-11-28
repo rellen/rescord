@@ -120,7 +120,7 @@ defmodule RescordWeb.UsageComponents do
           <% end %>
         </fieldset>
 
-        <p :for={{nil, words} <- @problems} role="alert">{words}</p>
+        <.problems list={for {nil, words} <- @problems, do: words} />
 
         <footer>
           <.button type="submit" variant="primary" phx-disable-with="Saving">Save</.button>
@@ -159,15 +159,13 @@ defmodule RescordWeb.UsageComponents do
         />
         <footer>
           <.button type="submit" phx-disable-with="Saving">Save the token</.button>
-          <.button
-            :if={@settings.token_set_at}
-            type="button"
-            phx-click="forget_token"
-            data-confirm="Delete the token? A send then has none."
-          >
-            <.icon name="trash" /> Delete the token
-          </.button>
         </footer>
+        <.confirm :if={@settings.token_set_at} id="usage-delete-token" summary="Delete the token">
+          <p>A send then has no token.</p>
+          <.button type="button" variant="danger" phx-click="forget_token">
+            Delete the token
+          </.button>
+        </.confirm>
       </form>
     </section>
 
@@ -339,23 +337,23 @@ defmodule RescordWeb.UsageComponents do
         A new id cuts the tie between what was sent before and what comes next. Deleting the counts
         empties the table of the counts on this server, and sends nothing.
       </p>
-      <footer>
-        <.button
-          :if={@settings.installation_id}
-          id="usage-new-installation"
-          phx-click="new_installation"
-          data-confirm="Make a new id? A receiver cannot tie the days to come to the days before."
-        >
+      <.confirm
+        :if={@settings.installation_id}
+        id="usage-new-installation-step"
+        summary="Make a new id"
+        icon="arrow-path"
+      >
+        <p>A receiver cannot tie the days to come to the days before.</p>
+        <.button id="usage-new-installation" variant="danger" phx-click="new_installation">
           Make a new id
         </.button>
-        <.button
-          id="usage-forget"
-          phx-click="forget_counts"
-          data-confirm="Delete each count that this server stored?"
-        >
-          <.icon name="trash" /> Delete the counts
+      </.confirm>
+      <.confirm id="usage-forget-step" summary="Delete the counts">
+        <p>Each count that this server stored goes. Nothing is sent.</p>
+        <.button id="usage-forget" variant="danger" phx-click="forget_counts">
+          Delete the counts
         </.button>
-      </footer>
+      </.confirm>
     </section>
     """
   end

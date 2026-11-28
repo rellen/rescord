@@ -151,6 +151,7 @@ defmodule RescordWeb.CalendarLive do
       section={:tasks}
     >
       <.header icon={Icons.section(:calendar)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/tasks"}>Tasks</:crumb>
         Calendar feeds
         <:subtitle>
           The tasks and the dates of {@organisation.name}, in your calendar app.

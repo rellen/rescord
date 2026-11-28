@@ -80,10 +80,10 @@ defmodule RescordWeb.LocationLive do
   def handle_event("place", %{"placement" => fields}, socket) when is_map(fields) do
     subject =
       case {non_blank(fields["resident_id"]), non_blank(fields["group_id"])} do
-        {nil, nil} -> {:error, "Choose a resident or a group"}
+        {nil, nil} -> {:error, "Choose a resident or a group."}
         {id, nil} -> {:ok, {:resident, id}}
         {nil, id} -> {:ok, {:group, id}}
-        {_resident, _group} -> {:error, "Choose a resident or a group, and not both"}
+        {_resident, _group} -> {:error, "Choose a resident or a group, and not both."}
       end
 
     with {:ok, subject} <- subject,
@@ -92,7 +92,7 @@ defmodule RescordWeb.LocationLive do
 
       subject
       |> Locations.settle(socket.assigns.node.location.id, options)
-      |> after_write(socket)
+      |> after_write(socket, "The placement is recorded.")
     else
       {:error, words} when is_binary(words) ->
         {:noreply, assign(socket, problems: [words])}
@@ -108,8 +108,13 @@ defmodule RescordWeb.LocationLive do
 
     # Only a placement of this location: the page has them in hand.
     case Enum.find(placements, &(&1.id == id)) do
-      nil -> {:noreply, socket}
-      placement -> placement |> Locations.finish_placement(options(socket)) |> after_write(socket)
+      nil ->
+        {:noreply, socket}
+
+      placement ->
+        placement
+        |> Locations.finish_placement(options(socket))
+        |> after_write(socket, "The placement is ended.")
     end
   end
 
@@ -122,13 +127,13 @@ defmodule RescordWeb.LocationLive do
 
     socket.assigns.node.location
     |> Locations.revise_location(attributes, options(socket))
-    |> after_write(socket)
+    |> after_write(socket, "The location is saved.")
   end
 
   def handle_event("move", %{"move" => %{"parent_id" => parent_id}}, socket) do
     socket.assigns.node.location
     |> Locations.move_location(non_blank(parent_id), options(socket))
-    |> after_write(socket)
+    |> after_write(socket, "The location is moved.")
   end
 
   def handle_event("close", _params, socket) do
@@ -151,10 +156,11 @@ defmodule RescordWeb.LocationLive do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   # Opens the page again after a write, so that its forms are empty.
-  defp after_write({:error, error}, socket),
+  defp after_write({:error, error}, socket, _words),
     do: {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
 
-  defp after_write(_done, socket), do: {:noreply, push_navigate(socket, to: path(socket))}
+  defp after_write(_done, socket, words),
+    do: {:noreply, socket |> put_flash(:info, words) |> push_navigate(to: path(socket))}
 
   @impl true
   def render(assigns) do
@@ -167,11 +173,8 @@ defmodule RescordWeb.LocationLive do
       ruby={@ruby?}
       section={:housing}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/housing"}>Housing</.link>
-      </nav>
-
-      <.header>
+      <.header icon={Icons.section(:housing)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/housing"}>Housing</:crumb>
         {@node.location.name}
         <:subtitle>
           {if @node.location.kind, do: "#{@node.location.kind.label} · "}{occupancy(@node)}
@@ -179,7 +182,7 @@ defmodule RescordWeb.LocationLive do
         </:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.who_lives_here
         node={@node}

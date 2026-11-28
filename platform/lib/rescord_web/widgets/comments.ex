@@ -299,17 +299,22 @@ defmodule RescordWeb.Widgets.Comments do
                   <button type="submit">Save the change</button>
                 </form>
               </details>
-              <button
+              <.confirm
                 :if={MapSet.member?(@state.can_delete, comment.id)}
-                type="button"
-                data-variant="secondary"
-                phx-click={event("delete")}
-                phx-value-widget={@state.key}
-                phx-value-comment_id={comment.id}
-                data-confirm="Delete this comment? Its words go for good."
+                id={"delete-comment-#{comment.id}"}
+                summary="Delete"
               >
-                Delete
-              </button>
+                <p>Its words go for good.</p>
+                <.button
+                  type="button"
+                  variant="danger"
+                  phx-click={event("delete")}
+                  phx-value-widget={@state.key}
+                  phx-value-comment_id={comment.id}
+                >
+                  Delete the comment
+                </.button>
+              </.confirm>
             </footer>
           </article>
         </li>

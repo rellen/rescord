@@ -78,8 +78,14 @@ defmodule RescordWeb.CoreComponents do
       <.button phx-click="go" variant="primary">Send!</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled type)
-  attr :variant, :string, default: nil, values: [nil, "primary"]
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form)
+
+  attr :variant, :string,
+    default: nil,
+    values: [nil, "primary", "danger"],
+    doc: "`danger` is the last button of a `confirm/1`, and only that"
+
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
@@ -353,12 +359,30 @@ defmodule RescordWeb.CoreComponents do
   end
 
   @doc """
-  Renders the header of a page: its title, an optional subtitle and
-  optional actions.
+  Renders the header of a page: its breadcrumb, its title, an optional
+  subtitle and optional actions.
+
+  A page below a page of the site menu names the way up to that page in
+  `crumb` slots, the highest first (issue 35). The breadcrumb is a `nav`
+  before the header, and the stylesheet draws the separator. A "back"
+  button does not go in `actions`: the breadcrumb is the way back.
+
+  ## Examples
+
+      <.header icon={Icons.section(:journal)}>
+        <:crumb navigate={~p"/o/wattle/residents"}>Residents</:crumb>
+        <:crumb navigate={~p"/o/wattle/residents/\#{id}"}>Clover</:crumb>
+        Journal of Clover
+      </.header>
   """
   attr :icon, :string,
     default: nil,
     doc: "the shape of the part of the site that the page is (`RescordWeb.Icons.section/1`)"
+
+  slot :crumb, doc: "a page above this one, the highest first" do
+    attr :navigate, :string, doc: "the address of that page, for a live navigation"
+    attr :patch, :string, doc: "the address of that page, for a patch of the same LiveView"
+  end
 
   slot :inner_block, required: true
   slot :subtitle
@@ -366,6 +390,13 @@ defmodule RescordWeb.CoreComponents do
 
   def header(assigns) do
     ~H"""
+    <nav :if={@crumb != []} aria-label="Breadcrumb">
+      <ol>
+        <li :for={crumb <- @crumb}>
+          <.link navigate={crumb[:navigate]} patch={crumb[:patch]}>{render_slot(crumb)}</.link>
+        </li>
+      </ol>
+    </nav>
     <header>
       <hgroup>
         <h1><.icon :if={@icon} name={@icon} /> {render_slot(@inner_block)}</h1>
@@ -497,15 +528,63 @@ defmodule RescordWeb.CoreComponents do
   @doc """
   Says what an action refused, each problem in a paragraph with the role
   `alert`. A page draws it below its header, or in the form that the person
-  sent when that form is far down the page.
+  sent when that form is far down the page. This is the one way a page says
+  that an action was refused (issue 35): a page writes no `role="alert"`
+  of its own.
+
+  A page with several forms keeps, beside the problems, the name of the
+  form that was sent (`at`), and draws `<.problems>` in each form with the
+  name of that form (`here`). Only the form that was sent shows them.
 
       <.problems list={@problems} />
+      <.problems list={@problems} at={@problems_at} here={:family} />
   """
   attr :list, :list, required: true, doc: "the problems, each in words for a person"
+  attr :at, :any, default: nil, doc: "the name of the form that was sent"
+  attr :here, :any, default: nil, doc: "the name of the form that this draws in"
 
   def problems(assigns) do
     ~H"""
-    <p :for={problem <- @list} role="alert"><.icon name="exclamation-circle" /> {problem}</p>
+    <p :for={problem <- if(@at == @here, do: @list, else: [])} role="alert">
+      <.icon name="exclamation-circle" /> {problem}
+    </p>
+    """
+  end
+
+  @doc """
+  The one step that a person takes before an action that removes, ends,
+  withdraws, revokes, retires or forgets a thing (issue 35).
+
+  A `<details>`: its summary says the action, its body says what happens,
+  and its last control is `<.button variant="danger">` with the same verb
+  and the name of the thing. A form inside it (a reason, a date) keeps its
+  fields. The browser dialog of `data-confirm` is not used: it has none of
+  our look, and a page test does not see it.
+
+  ## Examples
+
+      <.confirm id="remove-item" summary="Remove the item">
+        <p>The item leaves the inventory. Its history stays.</p>
+        <.button variant="danger" phx-click="remove">Remove Meadow hay</.button>
+      </.confirm>
+  """
+  attr :id, :string, required: true
+  attr :summary, :string, required: true, doc: "the action, as the summary shows it"
+
+  attr :label, :string,
+    default: nil,
+    doc: "the name of the summary where many are on a page; it starts with `summary`"
+
+  attr :icon, :string, default: "trash", doc: "the shape of the action, or nil"
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def confirm(assigns) do
+    ~H"""
+    <details id={@id} data-confirm-step {@rest}>
+      <summary aria-label={@label}><.icon :if={@icon} name={@icon} /> {@summary}</summary>
+      {render_slot(@inner_block)}
+    </details>
     """
   end
 

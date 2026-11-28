@@ -95,7 +95,7 @@ defmodule RescordWeb.ListsLive do
   @impl true
   def handle_event("add", %{"dimension" => dimension, "value" => %{"name" => name}}, socket)
       when is_binary(name) do
-    write(socket, dimension, fn key ->
+    write(socket, dimension, &"#{&1} is added.", fn key ->
       if socket.assigns.shared?,
         do: Lists.add_shared_value(key, name, options(socket)),
         else: Lists.add_local_value(key, name, options(socket))
@@ -106,14 +106,26 @@ defmodule RescordWeb.ListsLive do
       when is_binary(id) do
     if socket.assigns.shared?,
       do: {:noreply, socket},
-      else: write(socket, dimension, &Lists.retire_value(&1, id, options(socket)))
+      else:
+        write(
+          socket,
+          dimension,
+          &"#{&1} is retired.",
+          &Lists.retire_value(&1, id, options(socket))
+        )
   end
 
   def handle_event("restore", %{"dimension" => dimension, "id" => id}, socket)
       when is_binary(id) do
     if socket.assigns.shared?,
       do: {:noreply, socket},
-      else: write(socket, dimension, &Lists.restore_value(&1, id, options(socket)))
+      else:
+        write(
+          socket,
+          dimension,
+          &"#{&1} is restored.",
+          &Lists.restore_value(&1, id, options(socket))
+        )
   end
 
   def handle_event("use", %{"dimension" => dimension, "value" => %{"base_id" => id}}, socket)
@@ -121,7 +133,12 @@ defmodule RescordWeb.ListsLive do
     if socket.assigns.shared? do
       {:noreply, socket}
     else
-      write(socket, dimension, &Lists.use_shared_value(&1, id, options(socket)))
+      write(
+        socket,
+        dimension,
+        &"#{&1} is added.",
+        &Lists.use_shared_value(&1, id, options(socket))
+      )
     end
   end
 
@@ -170,18 +187,23 @@ defmodule RescordWeb.ListsLive do
     list = Enum.find(socket.assigns.lists, &(&1.key == key))
 
     if Enum.any?(list.values, &(&1.id == id)) do
-      write(socket, Atom.to_string(key), fn _key -> action.(id) end)
+      write(socket, Atom.to_string(key), &"#{&1} is saved.", fn _key -> action.(id) end)
     else
       {:noreply, socket}
     end
   end
 
-  defp write(socket, dimension, action) do
+  # `words` says what the write did, from the name of the value that it
+  # wrote (issue 35).
+  defp write(socket, dimension, words, action) do
     with {:ok, key} <- Lists.dimension(dimension),
-         {:ok, _value} <- action.(key) do
+         {:ok, value} <- action.(key) do
       # A new page has the value in its list, and its forms are empty: a
       # form that stays on the page keeps what the person typed.
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply,
+       socket
+       |> put_flash(:info, words.(Lists.label_of(value, options(socket))))
+       |> push_navigate(to: path(socket))}
     else
       {:error, error} ->
         {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
@@ -206,6 +228,7 @@ defmodule RescordWeb.ListsLive do
       section={if assigns[:organisation], do: :lists, else: :root}
     >
       <.header icon={Icons.section(:lists)}>
+        <:crumb :if={@shared?} navigate={~p"/root"}>Root</:crumb>
         {@page_title}
         <:subtitle :if={@shared?}>
           The values that each organisation can use. An organisation adds the ones that it needs to
@@ -218,7 +241,7 @@ defmodule RescordWeb.ListsLive do
         </:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.value_list
         :for={list <- @lists}

@@ -228,13 +228,11 @@ defmodule RescordWeb.MeasurementsLive do
       ruby={@ruby?}
       section={:residents}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>{name(
-          @resident
-        )}</.link>
-      </nav>
-
       <.header icon={Icons.section(:measurements)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents"}>Residents</:crumb>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/residents/#{@resident.id}"}>
+          {name(@resident)}
+        </:crumb>
         Measurements of {name(@resident)}
         <:subtitle>Each kind of measurement over time</:subtitle>
         <:actions>

@@ -47,14 +47,17 @@ defmodule RescordWeb.RoleComponents do
           />
         </details>
 
-        <.button
+        <.confirm
           :if={@can_remove? and is_nil(role.key) and Map.get(@counts, role.id, 0) == 0}
-          phx-click="remove"
-          phx-value-id={role.id}
-          aria-label={"Remove the role #{role.name}"}
+          id={"remove-role-#{role.id}"}
+          summary="Remove"
+          label={"Remove the role #{role.name}"}
         >
-          <.icon name="trash" /> Remove
-        </.button>
+          <p>No member has the role, and nobody can have it again.</p>
+          <.button variant="danger" phx-click="remove" phx-value-id={role.id}>
+            Remove the role {role.name}
+          </.button>
+        </.confirm>
       </article>
     </section>
     """

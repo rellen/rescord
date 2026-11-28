@@ -816,6 +816,16 @@ release (ADR 0047).
   (`Clear-Site-Data`), so a shared computer does not keep the photos of
   the last person; a browser that does not know the header keeps them
   until the week is over (issue 34, ADR 0112).
+- The pages work the same way everywhere (issue 35). Each inner page has a
+  breadcrumb at the top for the way back, in place of the buttons and
+  links such as "The inventory" and "‹ The resident". Each action that
+  removes, ends, withdraws or revokes something opens a short step first
+  that says what happens, with a red button that names the thing; a
+  single click no longer removes a photo, a receipt, a comment, a device,
+  a member or a feed. The problems of a form show beside the form that
+  was sent, once. Each write that works says so in a message at the top of
+  the page. The form for a new record is right below the header, also on
+  the members page.
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is

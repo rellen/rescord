@@ -124,11 +124,14 @@ defmodule RescordWeb.ResidentComponents do
   attr :arrival_form, :any, required: true
   attr :absence_form, :any, required: true
   attr :departure_form, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def stay(assigns) do
     ~H"""
     <section aria-labelledby="stay-heading">
       <h2 id="stay-heading"><.icon name="kennel" /> Stay</h2>
+      <.problems list={@problems} at={@problems_at} here={:stay} />
 
       <h3>Where it lives</h3>
       <p :if={@homes == []}>
@@ -195,10 +198,15 @@ defmodule RescordWeb.ResidentComponents do
             {@resident.departure.note}
           </:item>
         </.list>
-        <p :if={can?(@role, :departure, :withdraw)}>
-          <.button phx-click="withdraw_departure"><.icon name="arrow-uturn-left" />
-          Withdraw the departure</.button>
-        </p>
+        <.confirm
+          :if={can?(@role, :departure, :withdraw)}
+          id="withdraw-departure"
+          summary="Withdraw the departure"
+          icon="arrow-uturn-left"
+        >
+          <p>The resident is in care again, as if it never left.</p>
+          <.button variant="danger" phx-click="withdraw_departure">Withdraw the departure</.button>
+        </.confirm>
       </div>
 
       <.departure_form
@@ -328,11 +336,14 @@ defmodule RescordWeb.ResidentComponents do
   attr :parent_form, :any, required: true
   attr :family_form, :any, required: true
   attr :other_families, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def relations(assigns) do
     ~H"""
     <section aria-labelledby="relations-heading">
       <h2 id="relations-heading"><.icon name="paws" /> Family and groups</h2>
+      <.problems list={@problems} at={@problems_at} here={:relations} />
 
       <h3>Parents</h3>
       <p :if={@relations.parents == []}>No parent is recorded.</p>
@@ -340,14 +351,17 @@ defmodule RescordWeb.ResidentComponents do
         <li :for={link <- @relations.parents}>
           {ResidentWords.kin(link.role)}:
           <.link navigate={resident_path(@organisation, link.parent_id)}>{name(link.parent)}</.link>
-          <.button
+          <.confirm
             :if={can?(@role, :parent, :remove)}
-            phx-click="remove_parent"
-            phx-value-id={link.id}
-            aria-label={"Remove the #{String.downcase(ResidentWords.kin(link.role))} #{link.parent.name}"}
+            id={"remove-parent-#{link.id}"}
+            summary="Remove"
+            label={"Remove the #{String.downcase(ResidentWords.kin(link.role))} #{name(link.parent)}"}
           >
-            <.icon name="user-minus" /> Remove
-          </.button>
+            <p>The tie to this parent goes. Both residents stay.</p>
+            <.button variant="danger" phx-click="remove_parent" phx-value-id={link.id}>
+              Remove the {String.downcase(ResidentWords.kin(link.role))} {name(link.parent)}
+            </.button>
+          </.confirm>
         </li>
       </ul>
 
@@ -373,14 +387,18 @@ defmodule RescordWeb.ResidentComponents do
       <ul :if={@relations.families != []}>
         <li :for={membership <- @relations.families}>
           {membership.family.name}
-          <.button
+          <.confirm
             :if={can?(@role, :family_member, :remove)}
-            phx-click="remove_from_family"
-            phx-value-id={membership.id}
-            aria-label={"Take out of #{membership.family.name}"}
+            id={"take-out-#{membership.id}"}
+            summary="Take out"
+            label={"Take out of #{membership.family.name}"}
+            icon="user-minus"
           >
-            <.icon name="user-minus" /> Take out
-          </.button>
+            <p>The resident leaves the family. The family stays.</p>
+            <.button variant="danger" phx-click="remove_from_family" phx-value-id={membership.id}>
+              Take out of {membership.family.name}
+            </.button>
+          </.confirm>
         </li>
       </ul>
 
@@ -440,6 +458,8 @@ defmodule RescordWeb.ResidentComponents do
   attr :role, :any, required: true
   attr :identifier_kinds, :any, required: true
   attr :identifier_form, :any, required: true
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def identifiers(assigns) do
     assigns =
@@ -452,17 +472,21 @@ defmodule RescordWeb.ResidentComponents do
     ~H"""
     <section :if={@resident.identifiers != [] or @can_add} aria-labelledby="identifiers-heading">
       <h2 id="identifiers-heading"><.icon name="identification" /> Identifiers</h2>
+      <.problems list={@problems} at={@problems_at} here={:identifiers} />
       <ul :if={@resident.identifiers != []}>
         <li :for={identifier <- @resident.identifiers}>
           {identifier.kind.label}: {identifier.value}
-          <.button
+          <.confirm
             :if={can?(@role, :identifier, :remove)}
-            phx-click="remove_identifier"
-            phx-value-id={identifier.id}
-            aria-label={"Remove the #{identifier.kind.label} #{identifier.value}"}
+            id={"remove-identifier-#{identifier.id}"}
+            summary="Remove"
+            label={"Remove the #{identifier.kind.label} #{identifier.value}"}
           >
-            <.icon name="trash" /> Remove
-          </.button>
+            <p>The identifier leaves the record of the resident.</p>
+            <.button variant="danger" phx-click="remove_identifier" phx-value-id={identifier.id}>
+              Remove the {identifier.kind.label} {identifier.value}
+            </.button>
+          </.confirm>
         </li>
       </ul>
 
@@ -513,19 +537,21 @@ defmodule RescordWeb.ResidentComponents do
   end
 
   @doc "The removal of a resident that was recorded by mistake."
+  attr :problems, :list, default: []
+  attr :problems_at, :any, default: nil
 
   def removal(assigns) do
     ~H"""
     <section aria-labelledby="remove-heading">
       <h2 id="remove-heading">Remove</h2>
-      <details id="remove-details">
-        <summary><.icon name="trash" /> Remove this resident</summary>
+      <.problems list={@problems} at={@problems_at} here={:removal} />
+      <.confirm id="remove-details" summary="Remove this resident">
         <p>
           Remove a resident only when somebody recorded it by mistake. For a resident that left,
           record the departure.
         </p>
-        <.button phx-click="remove_resident">Remove the resident</.button>
-      </details>
+        <.button variant="danger" phx-click="remove_resident">Remove the resident</.button>
+      </.confirm>
     </section>
     """
   end

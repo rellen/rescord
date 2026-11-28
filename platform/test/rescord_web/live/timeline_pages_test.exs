@@ -134,7 +134,7 @@ defmodule RescordWeb.TimelinePagesTest do
     refute Enum.any?(words, &(&1 =~ "_"))
 
     assert has_element?(view, "a", "The journal")
-    assert has_element?(view, "a", "The resident")
+    assert has_element?(view, ~s(nav[aria-label="Breadcrumb"] a), "Fern")
   end
 
   test "the pages of the resident and of its journal link to the timeline", context do

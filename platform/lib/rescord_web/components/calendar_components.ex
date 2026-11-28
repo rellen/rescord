@@ -120,15 +120,17 @@ defmodule RescordWeb.CalendarComponents do
       <ul :if={@feeds != []} id="own-feeds">
         <li :for={feed <- @feeds} id={"feed-#{feed.id}"}>
           <.feed_words feed={feed} organisation={@organisation} />
-          <button
-            type="button"
-            phx-click="revoke"
-            phx-value-id={feed.id}
-            data-confirm={"Revoke the feed #{feed.name}? The calendar app that reads it gets nothing more."}
-            aria-label={"Revoke the feed #{feed.name}"}
+          <.confirm
+            id={"revoke-#{feed.id}"}
+            summary="Revoke"
+            label={"Revoke the feed #{feed.name}"}
+            icon="no-symbol"
           >
-            <.icon name="no-symbol" /> Revoke
-          </button>
+            <p>The calendar app that reads it gets nothing more.</p>
+            <.button type="button" variant="danger" phx-click="revoke" phx-value-id={feed.id}>
+              Revoke the feed {feed.name}
+            </.button>
+          </.confirm>
         </li>
       </ul>
     </section>
@@ -150,15 +152,17 @@ defmodule RescordWeb.CalendarComponents do
       <ul :if={@feeds != []} id="other-feeds">
         <li :for={feed <- @feeds} id={"feed-#{feed.id}"}>
           <.feed_words feed={feed} organisation={@organisation} owner={feed.member.email} />
-          <button
-            type="button"
-            phx-click="revoke"
-            phx-value-id={feed.id}
-            data-confirm={"Revoke the feed #{feed.name} of #{feed.member.email}?"}
-            aria-label={"Revoke the feed #{feed.name} of #{feed.member.email}"}
+          <.confirm
+            id={"revoke-#{feed.id}"}
+            summary="Revoke"
+            label={"Revoke the feed #{feed.name} of #{feed.member.email}"}
+            icon="no-symbol"
           >
-            <.icon name="no-symbol" /> Revoke
-          </button>
+            <p>The calendar app that reads it gets nothing more.</p>
+            <.button type="button" variant="danger" phx-click="revoke" phx-value-id={feed.id}>
+              Revoke the feed {feed.name} of {feed.member.email}
+            </.button>
+          </.confirm>
         </li>
       </ul>
     </section>

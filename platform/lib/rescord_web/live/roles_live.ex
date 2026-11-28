@@ -72,8 +72,14 @@ defmodule RescordWeb.RolesLive do
   @impl true
   def handle_event("define", %{"role" => fields}, socket) when is_map(fields) do
     case Accounts.define_role(facts(fields), options(socket)) do
-      {:ok, _role} -> {:noreply, push_navigate(socket, to: path(socket))}
-      {:error, error} -> {:noreply, refuse(socket, {:define, text_fields(fields)}, error)}
+      {:ok, role} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "The role #{role.name} is added.")
+         |> push_navigate(to: path(socket))}
+
+      {:error, error} ->
+        {:noreply, refuse(socket, {:define, text_fields(fields)}, error)}
     end
   end
 
@@ -91,7 +97,10 @@ defmodule RescordWeb.RolesLive do
               RescordWeb.UserAuth.disconnect(member.user_id)
             end
 
-            {:noreply, push_navigate(socket, to: path(socket))}
+            {:noreply,
+             socket
+             |> put_flash(:info, "The role #{role.name} is saved.")
+             |> push_navigate(to: path(socket))}
 
           {:error, error} ->
             {:noreply, refuse(socket, {:revise, id, text_fields(fields)}, error)}
@@ -102,7 +111,10 @@ defmodule RescordWeb.RolesLive do
   def handle_event("remove", %{"id" => id}, socket) when is_binary(id) do
     with %{} = role <- Enum.find(socket.assigns.roles, &(&1.id == id)),
          :ok <- Accounts.remove_role(role, options(socket)) do
-      {:noreply, push_navigate(socket, to: path(socket))}
+      {:noreply,
+       socket
+       |> put_flash(:info, "The role #{role.name} is removed.")
+       |> push_navigate(to: path(socket))}
     else
       nil -> {:noreply, socket}
       {:error, error} -> {:noreply, refuse(socket, nil, error)}
@@ -140,13 +152,9 @@ defmodule RescordWeb.RolesLive do
       section={:members}
     >
       <.header icon={Icons.section(:roles)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/members"}>Members</:crumb>
         Roles
         <:subtitle>What each person of {@organisation.name} may do</:subtitle>
-        <:actions>
-          <.link navigate={~p"/o/#{@organisation.short_name}/members"} data-variant="secondary">
-            <.icon name="users" /> The members
-          </.link>
-        </:actions>
       </.header>
 
       <p>

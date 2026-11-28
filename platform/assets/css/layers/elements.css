@@ -598,3 +598,12 @@ input[type="submit"],
 p > :is(a[data-variant], button) {
   margin: 0.25rem 0.5rem 0.25rem 0;
 }
+
+/* The last button of a confirm step (issue 35): the alert colour says that
+   it removes, ends or forgets a thing. It comes after the rule of a submit,
+   so a submit that removes has this look too. */
+:is(a, button)[data-variant="danger"] {
+  color: var(--alert);
+  background: var(--alert-surface);
+  border-color: var(--alert);
+}

@@ -195,7 +195,7 @@ defmodule RescordWeb.TaskComponents do
       :if={@task.state == :due and Tasks.role_can?(@role, :skip)}
       id={"skip-details-#{@task.id}"}
     >
-      <summary><.icon name="forward" /> Skip</summary>
+      <summary aria-label={"Skip the task #{@task.title}"}><.icon name="forward" /> Skip</summary>
       <form id={"skip-#{@task.id}"} phx-submit="skip">
         <input type="hidden" name="task_id" value={@task.id} />
         <.input

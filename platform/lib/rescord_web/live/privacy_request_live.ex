@@ -148,17 +148,14 @@ defmodule RescordWeb.PrivacyRequestLive do
       section={:members}
     >
       <.header icon={Icons.section(:privacy)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/privacy"}>Privacy</:crumb>
         A request to erase data
         <:subtitle>
           The data of {person(@people, @request)} in {@organisation.name}
         </:subtitle>
       </.header>
 
-      <p>
-        <.link navigate={~p"/o/#{@organisation.short_name}/privacy"}>All the requests</.link>
-      </p>
-
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <.facts request={@request} organisation={@organisation} today={@today} people={@people} />
 
@@ -224,12 +221,12 @@ defmodule RescordWeb.PrivacyRequestLive do
         <section id="withdraw" aria-labelledby="withdraw-heading">
           <h2 id="withdraw-heading">Withdrawn</h2>
           <p>The person told you that they no longer ask.</p>
-          <.button
-            phx-click="withdraw"
-            data-confirm="Record that the person withdrew the request? It closes, and nothing is erased."
-          >
-            Record that it is withdrawn
-          </.button>
+          <.confirm id="withdraw-step" summary="Record that it is withdrawn" icon="x-mark">
+            <p>The request closes, and nothing is erased.</p>
+            <.button id="withdraw-request" variant="danger" phx-click="withdraw">
+              Record that the request is withdrawn
+            </.button>
+          </.confirm>
         </section>
       <% end %>
 

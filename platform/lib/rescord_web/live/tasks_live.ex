@@ -181,7 +181,9 @@ defmodule RescordWeb.TasksLive do
       day = Accounts.local_date(socket.assigns.organisation, due_at)
 
       {:noreply,
-       push_navigate(socket,
+       socket
+       |> put_flash(:info, "The task is added.")
+       |> push_navigate(
          to: ~p"/o/#{socket.assigns.organisation.short_name}/tasks?day=#{Date.to_iso8601(day)}"
        )}
     else
@@ -197,16 +199,22 @@ defmodule RescordWeb.TasksLive do
   end
 
   def handle_event("take", %{"id" => id}, socket),
-    do: act(socket, id, &Tasks.take_task(&1, options(socket)))
+    do: act(socket, id, "is yours", &Tasks.take_task(&1, options(socket)))
 
   def handle_event("complete", %{"id" => id}, socket),
-    do: act(socket, id, &Tasks.complete_task(&1, %{}, options(socket)))
+    do: act(socket, id, "is done", &Tasks.complete_task(&1, %{}, options(socket)))
 
   def handle_event("reopen", %{"id" => id}, socket),
-    do: act(socket, id, &Tasks.reopen_task(&1, options(socket)))
+    do: act(socket, id, "is open again", &Tasks.reopen_task(&1, options(socket)))
 
   def handle_event("skip", %{"task_id" => id, "skip" => %{"reason" => reason}}, socket),
-    do: act(socket, id, &Tasks.skip_task(&1, %{skip_reason: non_blank(reason)}, options(socket)))
+    do:
+      act(
+        socket,
+        id,
+        "is skipped",
+        &Tasks.skip_task(&1, %{skip_reason: non_blank(reason)}, options(socket))
+      )
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
@@ -227,26 +235,32 @@ defmodule RescordWeb.TasksLive do
   # the tasks, so it reads the task again, as the person, from the tasks of
   # this day alone. Then the collection reads again, and keeps its search,
   # its filters and its page. After a refusal it shows the task as it is
-  # now: another member can be the reason.
-  defp act(socket, id, action) when is_binary(id) do
+  # now: another member can be the reason. After a write it says what it did
+  # (issue 35): "The task Feed the hens is done."
+  defp act(socket, id, done, action) when is_binary(id) do
     with {:ok, %{} = task} <-
            Tasks.task_of_day(socket.assigns.day, id, day_options(socket.assigns)) do
-      problems =
+      socket =
         case action.(task) do
-          {:ok, _task} -> []
-          {:error, error} -> Accounts.error_messages(error)
+          {:ok, _task} ->
+            socket
+            |> assign(problems: [])
+            |> put_flash(:info, "The task #{task.title} #{done}.")
+
+          {:error, error} ->
+            assign(socket, problems: Accounts.error_messages(error))
         end
 
       {:noreply,
        socket
-       |> assign(problems: problems, refused_form?: false, now: DateTime.utc_now())
+       |> assign(refused_form?: false, now: DateTime.utc_now())
        |> Cinder.Refresh.refresh_table("tasks")}
     else
       _not_on_the_page -> {:noreply, socket}
     end
   end
 
-  defp act(socket, _id, _action), do: {:noreply, socket}
+  defp act(socket, _id, _done, _action), do: {:noreply, socket}
 
   @impl true
   def render(assigns) do

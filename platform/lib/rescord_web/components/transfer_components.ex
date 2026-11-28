@@ -63,14 +63,18 @@ defmodule RescordWeb.TransferComponents do
                 >
                   <.icon name="x-circle" /> Decline
                 </.button>
-                <.button
+                <.confirm
                   :if={@can_end? and partnership.state in [:asked, :accepted]}
-                  phx-click="end"
-                  phx-value-id={partnership.id}
-                  aria-label={"End the partnership with #{Transfers.other(partnership, @organisation).name}"}
+                  id={"end-#{partnership.id}"}
+                  summary="End"
+                  label={"End the partnership with #{Transfers.other(partnership, @organisation).name}"}
+                  icon="no-symbol"
                 >
-                  <.icon name="no-symbol" /> End
-                </.button>
+                  <p>No transfer goes either way after this. The transfers before it stay.</p>
+                  <.button variant="danger" phx-click="end" phx-value-id={partnership.id}>
+                    End the partnership with {Transfers.other(partnership, @organisation).name}
+                  </.button>
+                </.confirm>
               </td>
             </tr>
           </tbody>
@@ -140,14 +144,18 @@ defmodule RescordWeb.TransferComponents do
               <td data-label="Fingerprint"><code>{partner.fingerprint}</code></td>
               <td><.badge state={partner.state} /></td>
               <td>
-                <.button
+                <.confirm
                   :if={@can_end? and partner.state == :active}
-                  phx-click="end_remote"
-                  phx-value-id={partner.id}
-                  aria-label={"End the partnership with #{partner.name}"}
+                  id={"end-remote-#{partner.id}"}
+                  summary="End"
+                  label={"End the partnership with #{partner.name}"}
+                  icon="no-symbol"
                 >
-                  <.icon name="no-symbol" /> End
-                </.button>
+                  <p>No transfer goes either way after this. The transfers before it stay.</p>
+                  <.button variant="danger" phx-click="end_remote" phx-value-id={partner.id}>
+                    End the partnership with {partner.name}
+                  </.button>
+                </.confirm>
               </td>
             </tr>
           </tbody>
@@ -279,7 +287,7 @@ defmodule RescordWeb.TransferComponents do
       <form id="import" phx-submit="import" phx-change="choose_file">
         <label for={@upload.ref}>Transfer file</label>
         <.live_file_input upload={@upload} />
-        <p :for={error <- upload_errors(@upload)} role="alert">{import_words(error)}</p>
+        <.problems list={Enum.map(upload_errors(@upload), &import_words/1)} />
         <p :for={entry <- @upload.entries} id={"import-#{entry.ref}"}>
           {entry.client_name}
           <span :for={error <- upload_errors(@upload, entry)} role="alert">{import_words(error)}</span>
@@ -390,14 +398,20 @@ defmodule RescordWeb.TransferComponents do
                 >
                   Send again
                 </.button>
-                <.button
+                <.confirm
                   :if={@can_withdraw? and transfer.state in [:sending, :sent, :failed]}
-                  phx-click="withdraw"
-                  phx-value-id={transfer.id}
-                  aria-label={"Withdraw the transfer of #{transfer.resident_name}"}
+                  id={"withdraw-#{transfer.id}"}
+                  summary="Withdraw"
+                  label={"Withdraw the transfer of #{transfer.resident_name}"}
+                  icon="arrow-uturn-left"
                 >
-                  <.icon name="arrow-uturn-left" /> Withdraw
-                </.button>
+                  <p>
+                    The transfer is taken back before an answer. The partner refuge cannot accept it.
+                  </p>
+                  <.button variant="danger" phx-click="withdraw" phx-value-id={transfer.id}>
+                    Withdraw the transfer of {transfer.resident_name}
+                  </.button>
+                </.confirm>
               </td>
             </tr>
           </tbody>
@@ -478,7 +492,9 @@ defmodule RescordWeb.TransferComponents do
       )
 
     ~H"""
-    <.header>
+    <.header icon={Icons.section(:transfers)}>
+      <:crumb navigate={~p"/o/#{@organisation.short_name}"}>{@organisation.name}</:crumb>
+      <:crumb navigate={~p"/o/#{@organisation.short_name}/transfers"}>Transfers</:crumb>
       {@facts["name"] || "A resident with no name"}
       <:subtitle>
         A copy from {Transfers.other(@transfer, @organisation).name}, as it was on {TransferWords.time(

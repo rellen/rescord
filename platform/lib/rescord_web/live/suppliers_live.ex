@@ -42,8 +42,11 @@ defmodule RescordWeb.SuppliersLive do
   @impl true
   def handle_event("add", %{"supplier" => fields}, socket) when is_map(fields) do
     case Inventory.add_supplier(facts(fields), options(socket)) do
-      {:ok, _supplier} ->
-        {:noreply, push_navigate(socket, to: path(socket))}
+      {:ok, supplier} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "The supplier #{supplier.name} is added.")
+         |> push_navigate(to: path(socket))}
 
       {:error, error} ->
         {:noreply,
@@ -56,10 +59,22 @@ defmodule RescordWeb.SuppliersLive do
 
   def handle_event("revise", %{"supplier_id" => id, "change" => fields}, socket)
       when is_map(fields),
-      do: act(socket, id, &Inventory.revise_supplier(&1, facts(fields), options(socket)))
+      do:
+        act(
+          socket,
+          id,
+          &"The supplier #{&1.name} is saved.",
+          &Inventory.revise_supplier(&1, facts(fields), options(socket))
+        )
 
   def handle_event("remove", %{"supplier_id" => id}, socket),
-    do: act(socket, id, &Inventory.remove_supplier(&1, options(socket)))
+    do:
+      act(
+        socket,
+        id,
+        &"The supplier #{&1.name} is removed.",
+        &Inventory.remove_supplier(&1, options(socket))
+      )
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
@@ -68,7 +83,7 @@ defmodule RescordWeb.SuppliersLive do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   # Runs an action on a supplier of this page: the page has them in hand.
-  defp act(socket, id, action) do
+  defp act(socket, id, words, action) do
     case Enum.find(socket.assigns.suppliers, &(&1.id == id)) do
       nil ->
         {:noreply, socket}
@@ -79,7 +94,8 @@ defmodule RescordWeb.SuppliersLive do
             {:noreply, assign(socket, problems: Accounts.error_messages(error))}
 
           _done ->
-            {:noreply, push_navigate(socket, to: path(socket))}
+            {:noreply,
+             socket |> put_flash(:info, words.(supplier)) |> push_navigate(to: path(socket))}
         end
     end
   end
@@ -96,16 +112,14 @@ defmodule RescordWeb.SuppliersLive do
       section={:inventory}
     >
       <.header icon={Icons.section(:suppliers)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/inventory"}>Inventory</:crumb>
         Suppliers
         <:subtitle>Where {@organisation.name} gets its supplies</:subtitle>
-        <:actions>
-          <.link navigate={~p"/o/#{@organisation.short_name}/inventory"} data-variant="secondary">
-            <.icon name="archive-box" /> The inventory
-          </.link>
-        </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
+
+      <.new_supplier :if={@can_change?} form={@form} />
 
       <p :if={@suppliers == []}>
         There is no supplier yet. A supplier is a shop or a person you get supplies from.
@@ -115,8 +129,6 @@ defmodule RescordWeb.SuppliersLive do
         can_change?={@can_change?}
         suppliers={@suppliers}
       />
-
-      <.new_supplier :if={@can_change?} form={@form} />
     </Layouts.app>
     """
   end

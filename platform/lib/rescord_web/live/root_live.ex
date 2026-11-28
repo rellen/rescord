@@ -98,7 +98,12 @@ defmodule RescordWeb.RootLive do
          {:ok, _user} <- Accounts.revoke_root(root, actor: actor) do
       # Each open page of that user has the user as a root user still.
       RescordWeb.UserAuth.disconnect(root.id)
-      {:noreply, socket |> assign(problems: []) |> assign_roots()}
+
+      {:noreply,
+       socket
+       |> assign(problems: [])
+       |> put_flash(:info, "#{root.email} is an ordinary user now.")
+       |> assign_roots()}
     else
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
       nil -> {:noreply, socket}
@@ -120,7 +125,7 @@ defmodule RescordWeb.RootLive do
         <:subtitle>The organisations of Rescord, and the users who manage Rescord itself.</:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <p><.link navigate={~p"/root/push"}>Set the notifications on devices and ntfy</.link>.</p>

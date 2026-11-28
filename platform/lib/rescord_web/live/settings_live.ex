@@ -34,6 +34,7 @@ defmodule RescordWeb.SettingsLive do
      assign(socket,
        page_title: "Settings",
        problems: [],
+       problems_at: nil,
        can_change?: can_change?,
        ruby: Ruby.status(organisation),
        today: Accounts.today(organisation),
@@ -64,6 +65,7 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
+           problems_at: :time_zone,
            form: typed_form(params, as: :settings)
          )}
     end
@@ -89,6 +91,7 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
+           problems_at: :locale,
            locale_form: typed_form(params, as: :locale)
          )}
     end
@@ -108,7 +111,8 @@ defmodule RescordWeb.SettingsLive do
          |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+        {:noreply,
+         assign(socket, problems: Accounts.error_messages(error), problems_at: :currency)}
     end
   end
 
@@ -130,7 +134,7 @@ defmodule RescordWeb.SettingsLive do
          |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+        {:noreply, assign(socket, problems: Accounts.error_messages(error), problems_at: :tax)}
     end
   end
 
@@ -151,7 +155,7 @@ defmodule RescordWeb.SettingsLive do
          |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+        {:noreply, assign(socket, problems: Accounts.error_messages(error), problems_at: :paper)}
     end
   end
 
@@ -174,7 +178,7 @@ defmodule RescordWeb.SettingsLive do
          |> push_navigate(to: ~p"/o/#{organisation.short_name}/settings")}
 
       {:error, error} ->
-        {:noreply, assign(socket, problems: Accounts.error_messages(error))}
+        {:noreply, assign(socket, problems: Accounts.error_messages(error), problems_at: :parts)}
     end
   end
 
@@ -201,6 +205,7 @@ defmodule RescordWeb.SettingsLive do
         {:noreply,
          assign(socket,
            problems: Accounts.error_messages(error),
+           problems_at: :ahead,
            ahead_form: typed_form(params, as: :ahead)
          )}
     end
@@ -230,39 +235,60 @@ defmodule RescordWeb.SettingsLive do
         </:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
-
       <.time_zone_setting
         organisation={@organisation}
         today={@today}
         can_change?={@can_change?}
         form={@form}
         time_zones={@time_zones}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
       <.locale_setting
         organisation={@organisation}
         can_change?={@can_change?}
         locale_form={@locale_form}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
       <.currency_setting
         organisation={@organisation}
         can_change?={@can_change?}
         currencies={@currencies}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
-      <.tax_setting organisation={@organisation} can_change?={@can_change?} />
+      <.tax_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        problems={@problems}
+        problems_at={@problems_at}
+      />
 
-      <.paper_setting organisation={@organisation} can_change?={@can_change?} />
+      <.paper_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        problems={@problems}
+        problems_at={@problems_at}
+      />
 
       <.days_ahead_setting
         organisation={@organisation}
         can_change?={@can_change?}
         ahead_form={@ahead_form}
+        problems={@problems}
+        problems_at={@problems_at}
       />
 
-      <.transfer_parts_setting organisation={@organisation} can_change?={@can_change?} />
+      <.transfer_parts_setting
+        organisation={@organisation}
+        can_change?={@can_change?}
+        problems={@problems}
+        problems_at={@problems_at}
+      />
 
       <.settings_line organisation={@organisation} status={@ruby} can_change?={@can_change?} />
     </Layouts.app>

@@ -228,8 +228,13 @@ defmodule RescordWeb.RoutinesLive do
       end
 
     case result do
-      {:ok, _routine} ->
-        {:noreply, push_navigate(socket, to: path(socket))}
+      {:ok, routine} ->
+        words =
+          if socket.assigns.editing,
+            do: "The routine #{routine.title} is saved.",
+            else: "The routine #{routine.title} is started."
+
+        {:noreply, socket |> put_flash(:info, words) |> push_navigate(to: path(socket))}
 
       {:error, error} ->
         {:noreply,
@@ -244,13 +249,31 @@ defmodule RescordWeb.RoutinesLive do
   end
 
   def handle_event("pause", %{"id" => id}, socket),
-    do: act(socket, id, &Tasks.pause_routine(&1, options(socket)))
+    do:
+      act(
+        socket,
+        id,
+        &"The routine #{&1.title} is paused.",
+        &Tasks.pause_routine(&1, options(socket))
+      )
 
   def handle_event("resume", %{"id" => id}, socket),
-    do: act(socket, id, &Tasks.resume_routine(&1, options(socket)))
+    do:
+      act(
+        socket,
+        id,
+        &"The routine #{&1.title} is started again.",
+        &Tasks.resume_routine(&1, options(socket))
+      )
 
   def handle_event("remove", %{"routine_id" => id}, socket),
-    do: act(socket, id, &Tasks.remove_routine(&1, options(socket)))
+    do:
+      act(
+        socket,
+        id,
+        &"The routine #{&1.title} is ended.",
+        &Tasks.remove_routine(&1, options(socket))
+      )
 
   # Ignore an event that this page does not know.
   def handle_event(_event, _params, socket), do: {:noreply, socket}
@@ -262,7 +285,7 @@ defmodule RescordWeb.RoutinesLive do
   defp prescription_id(_socket), do: nil
 
   # Runs an action on a routine of this page: the page has them in hand.
-  defp act(socket, id, action) do
+  defp act(socket, id, words, action) do
     case Enum.find(socket.assigns.routines, &(&1.id == id)) do
       nil ->
         {:noreply, socket}
@@ -274,7 +297,8 @@ defmodule RescordWeb.RoutinesLive do
              assign(socket, problems: Accounts.error_messages(error), refused_form?: false)}
 
           _done ->
-            {:noreply, push_navigate(socket, to: path(socket))}
+            {:noreply,
+             socket |> put_flash(:info, words.(routine)) |> push_navigate(to: path(socket))}
         end
     end
   end
@@ -291,18 +315,30 @@ defmodule RescordWeb.RoutinesLive do
       section={:tasks}
     >
       <.header icon={Icons.section(:routines)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/tasks"}>Tasks</:crumb>
         Routines
         <:subtitle>
           The tasks that repeat. Rescord makes the tasks of a routine {TaskWords.days(@days_ahead)} ahead.
         </:subtitle>
-        <:actions>
-          <.link navigate={~p"/o/#{@organisation.short_name}/tasks"} data-variant="secondary">
-            The tasks of today
-          </.link>
-        </:actions>
       </.header>
 
       <.problems :if={not @refused_form?} list={@problems} />
+
+      <.new_routine
+        :if={!@editing and @can_start?}
+        prescription={@prescription}
+        form={@form}
+        pattern={@pattern}
+        weekdays={@weekdays}
+        days_ahead={@days_ahead}
+        kinds={@kinds}
+        residents={@residents}
+        groups={@groups}
+        locations={@locations}
+        members={@members}
+        problems={@problems}
+        refused_form?={@refused_form?}
+      />
 
       <.edit_routine
         :if={@editing}
@@ -333,22 +369,6 @@ defmodule RescordWeb.RoutinesLive do
         organisation={@organisation}
         can_revise?={@can_revise?}
         can_remove?={@can_remove?}
-      />
-
-      <.new_routine
-        :if={!@editing and @can_start?}
-        prescription={@prescription}
-        form={@form}
-        pattern={@pattern}
-        weekdays={@weekdays}
-        days_ahead={@days_ahead}
-        kinds={@kinds}
-        residents={@residents}
-        groups={@groups}
-        locations={@locations}
-        members={@members}
-        problems={@problems}
-        refused_form?={@refused_form?}
       />
     </Layouts.app>
     """

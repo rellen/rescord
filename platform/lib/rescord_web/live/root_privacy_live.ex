@@ -117,7 +117,8 @@ defmodule RescordWeb.RootPrivacyLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
-      <.header>
+      <.header icon={Icons.section(:privacy)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
         Privacy of the server
         <:subtitle>
           What the privacy notices say about this server, and the erasure of an account.
@@ -125,7 +126,7 @@ defmodule RescordWeb.RootPrivacyLive do
         </:subtitle>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <section id="server-settings" aria-labelledby="server-heading">
         <h2 id="server-heading">What the notices say about the server</h2>

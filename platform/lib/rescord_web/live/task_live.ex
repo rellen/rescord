@@ -89,13 +89,10 @@ defmodule RescordWeb.TaskLive do
       ruby={@ruby?}
       section={:tasks}
     >
-      <nav aria-label="Breadcrumb">
-        <.link navigate={~p"/o/#{@organisation.short_name}/tasks?#{[day: Date.to_iso8601(@day)]}"}>
+      <.header icon={Icons.section(:tasks)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}/tasks?#{[day: Date.to_iso8601(@day)]}"}>
           Tasks of {ResidentWords.date(@day)}
-        </.link>
-      </nav>
-
-      <.header>
+        </:crumb>
         {@task.title}
         <:subtitle>
           <.state kind={TaskWords.phase_kind(Tasks.phase(@task, @now))}>

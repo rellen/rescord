@@ -55,9 +55,11 @@ defmodule RescordWeb.HousingLive do
     }
 
     case Locations.add_location(attributes, options(socket)) do
-      {:ok, _location} ->
+      {:ok, location} ->
         {:noreply,
-         push_navigate(socket, to: ~p"/o/#{socket.assigns.organisation.short_name}/housing")}
+         socket
+         |> put_flash(:info, "The location #{location.name} is added.")
+         |> push_navigate(to: ~p"/o/#{socket.assigns.organisation.short_name}/housing")}
 
       {:error, error} ->
         {:noreply,
@@ -98,7 +100,9 @@ defmodule RescordWeb.HousingLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
+
+      <.new_location :if={@can_add?} form={@form} kinds={@kinds} places={@places} />
 
       <p :if={@tree == []}>
         No location yet. A location is a building, a room or a pen where residents live.{if @can_add?,
@@ -106,8 +110,6 @@ defmodule RescordWeb.HousingLive do
           else: " An administrator adds them."}
       </p>
       <.place :for={node <- @tree} node={node} organisation={@organisation} level={2} />
-
-      <.new_location :if={@can_add?} form={@form} kinds={@kinds} places={@places} />
     </Layouts.app>
     """
   end

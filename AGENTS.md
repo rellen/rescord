@@ -874,13 +874,37 @@ hand (ADR 0073). Read it before you write a migration. In short:
   A line of help for one field is the `hint` of `<.input>`, which ties
   the line to the field with `aria-describedby`.
   `<.problems list={@problems} />` says
-  what an action refused. Draw it in the form that the person sent when
-  that form is far down the page, and below the header in each other case.
+  what an action refused, and nothing else draws an alert of a form
+  (issue 35). Draw it in the form that the person sent when that form is
+  far down the page, and below the header in each other case. A page of
+  several forms keeps where the refusal was (`problems_at`) and gives each
+  form `<.problems list={@problems} at={@problems_at} here={:its_place} />`,
+  so the words show at one place only. An upload error is
+  `<.problems list={Enum.map(upload_errors(@upload), &words/1)} />` too.
   In a page test, look for the alert of
   the page with `assert_has(session, main() |> alert())` of
   `RescordWeb.Roles`: the layout always holds a hidden element with
   `role="alert"`, so a search of the text for that role finds one on each
   page.
+- **One way for each pattern of a page** (issue 35). A person who learnt one
+  page knows the next one (WCAG 3.2.3 and 3.2.4), so each of these has one
+  shape:
+  - **The way back** is the breadcrumb of the header, never a button or a
+    paragraph: `<:crumb navigate={...}>Residents</:crumb>` in `<.header>`,
+    one for each page above this one, the section first. A page of the
+    first level has none.
+  - **An action that removes, ends, withdraws, revokes or makes a key
+    again** is behind a step: `<.confirm id summary label>` with a `<p>`
+    that says what happens and a `<.button variant="danger">` that names
+    the verb and the thing ("Remove the photo of 3 May"). Never
+    `data-confirm`, and no step before an answer (decline) or an action that
+    a button beside it undoes (retire and restore).
+  - **A write that succeeds says so** with a flash, also when the page
+    opens again: "The placement is recorded.", "The routine Feed the hens
+    is paused." A sentence, the thing first, the verb in the past
+    participle, a full stop.
+  - **"New"** is the first part below the header and its problems, above
+    the table or list of the page.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as

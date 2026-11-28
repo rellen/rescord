@@ -154,9 +154,16 @@ defmodule RescordWeb.CalendarPagesTest do
       address = address(view)
       assert {:ok, [feed]} = Calendars.feeds_of(context.user, context.options)
 
+      # Revoking asks first: a confirm step with the name of the feed.
       assert has_element?(
                view,
-               ~s(#feed-#{feed.id} button[aria-label="Revoke the feed My phone"][data-confirm])
+               ~s(#feed-#{feed.id} details[data-confirm-step] summary[aria-label="Revoke the feed My phone"])
+             )
+
+      assert has_element?(
+               view,
+               ~s(#feed-#{feed.id} button[data-variant="danger"]),
+               "Revoke the feed My phone"
              )
 
       html = view |> element("#feed-#{feed.id} button") |> render_click()
@@ -207,7 +214,7 @@ defmodule RescordWeb.CalendarPagesTest do
       refute html =~ "token="
 
       label = "Revoke the feed My phone of #{context.user.email}"
-      view |> element(~s(#feed-#{feed.id} button[aria-label="#{label}"])) |> render_click()
+      view |> element(~s(#feed-#{feed.id} button[data-variant="danger"]), label) |> render_click()
 
       assert has_element?(view, "#no-other-feeds", "No other member has a feed")
       assert has_element?(view, "#own-feeds #feed-#{own.id}")

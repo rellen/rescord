@@ -41,9 +41,10 @@ defmodule RescordWeb.ExportLive do
       organisation={@organisation}
       inbox={@inbox}
       ruby={@ruby?}
-      section={:settings}
+      section={:home}
     >
       <.header icon={Icons.section(:export)}>
+        <:crumb navigate={~p"/o/#{@organisation.short_name}"}>{@organisation.name}</:crumb>
         Export the data
         <:subtitle>A copy of the data of {@organisation.name}, as files of CSV.</:subtitle>
       </.header>

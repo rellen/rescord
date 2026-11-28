@@ -73,13 +73,12 @@ defmodule RescordWeb.RootHealthLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} section={:root}>
       <.header icon={Icons.section(:health)}>
+        <:crumb navigate={~p"/root"}>Root</:crumb>
         Sanity checks
         <:subtitle>
           What the checks of the data and of the server found. They run on their own, and change nothing.
         </:subtitle>
       </.header>
-
-      <p><a href={~p"/root"}>Back to the page of the server</a></p>
 
       <.overview summary={@summary} running?={@running?} />
       <.results :for={{organisation, rows} <- @groups} organisation={organisation} rows={rows} />

@@ -126,17 +126,22 @@ defmodule RescordWeb.RoutineComponents do
                 >
                   <.icon name="play" /> Start again
                 </.button>
-                <details :if={@can_remove?} id={"end-details-#{routine.id}"}>
-                  <summary><.icon name="no-symbol" /> End</summary>
+                <.confirm
+                  :if={@can_remove?}
+                  id={"end-details-#{routine.id}"}
+                  summary="End"
+                  label={"End the routine #{routine.title}"}
+                  icon="no-symbol"
+                >
                   <form id={"end-#{routine.id}"} phx-submit="remove">
                     <input type="hidden" name="routine_id" value={routine.id} />
                     <p>
                       The routine goes, with its tasks that are due after now. The tasks that
                       are done, skipped or overdue stay.
                     </p>
-                    <.button type="submit">End the routine {routine.title}</.button>
+                    <.button type="submit" variant="danger">End the routine {routine.title}</.button>
                   </form>
-                </details>
+                </.confirm>
               </td>
             </tr>
           </tbody>

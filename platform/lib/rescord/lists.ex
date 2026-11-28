@@ -362,6 +362,21 @@ defmodule Rescord.Lists do
     end
   end
 
+  @doc """
+  The name of a value that a write returned, for words on a page. A write
+  does not load the `label`, which is a calculation, so this reads it. A
+  shared value has only its name.
+  """
+  def label_of(%{label: %Ash.NotLoaded{}} = value, opts) do
+    case Ash.load(value, :label, opts) do
+      {:ok, %{label: label}} -> to_string(label)
+      {:error, _error} -> to_string(Map.get(value, :name) || "The value")
+    end
+  end
+
+  def label_of(%{label: label}, _opts), do: to_string(label)
+  def label_of(%{name: name}, _opts), do: to_string(name)
+
   @doc "The shared values of a dimension that the organisation does not use yet."
   def unused_shared_values(key, opts \\ []) do
     with {:ok, values} <- values(key, opts),
