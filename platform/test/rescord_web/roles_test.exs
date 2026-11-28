@@ -14,7 +14,7 @@ defmodule RescordWeb.RolesTest do
     <header><hgroup><h1><svg aria-hidden="true"><title>icon</title></svg> Meadow hay</h1></hgroup></header>
     <section aria-labelledby="lots-heading">
       <h2 id="lots-heading"><svg aria-hidden="true"></svg> Lots</h2>
-      <ul>
+      <ul aria-label="The lots">
         <li id="lot-1">B-1 <button aria-label="Take off B-1"><svg aria-hidden="true"></svg> Take off</button></li>
         <li id="lot-2">B-2 <button aria-label="Take off B-2"><svg aria-hidden="true"></svg> Take off</button></li>
       </ul>
@@ -93,6 +93,12 @@ defmodule RescordWeb.RolesTest do
     assert [_, _] = all(@page, region("Lots") |> item(~r/./))
     assert has?(@page, item(~r/^B-2\b/) |> button("Take off B-2"))
     refute has?(@page, item(~r/^B-2\b/) |> button("Take off B-1"))
+  end
+
+  test "a list is found by its label, and its items in it" do
+    assert names(@page, list("The lots") |> item(nil)) == ["B-1 Take off", "B-2 Take off"]
+    refute has?(@page, list("Other lots"))
+    assert playwright(list("The lots")) == ~s(internal:role=list[name="The lots"s])
   end
 
   test "an image is named by its alt, and a figure by its caption" do

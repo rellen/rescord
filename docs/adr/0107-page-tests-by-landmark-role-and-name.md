@@ -31,7 +31,7 @@ part of the words and prefers them to `aria-label`, so it finds each
   `click/2` of the module, which take a locator or a CSS selector.
   Locators: `main`, `banner`, `contentinfo`, `navigation`, `region`,
   `complementary`, `article`, `heading`, `button`, `link`, `field`,
-  `table`, `row`, `item`, `figure`, `image`, `details` (by its summary),
+  `table`, `row`, `list` (by its label), `item`, `figure`, `image`, `details` (by its summary),
   `definition` (the `dd` of a term), `alert`, `status`, narrowed with a
   pipe. Queries: `has?`, `all`, `one`, `text`, `names`, `href`, `src` and
   `value`. `assert_has/3` takes `state:`, the kind of a `data-state` that

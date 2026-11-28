@@ -66,6 +66,7 @@ defmodule RescordWeb.Roles do
     definition: "dd",
     image: "img:not([alt=''])",
     row: "tr",
+    list: "ul, ol, [role=list]",
     item: "li",
     alert: "[role=alert]",
     status: "[role=status], output"
@@ -121,6 +122,9 @@ defmodule RescordWeb.Roles do
 
   @doc "A row of a table, by its words: give a regex, such as `row(~r/^Meadow hay/)`."
   def row(scope \\ nil, name), do: locate(scope, :row, name)
+
+  @doc "A list (`ul` or `ol`), by its name: an `aria-label` or `aria-labelledby`."
+  def list(scope \\ nil, name), do: locate(scope, :list, name)
 
   @doc """
   An item of a list, by its words: give a regex, such as `item(~r/^Biscuit/)`.

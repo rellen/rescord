@@ -92,7 +92,7 @@ defmodule RescordWeb.TimelineLive do
         Nothing yet. The journal entries, and the changes to the stay, the location and the groups of the resident, show here.
       </p>
 
-      <ol :if={@events != []} id="timeline">
+      <ol :if={@events != []} id="timeline" aria-label="The events">
         <.timeline_event
           :for={event <- @events}
           event={event}
