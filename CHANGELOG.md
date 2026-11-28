@@ -247,6 +247,12 @@ release (ADR 0047).
   arrive, it shows "Not sent" and why, with the new button "Send again"
   beside "Withdraw". A transfer that is sending or not sent can be
   withdrawn too (ADR 0100).
+- For a person who changes Rescord: mutation testing with muex (ADR 0104).
+  `mix test.mutation` and the new workflow "Mutation testing" make copies
+  of the code with one small change each, and report each change that no
+  test notices. The workflow runs each Monday on the lines that changed
+  since the last release, and by hand. It never makes a check fail, and the
+  release holds none of it: an operator has nothing to do.
 - Usage counts (ADR 0098): Rescord counts, for each day, how often each
   feature of the server is used: the pages that open, the actions that
   people run and the files that it sends, with no person, organisation or

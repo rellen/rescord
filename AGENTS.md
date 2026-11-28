@@ -38,6 +38,7 @@ mix setup                         # deps, database (ash.setup), assets, seeds
 mix test                          # sets up the test database, builds the assets, runs a server on port 4002
 iex -S mix phx.server             # http://localhost:4000
 mix precommit                     # compile --warnings-as-errors, unlock unused deps, format, test
+mix test.mutation --files lib/rescord/units  # mutation testing with muex, a report only (ADR 0104)
 mix usage_rules.sync              # write platform/AGENTS.md again, after a change to the deps
 ```
 
@@ -68,6 +69,14 @@ for a result, `.github/workflows/ci-catch-up.yml` starts a run that no push
 cancels (ADR 0078, `scripts/ci-catch-up.sh`). To get a result for `main` now,
 start the workflow `CI` on `main` from the Actions page or the API: no push
 cancels that run either.
+
+Mutation testing (ADR 0104) is not part of CI. `mix test.mutation` runs
+muex on the files that `--files` names, or on the lines that changed since
+a ref (`--since v0.2.0`). A run of muex skips the set-up of `mix test`,
+so set up first: `MIX_ENV=test mix do ash.setup --quiet + assets.build`.
+A mutant that survives is a lead for a test, not a fault.
+`.github/workflows/mutation.yml` runs it each Monday on the lines that
+changed since the last release, and by hand from the Actions page.
 
 Before every commit, run `mix precommit`, and also
 `MIX_ENV=test mix compile --warnings-as-errors`, which compiles `test/support`
@@ -1159,6 +1168,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `docs/self-hosting.md` | the guide for an operator |
 | `docs/migrations.md`, `scripts/check-upgrade-notes.sh` | the rules of a migration and of its upgrade note, and the check that each migration has one (ADR 0073) |
 | `.github/workflows/`, `scripts/ci-catch-up.sh` | CI, the flake check, the release (ADR 0047), the jobs side by side (ADR 0103), and the run of CI that `main` gets when pushes cancel each other (ADR 0078) |
+| `.github/workflows/mutation.yml`, `.github/scripts/muex_summary.exs` | mutation testing with muex, and the summary of its report (ADR 0104) |
 | `.gitleaks.toml`, `scripts/check-secrets.sh` | the scan for secrets and for what belongs to one deployment (ADR 0064) |
 | `CHANGELOG.md` | the changes of each release, which become its notes |
 | `docs/architecture.md`, `docs/adr/` | the design and its decisions |
