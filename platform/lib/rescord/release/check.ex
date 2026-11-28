@@ -5,6 +5,8 @@ defmodule Rescord.Release.Check do
     * the database answers, and is PostgreSQL 18 or later;
     * the migrations that have not run, which the next start runs;
     * the store takes a file, gives it back, and deletes it;
+    * the version of libvips that reads the photos (issue 37), to compare
+      with an advisory;
     * the SMTP server takes the connection and the user, with the TLS of
       the settings, and sends nothing;
     * the values that the secret of the server encrypts open with it
@@ -51,7 +53,7 @@ defmodule Rescord.Release.Check do
         do: [vault() | assistant()] ++ [usage()],
         else: []
 
-    [database(), migrations, store(), smtp()] ++
+    [database(), migrations, store(), libvips(), smtp()] ++
       of_the_database ++
       if address, do: [test_email(address)], else: []
   end
@@ -133,6 +135,18 @@ defmodule Rescord.Release.Check do
     end
   rescue
     error -> {:fail, "store", Exception.message(error)}
+  end
+
+  @doc """
+  The version of libvips that runs, as the NIF of vix (issue 37). A fault
+  of libvips or of a decoder is fixed only by a new version of vix, so an
+  operator compares this version with an advisory.
+  """
+  @spec libvips() :: result
+  def libvips do
+    {:note, "libvips", "#{Rescord.Images.libvips_version()} reads the photos"}
+  rescue
+    error -> {:fail, "libvips", "does not load: #{Exception.message(error)}"}
   end
 
   @doc """

@@ -70,6 +70,13 @@ defmodule Rescord.Images do
   def display_side, do: @display_side
 
   @doc """
+  The version of libvips that runs, as the NIF of vix: what reads each
+  photo. `bin/check` and the colophon name it (issue 37).
+  """
+  @spec libvips_version() :: String.t()
+  def libvips_version, do: Vix.Vips.version()
+
+  @doc """
   Blocks the operations of libvips that its authors do not trust with a
   file from outside, such as the loaders of SVG and of CSV. The application
   calls it at its start.

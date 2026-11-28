@@ -215,6 +215,7 @@ Rescord 0.2.0
 ok    database   PostgreSQL 18.1
 ok    migrations each migration has run
 ok    store      the directory /var/lib/rescord/files takes, gives back and deletes a file
+note  libvips    8.18.7 reads the photos
 ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and the user rescord
 ok    vault      each of the 3 encrypted values opens with the secret of this server
 note  assistant  no provider yet. A root user adds one at /root/ruby
@@ -230,6 +231,12 @@ Rescord is ready.
   start runs them.
 - **store**: Rescord puts a small file in the store, reads it, and deletes
   it.
+- **libvips**: the version of libvips that reads the photos, a note. A
+  fix of libvips or of one of its decoders reaches the Docker image and
+  the tarball with a new version of Rescord with a new `vix`; the Nix
+  package takes the libvips of nixpkgs. Compare this version with an
+  advisory. The
+  colophon shows it too, to a person who is signed in.
 - **mail**: the SMTP server takes the connection, the TLS and the user of
   the settings. This check sends nothing.
 - **vault**: each value that Rescord keeps encrypted opens with

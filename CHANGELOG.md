@@ -342,6 +342,11 @@ release (ADR 0047).
 
 ### Added
 
+- `bin/check` names the version of libvips that reads the photos, and the
+  colophon shows it to a person who is signed in, so an operator can
+  compare it with an advisory. A weekly workflow of the repository,
+  `libvips.yml`, reports when Hex has a newer `vix` or `image`, which can
+  bring a fix of libvips (issue 37, ADR 0113).
 - A photo of a resident and a photo of the journal open as a display file
   of 1600 pixels at most, a WebP image of a few hundred kilobytes, in
   place of the photo of up to 4096 pixels, which costs a phone a few

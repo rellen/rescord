@@ -51,6 +51,7 @@
       <:item title="The photos">
         <a href="https://www.libvips.org">libvips</a>, which removes the position and the
         other metadata of a photo before Rescord stores it.
+        <span :if={@libvips} id="libvips-version">This server runs libvips {@libvips}.</span>
       </:item>
       <:item title="The dates and the numbers">
         <a href="https://hex.pm/packages/localize">Localize</a>, with the data of Unicode CLDR.

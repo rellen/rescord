@@ -1,0 +1,30 @@
+# A weekly watch on libvips (issue 37, ADR 0113). libvips reads each photo
+# that a person sends, inside the BEAM, as the NIF of vix, and a fix of it
+# reaches Rescord only with a new version of vix. The check of advisories
+# in ci.yml covers the Hex packages only.
+#
+# This workflow reports only: no push starts it, and ci.yml does not need
+# it. It fails when Hex has a newer vix or image than platform/mix.lock, so
+# a red run here is a fix of security that may wait. The summary of the run
+# names the versions. It runs each Monday at 15:00 UTC, and by hand from the
+# Actions page.
+name: libvips
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 15 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  libvips:
+    name: A newer vix or image on Hex
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare mix.lock with Hex
+        run: scripts/check-libvips.sh

@@ -72,6 +72,12 @@ defmodule Rescord.Release.CheckTest do
     end
   end
 
+  test "names the version of libvips that reads the photos (issue 37)" do
+    assert {:note, "libvips", words} = Check.libvips()
+    assert words == "#{Rescord.Images.libvips_version()} reads the photos"
+    assert words =~ ~r/^\d+\.\d+\.\d+ /
+  end
+
   describe "the SMTP server" do
     test "takes the user and the password, and sends nothing" do
       mailer!(settings(smtp_server!(), "username", "PaSSw0rd"))

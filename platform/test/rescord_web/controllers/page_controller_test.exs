@@ -90,6 +90,20 @@ defmodule RescordWeb.PageControllerTest do
 
       assert doc |> LazyHTML.query("#accessibility ~ p") |> LazyHTML.text() =~ "WCAG"
       assert doc |> LazyHTML.query("[class]") |> Enum.count() == 0
+      # A visitor does not see the version of libvips (issue 37).
+      assert doc |> LazyHTML.query("#libvips-version") |> Enum.count() == 0
+    end
+
+    test "a person who is signed in sees the version of libvips (issue 37)", %{conn: conn} do
+      doc =
+        conn
+        |> Rescord.AccountsFixtures.sign_in(Rescord.AccountsFixtures.user!())
+        |> get(~p"/colophon")
+        |> html_response(200)
+        |> LazyHTML.from_document()
+
+      assert doc |> LazyHTML.query("#libvips-version") |> LazyHTML.text() ==
+               "This server runs libvips #{Rescord.Images.libvips_version()}."
     end
   end
 end
