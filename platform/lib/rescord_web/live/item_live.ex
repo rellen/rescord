@@ -45,7 +45,6 @@ defmodule RescordWeb.ItemLive do
 
     with {:ok, _uuid} <- Ecto.UUID.cast(id),
          {:ok, %{} = stock} <- Inventory.item_stock(id, options) do
-      {:ok, history} = Inventory.history(id, options)
       {:ok, tree} = Locations.tree(options)
       {:ok, suppliers} = Inventory.suppliers(options)
       {:ok, wanted} = Inventory.reorder_levels(options)
@@ -64,7 +63,6 @@ defmodule RescordWeb.ItemLive do
          refused: nil,
          stock: stock,
          item: stock.item,
-         history: history,
          places: places,
          place_names: Map.new(places, fn {name, id} -> {id, String.trim_leading(name, "– ")} end),
          suppliers: suppliers |> Enum.map(&{&1.name, &1.id}) |> Enum.sort(),
@@ -370,7 +368,7 @@ defmodule RescordWeb.ItemLive do
       />
 
       <.stock_history
-        history={@history}
+        lots={@lot_choices}
         item={@item}
         organisation={@organisation}
         members={@members}

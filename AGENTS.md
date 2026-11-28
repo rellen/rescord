@@ -293,6 +293,25 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - Do not pass `theme`, and do not pass `class` to a slot. The theme is
     `RescordWeb.CinderTheme`, from the configuration, and the look is in
     `assets/css/layers/vendor.css`, which selects the `data-key` of a part.
+  - **A collection that is the page keeps its state in the address**
+    (ADR 0084): the LiveView has `use Cinder.UrlSync` after
+    `use RescordWeb, :live_view`, and the collection gets
+    `url_state={@url_state}`. One collection of a page takes it, because
+    the parameters have no prefix. A collection that is a part of a page,
+    such as the stock history of an item, does not. The page reads none of
+    those parameters itself.
+  - Give a collection an `<:empty :let={found}>` slot with two sentences:
+    one for `found.filtered?`, and one for a collection with nothing yet.
+  - What a row shows is a load of the query, or a thing that the page reads
+    once for the organisation: the page does not see the rows of Cinder.
+    A field that Elixir calculates takes no sort and no filter of Cinder.
+    For a search on one, the domain narrows the query, as
+    `Rescord.Accounts.members_with_email/2` does.
+  - When the query needs a filter that the web layer cannot write, the
+    domain has a function that returns the query, as
+    `Rescord.Inventory.query_to_history/2` does.
+  - A short list with no filter, no sort and no pages stays a table by
+    hand (ADR 0079).
   - Cinder has a LiveComponent inside. That does not change "No
     LiveComponents":
     we write none.

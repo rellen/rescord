@@ -15,6 +15,8 @@ defmodule RescordWeb.AccountComponents do
   attr :organisation, :any, required: true
   attr :role, :any, required: true
   attr :roles, :list, required: true, doc: "the roles that the reader can give, as options"
+  attr :all_roles, :list, required: true, doc: "each role of the organisation, as options"
+  attr :url_state, :any, required: true, doc: "the state of the table in the address"
 
   def members_table(assigns) do
     ~H"""
@@ -24,9 +26,20 @@ defmodule RescordWeb.AccountComponents do
       query_opts={[load: [:role]]}
       actor={@current_user}
       tenant={@organisation}
+      url_state={@url_state}
+      search={[label: "Search", placeholder: "An email address", fn: &search_members/3]}
     >
-      <:col :let={member} field="email" label="Email address">{member.email}</:col>
-      <:col :let={member} field="role_id" label="Role">
+      <:empty :let={found}>
+        <p :if={found.filtered?}>No member matches the search and the filter.</p>
+        <p :if={not found.filtered?}>{@organisation.name} has no member yet.</p>
+      </:empty>
+      <:col :let={member} field="email" label="Email address" search>{member.email}</:col>
+      <:col
+        :let={member}
+        field="role_id"
+        label="Role"
+        filter={[type: :select, prompt: "Any role", options: @all_roles]}
+      >
         <span data-label="Role">{member.role.name}</span>
       </:col>
       <:col :let={member} field="id" label="Actions">
@@ -59,6 +72,10 @@ defmodule RescordWeb.AccountComponents do
     """
   end
 
+  # The search of the members table. Cinder cannot search the email address
+  # itself, which Elixir calculates, so the domain narrows the query.
+  defp search_members(query, _columns, text), do: Accounts.members_with_email(query, text)
+
   @doc "The form that invites a person to an organisation, with a role that the person can give."
   attr :invite_form, :any, required: true
   attr :roles, :list, required: true
@@ -88,6 +105,7 @@ defmodule RescordWeb.AccountComponents do
   attr :current_user, :any, required: true
   attr :organisation_form, :any, required: true
   attr :time_zones, :any, required: true
+  attr :url_state, :any, required: true, doc: "the state of the table in the address"
 
   def organisations(assigns) do
     ~H"""
@@ -98,7 +116,12 @@ defmodule RescordWeb.AccountComponents do
         id="organisations"
         query={Accounts.query_to_organisations(%{}, actor: @current_user)}
         actor={@current_user}
+        url_state={@url_state}
       >
+        <:empty :let={found}>
+          <p :if={found.filtered?}>No organisation matches the filter.</p>
+          <p :if={not found.filtered?}>Rescord has no organisation yet.</p>
+        </:empty>
         <:col :let={organisation} field="name" label="Name" filter sort>
           <a href={~p"/o/#{organisation.short_name}/members"}>{organisation.name}</a>
         </:col>

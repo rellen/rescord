@@ -102,6 +102,12 @@ We do not write those by hand.
 - A widget that shows a collection tells Cinder to load again with
   `Cinder.Refresh.refresh_table/2`, when the notification of the resource
   arrives.
+- A collection that is the page keeps its search, its filters, its sort
+  and its page in the address, with `Cinder.UrlSync` (ADR 0084): the
+  residents, the members, the organisations. A collection that is a part
+  of a page does not: the stock history of an item.
+- Cinder is for a collection that needs a filter, a sort or pages. A
+  short list stays a table by hand (ADR 0079).
 - The markup of Cinder has gaps in accessibility, which ADR 0014 lists. We
   work around the first one (ADR 0017): `assets/js/cinder_tables.ts` makes
   the sort of a table column a button for the keyboard, and gives the header

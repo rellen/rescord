@@ -330,6 +330,91 @@ defmodule RescordWeb.ResidentPagesTest do
       assert html =~ "Expected"
       assert html =~ "New resident"
     end
+
+    test "reads the search, the filters and the sort from the address (ADR 0084)", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+
+      resident!(lists, context.options, %{
+        name: "Clover",
+        species_id: lists.species.rabbit,
+        sex: :female
+      })
+
+      residents = context.base <> "/residents"
+
+      for {parameters, shown, hidden} <- [
+            {"?search=clo", "Clover", "Biscuit"},
+            {"?sex=male", "Biscuit", "Clover"},
+            {"?species_id=#{lists.species.rabbit}", "Clover", "Biscuit"},
+            {"?species_id=#{lists.species.rabbit}&sex=female&tab=kept", "Clover", "Biscuit"}
+          ] do
+        {_view, html} = open(context.conn, residents <> parameters)
+        rows = rows(html)
+
+        assert rows =~ shown
+        refute rows =~ hidden
+      end
+
+      # The sort: the name from Z to A.
+      {_view, html} = open(context.conn, residents <> "?sort=-name")
+      rows = rows(html)
+      assert :binary.match(rows, "Clover") < :binary.match(rows, "Biscuit")
+
+      # A parameter that names no field, and a value that is no choice, change
+      # nothing and make no fault.
+      {_view, html} = open(context.conn, residents <> "?colour=tan&sex=nothing&page=x&sort=,")
+      assert rows(html) =~ "Biscuit"
+    end
+
+    test "writes a filter into the address, and keeps a parameter of another kind", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+      resident!(lists, context.options, %{name: "Clover", sex: :female})
+
+      {view, _html} = open(context.conn, context.base <> "/residents?tab=kept")
+
+      view
+      |> element("#residents-filter-form")
+      |> render_change(%{"filters" => %{"sex" => "female"}})
+
+      path = assert_patch(view)
+      assert path =~ "sex=female"
+      assert path =~ "tab=kept"
+
+      rows = view |> render_async() |> rows()
+      assert rows =~ "Clover"
+      refute rows =~ "Biscuit"
+    end
+
+    test "says that the register is empty, or that nothing matches", context do
+      lists = lists!(context.organisation, context.root)
+
+      {_view, html} = open(context.conn, context.base <> "/residents")
+      assert html =~ "The register has no resident yet."
+
+      resident!(lists, context.options)
+
+      {_view, html} = open(context.conn, context.base <> "/residents?search=nobody")
+      assert html =~ "No resident matches the search and the filters."
+      refute html =~ "The register has no resident yet."
+    end
+
+    test "offers each species of the organisation as a filter", context do
+      lists = lists!(context.organisation, context.root)
+      resident!(lists, context.options)
+
+      {view, _html} = open(context.conn, context.base <> "/residents")
+
+      assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.rabbit}"]))
+      assert has_element?(view, ~s(#residents-filter-form [value="#{lists.species.guinea_pig}"]))
+    end
+  end
+
+  # The rows of the table of a collection, without its filters, which name
+  # each choice.
+  defp rows(html) do
+    html |> LazyHTML.from_fragment() |> LazyHTML.query("tbody") |> LazyHTML.to_html()
   end
 
   describe "the form of a resident" do

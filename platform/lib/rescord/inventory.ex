@@ -333,25 +333,18 @@ defmodule Rescord.Inventory do
   def soon_days(_item), do: @soon_days
 
   @doc """
-  The last stock movements of an item, the newest first by the time that
-  each happened, each with its lot. `limit` is 100 when the caller gives
-  none.
+  The query of the stock movements of an item, the newest first by the
+  time that each happened, each with its lot. The page of an item gives it
+  to Cinder (ADR 0084), which adds the filters and reads one page of it.
+  `opts` are the options of a read: the actor and the organisation.
   """
-  def history(item_id, opts \\ []) do
-    {limit, opts} = Keyword.pop(opts, :limit, 100)
-
-    with {:ok, lots} <- Lot |> Ash.Query.filter(item_id == ^item_id) |> Ash.read(opts) do
-      lot_of = Map.new(lots, &{&1.id, &1})
-
-      with {:ok, movements} <-
-             StockMovement
-             |> Ash.Query.filter(lot_id in ^Map.keys(lot_of))
-             |> Ash.Query.sort(happened_at: :desc, id: :desc)
-             |> Ash.Query.limit(limit)
-             |> Ash.read(opts) do
-        {:ok, Enum.map(movements, &Map.put(&1, :lot, lot_of[&1.lot_id]))}
-      end
-    end
+  @spec query_to_history(String.t(), keyword) :: Ash.Query.t()
+  def query_to_history(item_id, opts \\ []) do
+    StockMovement
+    |> Ash.Query.for_read(:read, %{}, opts)
+    |> Ash.Query.filter(lot.item_id == ^item_id)
+    |> Ash.Query.sort(happened_at: :desc, id: :desc)
+    |> Ash.Query.load(:lot)
   end
 
   @doc """

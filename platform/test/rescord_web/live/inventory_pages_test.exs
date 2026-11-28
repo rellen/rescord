@@ -309,6 +309,92 @@ defmodule RescordWeb.InventoryPagesTest do
     end
   end
 
+  describe "the history on the page of an item (ADR 0084)" do
+    setup context do
+      old = lot!(context, %{code: "A-0", quantity: 40})
+      new = lot!(context, %{code: "B-1", quantity: 5})
+      here = %{lot_id: old.id, location_id: context.shed.id, quantity: 1}
+
+      # 27 movements out of the first lot: one thrown out a week ago, and
+      # the others used now. With the two that received the lots, 29.
+      week_ago = DateTime.add(DateTime.utc_now(), -7, :day)
+      Inventory.discard_stock!(Map.put(here, :happened_at, week_ago), context.options)
+      for _each <- 1..26, do: Inventory.use_stock!(here, context.options)
+
+      {:ok, old: old, new: new, week_ago: week_ago}
+    end
+
+    defp movements(html) do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#history tbody tr")
+      |> Enum.count()
+    end
+
+    test "shows a page of 25 movements, the newest first, and the next page", context do
+      {view, html} = open(context.conn, context.item_path)
+
+      assert movements(html) == 25
+      assert has_element?(view, "#history tbody tr:first-child td", "Used")
+      refute has_element?(view, "#history td", "Thrown out")
+
+      view |> element("#history [phx-click=goto_page][title='Next page']") |> render_click()
+      html = render_async(view)
+
+      assert movements(html) == 4
+      assert has_element?(view, "#history td", "Thrown out")
+    end
+
+    test "narrows the movements to a kind, to a lot and to dates", context do
+      {view, _html} = open(context.conn, context.item_path)
+      filters = element(view, "#history-filter-form")
+
+      render_change(filters, %{"filters" => %{"kind" => "received"}})
+      html = render_async(view)
+      assert movements(html) == 2
+      refute has_element?(view, "#history td", "Used")
+
+      render_change(filters, %{"filters" => %{"kind" => "", "lot_id" => context.new.id}})
+      html = render_async(view)
+      assert movements(html) == 1
+      assert has_element?(view, "#history td", "Lot B-1")
+
+      day = context.week_ago |> DateTime.to_date() |> Date.to_iso8601()
+
+      render_change(filters, %{
+        "filters" => %{"lot_id" => "", "happened_at_from" => day, "happened_at_to" => day}
+      })
+
+      html = render_async(view)
+      assert movements(html) == 1
+      assert has_element?(view, "#history td", "Thrown out")
+
+      render_change(filters, %{
+        "filters" => %{"kind" => "counted", "happened_at_from" => "", "happened_at_to" => ""}
+      })
+
+      assert render_async(view) =~ "No movement matches the filters."
+    end
+
+    test "says so for an item with no movement", context do
+      nothing = Inventory.add_item!(%{name: "Aspen bedding"}, context.admin)
+      {_view, html} = open(context.conn, context.path <> "/" <> nothing.id)
+
+      assert html =~ "Nothing happened to the stock of this item yet."
+    end
+
+    test "does not put its filters into the address", context do
+      {view, _html} = open(context.conn, context.item_path)
+
+      view
+      |> element("#history-filter-form")
+      |> render_change(%{"filters" => %{"kind" => "received"}})
+
+      render_async(view)
+      refute_patched(view, context.item_path <> "?kind=received")
+    end
+  end
+
   describe "a member on the page of an item" do
     test "records a new lot that came in", context do
       {view, _html} = open(context.conn, context.item_path)

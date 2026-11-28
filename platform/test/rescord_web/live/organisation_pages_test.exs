@@ -51,6 +51,12 @@ defmodule RescordWeb.OrganisationPagesTest do
     member.role.key
   end
 
+  # The rows of the table of a collection, without its filters, which name
+  # each choice.
+  defp rows(html) do
+    html |> LazyHTML.from_fragment() |> LazyHTML.query("tbody") |> LazyHTML.to_html()
+  end
+
   defp open(conn, user, path) do
     {:ok, view, _html} = conn |> sign_in(user) |> live(path)
     {view, render_async(view)}
@@ -91,6 +97,22 @@ defmodule RescordWeb.OrganisationPagesTest do
 
       {_view, html} = open(context.conn, context.root, ~p"/root")
       assert html =~ "Wattle Creek"
+    end
+
+    test "reads the filter of the organisations from the address (ADR 0084)", context do
+      organisation!(context.root, "Ironbark Flat")
+
+      {_view, html} = open(context.conn, context.root, "/root?name=iron")
+      assert rows(html) =~ "Ironbark Flat"
+      refute rows(html) =~ "Wattle Creek"
+
+      {_view, html} = open(context.conn, context.root, "/root?name=nowhere")
+      assert html =~ "No organisation matches the filter."
+
+      # A parameter that names no field changes nothing.
+      {_view, html} = open(context.conn, context.root, "/root?colour=tan&page=x")
+      assert rows(html) =~ "Wattle Creek"
+      assert rows(html) =~ "Ironbark Flat"
     end
 
     test "says which version of Rescord the server runs", context do
@@ -425,6 +447,64 @@ defmodule RescordWeb.OrganisationPagesTest do
       refute html =~ "Invite a person"
       refute html =~ "Give the role"
       refute html =~ ~s(phx-click="remove")
+    end
+
+    test "reads the search and the filter on the role from the address (ADR 0084)", context do
+      members = ~p"/o/#{context.organisation.short_name}/members"
+      administrator = to_string(context.administrator.email)
+      member = to_string(context.member.email)
+
+      # A part of an address, in any case of its letters.
+      part = administrator |> String.split("@") |> hd() |> String.upcase()
+      {_view, html} = open(context.conn, context.member, members <> "?search=" <> part)
+      assert rows(html) =~ administrator
+      refute rows(html) =~ member
+
+      role = role_with_key(context, :member)
+      {_view, html} = open(context.conn, context.member, members <> "?role_id=" <> role.id)
+      assert rows(html) =~ member
+      refute rows(html) =~ administrator
+
+      {_view, html} = open(context.conn, context.member, members <> "?search=nobody-at-all")
+      assert html =~ "No member matches the search and the filter."
+
+      # A parameter that names no field, and a role that is not one, change
+      # nothing and make no fault.
+      {_view, html} = open(context.conn, context.member, members <> "?colour=tan&role_id=x")
+      assert rows(html) =~ member
+    end
+
+    test "finds no member of another organisation with the search", context do
+      other = organisation!(context.root, "Other")
+      {_, outsider} = member!(other, :member, context.root)
+      send_invitations()
+
+      {_view, html} =
+        open(
+          context.conn,
+          context.member,
+          ~p"/o/#{context.organisation.short_name}/members?search=#{outsider.email}"
+        )
+
+      refute html =~ to_string(outsider.email) <> "</"
+      assert html =~ "No member matches the search and the filter."
+    end
+
+    test "writes the filter on the role into the address", context do
+      {view, _html} =
+        open(context.conn, context.member, ~p"/o/#{context.organisation.short_name}/members")
+
+      role = role_with_key(context, :member)
+
+      view
+      |> element("#members-filter-form")
+      |> render_change(%{"filters" => %{"role_id" => role.id}})
+
+      assert assert_patch(view) =~ "role_id=" <> role.id
+
+      rows = view |> render_async() |> rows()
+      assert rows =~ to_string(context.member.email)
+      refute rows =~ to_string(context.administrator.email)
     end
 
     test "lets an administrator invite a member, with the role of a member at first", context do

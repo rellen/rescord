@@ -390,6 +390,20 @@ release (ADR 0047).
   and the section then shows only on a resident that has one. The register
   on paper has its column of identifiers only when a resident of the
   register has one.
+- The list of the residents, the members of an organisation and the
+  organisations of the root page now keep their search, their filters,
+  their sort and their page in the address. A person who opens a record
+  and goes back finds the list as it was, and the address of a filtered
+  list can be kept or sent. The residents also have a filter on the
+  species and a choice of 25, 50 or 100 on a page. The members have a
+  search on the email address and a filter on the role. Each list says
+  when nothing matches the filters, and when there is nothing yet
+  (ADR 0084).
+- The page of an item of the inventory now shows each stock movement of
+  the item, in pages of 25, 50 or 100, with a filter on the date, on the
+  kind of movement and on the lot, and a sort on the time. Before, it
+  showed the newest 100 movements and had no way to the older ones
+  (ADR 0084).
 
 ### Fixed
 

@@ -457,6 +457,29 @@ defmodule Rescord.Accounts do
     |> DateTime.shift_zone!("Etc/UTC", Tz.TimeZoneDatabase)
   end
 
+  @doc """
+  Narrows a query of members to those whose email address has `text` in
+  it, in any case of its letters. The members table searches with this
+  (ADR 0084).
+
+  The email address is of the user, who is in no schema of an
+  organisation, and a user reads only their own record. So this reads the
+  users with no policy, as `Rescord.Accounts.Calculations.MemberEmail` does,
+  and gives back only a filter on the members: the query still answers
+  with the members that its actor can read, in its organisation.
+  """
+  @spec members_with_email(Ash.Query.t(), String.t()) :: Ash.Query.t()
+  def members_with_email(%Ash.Query{} = query, text) when is_binary(text) do
+    user_ids =
+      User
+      |> Ash.Query.filter(contains(email, ^%Ash.CiString{string: text}))
+      |> Ash.Query.select([:id])
+      |> Ash.read!(authorize?: false)
+      |> Enum.map(& &1.id)
+
+    Ash.Query.filter(query, user_id in ^user_ids)
+  end
+
   @doc "The date in an organisation now."
   @spec today(Ash.Resource.record() | String.t()) :: Date.t()
   def today(tenant), do: local_date(tenant, DateTime.utc_now())
