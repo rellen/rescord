@@ -223,6 +223,10 @@ release (ADR 0047).
     two empty columns to the measure kinds, for the lowest and the
     highest value of a measurement of the kind (ADR 0117). It changes no
     row.
+  - `20261128143308_add_ruby_member_allowance`, in each organisation:
+    adds an empty column to the settings of Ruby, for the share of one
+    member for a month (ADR 0117). Empty means no share, as before the
+    upgrade. It changes no row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
@@ -386,6 +390,15 @@ release (ADR 0047).
 
 ### Added
 
+- An organisation can give each member a share of Ruby for a month, on
+  the settings page of Ruby: "Share of one member for a month, in US
+  dollars" (ADR 0117, issue 41). A member who has used their share is
+  refused with "You have used your share of Ruby for this month", and the
+  others still ask, so one member, or a script with their session, cannot
+  use the allowance of everybody. The share is the same for each member,
+  empty by default, and the page counts the members who have used it,
+  with no name and no cost of a person. The run after a member confirms a
+  proposal is never refused for it.
 - An administrator can give a kind of measurement with a standard unit a
   range, on the page Lists, under "Measure kind": the lowest and the
   highest value, in the standard unit (ADR 0117, issue 41). A measurement
@@ -414,6 +427,18 @@ release (ADR 0047).
   with a row for each condition and a column for each of the last 12
   weeks, with the new cases of the week, stronger in colour for more, the
   cases that go on now, and the totals. Each member can open it.
+- The fourth insight, "When the care is done" (issue 36, ADR 0120): a
+  punch card of the tasks done in each hour of each day of the week over
+  the last 12 weeks, with a dot as large as the tasks, and for each hour
+  the share of the tasks due in it that were done more than an hour late.
+  It counts the tasks of the refuge, and never the work of a person. Each
+  member can open it.
+- The fifth insight, "Stays" (issue 36, ADR 0121): a bar for each
+  resident in care on a day of the last 12 months, from the arrival to
+  the departure, or dashed to today for a stay that goes on, with the name
+  as a link and how the stay began, its days and how it ended. A species
+  narrows it, and the rows come in the order of the arrivals or of the
+  lengths. Each member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A
@@ -677,6 +702,13 @@ release (ADR 0047).
   conversations past the days of the settings and those of a person who
   is no member any more, and ends a reply that lost its job, so that its
   conversation takes the next message.
+- The settings of Ruby show the use of the month to a person who can
+  change them: how much of the allowance went, with words from 80% on,
+  and the replies and the cost of each member, in US dollars and "about",
+  since the bill of the service can differ a little. The counts hold no
+  word of any conversation, and a member who left stays in them. The
+  events of ReqLLM now hold no request and no answer by configuration
+  (`config :req_llm, telemetry: [payloads: :none]`), as before by default.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.
@@ -842,6 +874,10 @@ release (ADR 0047).
 
 ### Changed
 
+- A form that Rescord refuses now marks each field with a problem and
+  says the problem under it, and that field gets the focus. Before, the
+  problems were only in a list at the top of the page, which can be out
+  of sight, and the focus stayed on the button (ADR 0111).
 - The forms take fewer keys. A form that a person opens gives the focus to
   its first field, and Ctrl or Cmd with Enter sends a form from its note.
   After a measurement, the form stays open with the same kind and unit,

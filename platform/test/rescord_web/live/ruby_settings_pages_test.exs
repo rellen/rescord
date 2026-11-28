@@ -194,6 +194,33 @@ defmodule RescordWeb.RubySettingsPagesTest do
       assert has_element?(view, ~s(#ruby_allowance[value="20"]))
     end
 
+    test "the share of one member is empty at first, saved, and counts who used it (ADR 0117)",
+         context do
+      {view, html} = open(context.conn, context.path)
+      assert has_element?(view, "#ruby_member_allowance")
+      refute has_element?(view, ~s(#ruby_member_allowance[value="0"]))
+      assert html =~ "Leave it empty to let one member use the whole allowance."
+      refute has_element?(view, "#ruby-at-share")
+
+      {view, _html} = save(view, context.conn, %{member_allowance: "2.50"})
+      assert has_element?(view, ~s(#ruby_member_allowance[value="2.50"]))
+      assert has_element?(view, "#ruby-at-share", "0 members have used their share this month.")
+      assert Ruby.settings(context.organisation).member_allowance == 250
+
+      html =
+        view
+        |> form("#ruby-settings", ruby: %{member_allowance: "some"})
+        |> render_submit()
+
+      assert html =~ "give an amount in US dollars, such as 5 or 0.50"
+      assert has_element?(view, ~s(#ruby_member_allowance[aria-invalid="true"][value="some"]))
+
+      # An empty field takes the share away.
+      {view, _html} = save(view, context.conn, %{member_allowance: ""})
+      refute has_element?(view, "#ruby-at-share")
+      assert Ruby.settings(context.organisation).member_allowance == nil
+    end
+
     test "a value that is none is refused beside its field, and the form keeps it", context do
       {view, _html} = open(context.conn, context.path)
 

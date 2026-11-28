@@ -235,6 +235,62 @@ defmodule RescordWeb.Chart do
     end
   end
 
+  @doc """
+  The place of a span of days on a scale of the days from `first` to
+  `last`, both in (ADR 0121): `x` and `width` in percent. Each day is a
+  slot, and a span covers its first day to the end of its last. A span that
+  starts before `first` or ends after `last` is cut at that edge.
+
+      iex> RescordWeb.Chart.span(~D[2026-01-01], ~D[2026-01-02], ~D[2026-01-01], ~D[2026-01-04])
+      %{x: 0.0, width: 50.0}
+
+      iex> RescordWeb.Chart.span(~D[2025-12-01], ~D[2026-01-10], ~D[2026-01-01], ~D[2026-01-04])
+      %{x: 0.0, width: 100.0}
+
+      iex> RescordWeb.Chart.span(~D[2026-01-04], ~D[2026-01-04], ~D[2026-01-01], ~D[2026-01-04])
+      %{x: 75.0, width: 25.0}
+  """
+  @spec span(Date.t(), Date.t(), Date.t(), Date.t()) :: %{x: float, width: float}
+  def span(%Date{} = from, %Date{} = to, %Date{} = first, %Date{} = last) do
+    start = Enum.max([from, first], Date)
+    stop = Enum.min([to, last], Date)
+
+    %{
+      x: day_x(start, first, last),
+      width: Float.round((Date.diff(stop, start) + 1) / days_of(first, last) * 100, 2)
+    }
+  end
+
+  @doc """
+  The place of the start of a day on a scale of the days from `first` to
+  `last`, both in, in percent (ADR 0121).
+
+      iex> RescordWeb.Chart.day_x(~D[2026-01-03], ~D[2026-01-01], ~D[2026-01-04])
+      50.0
+  """
+  @spec day_x(Date.t(), Date.t(), Date.t()) :: float
+  def day_x(%Date{} = date, %Date{} = first, %Date{} = last),
+    do: Float.round(Date.diff(date, first) / days_of(first, last) * 100, 2)
+
+  defp days_of(first, last), do: Date.diff(last, first) + 1
+
+  @doc """
+  The first day of each month that starts after `first`, up to `last`, on
+  a scale of those days (ADR 0121): a mark for a time line.
+
+      iex> RescordWeb.Chart.months(~D[2026-01-15], ~D[2026-03-20])
+      [{~D[2026-02-01], 26.15}, {~D[2026-03-01], 69.23}]
+  """
+  @spec months(Date.t(), Date.t()) :: [{Date.t(), float}]
+  def months(%Date{} = first, %Date{} = last) do
+    first
+    |> Date.beginning_of_month()
+    |> Stream.iterate(&Date.shift(&1, month: 1))
+    |> Stream.drop(1)
+    |> Enum.take_while(&(Date.compare(&1, last) != :gt))
+    |> Enum.map(&{&1, day_x(&1, first, last)})
+  end
+
   @doc "The place of an instant from left to right, as a percentage."
   @spec x(DateTime.t(), Scale.t()) :: float
   def x(%DateTime{} = at, %Scale{from: from, to: to}) do

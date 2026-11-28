@@ -125,6 +125,7 @@ defmodule RescordWeb.RubyWords do
   def failure(:cut), do: "the answer of the test was cut short."
   def failure(:too_many_steps), do: "the test took too many steps."
   def failure(:allowance), do: "the allowance of the month is used."
+  def failure(:member_allowance), do: "the share of one member for the month is used."
   def failure(:rate), do: "there were too many requests. Wait a moment."
   def failure(:too_long), do: "the request was too long for the model."
 
@@ -181,6 +182,64 @@ defmodule RescordWeb.RubyWords do
   def dollars(cents) when is_integer(cents),
     do:
       "#{div(cents, 100)}.#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
+
+  # Millionths of a US dollar in one cent.
+  @cent 10_000
+
+  @doc "Millionths of a US dollar as whole US cents, to the nearest cent."
+  def cents_of(microdollars) when is_integer(microdollars), do: div(microdollars + 5_000, 10_000)
+
+  @doc """
+  What went of the allowance of a month, for the label of its `<meter>`:
+  "About 12.40 of 20 US dollars used". The use is a sum of prices that
+  Rescord works out, and the bill of the provider can differ a little, so
+  it says "about".
+  """
+  def used(microdollars, allowance) when is_integer(microdollars) and is_integer(allowance),
+    do: "About #{amount(cents_of(microdollars))} of #{dollars(allowance)} US dollars used"
+
+  @doc "The share of the allowance that went, in whole percent, rounded down: \"62%\"."
+  def share(microdollars, allowance) when is_integer(allowance) and allowance > 0,
+    do: "#{div(microdollars * 100, allowance * @cent)}%"
+
+  @doc """
+  What the use of the month says from 80% of the allowance on, or `nil`
+  below it. It compares the millionths of a dollar, as
+  `Rescord.Ruby.Allowance.room?/2` does, so the page says "used" exactly
+  when `say` refuses. An allowance of nothing answers nobody.
+  """
+  def use_warning(microdollars, allowance, %Date{} = month)
+      when is_integer(microdollars) and is_integer(allowance) and allowance > 0 do
+    words = RescordWeb.Locale.month(month)
+
+    cond do
+      microdollars >= allowance * @cent ->
+        "The allowance of #{words} is used: Ruby answers nobody until the next month, " <>
+          "or until you raise the allowance in the form above."
+
+      microdollars * 5 >= allowance * 4 * @cent ->
+        "80% or more of the allowance of #{words} is used. When it is all used, " <>
+          "Ruby answers nobody until the next month."
+
+      true ->
+        nil
+    end
+  end
+
+  def use_warning(_microdollars, 0, _month),
+    do:
+      "The allowance is 0 US dollars: Ruby answers nobody until you raise the allowance " <>
+        "in the form above."
+
+  def use_warning(_microdollars, _allowance, _month), do: nil
+
+  @doc "A cost of the use, in US dollars with the word \"about\": \"about 6.10\"."
+  def about_dollars(microdollars) when is_integer(microdollars),
+    do: "about #{amount(cents_of(microdollars))}"
+
+  # Whole cents with two places, as a use reads: "3.00" and "12.40".
+  defp amount(cents) when rem(cents, 100) == 0, do: dollars(cents) <> ".00"
+  defp amount(cents), do: dollars(cents)
 
   @doc """
   Millionths of a US dollar as US dollars, for a field: the price of a
@@ -439,6 +498,13 @@ defmodule RescordWeb.RubyWords do
     end
   end
 
+  def problem(:member_allowance, _organisation, opts) do
+    today = Keyword.get(opts, :today, Date.utc_today())
+    next = today |> Date.end_of_month() |> Date.add(1) |> RescordWeb.Locale.date()
+
+    "You have used your share of Ruby for this month. It starts again on #{next}."
+  end
+
   def problem(:provider_limit, _organisation, _opts),
     do:
       "Ruby has reached the limit of this server for the month. Nothing was recorded. " <>
@@ -481,7 +547,7 @@ defmodule RescordWeb.RubyWords do
   def way_on(reason) when reason in [:provider_down, :unknown, :provider_busy, :rate], do: :again
   def way_on(:cut), do: :rest
   def way_on(reason) when reason in [:request_refused, :too_long], do: :new
-  def way_on(:allowance), do: :settings
+  def way_on(reason) when reason in [:allowance, :member_allowance], do: :settings
   def way_on(_reason), do: nil
 
   @doc "Whether a second try of the same message can go better (\"Try again\")."

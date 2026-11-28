@@ -146,7 +146,7 @@ defmodule RescordWeb.ItemLive do
 
   # Each form of the page. `filled` has the fields of the form that a member
   # sent, when the action refused them.
-  defp assign_forms(socket, filled \\ %{}) do
+  defp assign_forms(socket, filled \\ %{}, error \\ nil) do
     item = socket.assigns.item
 
     start = %{
@@ -165,7 +165,9 @@ defmodule RescordWeb.ItemLive do
 
     Enum.reduce(@forms, socket, fn {name, key}, socket ->
       fields = Map.get(filled, name) || Map.get(start, name, %{})
-      assign(socket, key, typed_form(fields, as: name))
+      # Only the form that the person sent has the problems at its fields.
+      refused = if Map.has_key?(filled, name), do: error
+      assign(socket, key, typed_form(fields, as: name, error: refused))
     end)
   end
 
@@ -339,7 +341,7 @@ defmodule RescordWeb.ItemLive do
         {:noreply, refuse(socket, form, fields, [words])}
 
       {:error, error} ->
-        {:noreply, refuse(socket, form, fields, Accounts.error_messages(error))}
+        {:noreply, refuse(socket, form, fields, Accounts.error_messages(error), error)}
     end
   end
 
@@ -355,10 +357,10 @@ defmodule RescordWeb.ItemLive do
   # The problems are beside the form that the person sent. A person can send
   # the event of a form that the page did not draw for them: the problems
   # are then below the header.
-  defp refuse(socket, form, fields, problems) do
+  defp refuse(socket, form, fields, problems, error \\ nil) do
     socket
     |> assign(problems: problems, refused: if(drawn?(socket.assigns, form), do: form))
-    |> assign_forms(%{form => fields})
+    |> assign_forms(%{form => fields}, error)
   end
 
   defp drawn?(assigns, :receive), do: assigns.can_record?

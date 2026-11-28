@@ -339,4 +339,44 @@ defmodule RescordWeb.ChartComponentsTest do
       assert attribute(doc, "rect[data-down]", "height") == ["50.0%"]
     end
   end
+
+  describe "a time line (ADR 0121)" do
+    test "is a list with a link and a note for each row, and bars that are decoration" do
+      doc =
+        render_component(&timeline/1,
+          id: "stays",
+          label: "The stays",
+          summary: "2 residents were in care.",
+          ticks: [%{x: 50.0, label: "Jul"}],
+          rows: [
+            %{
+              id: "stay-1",
+              name: "Biscuit",
+              href: "/r/1",
+              note: "Stray, 45 days",
+              bars: [%{x: 10.0, width: 12.3}]
+            },
+            %{
+              id: "stay-2",
+              name: "Sage",
+              href: "/r/2",
+              note: "Stray, in care",
+              bars: [%{x: 80.0, width: 20.0, open: true}]
+            }
+          ]
+        )
+        |> parse()
+
+      assert attribute(doc, "ol", "aria-label") == ["The stays"]
+      assert attribute(doc, "ol", "aria-describedby") == ["stays-summary"]
+      assert attribute(doc, "li a", "href") == ["/r/1", "/r/2"]
+      assert doc |> LazyHTML.query("#stay-1 small") |> LazyHTML.text() == "Stray, 45 days"
+      assert attribute(doc, "li svg", "aria-hidden") == ["true", "true"]
+      assert attribute(doc, "rect", "width") == ["12.3%", "20.0%"]
+      assert count(doc, "rect[data-open]") == 1
+
+      assert doc |> LazyHTML.query("svg[data-scale] text") |> LazyHTML.text() |> String.trim() ==
+               "Jul"
+    end
+  end
 end

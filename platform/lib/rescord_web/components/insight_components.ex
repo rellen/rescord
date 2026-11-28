@@ -35,12 +35,30 @@ defmodule RescordWeb.InsightComponents do
         </small>
       </li>
       <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/stays"}>
+          Stays
+        </.link>
+        <small>
+          Who came when, and who has been here longest? A bar for the stay of each resident of
+          the last year.
+        </small>
+      </li>
+      <li>
         <.link navigate={~p"/o/#{@organisation.short_name}/insights/conditions"}>
           Conditions by week
         </.link>
         <small>
           Is something spreading? The new cases of each condition in each of the last 12 weeks,
           and the cases that go on now.
+        </small>
+      </li>
+      <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/hours"}>
+          When the care is done
+        </.link>
+        <small>
+          Which hours are busy, and which hours slip? The tasks done in each hour of the week over
+          the last 12 weeks, and the share done late for each hour.
         </small>
       </li>
     </ul>

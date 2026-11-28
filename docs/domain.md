@@ -564,7 +564,9 @@ procedure and a vaccination.
 
 The power `ruby` lets a member use the assistant. An organisation has an
 allowance for each month, and the assistant stops when the allowance is
-used.
+used. It can also give each member a share of the month, the same for
+each member, so that one member does not use the allowance of everybody
+(ADR 0117).
 
 A conversation belongs to its member. The administrators of the
 organisation can read it and cannot change it, and the page of the

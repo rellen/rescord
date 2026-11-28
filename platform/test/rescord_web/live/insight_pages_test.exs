@@ -282,4 +282,91 @@ defmodule RescordWeb.InsightPagesTest do
       text: "No condition started in the last 12 weeks, and none goes on now."
     )
   end
+
+  describe "when the care is done (ADR 0120)" do
+    test "has the tasks done in each hour, and the hours that slip", context do
+      task = plan!(context, %{due_at: at(context, Date.add(context.today, -1), "08:00")})
+      {:ok, done} = Tasks.complete_task(task, %{}, context.options)
+      finished = Accounts.local_time(context.organisation, done.finished_at)
+
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/hours")
+      |> assert_has(heading("When the care is done", level: 1))
+      |> assert_has(region("Tasks done in each hour") |> table(~r/1 task was done/),
+        text: "Monday"
+      )
+      |> assert_has(region("Tasks done in each hour"),
+        text:
+          "1 task was done in the last 12 weeks. The busiest hour was #{Locale.weekday(DateTime.to_date(finished))} from #{Locale.time(Time.new!(finished.hour, 0, 0))}, with 1 task done."
+      )
+      |> assert_has(region("Hours that slip"),
+        text:
+          "100% of the tasks done were done more than an hour after their time. The hour from #{Locale.time(~T[08:00:00])} slipped the most: 1 of 1 task late."
+      )
+    end
+
+    test "says when no task was done", context do
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/hours")
+      |> assert_has(region("Tasks done in each hour"),
+        text: "No task was done in the last 12 weeks."
+      )
+      |> assert_has(region("Hours that slip"), text: "No task was done, so no hour slipped.")
+    end
+  end
+
+  describe "stays (ADR 0121)" do
+    test "has a row for each stay of the year, with its words, in the order chosen", context do
+      biscuit =
+        resident!(context.lists, context.options, %{
+          name: "Biscuit",
+          arrived_on: Date.add(context.today, -20)
+        })
+
+      resident!(context.lists, context.options, %{
+        name: "Sage",
+        arrived_on: Date.add(context.today, -10)
+      })
+
+      {:ok, _} =
+        Rescord.Residents.record_departure(
+          %{resident_id: biscuit.id, kind: :release, departed_on: Date.add(context.today, -15)},
+          context.options
+        )
+
+      gone =
+        resident!(context.lists, context.options, %{
+          name: "Gone",
+          arrived_on: Date.add(context.today, -500)
+        })
+
+      {:ok, _} =
+        Rescord.Residents.record_departure(
+          %{resident_id: gone.id, kind: :release, departed_on: Date.add(context.today, -400)},
+          context.options
+        )
+
+      session =
+        context.conn
+        |> visit(~p"/o/#{context.organisation.short_name}/insights/stays")
+        |> assert_has(heading("Stays", level: 1))
+        |> assert_has(list("The stays") |> link("Biscuit"))
+        |> assert_has(list("The stays") |> link("Sage"))
+        |> refute_has(list("The stays") |> link("Gone"))
+        |> assert_has(list("The stays"),
+          text:
+            "Surrender by an owner, #{Locale.date(Date.add(context.today, -20))} to #{Locale.date(Date.add(context.today, -15))}, 5 days, Release"
+        )
+        |> assert_has(region("The stays of the last 12 months"),
+          text:
+            "2 residents were in care in the last 12 months, and 1 stay goes on. The longest that goes on is of Sage: 10 days."
+        )
+
+      assert ["Biscuit", "Sage"] = names(session, list("The stays") |> link(nil))
+
+      session
+      |> select("Order", option: "Length, the longest first")
+      |> then(&assert ["Sage", "Biscuit"] = names(&1, list("The stays") |> link(nil)))
+    end
+  end
 end

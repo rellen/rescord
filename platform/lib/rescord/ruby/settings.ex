@@ -41,7 +41,7 @@ defmodule Rescord.Ruby.Settings do
 
   # What an administrator sets. No action takes the agreement as input:
   # `Agree` writes it.
-  @fields [:enabled, :provider_id, :allowance, :retention_days]
+  @fields [:enabled, :provider_id, :allowance, :member_allowance, :retention_days]
 
   postgres do
     table "ruby_settings"
@@ -115,6 +115,13 @@ defmodule Rescord.Ruby.Settings do
       public? true
       constraints min: 0, max: 10_000_000
       description "Whole US cents for a month. It starts at the default of the provider"
+    end
+
+    attribute :member_allowance, :integer do
+      public? true
+      constraints min: 0, max: 10_000_000
+
+      description "Whole US cents for a month that one member can use (ADR 0117). None: one member can use the whole allowance"
     end
 
     attribute :retention_days, :integer do

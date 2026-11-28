@@ -304,6 +304,61 @@ defmodule Rescord.Tasks do
     end
   end
 
+  @doc """
+  When the tasks due from `first` to `last`, both in, were done, in the
+  time zone of the organisation (ADR 0120):
+
+      %{
+        done: %{{weekday, hour} => tasks done then},
+        due: %{hour => %{done: tasks due in that hour and done, late: done late}}
+      }
+
+  `weekday` is 1 for Monday to 7 for Sunday, and `hour` is 0 to 23. `done`
+  has a key for each hour of each day of the week, and `due` for each hour.
+  Only a task that is done counts, and it is `late` when it was done more
+  than the grace of one hour after its time, as `days/3` says. The read is
+  as the actor of `opts`, selects only the times and the state, and counts
+  the tasks of the refuge, never of a person.
+  """
+  @spec hours(Date.t(), Date.t(), keyword) :: {:ok, map} | {:error, term}
+  def hours(%Date{} = first, %Date{} = last, opts \\ []) do
+    zone = Rescord.Accounts.time_zone_of(opts[:tenant])
+    {from, _} = Rescord.Accounts.day_range(opts[:tenant], first)
+    {_, to} = Rescord.Accounts.day_range(opts[:tenant], last)
+
+    Task
+    |> Ash.Query.filter(due_at >= ^from and due_at < ^to and state == :done)
+    |> Ash.Query.select([:due_at, :state, :finished_at])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, tasks} -> {:ok, by_hour(tasks, zone)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp by_hour(tasks, zone) do
+    blank = %{
+      done: Map.new(for(day <- 1..7, hour <- 0..23, do: {{day, hour}, 0})),
+      due: Map.new(0..23, &{&1, %{done: 0, late: 0}})
+    }
+
+    for %{finished_at: %DateTime{} = finished} = task <- tasks, reduce: blank do
+      counts ->
+        finished_here = DateTime.shift_zone!(finished, zone, Tz.TimeZoneDatabase)
+        due_hour = DateTime.shift_zone!(task.due_at, zone, Tz.TimeZoneDatabase).hour
+        late? = outcome(task, finished) == :late
+        when_done = {Date.day_of_week(finished_here), finished_here.hour}
+
+        %{
+          done: Map.update!(counts.done, when_done, &(&1 + 1)),
+          due:
+            Map.update!(counts.due, due_hour, fn hour ->
+              %{done: hour.done + 1, late: hour.late + if(late?, do: 1, else: 0)}
+            end)
+        }
+    end
+  end
+
   defp outcome(%{state: :done, finished_at: %DateTime{} = finished, due_at: due}, _now) do
     if DateTime.diff(finished, due, :second) <= @grace, do: :on_time, else: :late
   end

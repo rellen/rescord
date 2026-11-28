@@ -131,9 +131,9 @@ defmodule RescordWeb.TasksLive do
 
   defp for_person(query, _filter, _user_id), do: query
 
-  defp assign_form(socket, fields \\ nil) do
+  defp assign_form(socket, fields \\ nil, error \\ nil) do
     fields = fields || %{"date" => Date.to_iso8601(socket.assigns.day), "time" => "08:00"}
-    assign(socket, form: typed_form(fields, as: :task))
+    assign(socket, form: typed_form(fields, as: :task, error: error))
   end
 
   # The address of the tasks of a day, with the search and the filters of
@@ -194,7 +194,7 @@ defmodule RescordWeb.TasksLive do
            problems: Accounts.error_messages(error),
            refused_form?: socket.assigns.can_plan?
          )
-         |> assign_form(fields)}
+         |> assign_form(fields, error)}
     end
   end
 

@@ -101,6 +101,18 @@ defmodule Rescord.Ruby.ToolsTest do
       assert options[:req_llm_opts][:api_key] == key()
     end
 
+    test "keep the words of a request out of the telemetry of ReqLLM", context do
+      # ReqLLM puts a request and its answer into its events only when its
+      # configuration or the options of a call ask for it. Neither does: the
+      # metrics of the server hold counts and no words.
+      assert Application.get_env(:req_llm, :telemetry) == [payloads: :none]
+
+      options = Toolbox.options(context.member, context.organisation, context.profile)
+      refute Keyword.has_key?(options[:req_llm_opts], :telemetry)
+      refute Keyword.has_key?(options, :telemetry)
+      refute Keyword.has_key?(Rescord.Ruby.LLM.Profile.req_llm_opts(context.profile), :telemetry)
+    end
+
     test "makes the actor with the level of a root user off", context do
       {_, root_member} = member!(context.organisation, :member, context.administrator)
       root_member = Ash.Seed.update!(root_member, %{root?: true})

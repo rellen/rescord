@@ -479,6 +479,35 @@ defmodule Rescord.TasksTest do
       assert %{total: 1, late: 1} = fed[~D[2026-11-10]]
     end
 
+    test "say when the tasks were done, and which hours of their time were late (ADR 0120)",
+         context do
+      zone = Rescord.Accounts.time_zone_of(context.organisation)
+      here = &DateTime.shift_zone!(&1, zone, Tz.TimeZoneDatabase)
+
+      # Brisbane: 01:00 UTC is 11:00 there.
+      late = plan!(context, %{due_at: ~U[2026-11-10 01:00:00Z]})
+      {:ok, done} = Tasks.complete_task(late, %{}, context.options)
+      plan!(context, %{due_at: ~U[2026-11-10 02:00:00Z]})
+      skipped = plan!(context, %{due_at: ~U[2026-11-10 03:00:00Z]})
+      {:ok, _} = Tasks.skip_task(skipped, %{skip_reason: "No hay"}, context.options)
+
+      early = plan!(context, %{due_at: DateTime.add(DateTime.utc_now(), 2, :hour)})
+      {:ok, _} = Tasks.complete_task(early, %{}, context.options)
+      last = Rescord.Accounts.local_date(context.organisation, early.due_at)
+
+      {:ok, hours} = Tasks.hours(~D[2026-11-09], last, context.options)
+
+      assert map_size(hours.done) == 7 * 24
+      assert map_size(hours.due) == 24
+      assert hours.done |> Map.values() |> Enum.sum() == 2
+      assert hours.due |> Map.values() |> Enum.map(& &1.done) |> Enum.sum() == 2
+      assert hours.due |> Map.values() |> Enum.map(& &1.late) |> Enum.sum() == 1
+      assert %{late: 1} = hours.due[11]
+
+      finished = here.(done.finished_at)
+      assert hours.done[{Date.day_of_week(finished), finished.hour}] >= 1
+    end
+
     test "are by the day of the organisation", context do
       # 13:59 UTC is 23:59 in Brisbane, and 14:00 UTC is the next day there.
       plan!(context, %{due_at: ~U[2026-11-15 13:59:00Z]})

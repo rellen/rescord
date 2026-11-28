@@ -253,6 +253,68 @@ defmodule RescordWeb.ChartComponents do
   end
 
   @doc """
+  A time line (ADR 0121): a list with a row for each thing, its name as a
+  link with a note in words, and a bar for each of its spans on one scale
+  of days, as `RescordWeb.Chart.span/4` places them. The note holds what
+  the bars show, so the bars are decoration: a screen reader reads the
+  list. On a phone the name is above the bar, and on a wider screen beside
+  it.
+
+  A row is a map with `id`, `name`, `href`, `note` and `bars`, each bar a
+  map with `x` and `width`, and `open` for a span that goes on, which is
+  dashed. A tick is `%{x: percent, label: words}`, such as the start of a
+  month. A tick with `minor: true` shows its label only on a wider screen.
+
+  ## Examples
+
+      <.timeline
+        id="stays"
+        label="The stays"
+        summary="2 residents stayed in the last 12 months."
+        ticks={[%{x: 50.0, label: "Jul"}]}
+        rows={[%{id: "stay-1", name: "Biscuit", href: "/", note: "Stray, 45 days", bars: [%{x: 10.0, width: 12.3}]}]}
+      />
+  """
+  attr :id, :string, required: true
+  attr :label, :string, required: true, doc: "the name of the list"
+  attr :summary, :string, required: true, doc: "what the time line shows, in a sentence or two"
+  attr :ticks, :list, default: []
+  attr :rows, :list, required: true
+
+  def timeline(assigns) do
+    ~H"""
+    <figure data-chart data-timeline>
+      <svg data-scale aria-hidden="true" focusable="false">
+        <text :for={tick <- @ticks} x={"#{tick.x}%"} y="75%" data-minor={tick[:minor]}>
+          {tick.label}
+        </text>
+      </svg>
+      <ol id={@id} aria-label={@label} aria-describedby={"#{@id}-summary"}>
+        <li :for={row <- @rows} id={row.id}>
+          <p>
+            <.link navigate={row.href}>{row.name}</.link>
+            <small>{row.note}</small>
+          </p>
+          <svg aria-hidden="true" focusable="false">
+            <line :for={tick <- @ticks} x1={"#{tick.x}%"} x2={"#{tick.x}%"} y1="0" y2="100%" />
+            <rect
+              :for={bar <- row.bars}
+              x={"#{bar.x}%"}
+              width={"#{bar.width}%"}
+              y="20%"
+              height="60%"
+              rx="3"
+              data-open={bar[:open]}
+            />
+          </svg>
+        </li>
+      </ol>
+      <figcaption id={"#{@id}-summary"}>{@summary}</figcaption>
+    </figure>
+    """
+  end
+
+  @doc """
   A heat map (ADR 0116): a table whose cells are values, each on a step of
   one ramp. It is its own text alternative: a screen reader reads a cell
   with the header of its row and of its column, "Tuesday, week of 6 July
@@ -275,7 +337,8 @@ defmodule RescordWeb.ChartComponents do
       (optional)
 
   The variant `"numbers"` shows the words of each cell, for a table of
-  counts. With no variant, the cells are squares and their words are for a
+  counts. The variant `"dots"` draws a dot as large as the step of each
+  cell, for a punch card (ADR 0120). With no variant, the cells are squares and their words are for a
   screen reader. Like a point of a line chart, a cell takes a press and no
   keyboard focus: the table itself holds each value.
 
@@ -294,7 +357,7 @@ defmodule RescordWeb.ChartComponents do
   attr :columns, :list, required: true
   attr :rows, :list, required: true
   attr :corner, :string, default: nil, doc: "the header of the column of the names of the rows"
-  attr :variant, :string, default: nil, values: [nil, "numbers"]
+  attr :variant, :string, default: nil, values: [nil, "numbers", "dots"]
   attr :pick, :string, default: nil, doc: "the event of a press on a cell"
   attr :selected, :any, default: nil, doc: "the id of the cell that the person chose"
 

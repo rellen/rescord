@@ -277,6 +277,64 @@ defmodule Rescord.Ruby do
   end
 
   @doc """
+  The use of the month of `today` (a day of UTC, as the provider bills),
+  for the settings page: the first day of the month, what it cost in
+  millionths of a US dollar, and the replies and the cost of each member,
+  the largest cost first. Counts only: no word of a conversation. A row
+  stays when its member goes, so a member here may be one who left.
+
+  It reads as the person of `opts`: the policy of `Rescord.Ruby.Usage`
+  asks for the power `settings`.
+  """
+  @spec use_of_month(keyword, Date.t()) ::
+          {:ok,
+           %{
+             month: Date.t(),
+             cost_microdollars: non_neg_integer,
+             members: [
+               %{
+                 user_id: Ecto.UUID.t(),
+                 replies: non_neg_integer,
+                 cost_microdollars: non_neg_integer
+               }
+             ]
+           }}
+          | {:error, term}
+  def use_of_month(opts, today \\ Date.utc_today()) do
+    first = Date.beginning_of_month(today)
+    last = Date.end_of_month(today)
+
+    Usage
+    |> Ash.Query.filter(day >= ^first and day <= ^last)
+    |> Ash.Query.select([:user_id, :replies, :cost_microdollars])
+    |> Ash.read(opts)
+    |> case do
+      {:ok, rows} ->
+        members =
+          rows
+          |> Enum.group_by(& &1.user_id)
+          |> Enum.map(fn {user_id, rows} ->
+            %{
+              user_id: user_id,
+              replies: Enum.sum_by(rows, & &1.replies),
+              cost_microdollars: Enum.sum_by(rows, & &1.cost_microdollars)
+            }
+          end)
+          |> Enum.sort_by(&{-&1.cost_microdollars, -&1.replies, &1.user_id})
+
+        {:ok,
+         %{
+           month: first,
+           cost_microdollars: Enum.sum_by(members, & &1.cost_microdollars),
+           members: members
+         }}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
   The record that a conversation is about, from its reference, such as
   `resident:<id>`, read as the person of `opts`: its reference, its kind
   and its name. A resident, a group, a location and an item can be what a
@@ -530,19 +588,28 @@ defmodule Rescord.Ruby do
   end
 
   @doc """
+  The count of the members of an organisation who have used their share of
+  Ruby this month (ADR 0117): a count, with no name and no cost of a
+  person. `0` when the organisation gives no share.
+  """
+  @spec members_at_share(term) :: non_neg_integer
+  def members_at_share(tenant), do: Rescord.Ruby.Allowance.members_at_share(tenant)
+
+  @doc """
   Why `say/3` refused a message, as a reason of `Rescord.Ruby.Reason`,
   from its error: `:allowance` (the allowance of the month is used),
+  `:member_allowance` (the member has used their share of the month),
   `:too_long` (the conversation is full) or `:rate` (too many messages of
   this person in a short time). `nil` for each other error. A page has a
   sentence for each reason.
   """
-  @spec refusal(term) :: :allowance | :too_long | :rate | nil
+  @spec refusal(term) :: :allowance | :member_allowance | :too_long | :rate | nil
   def refusal(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &refusal/1)
   def refusal(%AshRateLimiter.LimitExceeded{}), do: :rate
 
   def refusal(%Ash.Error.Changes.InvalidAttribute{field: :text, vars: vars}) do
     case Keyword.get(List.wrap(vars), :reason) do
-      reason when reason in [:allowance, :too_long] -> reason
+      reason when reason in [:allowance, :member_allowance, :too_long] -> reason
       _other -> nil
     end
   end

@@ -32,7 +32,16 @@ defmodule RescordWeb.RubySettingsLive do
 
     case Ruby.settings_for(options(socket)) do
       {:ok, settings} ->
-        socket = socket |> assign(allowed?: true, settings: settings) |> read_offers()
+        socket =
+          socket
+          |> assign(
+            allowed?: true,
+            settings: settings,
+            at_share: Ruby.members_at_share(socket.assigns.organisation)
+          )
+          |> read_offers()
+          |> read_use()
+
         {:ok, assign(socket, form: fields(settings, socket.assigns))}
 
       {:error, :forbidden} ->
@@ -55,6 +64,18 @@ defmodule RescordWeb.RubySettingsLive do
     )
   end
 
+  # The use of this month, read as the person, and the labels of the
+  # members in it. A month with no use has no table.
+  defp read_use(socket) do
+    case Ruby.use_of_month(options(socket)) do
+      {:ok, %{members: [_ | _]} = use} ->
+        assign(socket, use: use, people: Accounts.people(options(socket)))
+
+      _none ->
+        assign(socket, use: nil, people: %{})
+    end
+  end
+
   # The fields of the form, as text. The provider is the one of the
   # settings while the server offers it, or the only one that it offers.
   defp fields(settings, %{offers: offers, status: status}) do
@@ -72,6 +93,7 @@ defmodule RescordWeb.RubySettingsLive do
         "enabled" => to_string(status == :on),
         "allowance" =>
           RubyWords.dollars(settings.allowance || (chosen && chosen.default_allowance)),
+        "member_allowance" => RubyWords.dollars(settings.member_allowance),
         "retention_days" => to_string(settings.retention_days)
       },
       as: :ruby
@@ -86,10 +108,12 @@ defmodule RescordWeb.RubySettingsLive do
     offer = Enum.find(socket.assigns.offers, &(&1.id == params["provider_id"]))
 
     result =
-      with {:ok, allowance} <- allowance(params["allowance"]) do
+      with {:ok, allowance} <- allowance(params["allowance"]),
+           {:ok, share} <- share(params["member_allowance"]) do
         %{
           enabled: params["enabled"] == "true",
           allowance: allowance,
+          member_allowance: share,
           retention_days: non_blank(params["retention_days"])
         }
         |> choose(offer)
@@ -136,6 +160,19 @@ defmodule RescordWeb.RubySettingsLive do
       text ->
         with :error <- RubyWords.cents(text) do
           {:error, [{:allowance, "give an amount in US dollars, such as 20 or 0.50"}]}
+        end
+    end
+  end
+
+  # An empty field gives each member the whole allowance (ADR 0117).
+  defp share(text) do
+    case non_blank(text) do
+      nil ->
+        {:ok, nil}
+
+      text ->
+        with :error <- RubyWords.cents(text) do
+          {:error, [{:member_allowance, "give an amount in US dollars, such as 5 or 0.50"}]}
         end
     end
   end
@@ -214,7 +251,10 @@ defmodule RescordWeb.RubySettingsLive do
           offers={@offers}
           form={@form}
           problems={@problems}
+          at_share={@at_share}
+          share?={@settings.member_allowance != nil}
         />
+        <.use_of_month :if={@use} use={@use} allowance={@settings.allowance} people={@people} />
       <% end %>
     </Layouts.app>
     """
@@ -222,7 +262,7 @@ defmodule RescordWeb.RubySettingsLive do
 
   # A problem with no field, or of a field that the form does not show, is
   # above the form.
-  @shown [:provider_id, :agreed_to, :allowance, :retention_days]
+  @shown [:provider_id, :agreed_to, :allowance, :member_allowance, :retention_days]
 
   defp general(problems) do
     for {field, words} <- problems, field not in @shown do

@@ -862,7 +862,9 @@ code does not have yet is what its phase lands.
   one row for a member, a day and a model, with no word of a
   conversation, which stays when the conversation is deleted.
   `Rescord.Ruby.Allowance` sums a month of the calendar, in UTC, against
-  the allowance of the settings, and `say` refuses a message past it.
+  the allowance of the settings, and the rows of one member against the
+  share of one member when the organisation gives one (ADR 0117); `say`
+  refuses a message past either.
   `say` also refuses a conversation that is full, from the size of the
   prompt that the provider reported, and more than 6 messages of one
   person in a minute or 120 in a day (ADR 0020). The check is before a

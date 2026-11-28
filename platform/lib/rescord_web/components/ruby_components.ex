@@ -489,13 +489,22 @@ defmodule RescordWeb.RubyComponents do
 
   @doc """
   The form of the settings of Ruby in an organisation: the switch, the
-  allowance of a month and the days that a conversation is kept.
+  allowance of a month, the share of one member (ADR 0117) and the days
+  that a conversation is kept.
   """
   attr :organisation, :any, required: true
   attr :status, :any, required: true
   attr :offers, :list, required: true
   attr :form, Phoenix.HTML.Form, required: true
   attr :problems, :list, required: true
+
+  attr :at_share, :integer,
+    default: 0,
+    doc: "the count of the members who used their share this month"
+
+  attr :share?, :boolean,
+    default: false,
+    doc: "whether the organisation gives each member a share"
 
   def settings_form(assigns) do
     ~H"""
@@ -537,6 +546,18 @@ defmodule RescordWeb.RubyComponents do
         />
         <.field
           form={@form}
+          name={:member_allowance}
+          problems={@problems}
+          label="Share of one member for a month, in US dollars"
+          inputmode="decimal"
+          autocomplete="off"
+          hint="Leave it empty to let one member use the whole allowance."
+        />
+        <p :if={@share?} id="ruby-at-share">
+          {RescordWeb.Locale.count(@at_share, "member has", "members have")} used their share this month.
+        </p>
+        <.field
+          form={@form}
           name={:retention_days}
           problems={@problems}
           type="number"
@@ -565,6 +586,78 @@ defmodule RescordWeb.RubyComponents do
     do:
       "When the allowance is used, Ruby answers nobody until the next month. " <>
         "Leave the field empty for the amount that this server starts an organisation at."
+
+  @doc """
+  The use of the month, from `Rescord.Ruby.use_of_month/2`: how much of
+  the allowance went, in a `<meter>` that turns at 80%, words from 80% on,
+  and a table of the replies and the cost of each member. It holds counts
+  and no word of any conversation. A member has the label of
+  `Rescord.Accounts.people/1`, or "A former member" when nothing names
+  them any more.
+  """
+  attr :use, :map, required: true
+  attr :allowance, :any, required: true, doc: "the allowance of a month, in whole US cents"
+  attr :people, :map, required: true
+
+  def use_of_month(assigns) do
+    ~H"""
+    <section id="ruby-use" aria-labelledby="use-heading">
+      <h2 id="use-heading">The use of {RescordWeb.Locale.month(@use.month)}</h2>
+      <p :if={is_integer(@allowance) and @allowance > 0}>
+        <label for="ruby-used">{RubyWords.used(@use.cost_microdollars, @allowance)}</label>
+        <meter
+          id="ruby-used"
+          min="0"
+          max={@allowance}
+          low={div(@allowance * 4, 5)}
+          high={div(@allowance * 4, 5)}
+          optimum="0"
+          value={min(RubyWords.cents_of(@use.cost_microdollars), @allowance)}
+        >
+          {RubyWords.share(@use.cost_microdollars, @allowance)}
+        </meter>
+      </p>
+      <p
+        :if={warning = RubyWords.use_warning(@use.cost_microdollars, @allowance, @use.month)}
+        id="ruby-use-warning"
+      >
+        <.icon name="exclamation-triangle" /> {warning}
+      </p>
+      <p>
+        The counts start on the first day of the month in UTC, as the service bills. They hold no
+        word of any conversation, and they stay when a conversation or a member goes.
+      </p>
+      <div data-scroll>
+        <table id="ruby-use-members">
+          <caption>The replies and the cost of each member</caption>
+          <thead>
+            <tr>
+              <th scope="col">Member</th>
+              <th scope="col">Replies</th>
+              <th scope="col">Cost, in US dollars</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={member <- @use.members} :key={member.user_id}>
+              <td>{person(@people, member.user_id)}</td>
+              <td data-label="Replies">{RescordWeb.Locale.number(member.replies)}</td>
+              <td data-label="Cost, in US dollars">
+                {RubyWords.about_dollars(member.cost_microdollars)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    """
+  end
+
+  defp person(people, user_id) do
+    case Map.get(people, user_id) do
+      %{label: label} -> label
+      nil -> "A former member"
+    end
+  end
 
   @doc "The removal of a provider, behind a part that is closed at first."
   attr :provider, :map, required: true
