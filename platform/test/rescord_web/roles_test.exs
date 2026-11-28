@@ -29,6 +29,10 @@ defmodule RescordWeb.RolesTest do
     <article aria-labelledby="note-heading">
       <header><h3 id="note-heading">A note</h3></header>
       <p role="status">Saved</p>
+      <details data-confirm-step>
+        <summary aria-label="Delete the note A note"><svg aria-hidden="true"></svg> Delete</summary>
+        <button data-variant="danger">Delete the note A note</button>
+      </details>
     </article>
     <p role="alert">The quantity is not a number.</p>
     <figure><img src="/hay.webp" alt="A bale of hay" /><figcaption>The bale</figcaption></figure>
@@ -95,6 +99,14 @@ defmodule RescordWeb.RolesTest do
     refute has?(@page, item(~r/^B-2\b/) |> button("Take off B-1"))
   end
 
+  test "a form is found in its part, and gives its attributes" do
+    assert attribute(@page, region("Lots") |> form(nil), "id") == "new-lot"
+    assert [_, _] = all(@page, main() |> form(nil))
+    refute has?(@page, form("The lots"))
+    assert attribute(@page, region("Lots") |> form(nil), "action") == nil
+    assert attribute(@page, list("The lots"), "aria-label") == "The lots"
+  end
+
   test "a list is found by its label, and its items in it" do
     assert names(@page, list("The lots") |> item(nil)) == ["B-1 Take off", "B-2 Take off"]
     refute has?(@page, list("Other lots"))
@@ -121,6 +133,15 @@ defmodule RescordWeb.RolesTest do
     assert open?(@page, used)
     assert checked?(@page, used |> field("All of it"))
     refute checked?(@page, used |> field("It was wet"))
+
+    # A confirm step is named by the label of its summary.
+    step = article("A note") |> details("Delete the note A note")
+    refute open?(@page, step)
+    assert has?(@page, step |> button("Delete the note A note"))
+    refute has?(@page, details("Delete"))
+
+    assert playwright(details("Stock was used")) ==
+             ~s|xpath=.//details[summary[@aria-label="Stock was used" or normalize-space()="Stock was used"]]|
 
     assert playwright(definition("In stock")) ==
              ~s|xpath=.//dd[preceding-sibling::dt[1][normalize-space()="In stock"]]|

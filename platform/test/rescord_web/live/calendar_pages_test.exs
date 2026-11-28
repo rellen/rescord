@@ -3,15 +3,17 @@ defmodule RescordWeb.CalendarPagesTest do
   Holds the page of the calendar feeds (ADR 0074): a member makes a feed
   and reads its address one time, revokes a feed, and reads why their role
   can make none; a person with the power `members` sees and revokes the
-  feeds of the other members; and the pages that lead here.
+  feeds of the other members; and the pages that lead here. The tests find
+  what a person finds (ADR 0107).
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest, only: [render_submit: 3, render_click: 3]
   import Rescord.AccountsFixtures
 
   alias Rescord.{Accounts, Calendars, Tasks}
@@ -33,18 +35,18 @@ defmodule RescordWeb.CalendarPagesTest do
      options: [actor: user, tenant: organisation]}
   end
 
-  # The path of the address of a feed that the page shows, with its query.
-  defp address(view) do
-    [address] =
-      view
-      |> render()
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.query("input#feed-address")
-      |> LazyHTML.attribute("value")
+  defp own, do: main() |> region("Your feeds")
+  defp others, do: main() |> region("The feeds of the other members")
+  defp make, do: main() |> region("Make a feed")
+  defp feed(scope, %Regex{} = name), do: scope |> item(name)
+  defp feed(scope, name), do: scope |> item(~r/^#{name}\b/)
 
-    address
-  end
+  @name "Name, as your calendar app shows it"
 
+  # The whole page, with its attributes: no address of a feed is in any.
+  defp html(session), do: session |> PhoenixTest.Driver.render_html() |> LazyHTML.to_html()
+
+  # The path of an address of a feed, with its query.
   defp path_of(address) do
     uri = URI.parse(address)
     "#{uri.path}?#{uri.query}"
@@ -59,43 +61,36 @@ defmodule RescordWeb.CalendarPagesTest do
         )
 
       Tasks.plan_task!(%{title: "Evening feed", due_at: due_at}, context.admin)
-
       conn = sign_in(build_conn(), context.user)
-      {:ok, view, _html} = live(conn, context.page)
 
-      assert has_element?(view, "h1", "Calendar feeds")
-      assert has_element?(view, "#no-feeds", "You have no feed")
-      refute has_element?(view, "#new-address")
-      refute has_element?(view, "#other-feeds-heading")
+      session =
+        conn
+        |> visit(context.page)
+        |> assert_has(main() |> heading(level: 1), text: "Calendar feeds")
+        |> assert_has(own(), text: "You have no feed")
+        |> refute_has(main() |> region("The address of My phone"))
+        |> refute_has(others())
 
       # The form starts with the name of the organisation, and with no note.
-      assert has_element?(view, ~s(form#new-feed input[name="feed[name]"][value="Wattle Creek"]))
+      assert value(session, make() |> field(@name)) == "Wattle Creek"
+      assert value(session, make() |> field("Tasks")) == "The tasks that name me"
+      refute checked?(session, make() |> field("Include the notes that people wrote"))
 
-      assert has_element?(
-               view,
-               ~s(form#new-feed select[name="feed[tasks]"] option[selected][value="mine"])
-             )
+      session =
+        session
+        |> fill_in(@name, with: "My phone")
+        |> select("Tasks", option: "Each task")
+        |> check("The expiry dates of the stock")
+        |> click(button("Make the feed"))
 
-      refute has_element?(view, ~s(form#new-feed input[name="feed[with_notes]"][checked]))
+      shown = main() |> region("The address of My phone")
 
-      view
-      |> form("#new-feed", %{
-        "feed" => %{"name" => "My phone", "tasks" => "all", "with_expiry" => "true"}
-      })
-      |> render_submit()
+      session
+      |> assert_has(shown |> status(), text: "this one time")
+      |> assert_has(shown |> button("Copy the address"))
+      |> assert_has("#feed-address[readonly]")
 
-      assert has_element?(view, "#new-address h2", "The address of My phone")
-      assert has_element?(view, "#new-address [role=status]", "this one time")
-
-      assert has_element?(
-               view,
-               ~s(#new-address button[data-copy="feed-address"]),
-               "Copy the address"
-             )
-
-      assert has_element?(view, "input#feed-address[readonly]")
-
-      address = address(view)
+      address = value(session, shown |> field("Address of the calendar"))
 
       assert String.starts_with?(
                address,
@@ -108,88 +103,91 @@ defmodule RescordWeb.CalendarPagesTest do
       # The feed is in the list, with its parts, and the form is new again.
       assert {:ok, [feed]} = Calendars.feeds_of(context.user, context.options)
       assert %{name: "My phone", tasks: :all, with_expiry: true, with_notes: false} = feed
-      assert has_element?(view, "#feed-#{feed.id} strong", "My phone")
-      assert has_element?(view, "#feed-#{feed.id}", "Each task. The expiry dates of the stock.")
-      assert has_element?(view, ~s(form#new-feed input[name="feed[name]"][value="Wattle Creek"]))
+
+      assert_has(session, feed(own(), "My phone"),
+        text: "Each task. The expiry dates of the stock."
+      )
+
+      assert value(session, make() |> field(@name)) == "Wattle Creek"
 
       # The page that opens again has the feed, and no address.
-      {:ok, view, _html} = live(conn, context.page)
-      assert has_element?(view, "#feed-#{feed.id}", "Last read on")
-      refute has_element?(view, "#new-address")
-      refute render(view) =~ "token="
+      session =
+        conn
+        |> visit(context.page)
+        |> assert_has(feed(own(), "My phone"), text: "Last read on")
+        |> refute_has(shown)
+
+      refute html(session) =~ "token="
     end
 
     test "reads what is wrong with a feed that Rescord refuses", context do
-      conn = sign_in(build_conn(), context.user)
-      {:ok, view, _html} = live(conn, context.page)
+      session =
+        build_conn()
+        |> sign_in(context.user)
+        |> visit(context.page)
+        |> fill_in(@name, with: "Nothing")
+        |> select("Tasks", option: "No tasks")
+        |> click(button("Make the feed"))
+        |> assert_has(make() |> alert(), text: "the feed would be empty")
+        |> refute_has(main() |> region("The address of Nothing"))
 
-      html =
-        view
-        |> form("#new-feed", %{"feed" => %{"name" => "Nothing", "tasks" => "none"}})
-        |> render_submit()
-
-      assert html =~ "the feed would be empty"
-      assert has_element?(view, "#new-feed-heading ~ [role=alert]")
-      refute has_element?(view, "#new-address")
       # The form keeps what the person typed.
-      assert has_element?(view, ~s(form#new-feed input[name="feed[name]"][value="Nothing"]))
+      assert value(session, make() |> field(@name)) == "Nothing"
       assert {:ok, []} = Calendars.feeds_of(context.user, context.options)
 
       # A forged choice of tasks makes no feed, and no atom.
-      render_submit(view, "subscribe", %{"feed" => %{"name" => "Forged", "tasks" => "everything"}})
+      session
+      |> unwrap(
+        &render_submit(&1, "subscribe", %{
+          "feed" => %{"name" => "Forged", "tasks" => "everything"}
+        })
+      )
+      |> assert_has(make() |> alert(), text: "Choose which tasks the feed holds")
+      |> unwrap(&render_submit(&1, "subscribe", %{"feed" => "not a form"}))
 
-      assert has_element?(view, "[role=alert]", "Choose which tasks the feed holds")
-      render_submit(view, "subscribe", %{"feed" => "not a form"})
       assert {:ok, []} = Calendars.feeds_of(context.user, context.options)
     end
 
     test "revokes a feed, and its address reads nothing more", context do
-      conn = sign_in(build_conn(), context.user)
-      {:ok, view, _html} = live(conn, context.page)
+      session =
+        build_conn()
+        |> sign_in(context.user)
+        |> visit(context.page)
+        |> fill_in(@name, with: "My phone")
+        |> select("Tasks", option: "Each task")
+        |> click(button("Make the feed"))
 
-      view
-      |> form("#new-feed", %{"feed" => %{"name" => "My phone", "tasks" => "all"}})
-      |> render_submit()
-
-      address = address(view)
-      assert {:ok, [feed]} = Calendars.feeds_of(context.user, context.options)
-
+      address = value(session, field("Address of the calendar"))
       # Revoking asks first: a confirm step with the name of the feed.
-      assert has_element?(
-               view,
-               ~s(#feed-#{feed.id} details[data-confirm-step] summary[aria-label="Revoke the feed My phone"])
-             )
+      step = feed(own(), "My phone") |> details("Revoke the feed My phone")
+      refute open?(session, step)
 
-      assert has_element?(
-               view,
-               ~s(#feed-#{feed.id} button[data-variant="danger"]),
-               "Revoke the feed My phone"
-             )
-
-      html = view |> element("#feed-#{feed.id} button") |> render_click()
-
-      assert html =~ "The feed My phone is revoked."
-      assert has_element?(view, "#no-feeds")
+      session
+      |> click(step |> button("Revoke the feed My phone"))
+      |> assert_has(status(), text: "The feed My phone is revoked.")
+      |> assert_has(own(), text: "You have no feed")
       # The address of the revoked feed goes from the page.
-      refute has_element?(view, "#new-address")
-      assert response(get(build_conn(), path_of(address)), 404)
-
+      |> refute_has(main() |> region("The address of My phone"))
       # A forged id revokes nothing.
-      render_click(view, "revoke", %{"id" => Ash.UUID.generate()})
-      render_click(view, "revoke", %{"id" => %{"a" => "map"}})
+      |> unwrap(&render_click(&1, "revoke", %{"id" => Ash.UUID.generate()}))
+      |> unwrap(&render_click(&1, "revoke", %{"id" => %{"a" => "map"}}))
+      |> assert_has(main() |> heading(level: 1), text: "Calendar feeds")
+
+      assert response(get(build_conn(), path_of(address)), 404)
     end
 
     test "whose role has no power calendar reads why, and makes no feed", context do
       {:ok, role} = Accounts.define_role(%{name: "Feeder", powers: [:tasks]}, context.admin)
       {:ok, _member} = Accounts.set_member_role(context.member, role.id, context.admin)
 
-      conn = sign_in(build_conn(), context.user)
-      {:ok, view, _html} = live(conn, context.page)
-
-      assert has_element?(view, "#no-calendar", "Your role cannot make a calendar feed")
-      refute has_element?(view, "form#new-feed")
-
-      render_submit(view, "subscribe", %{"feed" => %{"name" => "Forged", "tasks" => "all"}})
+      build_conn()
+      |> sign_in(context.user)
+      |> visit(context.page)
+      |> assert_has(main(), text: "Your role cannot make a calendar feed")
+      |> refute_has(make())
+      |> unwrap(
+        &render_submit(&1, "subscribe", %{"feed" => %{"name" => "Forged", "tasks" => "all"}})
+      )
 
       assert Ash.read!(Rescord.Calendars.Feed, tenant: context.organisation, authorize?: false) ==
                []
@@ -200,74 +198,76 @@ defmodule RescordWeb.CalendarPagesTest do
     test "sees the feeds of the other members, and revokes one", context do
       feed = Calendars.subscribe!(%{name: "My phone", tasks: :all}, context.options)
       token = Calendars.token(feed)
-      own = Calendars.subscribe!(%{name: "The office"}, context.admin)
+      Calendars.subscribe!(%{name: "The office"}, context.admin)
+      email = to_string(context.user.email)
 
-      conn = sign_in(build_conn(), context.administrator)
-      {:ok, view, html} = live(conn, context.page)
+      session =
+        build_conn()
+        |> sign_in(context.administrator)
+        |> visit(context.page)
+        |> assert_has(feed(own(), "The office"))
+        |> assert_has(feed(others(), ~r/^My phone #{Regex.escape(email)} /))
+        |> assert_has(feed(others(), "My phone"), text: "No calendar app read it yet")
 
-      assert has_element?(view, "#own-feeds #feed-#{own.id}", "The office")
-      assert has_element?(view, "#other-feeds #feed-#{feed.id} strong", "My phone")
-      assert has_element?(view, "#other-feeds #feed-#{feed.id}", to_string(context.user.email))
-      assert has_element?(view, "#other-feeds #feed-#{feed.id}", "No calendar app read it yet")
       # The page of another person holds no address of the feed.
-      refute html =~ token
-      refute html =~ "token="
+      refute html(session) =~ token
+      refute html(session) =~ "token="
 
-      label = "Revoke the feed My phone of #{context.user.email}"
-      view |> element(~s(#feed-#{feed.id} button[data-variant="danger"]), label) |> render_click()
+      session
+      |> click(feed(others(), "My phone") |> button("Revoke the feed My phone of #{email}"))
+      |> assert_has(others(), text: "No other member has a feed")
+      |> assert_has(feed(own(), "The office"))
 
-      assert has_element?(view, "#no-other-feeds", "No other member has a feed")
-      assert has_element?(view, "#own-feeds #feed-#{own.id}")
       assert Calendars.fetch(context.organisation.short_name, token) == :error
     end
 
     test "is not a plain member: a member sees no feed of another person", context do
       Calendars.subscribe!(%{name: "The office"}, context.admin)
 
-      conn = sign_in(build_conn(), context.user)
-      {:ok, view, html} = live(conn, context.page)
-
-      refute has_element?(view, "#other-feeds-heading")
-      refute html =~ "The office"
+      build_conn()
+      |> sign_in(context.user)
+      |> visit(context.page)
+      |> refute_has(others())
+      |> refute_has("*", text: "The office")
     end
   end
 
   describe "a root user who is not a member" do
     test "has no feed, and sees the feeds of the members", context do
-      feed = Calendars.subscribe!(%{name: "My phone", tasks: :all}, context.options)
+      Calendars.subscribe!(%{name: "My phone", tasks: :all}, context.options)
 
-      conn = sign_in(build_conn(), context.root)
-      {:ok, view, _html} = live(conn, context.page)
-
-      assert has_element?(view, "#not-a-member", "You are not a member of Wattle Creek")
-      refute has_element?(view, "form#new-feed")
-      refute has_element?(view, "#own-feeds-heading")
-      assert has_element?(view, "#other-feeds #feed-#{feed.id}", "My phone")
+      build_conn()
+      |> sign_in(context.root)
+      |> visit(context.page)
+      |> assert_has(main(), text: "You are not a member of Wattle Creek")
+      |> refute_has(make())
+      |> refute_has(own())
+      |> assert_has(feed(others(), "My phone"))
     end
   end
 
   describe "the page" do
     test "says how to subscribe, and that a calendar changes nothing", context do
-      conn = sign_in(build_conn(), context.user)
-      {:ok, view, _html} = live(conn, context.page)
-
-      assert has_element?(view, "#how-to-heading", "How to subscribe")
-      assert has_element?(view, "section", "changes nothing in Rescord")
+      build_conn()
+      |> sign_in(context.user)
+      |> visit(context.page)
+      |> assert_has(main() |> region("How to subscribe"), text: "changes nothing in Rescord")
     end
 
     test "is one link from the first page and from the tasks", context do
       conn = sign_in(build_conn(), context.user)
       short = context.organisation.short_name
+      parts = main() |> navigation("The parts of Wattle Creek")
 
-      {:ok, view, _html} = live(conn, ~p"/o/#{short}")
-      assert has_element?(view, ~s(nav ul[data-links] a[href="/o/#{short}/calendar"]))
+      assert conn |> visit(~p"/o/#{short}") |> href(parts |> link("See the calendar feeds")) ==
+               context.page
 
-      {:ok, view, _html} = live(conn, ~p"/o/#{short}/tasks")
-      assert has_element?(view, ~s(header a[href="/o/#{short}/calendar"]), "Calendar feeds")
+      assert conn |> visit(~p"/o/#{short}/tasks") |> href(main() |> link("Calendar feeds")) ==
+               context.page
     end
 
     test "sends away a person who is not signed in", context do
-      assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), context.page)
+      build_conn() |> visit(context.page) |> assert_path("/")
     end
   end
 end

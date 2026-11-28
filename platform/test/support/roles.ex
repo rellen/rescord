@@ -61,6 +61,7 @@ defmodule RescordWeb.Roles do
     link: "a[href]",
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
+    form: "form",
     figure: "figure",
     details: "details",
     definition: "dd",
@@ -98,12 +99,19 @@ defmodule RescordWeb.Roles do
   @doc "An article, by its name."
   def article(scope \\ nil, name), do: locate(scope, :article, name)
 
+  @doc """
+  A form, by its name: an `aria-label` or `aria-labelledby`. With `nil`,
+  any form, as in `region("Stock") |> form(nil)`.
+  """
+  def form(scope \\ nil, name), do: locate(scope, :form, name)
+
   @doc "A table, by its name."
   def table(scope \\ nil, name), do: locate(scope, :table, name)
 
   @doc """
-  A disclosure (`details`), by the words of its `summary`, as a person
-  finds the form or the list that it holds.
+  A disclosure (`details`), by the name of its `summary`, as a person
+  finds the form or the list that it holds: its `aria-label`, as on a
+  confirm step (`<.confirm>`), or else its words.
   """
   def details(scope \\ nil, name), do: locate(scope, :details, name)
 
@@ -202,6 +210,14 @@ defmodule RescordWeb.Roles do
   def href(source, locator) do
     source |> one(locator) |> LazyHTML.attribute("href") |> List.first()
   end
+
+  @doc """
+  An attribute of the one element that the locator finds, or `nil`: what a
+  person cannot read but the browser uses, such as the `action` of a form,
+  `aria-current` or `max`.
+  """
+  @spec attribute(source, t, String.t()) :: String.t() | nil
+  def attribute(source, locator, name), do: source |> one(locator) |> attribute(name)
 
   @doc "Where the one image that the locator finds comes from."
   @spec src(source, t) :: String.t() | nil
@@ -470,7 +486,8 @@ defmodule RescordWeb.Roles do
 
   # Playwright gives neither a name from its words, so these are XPath.
   defp playwright_one(%{role: :details, name: name}),
-    do: "xpath=.//details[summary[normalize-space()=#{xpath_text(name)}]]"
+    do:
+      "xpath=.//details[summary[@aria-label=#{xpath_text(name)} or normalize-space()=#{xpath_text(name)}]]"
 
   defp playwright_one(%{role: :definition, name: name}),
     do: "xpath=.//dd[preceding-sibling::dt[1][normalize-space()=#{xpath_text(name)}]]"
@@ -587,8 +604,10 @@ defmodule RescordWeb.Roles do
       role == :image ->
         fold(attribute(node, "alt") || "")
 
+      # The name of its summary: an `aria-label`, as a confirm step has, or its words.
       role == :details ->
-        node |> LazyHTML.child_nodes() |> LazyHTML.filter("summary") |> visible_text()
+        summary = node |> LazyHTML.child_nodes() |> LazyHTML.filter("summary")
+        fold(attribute(summary, "aria-label") || visible_text(summary))
 
       role == :definition ->
         node
