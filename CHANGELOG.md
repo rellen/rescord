@@ -547,9 +547,8 @@ release (ADR 0047).
   change, remove, end, undo, download, upload), the figures of the
   expenses, the history of the stock and the headings of the settings
   have icons too, and the arrows of the tables are line chevrons in
-  place of solid triangles. The site bar of a wide screen is a little
-  wider. Words still say what each icon means, and a screen reader does
-  not read the icons (ADR 0102).
+  place of solid triangles. Words still say what each icon means, and a
+  screen reader does not read the icons (ADR 0102).
 - A failure of Rescord itself, such as a time after now in a form, a
   file that is not a photo or an email of an invitation that the mail
   server refused, is now an error with a name and a reason, and no

@@ -65,7 +65,9 @@ which means "waiting".
 - A new part of the site gets a clause of `Icons.section/1`, and a new
   kind of journal entry a clause of `Icons.entry_kind/1`;
   `RescordWeb.IconsTest` fails for a kind with no shape.
-- The site bar of a wide screen is wider: at 1280 pixels its parts take
-  two lines where they took one.
+- On a wide screen the links of the parts are closer than in the sheet
+  of a phone, so the parts of the fixture of the tests, with a long name
+  of the organisation, still fit one row at 1280 pixels
+  (`PhoneTest`). A longer name, or a new part, can take a second row.
 - The chevrons of Cinder are written twice, in `RescordWeb.Icons` and in
   `vendor.css`. `RescordWeb.IconsTest` holds the two equal.
