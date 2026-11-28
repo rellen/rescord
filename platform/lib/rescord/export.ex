@@ -103,6 +103,9 @@ defmodule Rescord.Export do
     Rescord.Health.Result =>
       "What a sanity check found is a count and some ids for the root users of the server " <>
         "(ADR 0114), and no record of the rescue.",
+    Rescord.Health.Watcher =>
+      "A root user who asked for the alerts of the sanity checks (ADR 0114): a wish of a " <>
+        "person of the server, and no record of the rescue.",
     Rescord.Comments.Follow =>
       "Who follows a record is a setting of each member for their notifications (ADR 0106).",
     Rescord.Notifications.Notification =>

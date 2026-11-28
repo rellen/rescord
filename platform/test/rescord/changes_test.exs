@@ -213,7 +213,10 @@ defmodule Rescord.ChangesTest do
           Rescord.Transfers.RefugeKey,
           # What the sanity checks found, which only the root page of the
           # checks shows, and which it reads again after a run (ADR 0114).
-          Rescord.Health.Result
+          Rescord.Health.Result,
+          # The root users who asked for the alerts of the checks: no page
+          # of another person shows them (ADR 0114).
+          Rescord.Health.Watcher
         ]
     end
 

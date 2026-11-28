@@ -119,7 +119,12 @@ defmodule Rescord.HealthTest do
 
       assert Health.run_due(DateTime.add(now, 60, :second)) == []
 
-      hourly = for check <- Checks.all(), check.cadence() == :hourly, do: check.name()
+      # With no organisation, a check of each organisation has no scope.
+      hourly =
+        for check <- Checks.all(),
+            check.cadence() == :hourly and check.scope() == :server,
+            do: check.name()
+
       again = Health.run_due(DateTime.add(now, 3_600, :second)) |> Enum.map(& &1.check)
       assert Enum.sort(Enum.uniq(again)) == Enum.sort(hourly)
     end

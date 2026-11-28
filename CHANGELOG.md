@@ -205,6 +205,10 @@ release (ADR 0047).
     table of what each sanity check found at its last run (ADR 0114). It
     is empty until the first run, an hour or less after the start. It
     changes no row.
+  - `20261128142606_add_the_health_watchers`, in the database: adds the
+    table of the root users who asked for an alert when a sanity check
+    fails (ADR 0114). It stays empty until a root user asks at
+    `/root/health`. It changes no row.
   - `20261128134238_add_the_settings_of_the_scan`, in the database: adds
     the table of the settings of the virus scan of the PDFs, with its
     history (issue 37). Both stay empty until a root user saves the
@@ -230,6 +234,27 @@ release (ADR 0047).
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
+- After the upgrade, the job of each hour deletes the conversations with
+  Ruby whose newest message is older than the days that the settings of
+  the assistant keep (90 when an organisation saved none), and those of a
+  person who is no member any more (ADR 0069). Before, nothing deleted
+  them. To see which go at the first run, run this in each schema of an
+  organisation (`org_` and the id) before the upgrade: `SELECT id, last_message_at FROM ruby_conversations WHERE
+  last_message_at < now() - interval '90 days';`, with the days of the
+  organisation in place of 90.
+- After the upgrade, a role of administrator must keep both the power
+  "Define the roles, and what each one may do" and the power "Invite a
+  person, give a member a role, and remove a member" (issue 38, F3).
+  An organisation whose administrator role lacks the second keeps it
+  until a person next saves that role: tick the second power then.
+  The check `managers` at `/root/health` names each organisation where
+  nobody can change the members.
+- After the upgrade, a routine of a prescription makes no task after the
+  last day of the prescription, though the routine says no end (issue
+  38, F4). A routine from before the upgrade keeps its own last day in
+  the record; the check `routine_after_prescription` lists each one, and
+  the first page of the organisation shows them to the people who can
+  revise a routine.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -450,6 +475,18 @@ release (ADR 0047).
   with no root user, stuck and failed jobs, hourly jobs that stopped,
   migrations that have not run, and the clock of the server against the
   clock of the database.
+  The checks of the care run in each organisation: routines whose tasks
+  run out, or that outlive their prescription, medication tasks whose
+  prescription is gone or that are more than 12 hours late, replies of
+  Ruby that stopped, and conversations kept after their days. The first
+  page of an organisation has a part "Routines and doses to put right",
+  which runs the checks of the routines and of the doses when it opens,
+  for the people who can put them right.
+  A root user can ask at `/root/health` for an alert by Web Push or ntfy
+  when a check fails, and sets up a device or a topic on the same page.
+  An alert says only that a check found a fault, with a link to
+  `/root/health`, when a check starts to fail and again each day that it
+  still fails.
 - A virus scan of the PDFs, with clamd, which a root user turns on at
   `/root/scan` with the address of clamd: `host:port` or the path of a
   Unix socket. Then each PDF of a journal entry or of an expense goes to
@@ -874,6 +911,11 @@ release (ADR 0047).
 
 ### Changed
 
+- The administrator role keeps both the power to define the roles and the
+  power to change the members, and the last member who can change the
+  members keeps a role with that power through each change of role: an
+  organisation can no longer end with nobody who manages its members
+  (issue 38, F3).
 - A form that Rescord refuses now marks each field with a problem and
   says the problem under it, and that field gets the focus. Before, the
   problems were only in a list at the top of the page, which can be out
@@ -1121,6 +1163,11 @@ release (ADR 0047).
   organisation itself (ADR 0108).
 
 ### Fixed
+
+- A routine of a prescription now ends with the prescription: it takes
+  the last day of the prescription when it starts or changes, and makes
+  no task after that day, though the prescription ended earlier after the
+  routine started (issue 38, F4).
 
 - The warning of an expiry on the lists page said "1 days" for a value of
   one day, and a location with room for one resident said "1 of 1

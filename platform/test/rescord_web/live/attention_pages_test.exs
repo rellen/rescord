@@ -323,6 +323,58 @@ defmodule RescordWeb.AttentionPagesTest do
     |> assert_has(summary(), text: "1 thing needs attention now.")
   end
 
+  test "shows the routines and the doses that a sanity check finds (ADR 0114)", context do
+    short = context.organisation.short_name
+    tomorrow = Date.add(context.today, 1)
+
+    routine =
+      Tasks.start_routine!(
+        %{
+          title: "Hay and pellets",
+          pattern: :daily,
+          times: [~T[08:00:00]],
+          starts_on: context.today
+        },
+        context.admin
+      )
+
+    # The job fell behind: its tasks run out before now.
+    Rescord.Repo.query!(
+      "update \"org_#{context.organisation.id}\".routines " <>
+        "set generated_until = now() - interval '1 hour' where id = $1",
+      [Ecto.UUID.dump!(routine.id)]
+    )
+
+    # A medication task whose prescription is not there.
+    dose =
+      task!(context, "Medicate Biscuit", tomorrow, "09:00", %{
+        prescription_id: Ecto.UUID.generate()
+      })
+
+    session = open(context, context.administrator)
+    care = "Routines and doses to put right"
+    assert rows(session, care) == ["Hay and pellets", "Medicate Biscuit"]
+
+    hay = thing(care, "Hay and pellets")
+
+    assert href(session, hay |> link("Hay and pellets")) ==
+             "/o/#{short}/routines/#{routine.id}/edit"
+
+    state(session, hay, "alert", "Its tasks run out")
+
+    medicate = thing(care, "Medicate Biscuit")
+
+    assert href(session, medicate |> link("Medicate Biscuit")) ==
+             "/o/#{short}/tasks#task-#{dose.id}"
+
+    state(session, medicate, "alert", "Its prescription is gone")
+
+    assert href(session, part(care) |> link("All the routines")) == "/o/#{short}/routines"
+
+    # A member cannot revise a routine, and sees only the task.
+    assert rows(open(context, context.member), care) == ["Medicate Biscuit"]
+  end
+
   test "still leads to each part of the organisation", context do
     short = context.organisation.short_name
     session = open(context, context.member)
@@ -343,7 +395,8 @@ defmodule RescordWeb.AttentionPagesTest do
              :residents,
              :housing,
              :transfers,
-             :privacy
+             :privacy,
+             :care
            ]
 
     for fault <- InventoryWords.faults() do

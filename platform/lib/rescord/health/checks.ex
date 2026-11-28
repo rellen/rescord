@@ -12,6 +12,11 @@ defmodule Rescord.Health.Checks do
   @spec all() :: [module]
   def all do
     [
+      Checks.RoutinesBehind,
+      Checks.RoutineAfterPrescription,
+      Checks.DoseTasks,
+      Checks.RubyReplies,
+      Checks.RubyRetention,
       Checks.Vault,
       Checks.SecretsSet,
       Checks.Managers,
@@ -27,6 +32,11 @@ defmodule Rescord.Health.Checks do
   @spec names() :: [atom]
   def names do
     [
+      :routines_behind,
+      :routine_after_prescription,
+      :dose_tasks,
+      :ruby_replies,
+      :ruby_retention,
       :vault,
       :secrets_set,
       :managers,

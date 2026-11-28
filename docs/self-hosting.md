@@ -302,6 +302,30 @@ The checks of the server:
 | `migrations` | each hour | A schema has a migration that has not run, while the server runs |
 | `clock` | each hour | The clocks of the server and of the database differ by more than 30 seconds (a note from 2) |
 
+The checks of the care, for each organisation:
+
+| Check | How often | What a fault means |
+|---|---|---|
+| `routines_behind` | each hour | The tasks of a routine run out before now (a note when they run out before the days ahead) |
+| `routine_after_prescription` | each day | A routine makes tasks after the last day of its prescription |
+| `dose_tasks` | each hour | A medication task that is due names a prescription or a journal entry that is gone (a note for one more than 12 hours late) |
+| `ruby_replies` | each hour | A reply of Ruby has written nothing for 2 hours, or a message has had no reply for 2 hours |
+| `ruby_retention` | each day | A conversation is kept after the days of the settings of the assistant |
+
+The first three also show on the first page of the organisation, in the
+part "Routines and doses to put right", to the people who can put them
+right. The job of the assistant ends a reply of Ruby that stopped, and
+deletes an old conversation, each hour, so the two checks of the
+assistant find a fault only when that job stopped or fails.
+
+A root user who wants to hear of a fault asks for it under "Alerts" at
+`/root/health`, and sets up a device of Web Push or a topic of ntfy on
+the same page (the server needs one of them on, at `/root/push`). An
+alert says only "A sanity check of the server found a fault." with a link
+to `/root/health`: no check, organisation or count goes to a phone or to
+ntfy. It comes when a check starts to fail, and again each day that it
+still fails.
+
 ## The settings
 
 Rescord reads each setting from the environment when it starts. A required

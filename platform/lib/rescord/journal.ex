@@ -752,6 +752,24 @@ defmodule Rescord.Journal do
   end
 
   @doc """
+  The last day of a prescription, for the code of Rescord with no person:
+  `{:ok, date}`, `{:ok, nil}` for a prescription with no end, or `:none`
+  when no prescription has the id now. A routine of the prescription ends
+  with it (issue 38, F4).
+  """
+  @spec prescription_ends_on(Ecto.UUID.t(), term) :: {:ok, Date.t() | nil} | :none
+  def prescription_ends_on(prescription_id, tenant) do
+    case Ash.get(Rescord.Journal.Prescription, prescription_id,
+           tenant: tenant,
+           authorize?: false,
+           not_found_error?: false
+         ) do
+      {:ok, %{ends_on: ends_on}} -> {:ok, ends_on}
+      {:ok, nil} -> :none
+    end
+  end
+
+  @doc """
   Writes a journal entry with its files, in one transaction: a refused file
   writes no entry (ADR 0041). `files` is a list of `{name, bytes}`.
   """

@@ -7,22 +7,36 @@ defmodule RescordWeb.RootHealthLive do
 
   A result holds a count and ids, never a value of a row. The ids are
   there for a root user to find the rows, not links into an organisation.
+
+  "Alerts" is where a root user asks for an alert when a check fails
+  (`Rescord.Health.Alerts`), and sets up where it goes: a device of Web
+  Push, a topic of ntfy (`RescordWeb.DeviceComponents`). A device and a
+  topic are of the person, so they also get the notifications of each
+  organisation that the person is a member of.
   """
 
   use RescordWeb, :live_view
 
+  import RescordWeb.DeviceComponents
   import RescordWeb.HealthComponents
 
-  alias Rescord.Health
+  alias Rescord.{Health, Notifications}
+  alias RescordWeb.{DeviceEvents, HealthWords}
+
+  @device_events DeviceEvents.events()
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(page_title: "Sanity checks", running?: false) |> load()}
+    {:ok,
+     socket
+     |> assign(page_title: "Sanity checks", running?: false, problems: [])
+     |> load()}
   end
 
   defp load(socket) do
     actor = socket.assigns.current_user
-    results = Health.results(actor: actor)
+    opts = [actor: actor]
+    results = Health.results(opts)
 
     groups =
       results
@@ -31,8 +45,13 @@ defmodule RescordWeb.RootHealthLive do
 
     assign(socket,
       groups: groups,
-      summary: Health.summary(actor: actor),
-      checks: Health.checks()
+      summary: Health.summary(opts),
+      checks: Health.checks(),
+      watching?: Health.watching?(opts),
+      offer: Notifications.offer(),
+      devices: Notifications.devices(opts),
+      ntfy: Notifications.ntfy_topic(opts),
+      ntfy_address: Notifications.ntfy_address(opts)
     )
   end
 
@@ -49,6 +68,18 @@ defmodule RescordWeb.RootHealthLive do
        |> start_async(:run, fn -> Health.run_now(actor: actor) end)}
     end
   end
+
+  def handle_event("watch", params, socket) do
+    watch? = get_in(params, ["alerts", "watch"]) == "true"
+
+    case Health.watch(watch?, actor: socket.assigns.current_user) do
+      :ok -> {:noreply, socket |> put_flash(:info, "Saved.") |> load()}
+      {:error, _error} -> {:noreply, put_flash(socket, :error, "That did not work.")}
+    end
+  end
+
+  def handle_event(event, params, socket) when event in @device_events,
+    do: DeviceEvents.handle(event, params, socket, &load/1)
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
@@ -68,6 +99,8 @@ defmodule RescordWeb.RootHealthLive do
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
 
+  defp day(%DateTime{} = instant), do: Calendar.strftime(instant, "%-d %B %Y")
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -80,8 +113,44 @@ defmodule RescordWeb.RootHealthLive do
         </:subtitle>
       </.header>
 
+      <.problems list={@problems} />
+
       <.overview summary={@summary} running?={@running?} />
       <.results :for={{organisation, rows} <- @groups} organisation={organisation} rows={rows} />
+
+      <section aria-labelledby="alerts-heading">
+        <h2 id="alerts-heading">Alerts</h2>
+        <p>
+          An alert says only that a check found a fault, with a link to this page: no check, no organisation and no count. It comes when a check starts to fail, and again each day that it still fails.
+        </p>
+        <p :if={!@offer.web_push && !@offer.ntfy}>
+          The server sends no notifications yet. Turn on Web Push or ntfy on the page
+          <.link navigate={~p"/root/push"}>Notifications on devices</.link>
+          first.
+        </p>
+        <form id="alerts-form" phx-submit="watch">
+          <input type="hidden" name="alerts[watch]" value="false" />
+          <label>
+            <input type="checkbox" name="alerts[watch]" value="true" checked={@watching?} />
+            Send me an alert when a check fails
+          </label>
+          <button type="submit">Save</button>
+        </form>
+      </section>
+
+      <.this_device :if={@offer.web_push} key={@offer.web_push} />
+
+      <.device_list
+        :if={@offer.web_push || @devices != []}
+        devices={@devices}
+        day={&day/1}
+        time={&HealthWords.time/1}
+      >
+        A device gets the alerts of the checks that you ask for here, and the notifications of each organisation that you are a member of.
+      </.device_list>
+
+      <.ntfy_topic :if={@offer.ntfy} topic={@ntfy} address={@ntfy_address} />
+
       <.checks checks={@checks} />
     </Layouts.app>
     """

@@ -97,6 +97,7 @@ defmodule Rescord.Tasks.Routine do
       description "Starts a routine, and makes its first tasks"
       accept @facts ++ [:prescription_id]
       change ShapePattern
+      change Rescord.Tasks.Changes.EndWithPrescription
       change {SyncTasks, make?: true}
     end
 
@@ -105,6 +106,7 @@ defmodule Rescord.Tasks.Routine do
       accept @facts
       require_atomic? false
       change ShapePattern
+      change Rescord.Tasks.Changes.EndWithPrescription
       change {SyncTasks, drop?: true, make?: true}
     end
 

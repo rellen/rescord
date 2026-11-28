@@ -80,6 +80,11 @@ defmodule Rescord.Health.Result do
     destroy :forget do
       description "Deletes the result of a check that Rescord no longer has"
     end
+
+    update :alerted do
+      description "When the root users last got an alert for this result. Only the alerts run it"
+      accept [:alerted_at]
+    end
   end
 
   # Only a root user. A result comes from the domain, with no actor.

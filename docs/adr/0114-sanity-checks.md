@@ -45,7 +45,37 @@ sign: a routine whose tasks ran out, a reply of the assistant that stays
 6. **Where it shows.** `/root/health` for root users, a line on `/root`,
    a line of `bin/check` (a fault when a check fails, or when the newest
    run is older than 3 hours, so a stopped runner is seen), and the gauge
-   `rescord.health.level`, tagged by the name of the check only.
+. **The checks of the care also show where people work.** The first
+   page of an organisation has a part "Routines and doses to put right"
+   (ADR 0065). It runs the checks of the routines and of the doses at
+   once, read-only, when the page reads its parts, and does not read the
+   stored results: a row goes as soon as a person puts it right. It then
+   reads each record as the person, so the policies decide, and shows a
+   routine only to a role that can revise one, and a task only to a role
+   that can skip one.
+8. **A fault that has a cause in the code is fixed at the source too**
+   (section 7 of issue 38). F1 and F2 came with the page of the
+   conversations: the hourly job `Rescord.Ruby.Workers.Tidy` deletes the
+   conversations after their days and ends a reply that lost its job, so
+   the checks of the assistant wait 2 hours, past its next run. An administrator role keeps the powers
+   `roles` and `members`, and the last member who can change the members
+   keeps such a role through every change of role (F3). A routine of a
+   prescription takes the last day of the prescription when it starts or
+   changes, and its tasks stop at that day though the day moved later
+. **Alerts to the root users who ask.** A root user asks at
+   `/root/health` for an alert when a check fails
+   (`Rescord.Health.Watcher`), and sets up a device of Web Push or a topic
+   of ntfy there, as on the page of notifications of an organisation: a
+   device is of the person, so a root user who is a member of no
+   organisation has one too. After each run, `Rescord.Health.Alerts` sends
+   one message to each person and channel for the results that started to
+   fail, or that still fail and last alerted a day ago or more
+   (`alerted_at`); a result that stops failing forgets its alert. The
+   message is a pointer, as each notification is (ADR 0106): "Rescord", "A
+   sanity check of the server found a fault." and the address of
+   `/root/health`, with no check, organisation or count. With nobody who
+   watches, nothing is marked, so the first person who asks hears of a
+   fault at the next run.
 
 ## Consequences
 

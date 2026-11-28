@@ -35,12 +35,22 @@ defmodule Rescord.Health do
 
   boundary do
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Vault, Rescord.Transfers]
-    exports [Checks, Rescord.Health.Workers.Run]
+
+    deps [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Notifications,
+      Rescord.Tasks,
+      Rescord.Transfers,
+      Rescord.Vault
+    ]
+
+    exports [Checks, Rescord.Health.Workers.Run, Rescord.Health.Workers.Alert]
   end
 
   resources do
     resource Result
+    resource Rescord.Health.Watcher
   end
 
   @periods %{hourly: 3_600, daily: 86_400, weekly: 604_800}
@@ -63,6 +73,56 @@ defmodule Rescord.Health do
       result
     end
   end
+
+  @doc """
+  What the checks of the care find in an organisation now, for its first
+  page (ADR 0065): the routines whose tasks run out, the routines that
+  outlive their prescription, and the medication tasks that cannot be done.
+  It runs those checks now, read-only, so a row goes as soon as a person
+  puts it right, and then reads each record as the actor: the policies
+  decide what the person sees.
+
+  A routine row is there for a role that can revise a routine, and a task
+  row for a role that can skip a task. The option `:limit` caps the rows,
+  and the total counts each one.
+  """
+  @spec attention(atom | nil, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}}
+  def attention(role, opts) do
+    {limit, opts} = Keyword.pop(opts, :limit, 8)
+    {now, opts} = Keyword.pop(opts, :now, DateTime.utc_now())
+    organisation = Rescord.Accounts.organisation_of(opts[:tenant])
+    context = %{now: now, organisation: organisation, prefix: "org_" <> organisation.id}
+
+    parts = [
+      {:routine_behind, Checks.RoutinesBehind, Rescord.Tasks.role_can_routine?(role, :revise)},
+      {:routine_after_prescription, Checks.RoutineAfterPrescription,
+       Rescord.Tasks.role_can_routine?(role, :revise)},
+      {:dose_task_blocked, Checks.DoseTasks, Rescord.Tasks.role_can?(role, :skip)}
+    ]
+
+    found =
+      for {kind, check, true} <- parts,
+          {:ok, %{level: :fail, count: count, ids: ids}, _ms} <- [run(check, context)] do
+        {kind, count, ids}
+      end
+
+    rows =
+      for {kind, _count, ids} <- found,
+          record <- records(kind, ids, opts),
+          do: %{kind: kind, record: record}
+
+    {:ok,
+     %{
+       rows: Enum.take(rows, limit),
+       total: found |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+     }}
+  end
+
+  defp records(:dose_task_blocked, ids, opts),
+    do: Rescord.Tasks.tasks!([query: [filter: [id: [in: ids]], sort: [due_at: :asc]]] ++ opts)
+
+  defp records(_routine, ids, opts),
+    do: Rescord.Tasks.routines!([query: [filter: [id: [in: ids]], sort: [title: :asc]]] ++ opts)
 
   @typedoc "What a page says of a check."
   @type description :: %{
@@ -101,9 +161,37 @@ defmodule Rescord.Health do
       %{root?: true} ->
         now = DateTime.utc_now()
         Enum.each(Checks.all(), &run_check(&1, now))
+        Rescord.Health.Alerts.send_due(now)
+        :ok
 
       _other ->
         {:error, :forbidden}
+    end
+  end
+
+  @doc """
+  Whether the root user `:actor` gets an alert when a check fails
+  (`Rescord.Health.Alerts`).
+  """
+  @spec watching?(keyword) :: boolean
+  def watching?(opts), do: Ash.read!(Rescord.Health.Watcher, opts) != []
+
+  @doc "The root user `:actor` gets an alert when a check fails, or no more."
+  @spec watch(boolean, keyword) :: :ok | {:error, term}
+  def watch(true, opts) do
+    case Ash.create(Rescord.Health.Watcher, %{}, [action: :watch] ++ opts) do
+      {:ok, _watcher} -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def watch(false, opts) do
+    case Ash.read(Rescord.Health.Watcher, opts) do
+      {:ok, watchers} ->
+        Enum.each(watchers, &Ash.destroy!(&1, [action: :unwatch] ++ opts))
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -228,7 +316,9 @@ defmodule Rescord.Health do
         unknown_runs: unknown_runs,
         checked_at: now,
         duration_ms: Kernel.max(elapsed, 0),
-        alerted_at: before && before.alerted_at
+        # A result that stops failing forgets its alert: the next fault
+        # alerts at once (`Rescord.Health.Alerts`).
+        alerted_at: if(finding.level == :fail, do: before && before.alerted_at)
       },
       authorize?: false
     )

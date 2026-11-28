@@ -91,8 +91,12 @@ defmodule Rescord.Accounts.RolesTest do
                Accounts.revise_role(administrator, %{powers: [:members]}, context.admin)
 
       assert Accounts.error_messages(error) == [
-               "Powers of the administrators keep the change of the roles"
+               "Powers of the administrators keep the change of the roles and of the members"
              ]
+
+      # Nor the change of the members (issue 38, F3).
+      assert {:error, %Ash.Error.Invalid{}} =
+               Accounts.revise_role(administrator, %{powers: [:roles]}, context.admin)
 
       assert {:ok, %{name: %Ash.CiString{string: "Coordinator"}}} =
                Accounts.revise_role(administrator, %{name: "Coordinator"}, context.admin)
@@ -238,8 +242,10 @@ defmodule Rescord.Accounts.RolesTest do
 
       assert id == administrator.id
 
-      assert {:ok, %{powers: [:roles]}} =
-               Accounts.revise_role(administrator, %{powers: [:roles]}, options)
+      assert {:ok, %{powers: powers}} =
+               Accounts.revise_role(administrator, %{powers: [:roles, :members]}, options)
+
+      assert Enum.sort(powers) == [:members, :roles]
     end
   end
 end

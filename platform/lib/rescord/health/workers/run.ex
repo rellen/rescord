@@ -1,7 +1,7 @@
 defmodule Rescord.Health.Workers.Run do
   @moduledoc """
   Runs the checks that are due (ADR 0114), each hour, from the crontab of
-  Oban. One try: the next hour runs again what is still due. Unique for
+  Oban. Then it sends the alerts that are due (`Rescord.Health.Alerts`). One try: the next hour runs again what is still due. Unique for
   the hour, so a second node or a start by hand does not run the checks
   twice.
   """
@@ -14,6 +14,7 @@ defmodule Rescord.Health.Workers.Run do
   @impl Oban.Worker
   def perform(_job) do
     Rescord.Health.run_due()
+    Rescord.Health.Alerts.send_due()
     :ok
   end
 end
