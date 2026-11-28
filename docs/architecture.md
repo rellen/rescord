@@ -692,6 +692,13 @@ code does not have yet is what its phase lands.
 - A provider is a row of `Rescord.Ruby.Provider`, and the use of one
   organisation is a row of `Rescord.Ruby.Settings`. Each request goes
   through `Rescord.Ruby.LLM.Client`, which counts its tokens.
+- The settings keep the place that a person of the organisation agreed
+  to, as a short key and as the sentence that the page showed. Ruby is on
+  for an organisation only while the provider is offered and its place
+  has that key: `Rescord.Ruby.status/1` says where Ruby stands, and
+  `Rescord.Ruby.available?/2` whether a person can ask. A root user who
+  changes the place of a provider writes no row of an organisation: the
+  two keys differ, and that is what stops Ruby.
 - **The resources of the conversations have no bypass for a root user.**
   A conversation is read by its member and by the administrators of its
   organisation. It is deleted for real: not temporal, no paper trail, no

@@ -3,7 +3,8 @@ defmodule RescordWeb.RubyWordsTest do
   Holds the words of the assistant to the fixed lists (ADR 0069): each
   service of a provider, each effort and each reason of a failure has
   words, and the words name no value that a list does not have. It holds
-  also the amounts of money of the form of a provider.
+  also the amounts of money of the form of a provider, and the words of
+  where Ruby stands for an organisation.
   """
 
   use ExUnit.Case, async: true
@@ -81,6 +82,29 @@ defmodule RescordWeb.RubyWordsTest do
     kept = %{key_set_at: ~U[2026-03-03 09:14:00.000000Z], key_hint: "wxyz"}
     assert RubyWords.key_hint(kept, :anthropic, false) =~ "ends in wxyz"
     refute RubyWords.key_hint(kept, :openai_compatible, false) =~ "asks for no key"
+  end
+
+  test "each place where Ruby stands for an organisation has words" do
+    statuses = [:not_set_up, :off, :on, {:stopped, :place}, {:stopped, :provider}]
+
+    for status <- statuses do
+      refute RubyWords.state(status) =~ "_"
+      assert RubyWords.standing(status) =~ ~r/^It is .+\.$/
+    end
+
+    # Only one of them says that Ruby is on.
+    assert Enum.filter(statuses, &(RubyWords.state(&1) == "On")) == [:on]
+    assert Enum.filter(statuses, &(RubyWords.standing(&1) == "It is on.")) == [:on]
+
+    for why <- [:place, :provider], others? <- [true, false] do
+      sentence = RubyWords.stopped(why, "Wattle Creek", others?)
+      assert sentence =~ "Ruby is off for Wattle Creek"
+      assert sentence =~ ~r/\.$/
+    end
+
+    assert RubyWords.organisations(0) =~ "No organisation"
+    assert RubyWords.organisations(1) =~ "1 organisation has"
+    assert RubyWords.organisations(3) =~ "3 organisations have"
   end
 
   test "an amount in cents reads as dollars, and back" do

@@ -75,7 +75,10 @@ defmodule Rescord.Export do
       "A conversation with the assistant is the working notes of one member, and no record " <>
         "of the rescue. Each thing that the assistant helped to write is in its own file.",
     Rescord.Ruby.Message =>
-      "A message of a conversation with the assistant: see ruby_conversations."
+      "A message of a conversation with the assistant: see ruby_conversations.",
+    Rescord.Ruby.Settings =>
+      "How the organisation uses the assistant is a setting that names a provider of this " <>
+        "server, and no record of the rescue."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."

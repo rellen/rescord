@@ -10,7 +10,9 @@ defmodule Rescord.Ruby.Grants do
 
   The power `:settings` reads each conversation and each message of the
   organisation, and changes none: a rescue can answer for what its
-  volunteers were told. The page of Ruby says so to each member.
+  volunteers were told. The page of Ruby says so to each member. The same
+  power reads and changes how the organisation uses Ruby
+  (`Rescord.Ruby.Settings`), which no role reads without it.
 
   An action that only Rescord runs, such as `touch`, is in no grant.
   `Rescord.Ruby.Provider` is not here: only a root user reaches it, by its
@@ -21,7 +23,7 @@ defmodule Rescord.Ruby.Grants do
 
   import Ash.Expr, only: [expr: 1, actor: 1]
 
-  alias Rescord.Ruby.{Conversation, Message}
+  alias Rescord.Ruby.{Conversation, Message, Settings}
 
   @impl true
   def reads, do: []
@@ -31,6 +33,9 @@ defmodule Rescord.Ruby.Grants do
     %{
       # These add to the power `settings` of the accounts.
       settings: [
+        {Settings, :read, :all},
+        {Settings, :set, :all},
+        {Settings, :change, :all},
         {Conversation, :read, :all},
         {Conversation, :of_member, :all},
         {Message, :read, :all}

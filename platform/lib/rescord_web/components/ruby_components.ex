@@ -1,11 +1,13 @@
 defmodule RescordWeb.RubyComponents do
   @moduledoc """
   The parts of the pages of the assistant, Ruby (ADR 0069 and ADR 0037):
-  the providers of the server, and the form of one provider, for a root
-  user.
+  the providers of the server and the form of one provider, for a root
+  user, and the settings of Ruby in an organisation.
 
   No part here gets the key of a provider, and none can show one: a page
-  has the last four characters and the day that the key was set.
+  of a root user has the last four characters and the day that the key
+  was set, and a page of an organisation has the name of a provider and
+  the place of the records.
   """
 
   use RescordWeb, :html
@@ -312,7 +314,9 @@ defmodule RescordWeb.RubyComponents do
   attr :label, :string, required: true
   attr :type, :string, default: "text"
   attr :hint, :string, default: nil
-  attr :rest, :global, include: ~w(autocomplete autocapitalize spellcheck inputmode min max step)
+
+  attr :rest, :global,
+    include: ~w(autocomplete autocapitalize spellcheck inputmode min max step required)
 
   defp field(assigns) do
     ~H"""
@@ -343,8 +347,14 @@ defmodule RescordWeb.RubyComponents do
   # A closed part would hide the words of a problem in it.
   defp limits_open?(problems), do: Enum.any?(problems, fn {field, _words} -> field in @limits end)
 
-  @doc "Where the records of a question go with this provider, as an administrator reads it."
+  @doc """
+  Where the records of a question go with this provider, as an
+  administrator reads it. With `organisations`, the count of the
+  organisations that have Ruby on with it, the part says what a change of
+  the place does to them.
+  """
   attr :place, :string, required: true
+  attr :organisations, :integer, default: nil
 
   def place(assigns) do
     ~H"""
@@ -354,9 +364,204 @@ defmodule RescordWeb.RubyComponents do
       <blockquote>
         <p>Records go to {@place}.</p>
       </blockquote>
+      <p :if={@organisations} id="provider-organisations">
+        {RubyWords.organisations(@organisations)} A change of the address or of the region
+        changes the sentence, and turns Ruby off for each organisation that agreed to the old
+        one, until a person there reads the new sentence and agrees.
+      </p>
     </section>
     """
   end
+
+  @doc """
+  The part of the settings page of an organisation for Ruby: where it
+  stands, and the link to its own page for a person who can change the
+  settings.
+  """
+  attr :organisation, :any, required: true
+  attr :status, :any, required: true, doc: "as `Rescord.Ruby.status/1` gives it"
+  attr :can_change?, :boolean, required: true
+
+  def settings_line(assigns) do
+    ~H"""
+    <section aria-labelledby="ruby-heading">
+      <h2 id="ruby-heading">Ruby, the assistant</h2>
+      <.not_set_up :if={@status == :not_set_up} />
+      <.list :if={@status != :not_set_up}>
+        <:item title="Ruby">{RubyWords.state(@status)}</:item>
+      </.list>
+      <p :if={@status != :not_set_up}>
+        Ruby answers the questions of a member from the records of {@organisation.name}. It
+        thinks with a service that the person who runs this server set up.
+      </p>
+      <p :if={@can_change? and @status != :not_set_up}>
+        <.link id="ruby-settings-link" navigate={~p"/o/#{@organisation.short_name}/settings/ruby"}>
+          The settings of Ruby
+        </.link>
+      </p>
+    </section>
+    """
+  end
+
+  @doc "The words of a server that offers no provider: nothing to turn on."
+  def not_set_up(assigns) do
+    ~H"""
+    <p id="ruby-not-set-up">
+      Ruby is not set up on this server. The person who runs the server has not chosen a
+      service for it yet, so there is nothing to turn on.
+    </p>
+    """
+  end
+
+  @doc """
+  Where the records go, for a person who can change the settings of an
+  organisation: the place of the one provider that the server offers, or
+  the providers to choose among, each with its place. The radio buttons
+  belong to the form `ruby-settings`, which is in the next part. The
+  button that agrees to a new place is for the one provider: with a
+  choice, the person chooses, and turns Ruby on in the form.
+  """
+  attr :organisation, :any, required: true
+  attr :status, :any, required: true
+  attr :offers, :list, required: true, doc: "as `Rescord.Ruby.offers/1` gives them, not empty"
+  attr :chosen, :string, default: nil, doc: "the id of the provider of the form"
+  attr :agreed_on, :string, default: nil, doc: "the day of the agreement, in words"
+  attr :problems, :list, required: true
+
+  def settings_place(assigns) do
+    ~H"""
+    <section aria-labelledby="where-heading">
+      <h2 id="where-heading">Where the records go</h2>
+      <p>
+        Ruby thinks with a service that the person who runs this server set up. What a member
+        writes to Ruby, and the records that Ruby reads to answer, go to that service.
+      </p>
+
+      <p :if={match?({:stopped, _why}, @status)} id="ruby-stopped" role="alert">
+        {RubyWords.stopped(elem(@status, 1), @organisation.name, true)}
+      </p>
+      <p :for={words <- problems_of(@problems, :agreed_to)} role="alert">
+        Ruby is not on: {words}.
+      </p>
+
+      <blockquote :if={match?([_one], @offers)} id="ruby-place">
+        <p>Records go to {hd(@offers).place}.</p>
+      </blockquote>
+      <p :if={match?([_one], @offers) and @status == :on and @agreed_on} id="ruby-agreed">
+        <small>{@organisation.name} agreed to this place on {@agreed_on}.</small>
+      </p>
+
+      <fieldset :if={match?([_one, _two | _more], @offers)} id="ruby-services">
+        <legend>The service of Ruby</legend>
+        <%= for offer <- @offers do %>
+          <label>
+            <input
+              type="radio"
+              name="ruby[provider_id]"
+              value={offer.id}
+              form="ruby-settings"
+              checked={offer.id == @chosen}
+              aria-describedby={"ruby-place-#{offer.id}"}
+              required
+            />
+            {offer.name}
+          </label>
+          <small id={"ruby-place-#{offer.id}"} data-hint>Records go to {offer.place}.</small>
+        <% end %>
+      </fieldset>
+      <p :for={words <- problems_of(@problems, :provider_id)} role="alert">
+        Ruby is not on: {words}.
+      </p>
+
+      <form
+        :if={@status == {:stopped, :place} and match?([_one], @offers)}
+        id="ruby-agree"
+        phx-submit="agree"
+      >
+        <footer><.button type="submit" variant="primary">Agree, and turn Ruby on</.button></footer>
+      </form>
+    </section>
+    """
+  end
+
+  @doc """
+  The form of the settings of Ruby in an organisation: the switch, the
+  allowance of a month and the days that a conversation is kept.
+  """
+  attr :organisation, :any, required: true
+  attr :status, :any, required: true
+  attr :offers, :list, required: true
+  attr :form, Phoenix.HTML.Form, required: true
+  attr :problems, :list, required: true
+
+  def settings_form(assigns) do
+    ~H"""
+    <section aria-labelledby="does-heading">
+      <h2 id="does-heading">What Ruby does here</h2>
+      <.form for={@form} id="ruby-settings" phx-submit="save">
+        <input
+          :if={match?([_one], @offers)}
+          type="hidden"
+          name={@form[:provider_id].name}
+          value={hd(@offers).id}
+        />
+        <div>
+          <label for="ruby-enabled">
+            <input type="hidden" name={@form[:enabled].name} value="false" />
+            <input
+              type="checkbox"
+              id="ruby-enabled"
+              name={@form[:enabled].name}
+              value="true"
+              checked={@form[:enabled].value == "true"}
+              aria-describedby="ruby-enabled-hint"
+            /> Ruby answers the members of {@organisation.name}
+          </label>
+          <small id="ruby-enabled-hint" data-hint>
+            When you turn Ruby on, you agree that the records go to {if match?([_one], @offers),
+              do: "the place above",
+              else: "the place of the service that you chose"}.
+          </small>
+        </div>
+        <.field
+          form={@form}
+          name={:allowance}
+          problems={@problems}
+          label="Allowance for a month, in US dollars"
+          inputmode="decimal"
+          autocomplete="off"
+          hint={allowance_hint(@offers)}
+        />
+        <.field
+          form={@form}
+          name={:retention_days}
+          problems={@problems}
+          type="number"
+          label="Days that a conversation is kept"
+          min="1"
+          max="3650"
+          required
+          hint="After that, Rescord deletes it. The records that a member made with Ruby stay."
+        />
+        <footer><.button type="submit" variant="primary">Save</.button></footer>
+      </.form>
+      <p>
+        A member asks Ruby when their role has the power “{RescordWeb.RoleWords.power(:ruby)}”.
+        <.link navigate={~p"/o/#{@organisation.short_name}/roles"}>See the roles</.link>
+      </p>
+    </section>
+    """
+  end
+
+  defp allowance_hint([offer]),
+    do:
+      "When the allowance is used, Ruby answers nobody until the next month. " <>
+        "This server starts an organisation at #{RubyWords.dollars(offer.default_allowance)} US dollars."
+
+  defp allowance_hint(_offers),
+    do:
+      "When the allowance is used, Ruby answers nobody until the next month. " <>
+        "Leave the field empty for the amount that this server starts an organisation at."
 
   @doc "The removal of a provider, behind a part that is closed at first."
   attr :provider, :map, required: true

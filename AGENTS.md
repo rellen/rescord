@@ -505,6 +505,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
     and its key is under AshCloak in `Rescord.Vault`. Only
     `Rescord.Ruby.LLM.profile_of/1` decrypts a key. No page, no tool, no
     version row and no line of the log holds one.
+  - **Ask `Rescord.Ruby.available?/2` whether a person can ask Ruby**, and
+    `Rescord.Ruby.status/1` where Ruby stands for an organisation. Do not
+    read `enabled` of the settings for that: Ruby is on only while the
+    place of its provider is the one that a person of the organisation
+    agreed to (`Rescord.Ruby.Changes.Agree`). A page of an organisation
+    gets a provider only as `Rescord.Ruby.offers/1` gives it: its name
+    and its place. The key of the place for an agreement comes from the
+    providers that the page read, never from a field of the form.
   - **Each request goes through `Rescord.Ruby.LLM.Client`**, with the
     options of `Rescord.Ruby.LLM.Profile`. The system prompt is one
     constant text with no value in it. Inside a conversation the tools,
@@ -828,8 +836,8 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
-| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, and the one module that sends a request (ADR 0069) |
-| `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, and the conversations (ADR 0069) |
+| `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |

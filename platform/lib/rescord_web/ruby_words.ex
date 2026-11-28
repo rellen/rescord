@@ -1,8 +1,8 @@
 defmodule RescordWeb.RubyWords do
   @moduledoc """
   The words of the assistant, Ruby (ADR 0069): the services of a provider,
-  its key as a page may say it, what a test found, and the amounts of
-  money of its form.
+  its key as a page may say it, what a test found, the amounts of money of
+  its form, and where Ruby stands for an organisation.
 
   A page of a root user has no organisation and so no time zone: a day and
   a time here are in UTC, and a time says so.
@@ -130,6 +130,49 @@ defmodule RescordWeb.RubyWords do
 
   def failure(:unknown),
     do: "something went wrong that Rescord cannot name. Try again, and then check each field."
+
+  @doc """
+  Where Ruby stands for an organisation (`Rescord.Ruby.status/1`), in a
+  few words for the settings page.
+  """
+  def state(:not_set_up), do: "Not set up on this server"
+  def state(:off), do: "Off"
+  def state(:on), do: "On"
+  def state({:stopped, :place}), do: "Off: the place of the records changed"
+  def state({:stopped, :provider}), do: "Off: this server took its service away"
+
+  @doc "Where Ruby stands for an organisation, as a sentence below the title of its page."
+  def standing(:not_set_up), do: "It is not set up on this server."
+  def standing(:off), do: "It is off until a person who can change the settings turns it on."
+  def standing(:on), do: "It is on."
+
+  def standing({:stopped, _why}),
+    do: "It is off until a person who can change the settings agrees to where the records go."
+
+  @doc """
+  Why Ruby stopped for the organisation with this name, and what to do,
+  for a person who can change the settings. `others?` says whether the
+  server offers a service that the person can choose.
+  """
+  def stopped(:place, name, _others?),
+    do:
+      "Ruby is off for #{name}: the person who runs this server changed where the records go. " <>
+        "Read the new place. Ruby answers again when you agree."
+
+  def stopped(:provider, name, true),
+    do:
+      "Ruby is off for #{name}: this server does not offer the service that #{name} agreed to " <>
+        "any more. Read the place below. Ruby answers again when you turn it on."
+
+  def stopped(:provider, name, false),
+    do:
+      "Ruby is off for #{name}: this server does not offer the service that #{name} agreed to " <>
+        "any more, and it offers no other one. The person who runs the server can offer one."
+
+  @doc "How many organisations have Ruby on with a provider, for the page of a root user."
+  def organisations(0), do: "No organisation has Ruby on with this provider."
+  def organisations(1), do: "1 organisation has Ruby on with this provider."
+  def organisations(count), do: "#{count} organisations have Ruby on with this provider."
 
   @doc "Whole US cents as US dollars, for a field: `2000` is `20`, and `1250` is `12.50`."
   def dollars(nil), do: ""

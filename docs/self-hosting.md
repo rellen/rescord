@@ -541,8 +541,8 @@ made again by a command: restore the secret that encrypted them.
 Ruby is an optional assistant for the members of a rescue (ADR 0069).
 Rescord works in full without it, and a server sends nothing to any
 service of a language model until a root user sets one up. The work comes
-in steps: this version has the settings of the server alone, and no
-member can ask Ruby anything yet.
+in steps: this version has the settings of the server and of an
+organisation, and no member can ask Ruby anything yet.
 
 **Ruby has no setting in the environment**, and none in a file of the
 server. A root user of Rescord sets it on the page `/root/ruby`:
@@ -558,6 +558,23 @@ server. A root user of Rescord sets it on the page `/root/ruby`:
 The page says where the records of a question go with each provider, in
 the words that an administrator of an organisation reads before they
 turn Ruby on.
+
+**Each organisation turns Ruby on for itself.** A person whose role has
+the power "Change the settings of the organisation" opens the settings
+of the organisation, and then "The settings of Ruby". The page shows the
+sentence of the provider that you offer, or a choice when you offer more
+than one. Who turns Ruby on agrees to that place, and Rescord keeps the
+sentence and the time. The page also has the allowance of a month, which
+starts at the amount that you gave the provider, and the days that a
+conversation is kept.
+
+**A change of the place turns Ruby off.** When you change the address or
+the region of a provider, the sentence changes. Ruby is then off for each
+organisation that agreed to the old sentence, until a person there reads
+the new one and agrees. The same holds when you stop offering a provider
+or remove it. A new model, a new key or a new limit changes no sentence,
+and turns nothing off. The page of a provider says how many organisations
+have Ruby on with it, so read that number before you change the place.
 
 **The key of a provider** is encrypted in the database with
 `RESCORD_KEY_SECRET`. No page shows it again: only its last four

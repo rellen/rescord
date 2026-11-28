@@ -48,6 +48,11 @@ release (ADR 0047).
     adds a column to the items of the inventory, for the strength of a
     medication. It is empty for each item that is there. It changes no
     row.
+  - `20261128060812_add_ruby_settings`, in each organisation: adds the
+    table of the settings of the assistant, which keeps each version of
+    its one row. It is empty after the upgrade, so the assistant is off
+    in each organisation until a person there turns it on. It changes no
+    row.
 - The first start of this version rehearses the migrations before it
   changes anything, and each later upgrade does the same: it runs each
   migration in a transaction that it takes back, and migrates only when
@@ -132,6 +137,21 @@ release (ADR 0047).
   only its last four characters and the day that it was set. The history
   of a provider holds each change, without the key. The assistant reads no
   variable of the environment.
+- An organisation has a new page, "The settings of Ruby", which the
+  settings page links to for a person whose role has the power "Change
+  the settings of the organisation". It shows, in a sentence, where the
+  records of a question would go with the service that the server
+  offers, and has the switch that turns Ruby on for the organisation,
+  the allowance of a month in US dollars and the days that a
+  conversation is kept. Who turns Ruby on agrees to that place, and
+  Rescord keeps the sentence and the time. When a root user changes the
+  address or the region of a provider, or stops offering it, Ruby is off
+  for each organisation that agreed to the old place, until a person
+  there reads the new one and agrees. A server with no offered provider
+  shows no switch. No member can ask Ruby in this version, so the switch
+  sends nothing anywhere yet, and the allowance counts nothing yet.
+- The page of a provider, for a root user, now says how many
+  organisations have Ruby on with it.
 - The page of the roles has a new area, "Assistant", with one power: "Ask
   Ruby, the assistant, when the organisation has it on". The role
   Administrator has it after the upgrade. It does nothing in this

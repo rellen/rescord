@@ -105,6 +105,8 @@ defmodule RescordWeb.Features.PhoneTest do
 
     {:ok,
      home: home,
+     root: root,
+     organisation: organisation,
      pages:
        ["/", home] ++
          Enum.map(
@@ -113,7 +115,8 @@ defmodule RescordWeb.Features.PhoneTest do
               residents/#{resident.id}/photos residents/#{resident.id}/timeline
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
-              reports lists members roles partners transfers settings export calendar),
+              reports lists members roles partners transfers settings settings/ruby export
+              calendar),
            &"#{home}/#{&1}"
          )}
   end
@@ -185,6 +188,69 @@ defmodule RescordWeb.Features.PhoneTest do
       """,
       fn stacked -> assert stacked, "the cells of a provider are side by side" end
     )
+  end
+
+  @tag browser_context_opts: @small
+  test "the settings of the assistant fit a small phone, where Ruby stands in each place",
+       %{conn: session, home: home, root: root, organisation: organisation} do
+    offer = fn values ->
+      root
+      |> Rescord.RubyFixtures.provider!(values)
+      |> Rescord.Ruby.change_provider!(%{offered: true}, actor: root)
+    end
+
+    # An address of its own: an address gets few sign-in links in a while.
+    address = "another.administrator.with.a.long.address@wattle-creek-refuge.example.org"
+    member!(organisation, :administrator, root, address)
+    flush_emails()
+    session = sign_in_with_link(session, address)
+
+    fits = fn selector ->
+      session
+      |> visit("#{home}/settings/ruby")
+      |> assert_has(selector)
+      |> evaluate(problems(), fn problems ->
+        assert problems == [],
+               "the settings of Ruby with #{selector}: #{Enum.join(problems, "; ")}"
+      end)
+    end
+
+    place = "https://llm.a-long-name-of-a-server.example.org/v1"
+
+    shed =
+      offer.(%{
+        name: "The server in the feed shed",
+        kind: :openai_compatible,
+        model: "a-model",
+        base_url: place
+      })
+
+    # One provider, and Ruby off.
+    fits.("#ruby-place")
+
+    {:ok, _settings} =
+      Rescord.Ruby.save_settings(
+        %{enabled: true, provider_id: shed.id, agreed_to: "address:" <> place},
+        actor: root,
+        tenant: organisation
+      )
+
+    # Ruby on, with the day of the agreement.
+    fits.("#ruby-agreed")
+
+    Rescord.Ruby.change_provider!(
+      shed,
+      %{base_url: "https://another-long-name-of-a-server.example.org/v1"},
+      actor: root
+    )
+
+    # The place changed: the words of it, and the button that agrees.
+    fits.("#ruby-agree button")
+
+    offer.(%{name: "Anthropic, for the whole server of the refuges"})
+
+    # Two providers: a choice, each with its place.
+    fits.("#ruby-services input[type=radio]")
   end
 
   @tag browser_context_opts: @phone

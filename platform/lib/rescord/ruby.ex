@@ -6,9 +6,20 @@ defmodule Rescord.Ruby do
   This domain holds the providers of the server, which a root user sets on
   a page (`Rescord.Ruby.Provider`), the code that reaches a provider
   (`Rescord.Ruby.LLM`), and the conversations of the members with their
-  messages (`Rescord.Ruby.Conversation`, `Rescord.Ruby.Message`), in the
-  schema of each organisation. The tools, the settings of an organisation
-  and the job that writes a reply come with the later steps of the work.
+  messages (`Rescord.Ruby.Conversation`, `Rescord.Ruby.Message`) and how
+  an organisation uses Ruby (`Rescord.Ruby.Settings`), in the schema of
+  each organisation. The tools and the job that writes a reply come with
+  the later steps of the work.
+
+  ## Whether Ruby is on
+
+  Ruby is on for an organisation while its settings say so, the server
+  offers their provider, and the place of that provider is the one that a
+  person of the organisation agreed to (`status/1`). A change of the place
+  by a root user writes nothing to an organisation: the place of the
+  provider and the place of the agreement differ, and Ruby stops until a
+  person with the power `settings` agrees again. `available?/2` adds the
+  person: a member whose role has the power `ruby`.
 
   ## Who reads a conversation
 
@@ -30,7 +41,11 @@ defmodule Rescord.Ruby do
 
   alias Rescord.Ruby.LLM
   alias Rescord.Ruby.LLM.{Ping, Profile}
-  alias Rescord.Ruby.{Conversation, Message, Provider}
+  require Ash.Query
+
+  alias Rescord.Accounts.Checks.Granted
+  alias Rescord.Accounts.User
+  alias Rescord.Ruby.{Conversation, Message, Provider, Settings}
 
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
@@ -72,6 +87,157 @@ defmodule Rescord.Ruby do
       define :rate_reply, action: :rate, args: [:rating]
       define :stop_reply, action: :stop
     end
+
+    resource Settings do
+      define :read_settings, action: :read, get?: true, not_found_error?: false
+    end
+  end
+
+  @typedoc """
+  A provider as a person with the power `settings` sees it: its name and
+  where the records go, and nothing of its key, its model or its prices.
+  """
+  @type offer :: %{
+          id: String.t(),
+          name: String.t(),
+          kind: atom,
+          place: String.t(),
+          place_key: String.t(),
+          default_allowance: non_neg_integer
+        }
+
+  @typedoc """
+  Where Ruby stands for an organisation:
+
+    * `:not_set_up` - the server offers no provider, and Ruby is off;
+    * `:off` - an administrator has not turned it on, or turned it off;
+    * `:on` - Ruby answers;
+    * `{:stopped, :place}` - it is on, and the provider has another place
+      than the one that an administrator agreed to;
+    * `{:stopped, :provider}` - it is on, and the server does not offer
+      its provider any more.
+  """
+  @type status :: :not_set_up | :off | :on | {:stopped, :place | :provider}
+
+  @doc """
+  The settings of an organisation, or the defaults when it has no row:
+  Ruby is off. For the code of Rescord, with no person: a page reads with
+  `settings_for/1`.
+  """
+  @spec settings(term) :: Settings.t()
+  def settings(tenant) do
+    case Ash.read_one!(Settings, tenant: tenant, authorize?: false) do
+      nil -> %Settings{enabled: false, retention_days: 90}
+      row -> row
+    end
+  end
+
+  @doc """
+  The settings of the organisation for the person of `opts`, or the
+  defaults when it has no row. A person with no power `settings` gets
+  `{:error, :forbidden}`.
+  """
+  @spec settings_for(keyword) :: {:ok, Settings.t()} | {:error, :forbidden}
+  def settings_for(opts) do
+    if can_set?(opts),
+      do: {:ok, settings(Keyword.fetch!(opts, :tenant))},
+      else: {:error, :forbidden}
+  end
+
+  @doc """
+  Saves the settings of the organisation: the first time it makes the row,
+  and then it changes it. `agreed_to` among the values is the key of the
+  place that the page showed (`t:offer/0`), which an action that turns Ruby
+  on needs.
+
+  Two people who save the first settings at one moment make one row: the
+  second gets an error, and saves again.
+  """
+  @spec save_settings(map, keyword) :: {:ok, Settings.t()} | {:error, term}
+  def save_settings(values, opts) do
+    case Ash.read_one!(Settings, tenant: Keyword.fetch!(opts, :tenant), authorize?: false) do
+      nil -> Settings |> Ash.Changeset.for_create(:set, values, opts) |> Ash.create()
+      row -> row |> Ash.Changeset.for_update(:change, values, opts) |> Ash.update()
+    end
+  end
+
+  @doc """
+  The providers that this server offers, as a person with the power
+  `settings` sees them. Each can take a request: it is complete, and has a
+  place. Any other person gets an empty list.
+  """
+  @spec offers(keyword) :: [offer]
+  def offers(opts), do: if(can_set?(opts), do: Enum.map(offered(), &offer/1), else: [])
+
+  @doc "Where Ruby stands for an organisation. It reads the database, and decrypts no key."
+  @spec status(term) :: status
+  def status(tenant) do
+    settings = settings(tenant)
+    offered = offered()
+    provider = Enum.find(offered, &(&1.id == settings.provider_id))
+
+    cond do
+      not settings.enabled and offered == [] -> :not_set_up
+      not settings.enabled -> :off
+      is_nil(provider) -> {:stopped, :provider}
+      not Profile.agreed?(provider, settings.agreed_destination) -> {:stopped, :place}
+      true -> :on
+    end
+  end
+
+  @doc """
+  Whether this person can ask Ruby in this organisation: Ruby is on there
+  (`status/1`), and the person is a member whose role has the power
+  `ruby`. A root user gets the answer of their role as a member, and a
+  root user who is no member gets `false`.
+
+  The allowance of the month is no part of it: a member reads a
+  conversation of last week also when the allowance is used.
+  """
+  @spec available?(term, term) :: boolean
+  def available?(%User{} = user, tenant) do
+    asker?(user, tenant) and status(tenant) == :on
+  end
+
+  def available?(_nobody, _tenant), do: false
+
+  @doc "The number of organisations that have Ruby on with this provider, for the page of a root user."
+  @spec organisations_with(Provider.t()) :: non_neg_integer
+  def organisations_with(%Provider{id: id}) do
+    Enum.count(Rescord.Repo.all_tenants(), fn tenant ->
+      match?(%{enabled: true, provider_id: ^id}, settings(tenant))
+    end)
+  end
+
+  # The role of the person as a member has the power `ruby`.
+  defp asker?(user, tenant) do
+    case Granted.role_of(user, tenant) do
+      nil -> false
+      role -> Rescord.Accounts.granted?(role, Conversation, :start)
+    end
+  end
+
+  defp can_set?(opts),
+    do: Ash.can?({Settings, :set}, opts[:actor], tenant: Keyword.fetch!(opts, :tenant))
+
+  # The providers that an organisation can choose, by name.
+  defp offered do
+    Provider
+    |> Ash.Query.filter(offered == true)
+    |> Ash.Query.sort(:name)
+    |> Ash.read!(authorize?: false)
+    |> Enum.filter(&(Profile.problems(&1) == [] and is_binary(Profile.place_key(&1))))
+  end
+
+  defp offer(provider) do
+    %{
+      id: provider.id,
+      name: provider.name,
+      kind: provider.kind,
+      place: Profile.place(provider),
+      place_key: Profile.place_key(provider),
+      default_allowance: provider.default_allowance
+    }
   end
 
   @doc "The kinds of a provider: the services that Rescord can reach."

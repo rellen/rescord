@@ -66,6 +66,7 @@ defmodule RescordWeb.RootRubyLive do
           page_title: provider.name,
           provider: provider,
           kind: provider.kind,
+          organisations: Ruby.organisations_with(provider),
           form: fields(provider)
         )
 
@@ -298,7 +299,7 @@ defmodule RescordWeb.RootRubyLive do
         />
       </section>
 
-      <.place place={Ruby.place(@provider)} />
+      <.place place={Ruby.place(@provider)} organisations={@organisations} />
       <.remove provider={@provider} />
     </Layouts.app>
     """

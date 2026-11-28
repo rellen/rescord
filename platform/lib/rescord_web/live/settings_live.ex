@@ -8,7 +8,8 @@ defmodule RescordWeb.SettingsLive do
   time of day and a number. The number of days ahead (ADR 0033) says how far ahead the tasks of
   the routines exist. The parts of a copy (ADR 0042) are the parts that a
   copy of a transferred resident holds at first. Each member reads the settings. An administrator and a
-  root user change them.
+  root user change them. The last part says where Ruby, the assistant, stands
+  (ADR 0069), with a link to its own page, `RescordWeb.RubySettingsLive`.
 
   The page opens again after a change, so that each part of it reads the
   organisation again.
@@ -17,8 +18,9 @@ defmodule RescordWeb.SettingsLive do
   use RescordWeb, :live_view
 
   import RescordWeb.AccountComponents
+  import RescordWeb.RubyComponents, only: [settings_line: 1]
 
-  alias Rescord.{Accounts, Tasks}
+  alias Rescord.{Accounts, Ruby, Tasks}
   alias RescordWeb.{TaskWords, TransferWords}
 
   @impl true
@@ -31,6 +33,7 @@ defmodule RescordWeb.SettingsLive do
        page_title: "Settings",
        problems: [],
        can_change?: can_change?,
+       ruby: Ruby.status(organisation),
        today: Accounts.today(organisation),
        time_zones: if(can_change?, do: Accounts.time_zones(), else: []),
        form: to_form(%{"time_zone" => organisation.time_zone}, as: :settings),
@@ -182,6 +185,8 @@ defmodule RescordWeb.SettingsLive do
       />
 
       <.transfer_parts_setting organisation={@organisation} can_change?={@can_change?} />
+
+      <.settings_line organisation={@organisation} status={@ruby} can_change?={@can_change?} />
     </Layouts.app>
     """
   end
