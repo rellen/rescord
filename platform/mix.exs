@@ -125,6 +125,9 @@ defmodule Rescord.MixProject do
       # The photos of a resident: their metadata, rotation and thumbnails,
       # through libvips (ADR 0055).
       {:image, "~> 0.74"},
+      # The reports as PDF: Typst, with its compiler as a native library
+      # (ADR 0076).
+      {:ash_typst, "~> 0.6.1"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 1.0"},

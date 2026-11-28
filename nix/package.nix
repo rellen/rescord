@@ -79,10 +79,28 @@ let
     };
   };
 
+  # The reports (ADR 0076): `ash_typst` has a native library too, the Typst
+  # compiler. It comes here in the same way. The version is the one of
+  # `ash_typst` in `platform/mix.lock`, and each hash is the one that
+  # `checksum-Elixir.AshTypst.NIF.exs` of that package gives for the name.
+  typstNative = rec {
+    version = "0.6.1";
+    name = "libtypst_nif-v${version}-nif-2.17-${mdexNative.target}.so.tar.gz";
+    file = fetchurl {
+      url = "https://github.com/frankdugan3/ash_typst/releases/download/v${version}/${name}";
+      hash =
+        {
+          x86_64-linux = "sha256-deq/piR+v1ELoOFFgfyQWjZ6piJXDQJl31EjmtkwB50=";
+          aarch64-linux = "sha256-PCVKsFb0cbaGLsRJWXz6pjzPvlejN3BSWy/LuDr9fdc=";
+        }
+        .${stdenv.hostPlatform.system};
+    };
+  };
+
   mixFodDeps = beamPackages.fetchMixDeps {
     pname = "rescord-deps";
     inherit version src;
-    hash = "sha256-R3wsS+t7K8Vw+RAtiugkFUD17XKOAjxXayC1TAw1Gqk=";
+    hash = "sha256-s50ZyEgY/r8wDew5lqxirbnqZw66gaIMTO2aRWFMNqM=";
   };
 in
 beamPackages.mixRelease {
@@ -108,6 +126,7 @@ beamPackages.mixRelease {
     mkdir -p "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH"
     cp ${mdexNative.file} "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH/${mdexNative.name}"
     cp ${mjmlNative.file} "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH/${mjmlNative.name}"
+    cp ${typstNative.file} "$RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH/${typstNative.name}"
   '';
 
   # The assets go into the release, with their digests.
@@ -117,7 +136,8 @@ beamPackages.mixRelease {
 
   # The library of MDEx was built for a system with its C library in a
   # usual place. Here it gets the path of the C library of the package. The
-  # library of mjml also names `libgcc_s`, which is beside the C++ library.
+  # libraries of mjml and of Typst also name `libgcc_s`, which is beside the
+  # C++ library.
   postInstall = ''
     patchelf --set-rpath ${lib.makeLibraryPath [ stdenv.cc.libc ]} \
       $out/lib/mdex_native-*/priv/native/*.so
@@ -127,7 +147,7 @@ beamPackages.mixRelease {
         stdenv.cc.cc.lib
       ]
     } \
-      $out/lib/mjml-*/priv/native/*.so
+      $out/lib/mjml-*/priv/native/*.so $out/lib/ash_typst-*/priv/native/*.so
   '';
 
   meta = {

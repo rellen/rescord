@@ -345,6 +345,12 @@ _The PostgreSQL data layer for Ash Framework_
 ## ash_postgres:multitenancy usage
 [ash_postgres:multitenancy usage rules](deps/ash_postgres/usage-rules/multitenancy.md)
 <!-- ash_postgres:multitenancy-end -->
+<!-- ash_typst-start -->
+## ash_typst usage
+_Precompiled NIFs and tooling to render Typst documents._
+
+[ash_typst usage rules](deps/ash_typst/usage-rules.md)
+<!-- ash_typst-end -->
 <!-- ash_workflow-start -->
 ## ash_workflow usage
 _Declarative workflow orchestration for the Ash Framework — multi-step
