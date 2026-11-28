@@ -198,6 +198,15 @@ release (ADR 0047).
 - The receipts of the expenses are files in the store of the server,
   beside the photos and the attachments, 20 MB each at most. The backup
   of the files holds them.
+- Rescord now checks `DATABASE_URL` and `RESCORD_S3_ENDPOINT` at the
+  start, and stops with the name of the setting when one is not a URL
+  with a host. `DATABASE_URL` takes the schemes `ecto://`, `postgres://`
+  and `postgresql://`, and the endpoint takes `http://` and `https://`.
+  The message never holds the value, so no password reaches the log.
+  Before the upgrade, check that a password in `DATABASE_URL` writes
+  each character that a URL may not hold as a `%` code, such as `%20`
+  for a space and `%5E` for `^`. A URL that worked before keeps working
+  when it has no such character.
 
 ### Added
 

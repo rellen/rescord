@@ -254,7 +254,7 @@ take, stop the start with the name of the setting.
 
 | Setting | Required | Default | What it is |
 | --- | --- | --- | --- |
-| `DATABASE_URL` | yes | | The database, as `ecto://USER:PASSWORD@HOST/DATABASE`. Add `?socket_dir=/run/postgresql` for a login over the local socket. |
+| `DATABASE_URL` | yes | | The database, as `ecto://USER:PASSWORD@HOST/DATABASE`, or with `postgres://` or `postgresql://`. Add `?socket_dir=/run/postgresql` for a login over the local socket. Write a character of the password that a URL may not hold as a `%` code, such as `%20` for a space. Rescord stops at the start when the value is no URL with a host. |
 | `PHX_HOST` | yes | | The name of the server in each link that Rescord sends, such as `rescord.example.org`. |
 | `PORT` | no | `4000` | The port of the web server, behind the reverse proxy. |
 | `RESCORD_LISTEN_ADDRESS` | no | `0.0.0.0` | The address that the web server listens on. `127.0.0.1` for a reverse proxy on the same machine, which the NixOS module and the systemd unit set. `::` for IPv6 and IPv4. |
@@ -272,7 +272,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_MAIL_FROM_NAME` | no | `Rescord` | The name that the mail comes from, such as the name of the rescue. |
 | `RESCORD_STORAGE` | no | `disk` | Where the photos and the PDFs go: `disk` or `s3`. |
 | `RESCORD_FILES_DIR` | with `disk` | | The directory of the files. The user of Rescord must write it. |
-| `RESCORD_S3_ENDPOINT` | with `s3` | | The address of the service, such as `https://s3.example.org`. |
+| `RESCORD_S3_ENDPOINT` | with `s3` | | The address of the service, with `http://` or `https://`, such as `https://s3.example.org`. |
 | `RESCORD_S3_REGION` | no | `auto` | The region that the service asks for. |
 | `RESCORD_S3_BUCKET` | with `s3` | | The bucket. |
 | `RESCORD_S3_ADDRESSING` | no | `path` | Where the bucket goes in each address: `path`, as in `https://s3.example.org/rescord/...`, or `virtual`, as in `https://rescord.s3.example.org/...`. Garage and MinIO take `path` as they are set up by default. Tigris needs `virtual`, with the endpoint `https://t3.storage.dev` and the region `auto`. |
