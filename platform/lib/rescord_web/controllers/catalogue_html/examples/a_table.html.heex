@@ -1,0 +1,14 @@
+<.table
+  id="example-table"
+  rows={[
+    %{id: "example-clover", name: "Clover", species: "Rabbit"},
+    %{id: "example-pip", name: "Pip", species: "Guinea pig"}
+  ]}
+  row_id={& &1.id}
+>
+  <:col :let={row} label="Resident">{row.name}</:col>
+  <:col :let={row} label="Species">{row.species}</:col>
+  <:action :let={row}>
+    <.button type="button" aria-label={"Open #{row.name}"}>Open</.button>
+  </:action>
+</.table>

@@ -32,9 +32,7 @@ defmodule Rescord.Release.CheckTest do
   end
 
   defp mailer!(settings) do
-    previous = Application.get_env(:rescord, Rescord.Mailer)
-    Application.put_env(:rescord, Rescord.Mailer, Rescord.Mailer.smtp_options(settings))
-    on_exit(fn -> Application.put_env(:rescord, Rescord.Mailer, previous) end)
+    Shoddy.Tests.put_app_env(:rescord, Rescord.Mailer, Rescord.Mailer.smtp_options(settings))
   end
 
   defp settings(port, username, password),
@@ -225,6 +223,51 @@ defmodule Rescord.Release.CheckTest do
 
       assert [{:fail, "assistant", words}] = Check.assistant()
       assert words =~ "countries: this service needs a key"
+    end
+  end
+
+  describe "the usage counts" do
+    import Rescord.AccountsFixtures
+
+    alias Rescord.Usage
+
+    @endpoint "https://collector.example.org/v1/metrics"
+
+    setup do
+      :persistent_term.erase({Rescord.Usage, :mode})
+      on_exit(fn -> :persistent_term.erase({Rescord.Usage, :mode}) end)
+      %{root: root!()}
+    end
+
+    test "stay on a new server, which is no fault" do
+      assert {:ok, "usage", "kept on this server, and sent nowhere"} = Check.usage()
+    end
+
+    test "are a note when they are off", %{root: root} do
+      {:ok, _settings} = Usage.save_settings(%{mode: :off}, actor: root)
+      assert {:note, "usage", _words} = Check.usage()
+    end
+
+    test "are a fault when the last send failed, and the line names no address", %{
+      root: root
+    } do
+      {:ok, _settings} = Usage.save_settings(%{mode: :send, endpoint: @endpoint}, actor: root)
+      assert {:ok, "usage", words} = Check.usage()
+      refute words =~ "collector"
+
+      today = Date.utc_today()
+      Usage.add_count!(Date.add(today, -1), :tools, :page, "dose", 1, authorize?: false)
+      Rescord.Repo.query!("update usage_settings set sending_since = $1", [Date.add(today, -1)])
+      Req.Test.stub(Rescord.Usage.Sender, &Plug.Conn.send_resp(&1, 500, ""))
+      :ok = Usage.send_due(today)
+
+      assert {:fail, "usage", words} = Check.usage()
+      assert words == "sent each day, and the last send failed (status). See /root/usage"
+
+      Req.Test.stub(Rescord.Usage.Sender, &Plug.Conn.send_resp(&1, 200, ""))
+      :ok = Usage.send_due(today)
+      assert {:ok, "usage", words} = Check.usage()
+      assert words =~ "Each day up to #{Date.to_iso8601(Date.add(today, -1))} is done"
     end
   end
 

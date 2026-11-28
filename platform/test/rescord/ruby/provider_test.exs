@@ -215,13 +215,15 @@ defmodule Rescord.Ruby.ProviderTest do
       refute match?({:ok, [%{api_key: key}]} when is_binary(key), read)
     end
 
+    # One module for each secret: the key of a provider, and the token of
+    # the usage counts (ADR 0098).
     test "only one module of Rescord writes the mark that opens it" do
       marked =
         for path <- Path.wildcard("lib/**/*.{ex,heex}"),
             File.read!(path) =~ ~r/(?<![a-z_])context: %\{rescord_vault: :open\}/,
             do: path
 
-      assert marked == ["lib/rescord/ruby/llm.ex"]
+      assert Enum.sort(marked) == ["lib/rescord/ruby/llm.ex", "lib/rescord/usage/sender.ex"]
     end
 
     test "is not in the record that an action returns", %{root: root} do

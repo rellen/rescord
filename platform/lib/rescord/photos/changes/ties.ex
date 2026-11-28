@@ -11,7 +11,12 @@ defmodule Rescord.Photos.Changes.Ties do
   a policy.
   """
   def options(changeset, context) do
-    base = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+    base = [
+      actor: context.actor,
+      tenant: changeset.tenant,
+      context: Rescord.Correlation.context(changeset),
+      authorize?: false
+    ]
 
     case changeset.as_of do
       %DateTime{} = instant -> [as_of: instant] ++ base

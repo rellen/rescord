@@ -157,9 +157,6 @@ defmodule RescordWeb.MeasurementsLive do
          to: page_path(socket.assigns.organisation, socket.assigns.resident, socket.assigns.range)
        )}
     else
-      {:error, words} when is_binary(words) ->
-        {:noreply, socket |> assign(problems: [words]) |> assign_form(fields)}
-
       {:error, error} ->
         {:noreply,
          socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}

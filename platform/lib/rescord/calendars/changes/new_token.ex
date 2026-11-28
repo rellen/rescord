@@ -31,7 +31,11 @@ defmodule Rescord.Calendars.Changes.NewToken do
   @impl true
   def change(changeset, _opts, %{actor: %Accounts.User{id: user_id}}) do
     Ash.Changeset.before_action(changeset, fn changeset ->
-      internal = [tenant: changeset.tenant, authorize?: false]
+      internal = [
+        tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
+        authorize?: false
+      ]
 
       case Accounts.member_of_user(user_id, internal) do
         {:ok, %{id: member_id}} ->

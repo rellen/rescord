@@ -35,19 +35,33 @@ defmodule Rescord.Ruby.Digests.Shape do
 
   def date(_other, _tenant), do: {:error, "date: give a date as YYYY-MM-DD"}
 
+  @uuid ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+
+  @doc """
+  The id in what the model sent for a record of a kind: an id, or the
+  `ref` of a result (`resident:<id>`). Returns `nil` for a text that is
+  neither. An id is the text of 36 characters: `Ecto.UUID.cast/1` also
+  takes any text of 16 bytes, and a name can be one.
+  """
+  @spec id_in(String.t(), String.t()) :: String.t() | nil
+  def id_in(text, kind) when is_binary(text) do
+    text = text |> String.trim() |> String.replace_prefix(kind <> ":", "")
+    if text =~ @uuid, do: String.downcase(text)
+  end
+
   @doc "The id of an argument: `nil` for none, and an error for a text that is no id."
   @spec id(term, String.t()) :: {:ok, String.t() | nil} | {:error, String.t()}
   def id(nothing, _name) when nothing in [nil, ""], do: {:ok, nil}
 
   def id(text, name) when is_binary(text) do
-    case Ecto.UUID.cast(String.trim(text)) do
-      {:ok, id} -> {:ok, id}
-      :error -> {:error, "#{name}: give the id of a record, as another tool returned it"}
+    case id_in(text, name) do
+      nil -> {:error, "#{name}: give the ref or the id of a record, as another tool returned it"}
+      id -> {:ok, id}
     end
   end
 
   def id(_other, name),
-    do: {:error, "#{name}: give the id of a record, as another tool returned it"}
+    do: {:error, "#{name}: give the ref or the id of a record, as another tool returned it"}
 
   @doc "One of a closed list of words, or the default with none."
   @spec one_of(term, String.t(), [String.t()], String.t()) ::
@@ -121,8 +135,4 @@ defmodule Rescord.Ruby.Digests.Shape do
   end
 
   def cut(_none, _limit), do: nil
-
-  @doc "A map without the keys that have no value."
-  @spec drop_nil(map) :: map
-  def drop_nil(map), do: Map.reject(map, fn {_key, value} -> is_nil(value) end)
 end

@@ -183,6 +183,12 @@ defmodule Rescord.Transfers.ExportImportTest do
                  actor: context.wattle_admin
                )
 
+      # The files go in a job, after the send (ADR 0100).
+      assert sent.state == :sending
+      assert %{success: 1} = Oban.drain_queue(queue: :transfers)
+      {:ok, sent} = Transfers.transfer(sent.id, actor: context.wattle_admin)
+      assert sent.state == :sent
+
       {:ok, _accepted} = Transfers.accept_transfer(sent, actor: context.banksia_admin)
       assert_photos(sent, context.banksia, context.banksia_member, context, made)
     end

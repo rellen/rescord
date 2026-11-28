@@ -20,7 +20,12 @@ defmodule Rescord.Residents.Changes.JoinGroup do
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, group ->
-      base = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+      base = [
+        actor: context.actor,
+        tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
+        authorize?: false
+      ]
 
       options =
         case changeset.as_of do

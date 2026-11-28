@@ -143,7 +143,9 @@ defmodule Rescord.Ruby.RepliesTest do
       assert text_of(question) == said.header <> "Who is in our care?"
 
       assert Enum.map(first.opts[:tools], & &1.name) |> Enum.sort() ==
-               ["find_residents", "get_task", "tasks_for_day"]
+               Enum.sort(
+                 for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: to_string(name)
+               )
 
       # The second request has the result of the tool: the resident of this
       # refuge, and none of the other one.
@@ -536,8 +538,10 @@ defmodule Rescord.Ruby.RepliesTest do
       assert [%{"text" => ^system, "cache_control" => %{"type" => "ephemeral", "ttl" => "1h"}}] =
                body["system"]
 
-      assert Enum.map(body["tools"], & &1["name"]) ==
-               ["find_residents", "get_task", "tasks_for_day"]
+      assert Enum.map(body["tools"], & &1["name"]) |> Enum.sort() ==
+               Enum.sort(
+                 for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: to_string(name)
+               )
 
       assert Jason.encode!(body["messages"]) =~ "rescue: Wattle Creek"
       assert Jason.encode!(body["messages"]) =~ "Who is in our care?"
@@ -586,7 +590,7 @@ defmodule Rescord.Ruby.RepliesTest do
 
     test "nothing listens at the address", context do
       fake!([])
-      Application.put_env(:rescord, :fake_anthropic_url, "http://127.0.0.1:1")
+      Shoddy.Tests.put_app_env(:rescord, :fake_anthropic_url, "http://127.0.0.1:1")
 
       {conversation, _message} = ask!(context, "Who is #{@marker}?")
       log = capture_log(fn -> work!() end)

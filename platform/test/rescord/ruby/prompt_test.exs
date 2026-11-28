@@ -20,9 +20,17 @@ defmodule Rescord.Ruby.PromptTest do
     refute system =~ ~r/\b(NEVER|ALWAYS|MUST|IMPORTANT|CRITICAL)\b/
   end
 
+  # A name with an underscore is no word of the prompt. A name that is one
+  # word (`housing`) is a word of the prompt too ("their housing"), so the
+  # test looks for it as a name: in backticks, or next to "tool".
   test "the system prompt names no tool: each tool has its own description" do
-    for %{name: name} <- Catalogue.entries() do
-      refute Prompt.system() =~ to_string(name)
+    for %{name: name} <- Catalogue.entries(), name = to_string(name) do
+      if String.contains?(name, "_") do
+        refute Prompt.system() =~ name
+      else
+        word = Regex.escape(name)
+        refute Prompt.system() =~ ~r/`#{word}`|\b#{word} tool\b|\btool #{word}\b/i
+      end
     end
   end
 

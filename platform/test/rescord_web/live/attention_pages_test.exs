@@ -69,7 +69,7 @@ defmodule RescordWeb.AttentionPagesTest do
     assert has_element?(view, "#attention h2", "Needs attention")
     assert has_element?(view, "#attention-summary[role=status]", "Nothing needs attention now")
     assert has_element?(view, "#attention-summary span[data-state=ok]")
-    assert has_element?(view, "#attention-nothing", "reads them again each minute")
+    assert has_element?(view, "#attention-nothing", "shows a change at once")
     refute has_element?(view, "ul[data-attention]")
   end
 
@@ -312,26 +312,31 @@ defmodule RescordWeb.AttentionPagesTest do
     assert has_element?(view, "#attention-summary", "Nothing needs attention now")
   end
 
-  test "reads again by itself, and finds what another member did", context do
+  test "shows at once what another member did, and reads again by its clock", context do
     view = open(context, context.member)
     assert has_element?(view, "#attention-summary", "Nothing needs attention now")
 
+    # The page hears of the task, and reads again (ADR 0096).
     task = task!(context, "Clean the shed", Date.add(context.today, -1), "08:00")
-
-    # The page has the old read until its clock says so.
-    refute has_element?(view, "#attention-task-#{task.id}")
-    send(view.pid, :read_again)
     assert has_element?(view, "#attention-task-#{task.id}", "Clean the shed")
     assert has_element?(view, "#attention-summary", "1 thing needs attention now.")
 
     {:ok, _} = Tasks.complete_task(task, %{}, context.options)
-    send(view.pid, :read_again)
     refute has_element?(view, "#attention-task-#{task.id}")
     assert has_element?(view, "#attention-summary", "Nothing needs attention now")
 
+    # A change of another part of the organisation too: the stock.
+    Inventory.add_item!(%{name: "Meadow hay", reorder_level: 20}, context.admin)
+    assert has_element?(view, "#attention-inventory")
+    assert render(view) =~ "Meadow hay"
+
+    # The clock still reads: the time alone makes a task overdue.
+    send(view.pid, :read_again)
+    assert has_element?(view, "#attention-inventory")
+
     # A message that the page does not know changes nothing.
     send(view.pid, :something_else)
-    assert has_element?(view, "#attention-summary", "Nothing needs attention now")
+    assert has_element?(view, "#attention-summary", "1 thing needs attention now.")
   end
 
   test "still leads to each part of the organisation", context do

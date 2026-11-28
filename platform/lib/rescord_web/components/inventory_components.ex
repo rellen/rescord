@@ -11,6 +11,7 @@ defmodule RescordWeb.InventoryComponents do
   use RescordWeb, :html
 
   import RescordWeb.ToolComponents, only: [strength_controls: 1]
+  import Shoddy.Strings, only: [upcase_first: 1]
 
   alias Rescord.{Accounts, Dosage, Inventory}
   alias RescordWeb.{InventoryWords, ResidentWords, TaskWords, ToolWords}
@@ -95,7 +96,7 @@ defmodule RescordWeb.InventoryComponents do
               <td data-label="Where">
                 <ul>
                   <li :for={{place, level} <- lot_stock.places}>
-                    {String.capitalize(place_words(place, @place_names))}: {InventoryWords.quantity(
+                    {upcase_first(place_words(place, @place_names))}: {InventoryWords.quantity(
                       level,
                       @item
                     )}
@@ -463,7 +464,7 @@ defmodule RescordWeb.InventoryComponents do
         </:col>
         <:col :let={movement} field="location_id" label="Where">
           <span data-label="Where">
-            {String.capitalize(place_words(movement.location_id, @place_names))}
+            {upcase_first(place_words(movement.location_id, @place_names))}
           </span>
         </:col>
         <:col :let={movement} field="author_id" label="Who">
@@ -581,7 +582,7 @@ defmodule RescordWeb.InventoryComponents do
       <.problems :if={@refused == :reorder} list={@problems} />
       <ul :if={@wanted != []} id="wanted">
         <li :for={level <- @wanted}>
-          {String.capitalize(place_words(level.location_id, @place_names))}: bring more when
+          {upcase_first(place_words(level.location_id, @place_names))}: bring more when
           the stock there is below {InventoryWords.quantity(level.quantity, @item)}
         </li>
       </ul>
@@ -675,7 +676,7 @@ defmodule RescordWeb.InventoryComponents do
   end
 
   defp short_words(short, item, names) do
-    "#{String.capitalize(place_words(short.location_id, names))} has " <>
+    "#{upcase_first(place_words(short.location_id, names))} has " <>
       "#{InventoryWords.quantity(short.level, item)} that is good to use, and wants " <>
       "#{InventoryWords.quantity(short.wanted, item)} or more."
   end

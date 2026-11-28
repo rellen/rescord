@@ -93,7 +93,11 @@ defmodule RescordWeb.LocationLive do
       |> Locations.settle(socket.assigns.node.location.id, options)
       |> after_write(socket)
     else
-      {:error, words} -> {:noreply, assign(socket, problems: [words])}
+      {:error, words} when is_binary(words) ->
+        {:noreply, assign(socket, problems: [words])}
+
+      {:error, error} ->
+        {:noreply, assign(socket, problems: Rescord.Accounts.error_messages(error))}
     end
   end
 

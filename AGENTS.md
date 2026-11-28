@@ -312,6 +312,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A change to what a page can or cannot do for a person with a
     disability changes the accessibility statement of the colophon
     (`controllers/page_html/colophon.html.heex`) too.
+- **The catalogue of the components** (ADR 0095) is the page
+  `/dev/components`, in development and in the tests. A new function of
+  `CoreComponents`, a new state of one, and a new icon get an example: a
+  template in `lib/rescord_web/controllers/catalogue_html/examples/` and
+  a line of the list in `RescordWeb.CatalogueHTML`. The headings of an
+  example start at `h4`, and each `id` in it starts with `example-`. The
+  phone test and the accessibility test hold each example as they hold a
+  page. Do not add Phoenix Storybook.
 - **A collection of records is a `Cinder.collection`** (ADR 0014): a table,
   a list or a grid with filters, a sort, a search and pages. Do not write
   those by hand.
@@ -425,13 +433,59 @@ hand (ADR 0073). Read it before you write a migration. In short:
       default. Work that reaches outside the database, such as an email,
       runs in a job: `delivery: {AshOban.Signals, queue: :default}`. Such a
       job has no actor.
+    - When the action of a job writes its record in several steps, the
+      nested writes pass `context: %{signal_path: input.context[:signal_path]}`,
+      so their own `signal_in` policy holds, and each one filters on the
+      state that the job expects, so a person who changed the record in
+      the meantime wins (ADR 0100, `Rescord.Transfers.Actions.CopyFiles`).
+      A count of the work is written at most once each 2 seconds, since
+      each write makes the open pages read again (ADR 0096).
+    - `emit ... where:` is evaluated before the hooks of the action, so it
+      cannot see a value that a change sets. Emit with `dynamic?: true`
+      and `Ash.Signals.emit/5` in an `after_action` then (ADR 0100).
     - A test that reads the email of an invitation calls
       `send_invitations/0` of `Rescord.AccountsFixtures` first. Oban runs
       no job by itself in a test.
     - Do not take `:ash_signals` out of the compilers in `mix.exs`, or the
       line `:temporal_safe_modules` out of `config/config.exs`.
-  - A widget that shows a resource reloads on that resource's
-    `Ash.Notifier.PubSub` notification, on a topic named `<resources>:changed`.
+  - **A page hears a change of another person** (ADR 0096). Each resource
+    publishes by itself: `Rescord.Resource` gives it the notifier
+    `Ash.Notifier.PubSub`, with `Rescord.Changes` as its module.
+    - A page calls `LiveChanges.listen(socket, [Domain], &read_again/1)`
+      in `mount/3`, before it reads. The function reads through the code
+      interface, as the person of the page, and assigns. It does not
+      assign a form again. For a `Cinder.collection` it calls
+      `Cinder.refresh_table(socket, "<id>", silent: true)`. That is not
+      enough for a collection of a temporal resource: its query holds
+      the instant at which the page built it, so a refresh reads the
+      past. Give such a query `as_of:` from an assign, and set the
+      assign again in the function.
+    - Never draw anything from a message. A `Rescord.Changes.Change` has
+      no attribute of a record, and it must stay so: do not give a
+      publication a `transform`, and do not broadcast a record on
+      `Rescord.PubSub` by hand. A topic is not a policy.
+    - A resource in the schema of an organisation needs no line. A
+      shared resource (`shared?: true`) writes its publications, with
+      the attribute that holds the id of the organisation
+      (`Rescord.Transfers.Transfer`), or it goes on the list of the
+      quiet resources in `Rescord.ChangesTest`, with the reason.
+    - Several writes in one transaction use `Ash.transact/3`. A write
+      inside `Rescord.Repo.transaction/1` loses its notification, and a
+      test raises for it (`config :ash, :missed_notifications, :raise`).
+    - In a test a page reads again at once: write, then render. A page
+      does not hear the process that wrote, and the test process is not
+      the page. For a page that has not read yet, open it inside
+      `with_slow_changes/1` of `RescordWeb.ConnCase`. For a
+      `Cinder.collection`, render with `render_changes/1` of the same
+      module, which also waits for the read of the collection.
+    - A `:for` over a list that reads again has a `:key`.
+    - The chat of the assistant does not use this: it has its own topic
+      (ADR 0069).
+  - **No stream of LiveView, and no `assign_async`, without a reason**
+    (ADR 0096). A list is an assign, or a `Cinder.collection`. A read
+    that the page is for stays in `mount/3` until the metrics say that
+    it is slow. An event that works outside the database while the page
+    waits can use `start_async`.
   - Once there is authentication, every Ash call from a LiveView passes the
     actor explicitly. A refused read returns an empty result, not an error,
     so a test that reads asserts a non-empty result.
@@ -449,6 +503,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
     compile (ADR 0012).
   - A domain adds `AshPaperTrail.Domain` to its extensions, with
     `paper_trail do include_versions? true end`.
+  - **One piece of work has one correlation id** (ADR 0101). Each
+    version has `correlation_id`, `operation_id` and `causation_id`,
+    which `Rescord.Resource` sets: write none of them by hand. A change
+    that builds the options of a nested action gives it
+    `context: Rescord.Correlation.context(changeset)`, beside
+    `tenant: changeset.tenant`; `Rescord.CorrelationTest` fails for a
+    file without it. A function of a domain that runs two actions or more
+    starts with `opts = Rescord.Correlation.start(opts)` and gives those
+    options to each action.
   - A change, validation or preparation for a temporal resource is a module
     that declares `temporal_safe?/1`. Pass `as_of:` as an action option, and
     use `now()` in an expression, never the wall clock.
@@ -689,7 +752,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   `:forbidden`), in the domain that returns it. Do not return a sentence
   from a change or an action: Ash makes it `Ash.Error.Unknown`. Do not
   make a Splode root of our own. An atom, such as `{:error, :busy}`, is
-  for a result that the caller matches and that no person sees.
+  for a result that the caller matches and that no person sees. Put the
+  module in `Errors` of its domain, give it a reason that is an atom and
+  never a value that a person typed, and let a page say it with
+  `Rescord.Accounts.error_messages/1`, which takes one such error too.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the
   server sends to it with zod when its shape matters; zod is not a dependency
   yet, so ask before the first use (`docs/architecture.md`, "Code in the
@@ -934,6 +1000,15 @@ hand (ADR 0073). Read it before you write a migration. In short:
     other parameter is of Cinder: the page gives it back in a link, and
     does not read it. A new parameter of the page must not have the name
     of a field of a filter.
+- **The tasks page** (ADR 0097). The tasks of a day are a collection of
+  Cinder, so the page does not hold them.
+  - An event that names a task by its id reads it with
+    `Rescord.Tasks.task_of_day/3`: as the person, and only from the tasks
+    that the day of the page shows. Never act on a task by the id alone.
+  - The parameter `day` is of the page. Each other parameter is of Cinder:
+    the links to another day give them back, without `page`.
+  - A link from another page to one task is `tasks?day=<date>#task-<id>`.
+    The id is on the title of the task, because Cinder writes the row.
 - **The conditions of a resident** (ADR 0083). A condition of a resident
   is an episode, `Rescord.Journal.Episode`.
   - Only a diagnosis starts an episode, through
@@ -1033,6 +1108,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/units.ex`, `units/` | the units of measure, the quantities and their arithmetic, and the two Ash types (ADR 0071) |
 | `platform/lib/rescord/tenant_migrations.ex` | the repair of a tenant migration (ADR 0025) |
 | `platform/lib/rescord/resource.ex` | the base of each resource, and its checks |
+| `platform/lib/rescord/changes.ex` | what a page hears when a record changes: the topics, the message with no record, and the module that the notifier of each resource calls (ADR 0096) |
 | `platform/lib/rescord/rate_limit.ex` | the counts of the rate limits (Hammer, in ETS) |
 | `platform/lib/rescord/dosage.ex` | the arithmetic of a dose, for the dose calculator of the tools (ADR 0072) |
 | `platform/lib/rescord/reports.ex`, `reports/` | the reports as PDF: the actions, the facts of each report, and the render (ADR 0076) |
@@ -1053,8 +1129,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
 | `platform/lib/rescord_web/widget.ex` | bookkeeping shared by widgets |
+| `platform/lib/rescord_web/live_changes.ex` | a page listens for the changes of its domains, waits a moment, and reads once (ADR 0096) |
 | `platform/lib/rescord_web/components/` | function components and layouts; the parts of the pages of each area (ADR 0037) |
 | `platform/lib/rescord_web/chart.ex`, `components/chart_components.ex` | the geometry of a chart, and the line chart and the sparkline as SVG (ADR 0080) |
+| `platform/lib/rescord_web/controllers/catalogue_html.ex`, `catalogue_html/examples/` | the catalogue of the components at `/dev/components`, and a template for each example (ADR 0095) |
 | `platform/assets/js/` | `app.js` of the generator, and our TypeScript modules |
 | `platform/test/rescord_web/features/` | the browser tests (ADR 0023) |
 | `platform/assets/css/app.css` | the order of the CSS layers, and their imports |

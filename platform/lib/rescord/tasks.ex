@@ -99,6 +99,73 @@ defmodule Rescord.Tasks do
     |> Ash.read(opts)
   end
 
+  @doc """
+  The query that reads the tasks of one day for a page (ADR 0097): each
+  task that is due on that day of the organisation, with its kind and its
+  subjects, in the order of their times. With `earlier: true` it also has
+  each task of an earlier day that is still due, which comes first, as the
+  page of today shows. A collection of a page reads with it, and adds its
+  filters, its search and its page.
+
+  `opts` names the organisation in `:tenant`, and the actor.
+  """
+  @spec query_to_day(Date.t(), keyword) :: Ash.Query.t()
+  def query_to_day(%Date{} = date, opts \\ []) do
+    {earlier?, opts} = Keyword.pop(opts, :earlier, false)
+    {from, to} = Rescord.Accounts.day_range(opts[:tenant], date)
+
+    Task
+    |> Ash.Query.for_read(:read, %{}, opts)
+    |> on_day(from, to, earlier?)
+    |> Ash.Query.sort(due_at: :asc, title: :asc, id: :asc)
+    |> Ash.Query.load(@facts)
+  end
+
+  defp on_day(query, from, to, false),
+    do: Ash.Query.filter(query, due_at >= ^from and due_at < ^to)
+
+  defp on_day(query, from, to, true) do
+    Ash.Query.filter(
+      query,
+      (due_at >= ^from and due_at < ^to) or (state == :due and due_at < ^from)
+    )
+  end
+
+  @doc """
+  One task of the query of a day (`query_to_day/2`, with the same `opts`),
+  with its kind and its subjects, or `nil`: when there is no such task,
+  when the day does not show it, and when the actor cannot read it. A page
+  that gets the id of a task from the browser finds the task with this, so
+  a text that is no id gives `nil` too.
+  """
+  @spec task_of_day(Date.t(), String.t(), keyword) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, term}
+  def task_of_day(%Date{} = date, task_id, opts \\ []) when is_binary(task_id) do
+    case Ecto.UUID.cast(task_id) do
+      {:ok, task_id} ->
+        date
+        |> query_to_day(opts)
+        |> Ash.Query.filter(id == ^task_id)
+        |> Ash.read_one(Keyword.delete(opts, :earlier))
+
+      :error ->
+        {:ok, nil}
+    end
+  end
+
+  @doc """
+  Narrows a query of tasks to those of one person: `:anybody` gives the
+  tasks that name no member, which are for each member, and the id of a
+  user gives the tasks that name that user. It is the filter "Who" of the
+  page of the tasks.
+  """
+  @spec for_person(Ash.Query.t(), :anybody | String.t()) :: Ash.Query.t()
+  def for_person(%Ash.Query{} = query, :anybody),
+    do: Ash.Query.filter(query, fragment("cardinality(?) = 0", assignee_ids))
+
+  def for_person(%Ash.Query{} = query, user_id) when is_binary(user_id),
+    do: Ash.Query.filter(query, ^user_id in assignee_ids)
+
   @doc "The tasks that are due and whose time is before `now`, the oldest first."
   def overdue(%DateTime{} = now, opts \\ []) do
     Task
@@ -173,7 +240,7 @@ defmodule Rescord.Tasks do
   end
 
   defp named(query, :all), do: query
-  defp named(query, {:mine, user_id}), do: Ash.Query.filter(query, ^user_id in assignee_ids)
+  defp named(query, {:mine, user_id}), do: for_person(query, user_id)
 
   # A task with no member is for each member.
   defp named(query, {:mine_and_open, user_id}) do

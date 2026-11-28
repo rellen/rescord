@@ -50,4 +50,5 @@ too much to put inline.
   file there. If a session does not pick the file up, add a `CLAUDE.md` that
   holds the one line `@AGENTS.md`.
 - `shoddy` and `shoddy_phoenix` ship no usage rules. Writing them is a
-  pattern to give back to those libraries.
+  pattern to give back to those libraries. (Both ship them since 15
+  November 2026, and `platform/AGENTS.md` links them.)

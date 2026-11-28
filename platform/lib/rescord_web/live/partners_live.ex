@@ -29,6 +29,8 @@ defmodule RescordWeb.PartnersLive do
 
     {:ok,
      socket
+     # A request of another refuge, and its answer, show at once (ADR 0096).
+     |> LiveChanges.listen([Transfers], &assign_partnerships/1)
      |> assign(
        page_title: "Partner refuges",
        problems: [],

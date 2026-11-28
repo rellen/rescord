@@ -18,7 +18,12 @@ defmodule Rescord.Expenses.Changes.TakeOffReceipts do
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.before_action(changeset, fn changeset ->
-      options = [tenant: changeset.tenant, actor: context.actor, authorize?: false]
+      options = [
+        tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
+        actor: context.actor,
+        authorize?: false
+      ]
 
       Receipt
       |> Ash.Query.filter(expense_id == ^changeset.data.id)

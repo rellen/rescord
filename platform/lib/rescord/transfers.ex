@@ -58,6 +58,7 @@ defmodule Rescord.Transfers do
       define :accept_transfer, action: :accept
       define :decline_transfer, action: :decline
       define :withdraw_transfer, action: :withdraw
+      define :send_transfer_again, action: :send_again
     end
 
     resource RemotePartner do

@@ -273,6 +273,31 @@ defmodule RescordWeb.OrganisationPagesTest do
         assert {:error, {:redirect, %{to: "/"}}} = live(context.conn, path)
       end
     end
+
+    test "move to each other over the open socket, from the menu and the parts (ADR 0099)",
+         context do
+      short = context.organisation.short_name
+      {view, html} = open(context.conn, context.root, ~p"/o/#{short}")
+      document = LazyHTML.from_fragment(html)
+
+      for selector <- ["#site-menu a", "nav[aria-labelledby='parts-heading'] a"] do
+        links = LazyHTML.query(document, selector)
+        live_links = LazyHTML.query(document, selector <> "[data-phx-link='redirect']")
+
+        # Sign out is the one link of the menu that is no page.
+        others = Enum.count(LazyHTML.query(document, selector <> "[data-method]"))
+
+        assert Enum.count(links) > 10
+        assert Enum.count(live_links) == Enum.count(links) - others
+      end
+
+      moved = view |> element("#site-menu a", "Tasks") |> render_click()
+      assert {:error, {:live_redirect, %{to: to}}} = moved
+      assert to == ~p"/o/#{short}/tasks"
+
+      assert {:ok, _tasks, _html} =
+               follow_redirect(moved, sign_in(context.conn, context.root))
+    end
   end
 
   describe "the settings page" do

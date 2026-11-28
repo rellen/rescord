@@ -40,8 +40,7 @@ defmodule RescordWeb.FeatureCase do
   # This runs before the setup of `PhoenixTest.Playwright.Case`, so it does
   # not read the database.
   setup do
-    Application.put_env(:swoosh, :shared_test_process, self())
-    on_exit(fn -> Application.delete_env(:swoosh, :shared_test_process) end)
+    Shoddy.Tests.put_app_env(:swoosh, :shared_test_process, self())
     forget_sign_in_counts()
     :ok
   end

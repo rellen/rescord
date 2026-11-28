@@ -13,9 +13,11 @@ defmodule Rescord.Transfers.Changes.SendTransfer do
       actor cannot read is refused with the words of a resident that is
       not there.
 
-  After the write, in the transaction, it copies each file of the copy to
-  the store of the refuge that receives it (`Rescord.Transfers.Files`), so
-  a fault of the store writes no transfer.
+  It copies no file (ADR 0100). It writes the sources of the files of the
+  copy beside it, with the state `sending`, and
+  `Rescord.Transfers.Changes.StartCopy` emits `:transfer_started`: a job
+  copies the files after the commit. A copy with no file is `sent` at
+  once.
 
   `take_copy/3` is the part that `Rescord.Transfers.Changes.ExportTransfer`
   shares.
@@ -27,7 +29,7 @@ defmodule Rescord.Transfers.Changes.SendTransfer do
 
   alias Ash.Changeset
   alias Rescord.Accounts
-  alias Rescord.Transfers.{Files, Partnership, Snapshot}
+  alias Rescord.Transfers.{Partnership, Snapshot}
 
   @impl true
   def change(changeset, _opts, context) do
@@ -49,23 +51,13 @@ defmodule Rescord.Transfers.Changes.SendTransfer do
     to_id = Changeset.get_attribute(changeset, :to_organisation_id)
 
     if partners?(from_id, to_id) do
+      changeset = take_copy(changeset, actor, from_id)
+      sources = changeset.context[:sources] || []
+
       changeset
-      |> take_copy(actor, from_id)
-      |> Changeset.after_action(fn changeset, transfer ->
-        sources = changeset.context[:sources] || []
-
-        case Files.copy(sources, transfer.to_organisation_id, transfer.id) do
-          :ok ->
-            {:ok, transfer}
-
-          {:error, _error} ->
-            {:error,
-             Ash.Error.Changes.InvalidArgument.exception(
-               field: :resident_id,
-               message: "has a file that did not reach the store. Try again later"
-             )}
-        end
-      end)
+      |> Changeset.force_change_attribute(:state, if(sources == [], do: :sent, else: :sending))
+      |> Changeset.force_change_attribute(:sources, if(sources != [], do: sources))
+      |> Changeset.force_change_attribute(:files_total, length(sources))
     else
       Changeset.add_error(changeset, field: :partner_id, message: "is not a partner refuge")
     end
@@ -75,7 +67,8 @@ defmodule Rescord.Transfers.Changes.SendTransfer do
   Checks the parts, reads the resident in the schema of the refuge
   `from_id` as `actor`, and gives the changeset the copy, the parts, the
   resident and its name. The sources of the files go into the context of
-  the changeset, under `:sources`.
+  the changeset, under `:sources`: for each file its id in the copy, its
+  key in the store of `from_id`, and its type.
   """
   def take_copy(changeset, actor, from_id) do
     parts = changeset |> Changeset.get_argument(:parts) |> List.wrap() |> Enum.uniq()

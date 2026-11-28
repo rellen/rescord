@@ -22,7 +22,7 @@ defmodule RescordWeb.ToolComponents do
     ~H"""
     <ul data-tools>
       <li>
-        <a href={~p"/o/#{@organisation.short_name}/tools/dose"}>Dose calculator</a>
+        <.link navigate={~p"/o/#{@organisation.short_name}/tools/dose"}>Dose calculator</.link>
         <small>
           A body weight times a dose rate, as a dose, a volume or a number of tablets, with
           each step of the arithmetic.

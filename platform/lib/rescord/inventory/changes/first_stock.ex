@@ -31,6 +31,7 @@ defmodule Rescord.Inventory.Changes.FirstStock do
         },
         actor: context.actor,
         tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
         authorize?: false
       )
       |> Ash.create()

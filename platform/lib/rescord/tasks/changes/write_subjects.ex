@@ -18,7 +18,12 @@ defmodule Rescord.Tasks.Changes.WriteSubjects do
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, task ->
-      options = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+      options = [
+        actor: context.actor,
+        tenant: changeset.tenant,
+        context: Rescord.Correlation.context(changeset),
+        authorize?: false
+      ]
 
       subjects =
         for {argument, key} <- @arguments,

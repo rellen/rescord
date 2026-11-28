@@ -62,7 +62,7 @@ defmodule Rescord.Ruby.Digests.TasksForDay do
            },
            "resident" => %{
              "type" => "string",
-             "description" => "The id of a resident, to keep only the tasks about it"
+             "description" => "The ref or the id of a resident, to keep only the tasks about it"
            },
            "state" => %{"type" => "string", "enum" => @states}
          },
@@ -117,7 +117,7 @@ defmodule Rescord.Ruby.Digests.TasksForDay do
   defp task(task, now, tenant) do
     phase = Tasks.phase(task, now)
 
-    Shape.drop_nil(%{
+    Shoddy.Maps.compact(%{
       ref: Shape.ref("task", task.id),
       label: task.title,
       # One line for the card of the page: the time and where the task is.

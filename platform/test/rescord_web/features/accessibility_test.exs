@@ -80,6 +80,29 @@ defmodule RescordWeb.Features.AccessibilityTest do
     end
   end
 
+  for {name, viewport, scheme} <- [
+        {"a phone in the light scheme", @phone, :light},
+        {"a wide screen in the dark scheme", @wide, :dark}
+      ] do
+    @tag browser_context_opts: [
+           viewport: viewport,
+           color_scheme: scheme,
+           has_touch: viewport.width < 1000
+         ]
+    test "the pages of a root user keep the rules on #{name}", %{conn: session} do
+      address = "root.#{unquote(scheme)}.#{unquote(viewport.width)}@wattle-creek.example.org"
+      root = root!(address)
+      Rescord.UsageFixtures.usage!(root)
+
+      session = sign_in_with_link(session, address)
+
+      found =
+        Enum.flat_map(~w(/root /root/ruby /root/usage), &problems(visit(session, &1), &1))
+
+      assert found == [], Enum.join(found, "\n\n")
+    end
+  end
+
   @tag browser_context_opts: [viewport: @phone, has_touch: true]
   test "a form with its errors, the open menu, an open filter and a notice keep the rules",
        %{conn: session, home: home} = context do
@@ -166,6 +189,8 @@ defmodule RescordWeb.Features.AccessibilityTest do
   end
 
   @tag browser_context_opts: [viewport: @phone]
+  @long_hutch "The companions of the long hutch · Rescord"
+
   test "the focus goes to the heading of a new live page",
        %{conn: session, home: home} = context do
     session
@@ -176,9 +201,24 @@ defmodule RescordWeb.Features.AccessibilityTest do
     |> press("main a:focus", "Enter")
     |> assert_has("h1", text: "The companions of the long hutch")
     |> assert_has("h1:focus")
-    |> evaluate("document.title", fn title ->
-      assert title == "The companions of the long hutch · Rescord"
+    |> evaluate(title_after_navigation(@long_hutch), fn title ->
+      assert title == @long_hutch
     end)
+  end
+
+  # LiveView can put the title of a new live page after its h1, so a read
+  # of the title right after the h1 can find the title of the page before.
+  # The script waits up to 5 seconds for the title, and gives the title
+  # that the page has then.
+  defp title_after_navigation(title) do
+    """
+    (async () => {
+      for (let i = 0; document.title !== #{Jason.encode!(title)} && i < 100; i++) {
+        await new Promise((done) => setTimeout(done, 50));
+      }
+      return document.title;
+    })()
+    """
   end
 
   # An address gets few sign-in links in a while (ADR 0020), so each test

@@ -588,7 +588,7 @@ defmodule RescordWeb.RubyComponents do
   def root_line(assigns) do
     ~H"""
     <p id="ruby-line">
-      <a href={~p"/root/ruby"}>Ruby, the assistant</a>: {summary(@providers)}.
+      <.link navigate={~p"/root/ruby"}>Ruby, the assistant</.link>: {summary(@providers)}.
     </p>
     """
   end

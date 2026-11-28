@@ -65,6 +65,13 @@ defmodule Rescord.Transfers.RemotePartner do
     end
   end
 
+  # A page of the refuge hears of it (ADR 0096).
+  pub_sub do
+    publish_all :create, [:organisation_id, "transfers"]
+    publish_all :update, [:organisation_id, "transfers"]
+    publish_all :destroy, [:organisation_id, "transfers"]
+  end
+
   attributes do
     uuid_primary_key :id
 

@@ -155,6 +155,7 @@ These subjects are out of scope for now:
 | How does a refuge know that a transfer file is true? | The refuge that sends it signs it, and encrypts it for the refuge that receives it. |
 | From whom can a refuge import a transfer file? | From a partner on another server that it recorded. |
 | Does a transfer file carry the photos and the PDFs? | Yes. The file is one archive with the copy and its files. |
+| When does the partner see a transfer with photos? | When each file is copied, a few seconds or minutes after the send. When a file does not arrive, the refuge that sends it sends it again or withdraws it (28 November 2026). |
 | Does Rescord have an assistant? | Yes, with the name Ruby (ADR 0069, 28 November 2026). It is off until a root user records a provider and an administrator of the organisation turns it on. Rescord is complete without it. |
 | With which rights does the assistant work? | With the rights of the member who asks, and never with the rights of a root user. |
 | Can the assistant write a record? | No. It prepares a proposal, and the member confirms it. Then the member wrote the record. |
@@ -499,6 +500,13 @@ transfer, and that administrator can decline it. After the acceptance, each
 member there reads the copy. The refuge that sends a resident records its
 departure itself. Here, an administrator is each role with the power
 `:transfers`.
+
+The photos and the PDFs of a copy go to the partner in a job after the
+send (ADR 0100). While they do, the transfer is "Sending" at the refuge
+that sends it, with how many files are there, and the partner sees
+nothing yet. When a file is not in the store, or the store refuses it 10
+times, the transfer is "Not sent": the refuge that sends it sends it
+again or withdraws it.
 
 A partner can be on another Rescord server (ADR 0043). The two refuges
 exchange partner cards and check their fingerprints, and an administrator

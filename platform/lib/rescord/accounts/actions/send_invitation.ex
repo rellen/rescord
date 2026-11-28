@@ -18,6 +18,7 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
 
   require Logger
 
+  alias Rescord.Accounts.Errors.InvitationNotSent
   alias Rescord.Accounts.Organisation
 
   @impl true
@@ -35,7 +36,7 @@ defmodule Rescord.Accounts.Actions.SendInvitation do
   # The log names the kind of the fault, and never the address.
   defp fault(reason) do
     Logger.warning("The email of an invitation failed: #{Rescord.Log.reason(reason)}")
-    {:error, "the email of an invitation was not sent"}
+    {:error, InvitationNotSent.exception()}
   end
 
   defp email(organisation, signal) do

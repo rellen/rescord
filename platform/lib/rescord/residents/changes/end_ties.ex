@@ -52,7 +52,12 @@ defmodule Rescord.Residents.Changes.EndTies do
   end
 
   defp options(changeset, context) do
-    base = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+    base = [
+      actor: context.actor,
+      tenant: changeset.tenant,
+      context: Rescord.Correlation.context(changeset),
+      authorize?: false
+    ]
 
     case changeset.as_of do
       %DateTime{} = instant -> [as_of: instant] ++ base

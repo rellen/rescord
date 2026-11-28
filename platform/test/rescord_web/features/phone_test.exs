@@ -59,7 +59,7 @@ defmodule RescordWeb.Features.PhoneTest do
   end
 
   @tag browser_context_opts: @small
-  test "the pages of the assistant for a root user fit a small phone", %{conn: session} do
+  test "the pages of a root user fit a small phone", %{conn: session} do
     address = "a.root.user.with.a.long.address@wattle-creek-refuge.example.org"
     root = root!(address)
 
@@ -76,11 +76,14 @@ defmodule RescordWeb.Features.PhoneTest do
       base_url: "https://llm.a-long-name-of-a-server.example.org/v1"
     })
 
+    Rescord.UsageFixtures.usage!(root)
+
     session = sign_in_with_link(session, address)
 
     pages = [
       "/root",
       "/root/ruby",
+      "/root/usage",
       "/root/ruby/new",
       "/root/ruby/new?kind=openai_compatible",
       "/root/ruby/#{provider.id}"
@@ -236,19 +239,19 @@ defmodule RescordWeb.Features.PhoneTest do
     |> sign_in_with_link(@address)
     |> visit("#{home}/tasks")
     |> assert_connected()
-    |> assert_has("tbody th[scope=row]", text: "Give Sir Reginald his evening medication")
+    |> assert_has("tbody td:first-child", text: "Give Sir Reginald his evening medication")
     |> evaluate(
       """
       (() => {
         const row = document.querySelector("tbody tr");
         const done = Array.from(row.querySelectorAll("button"))
           .find((button) => button.innerText.trim() === "Done").getBoundingClientRect();
-        const label = getComputedStyle(row.querySelector("td[data-label=Who]"), "::before");
+        const label = getComputedStyle(row.querySelector("[data-label=Who]"), "::before");
         return {
           // The button of the last column is in the screen.
           in_view: done.left >= 0 && done.right <= window.innerWidth,
           // Each cell is a line of the card, below the cell before it.
-          stacked: row.querySelector("th").getBoundingClientRect().top >=
+          stacked: row.querySelector("td:nth-child(2)").getBoundingClientRect().top >=
             row.querySelector("td").getBoundingClientRect().bottom,
           // The header row is not in view, and is still in the page.
           header: document.querySelector("thead").getBoundingClientRect().height,

@@ -64,6 +64,13 @@ defmodule Rescord.Attention do
           total: pos_integer
         }
 
+  @doc """
+  The domains that `parts/2` reads. The first page listens for a change of
+  each (ADR 0096).
+  """
+  @spec domains() :: [module]
+  def domains, do: [Tasks, Inventory, Residents, Locations, Transfers]
+
   @doc "The most rows that a part shows."
   @spec limit() :: pos_integer
   def limit, do: @limit

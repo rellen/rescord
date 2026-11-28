@@ -1,7 +1,8 @@
 # ADR 0057: The photos of a resident in a transfer
 
 Status: accepted (the maintainer asked for it, 27 November 2026). It adds
-to ADR 0042, ADR 0043 and ADR 0055.
+to ADR 0042, ADR 0043 and ADR 0055. ADR 0100 moves the copy of the files on
+this server out of the send, into a job.
 
 ## Context
 

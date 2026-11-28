@@ -31,6 +31,10 @@ defmodule Rescord.Resource do
       with a table of its own. The policy of a version resource refuses each
       actor (`Rescord.Resource.VersionPolicies`, ADR 0063): a domain reads
       the versions after the record has decided.
+    * Each version holds the correlation id of the action call that wrote
+      it (`correlation_id`, ADR 0101). A change that runs a nested action
+      gives it `context: Rescord.Correlation.context(changeset)`, so that
+      both write one id.
     * A destroy archives the row (AshArchival).
 
   A section that the resource writes again adds to these defaults, and an
@@ -98,7 +102,10 @@ defmodule Rescord.Resource do
 
     ours =
       [Rescord.Resource.Checks] ++
-        if(flags.paper_trail?, do: [AshPaperTrail.Resource], else: []) ++
+        if(flags.paper_trail?,
+          do: [AshPaperTrail.Resource, Rescord.Resource.Operations],
+          else: []
+        ) ++
         if(flags.archive?, do: [AshArchival.Resource], else: [])
 
     # Spark reads the extensions while it expands `use`, so the list stays a
@@ -108,6 +115,13 @@ defmodule Rescord.Resource do
     opts =
       if flags.table?, do: Keyword.put_new(opts, :data_layer, AshPostgres.DataLayer), else: opts
 
+    # A resource with a table tells the pages when a record changes (ADR 0096).
+    opts =
+      if flags.table?,
+        do:
+          Keyword.update(opts, :notifiers, [Ash.Notifier.PubSub], &([Ash.Notifier.PubSub] ++ &1)),
+        else: opts
+
     quote do
       use Ash.Resource, unquote(opts)
 
@@ -115,6 +129,21 @@ defmodule Rescord.Resource do
       unquote(tenancy(flags))
       unquote(temporal(flags))
       unquote(paper_trail(flags))
+      unquote(changes(flags, domain_key(opts, __CALLER__)))
+    end
+  end
+
+  # The part of a topic that names the domain of the resource, such as "tasks".
+  defp domain_key(opts, caller) do
+    case Macro.expand(Keyword.get(opts, :domain), caller) do
+      domain when is_atom(domain) and not is_nil(domain) ->
+        Rescord.Changes.key(domain)
+
+      _other ->
+        raise CompileError,
+          file: caller.file,
+          line: caller.line,
+          description: "use Rescord.Resource needs the option :domain, as a literal module"
     end
   end
 
@@ -183,9 +212,20 @@ defmodule Rescord.Resource do
         mode :temporal_inline
         change_tracking_mode :previous_values
         store_action_name? true
+        operation_id_field :correlation_id
+        metadata :operation_id, :uuid, allow_nil?: true
+        metadata :causation_id, :uuid, allow_nil?: true
         version_resource? true
         version_extensions authorizers: [Ash.Policy.Authorizer]
         mixin Rescord.Resource.VersionPolicies
+      end
+
+      # A version row is in the table of the resource. Most rows from before
+      # ADR 0101 have no id, so the index holds only the rows that have one.
+      postgres do
+        custom_indexes do
+          index [:correlation_id], where: "correlation_id IS NOT NULL"
+        end
       end
     end
   end
@@ -195,8 +235,40 @@ defmodule Rescord.Resource do
       paper_trail do
         change_tracking_mode :changes_only
         store_action_name? true
+        operation_id_field :correlation_id
+        metadata :operation_id, :uuid, allow_nil?: true
+        metadata :causation_id, :uuid, allow_nil?: true
         version_extensions authorizers: [Ash.Policy.Authorizer]
-        mixin Rescord.Resource.VersionPolicies
+        # The policies, and the index of the version table (ADR 0101).
+        mixin Rescord.Resource.VersionTable
+      end
+    end
+  end
+
+  defp changes(%{table?: false}, _key), do: nil
+
+  # A shared resource has no tenant, so it has no publication from here: it
+  # writes its own, with the attribute that holds the id of the organisation.
+  defp changes(%{shared?: true}, _key) do
+    quote do
+      pub_sub do
+        module Rescord.Changes
+        prefix unquote(Rescord.Changes.prefix())
+        transform &Rescord.Changes.change/1
+      end
+    end
+  end
+
+  defp changes(_flags, key) do
+    quote do
+      pub_sub do
+        module Rescord.Changes
+        prefix unquote(Rescord.Changes.prefix())
+        transform &Rescord.Changes.change/1
+
+        publish_all :create, [:_tenant, unquote(key)]
+        publish_all :update, [:_tenant, unquote(key)]
+        publish_all :destroy, [:_tenant, unquote(key)]
       end
     end
   end

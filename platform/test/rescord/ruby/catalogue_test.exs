@@ -16,14 +16,15 @@ defmodule Rescord.Ruby.CatalogueTest do
   # not even the extension: the accounts, the lists, the photos, the
   # transfers and Ruby itself never get one (ADR 0069), and a new domain
   # gets one only with a line here.
-  @with_tools [Rescord.Residents, Rescord.Tasks]
+  @with_tools [Rescord.Locations, Rescord.Residents, Rescord.Tasks]
 
   # The actions that never have a tool, in the domains that may declare
   # one: what changes who a resident is, and what hands a task to a member
   # or removes it.
   @never [
     {Rescord.Residents.Resident, [:register, :revise, :remove]},
-    {Rescord.Tasks.Task, [:revise, :give, :cancel, :generate]}
+    {Rescord.Tasks.Task, [:revise, :give, :cancel, :generate]},
+    {Rescord.Locations.Location, [:add, :revise, :close]}
   ]
 
   defp domains, do: Application.fetch_env!(:rescord, :ash_domains)

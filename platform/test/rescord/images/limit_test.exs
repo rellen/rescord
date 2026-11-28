@@ -165,11 +165,10 @@ defmodule Rescord.Images.LimitTest do
     assert %{slots: ^slots, wait: ^wait} = :sys.get_state(Limit)
   end
 
-  defp wait_for_queue(server, length, tries \\ 200) do
-    cond do
-      :queue.len(:sys.get_state(server).waiting) == length -> :ok
-      tries == 0 -> flunk("the queue never had #{length} waiters")
-      true -> Process.sleep(5) && wait_for_queue(server, length, tries - 1)
-    end
+  defp wait_for_queue(server, length) do
+    waiting? = fn -> :queue.len(:sys.get_state(server).waiting) == length end
+
+    assert Shoddy.Tests.eventually(waiting?, timeout: 1_000, interval: 5),
+           "the queue never had #{length} waiters"
   end
 end

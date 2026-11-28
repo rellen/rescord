@@ -304,6 +304,7 @@ defmodule RescordWeb.TransferComponents do
   attr :organisation, :map, required: true
   attr :can_answer?, :boolean, required: true
   attr :can_withdraw?, :boolean, required: true
+  attr :can_send_again?, :boolean, default: false
 
   def transfers_table(assigns) do
     ~H"""
@@ -343,7 +344,11 @@ defmodule RescordWeb.TransferComponents do
               <td data-label="Sent">
                 {TransferWords.time(DateTime.to_iso8601(transfer.sent_at), @organisation.time_zone)}
               </td>
-              <td><.badge state={transfer.state} /></td>
+              <td data-label="State">
+                <.badge state={transfer.state} />
+                <small :if={transfer.state == :sending}>{TransferWords.files_copied(transfer)}</small>
+                <small :if={transfer.state == :failed}>{TransferWords.failure(transfer.failure)}</small>
+              </td>
               <td>
                 <.button
                   :if={@can_answer? and transfer.state == :sent}
@@ -362,7 +367,18 @@ defmodule RescordWeb.TransferComponents do
                   Decline
                 </.button>
                 <.button
-                  :if={@can_withdraw? and transfer.state == :sent}
+                  :if={
+                    @can_send_again? and transfer.state == :failed and
+                      transfer.failure != :file_missing
+                  }
+                  phx-click="send_again"
+                  phx-value-id={transfer.id}
+                  aria-label={"Send the transfer of #{transfer.resident_name} again"}
+                >
+                  Send again
+                </.button>
+                <.button
+                  :if={@can_withdraw? and transfer.state in [:sending, :sent, :failed]}
                   phx-click="withdraw"
                   phx-value-id={transfer.id}
                   aria-label={"Withdraw the transfer of #{transfer.resident_name}"}
@@ -718,8 +734,11 @@ defmodule RescordWeb.TransferComponents do
   end
 
   # The path of a file of the copy. A file exported to another server is
-  # not kept on this one, so its copy has no link.
+  # not kept on this one, so its copy has no link. While a job copies the
+  # files, and after it stopped, a transfer has sources, and some of its
+  # files are not there yet (ADR 0100).
   defp file_path(%{to_organisation_id: nil}, _organisation), do: nil
+  defp file_path(%{sources: [_ | _]}, _organisation), do: nil
 
   defp file_path(transfer, organisation),
     do: &~p"/o/#{organisation.short_name}/transfers/#{transfer.id}/files/#{&1}"

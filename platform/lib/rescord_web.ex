@@ -42,11 +42,12 @@ defmodule RescordWeb do
       Rescord.Calendars,
       Rescord.Expenses,
       Rescord.Reports,
+      Rescord.Usage,
       Rescord.Export,
       Rescord.Attention,
       Rescord.Mail
     ],
-    exports: [Endpoint, Telemetry],
+    exports: [Endpoint, Telemetry, Usage],
     check: [aliases: true, apps: [:ash]]
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
@@ -90,6 +91,9 @@ defmodule RescordWeb do
 
       # A form drawn again from what the browser sent keeps only text.
       import RescordWeb.Input, only: [typed_form: 2, typed_fields: 1]
+
+      # A page that shows what another person changed (ADR 0096).
+      alias RescordWeb.LiveChanges
 
       unquote(html_helpers())
     end

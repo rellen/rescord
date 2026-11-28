@@ -77,7 +77,17 @@ defmodule Rescord.Ruby do
   boundary do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
-    deps [Rescord, Rescord.Accounts, Rescord.Residents, Rescord.Tasks, Rescord.Vault]
+
+    deps [
+      Rescord,
+      Rescord.Accounts,
+      Rescord.Journal,
+      Rescord.Locations,
+      Rescord.Residents,
+      Rescord.Tasks,
+      Rescord.Vault
+    ]
+
     # The task of Mix that runs the evaluation set.
     exports [Rescord.Ruby.Eval]
   end
@@ -320,6 +330,8 @@ defmodule Rescord.Ruby do
   @spec save_provider(Provider.t(), map, String.t() | nil, keyword) ::
           {:ok, Provider.t()} | {:error, term}
   def save_provider(%Provider{} = provider, attributes, key, opts \\ []) do
+    opts = Rescord.Correlation.start(opts)
+
     Ash.transact([Provider], fn ->
       with {:ok, provider} <- change_provider(provider, attributes, opts) do
         if is_binary(key), do: set_provider_key(provider, key, opts), else: {:ok, provider}

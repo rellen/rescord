@@ -15,6 +15,7 @@ defmodule Rescord.LocationsTest do
   import Rescord.ResidentsFixtures
 
   alias Rescord.{Locations, Residents}
+  alias Rescord.Accounts.Errors.InvalidTime
 
   setup do
     root = root!()
@@ -319,11 +320,16 @@ defmodule Rescord.LocationsTest do
         |> Date.add(1)
         |> Date.to_iso8601()
 
-      assert {:error, "The time cannot be after now"} =
+      assert {:error, %InvalidTime{reason: :after_now} = error} =
                Rescord.Accounts.instant(organisation, tomorrow <> "T08:30")
 
-      assert {:error, "The time is not a date and a time of this time zone"} =
+      assert Rescord.Accounts.error_messages(error) == ["The time cannot be after now"]
+
+      assert {:error, %InvalidTime{reason: :not_a_time} = error} =
                Rescord.Accounts.instant(organisation, "yesterday")
+
+      assert Rescord.Accounts.error_messages(error) ==
+               ["The time is not a date and a time of this time zone"]
     end
   end
 end

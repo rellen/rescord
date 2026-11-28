@@ -83,9 +83,12 @@ defmodule Rescord.Ruby.ToolsTest do
     test "gives a member the tools of the catalogue, by name", context do
       options = Toolbox.options(context.member, context.organisation, context.profile)
 
-      assert options[:tools] == [:find_residents, :get_task]
-      assert [{%ReqLLM.Tool{name: "tasks_for_day"}, run}] = options[:extra_tools]
-      assert is_function(run, 2)
+      assert options[:tools] == [:find_residents, :get_task, :find_locations]
+
+      assert Enum.map(options[:extra_tools], fn {tool, _run} -> tool.name end) ==
+               ["tasks_for_day", "resident_profile", "resident_timeline", "housing"]
+
+      for {_tool, run} <- options[:extra_tools], do: assert(is_function(run, 2))
       assert options[:req_llm] == Client
       assert options[:max_iterations] == 8
       assert options[:tenant] == context.organisation
@@ -113,12 +116,14 @@ defmodule Rescord.Ruby.ToolsTest do
       end
     end
 
-    test "sends the model the three tools and the options of the profile", context do
+    test "sends the model each tool and the options of the profile", context do
       call(context, "find_residents", %{})
       [request | _rest] = ScriptedModel.requests()
 
+      # The tools of the actions first, then the digests.
       assert Enum.map(request.opts[:tools], & &1.name) ==
-               ["find_residents", "get_task", "tasks_for_day"]
+               ["find_residents", "find_locations", "get_task"] ++
+                 ["tasks_for_day", "resident_profile", "resident_timeline", "housing"]
 
       assert %{provider: :anthropic, id: "claude-opus-5-5"} = request.model
       assert request.opts[:max_tokens] == 4_096
@@ -439,7 +444,7 @@ defmodule Rescord.Ruby.ToolsTest do
       for {arguments, words} <- [
             {%{"date" => "tomorrow"}, "date: give a date as YYYY-MM-DD"},
             {%{"date" => 20_261_201}, "date: give a date as YYYY-MM-DD"},
-            {%{"resident" => "Biscuit"}, "resident: give the id of a record"},
+            {%{"resident" => "Biscuit"}, "resident: give the ref or the id of a record"},
             {%{"state" => "late"}, "state: give one of due, done, skipped, all"}
           ] do
         text = call(context, "tasks_for_day", arguments)

@@ -223,9 +223,6 @@ defmodule RescordWeb.JournalLive do
          {:ok, _entry} <- Journal.write_entry_with_files(facts, files(socket), options(socket)) do
       {:noreply, push_navigate(socket, to: here(socket))}
     else
-      {:error, words} when is_binary(words) ->
-        {:noreply, socket |> assign(problems: [words]) |> assign_form(fields)}
-
       {:error, error} ->
         {:noreply,
          socket |> assign(problems: Accounts.error_messages(error)) |> assign_form(fields)}
@@ -258,7 +255,6 @@ defmodule RescordWeb.JournalLive do
        |> put_flash(:info, "The dose is in the tasks of that day.")
        |> push_navigate(to: here(socket))}
     else
-      {:error, words} when is_binary(words) -> {:noreply, assign(socket, problems: [words])}
       {:error, error} -> {:noreply, assign(socket, problems: Accounts.error_messages(error))}
       # No such prescription in this journal.
       _nothing -> {:noreply, socket}

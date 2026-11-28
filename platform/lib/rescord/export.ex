@@ -44,6 +44,7 @@ defmodule Rescord.Export do
   alias Rescord.Accounts
   alias Rescord.Accounts.{Member, Organisation, Role}
   alias Rescord.Export.CSV
+  alias Rescord.Export.Errors.{InvalidDate, Unreadable}
 
   @domains [
     Rescord.Lists,
@@ -90,7 +91,11 @@ defmodule Rescord.Export do
         "server, and no record of the rescue.",
     Rescord.Ruby.Usage =>
       "The use of the assistant is counts of tokens for the bill of this server, and no " <>
-        "record of the rescue."
+        "record of the rescue.",
+    Rescord.Usage.Count =>
+      "The usage counts are of the whole server, with no organisation in them (ADR 0098).",
+    Rescord.Usage.Settings =>
+      "What the server does with its usage counts is a setting of the server (ADR 0098)."
   }
 
   @typedoc "An export: the name of the file and the bytes of the ZIP."
@@ -99,11 +104,13 @@ defmodule Rescord.Export do
   @doc """
   The export of `organisation` as it stood at the end of `date`, for the
   person `actor`. Returns `{:error, :forbidden}` when the role of the person
-  has no power `export`, and an error with words for a date that is not a
-  date or that is after today.
+  has no power `export`, an `InvalidDate` error for a date that is not a
+  date or that is after today, and an `Unreadable` error for a table that
+  it could not read. `Rescord.Accounts.error_messages/1` says each error in
+  words.
   """
-  @spec export(Ash.Resource.record(), Date.t(), keyword) ::
-          {:ok, t} | {:error, :forbidden | String.t()}
+  @spec export(Ash.Resource.record(), Date.t() | term, keyword) ::
+          {:ok, t} | {:error, :forbidden | InvalidDate.t() | Unreadable.t()}
   def export(%Organisation{} = organisation, date, opts) do
     actor = Keyword.fetch!(opts, :actor)
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -158,7 +165,7 @@ defmodule Rescord.Export do
   # The end of the day in the time zone of the organisation, and not after now.
   defp instant(organisation, %Date{} = date, now) do
     if Date.compare(date, Accounts.local_date(organisation, now)) == :gt do
-      {:error, "The date is after today."}
+      {:error, InvalidDate.exception(reason: :after_today)}
     else
       {_start, next} = Accounts.day_range(organisation, date)
       last = DateTime.add(next, -1, :microsecond)
@@ -166,7 +173,8 @@ defmodule Rescord.Export do
     end
   end
 
-  defp instant(_organisation, _date, _now), do: {:error, "The date is not a date."}
+  defp instant(_organisation, _date, _now),
+    do: {:error, InvalidDate.exception(reason: :not_a_date)}
 
   defp tables(organisation, actor, instant) do
     Enum.reduce_while(resources(), {:ok, []}, fn resource, {:ok, tables} ->
@@ -187,7 +195,7 @@ defmodule Rescord.Export do
             "The export could not read #{file(resource)}: #{Rescord.Log.reason(error)}"
           )
 
-          {:halt, {:error, "The export could not read #{file(resource)}."}}
+          {:halt, {:error, Unreadable.exception(file: file(resource))}}
       end
     end)
     |> case do

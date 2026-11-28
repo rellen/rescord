@@ -23,6 +23,7 @@ defmodule RescordWeb.RootLive do
      |> assign_organisation_form(new_organisation())
      |> assign(root_form: to_form(%{"email" => ""}, as: :root))
      |> assign(providers: Ruby.providers!(actor: socket.assigns.current_user))
+     |> assign(usage_mode: Rescord.Usage.settings(actor: socket.assigns.current_user).mode)
      |> assign_roots()}
   end
 
@@ -120,8 +121,11 @@ defmodule RescordWeb.RootLive do
 
       <p :for={problem <- @problems} role="alert">{problem}</p>
 
-      <p><a href={~p"/root/lists"}>See the shared lists of values</a>.</p>
+      <p><.link navigate={~p"/root/lists"}>See the shared lists of values</.link>.</p>
       <.root_line providers={@providers} />
+      <p id="usage-line">
+        Usage counts: {RescordWeb.UsageWords.mode(@usage_mode)}. <a href={~p"/root/usage"}>See the counts, and where they go</a>.
+      </p>
 
       <.organisations
         current_user={@current_user}

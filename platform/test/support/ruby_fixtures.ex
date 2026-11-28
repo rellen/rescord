@@ -7,8 +7,6 @@ defmodule Rescord.RubyFixtures do
   # Test support may use any boundary, and any test may use it (ADR 0009).
   use Boundary, top_level?: true, check: [in: false, out: false]
 
-  import ExUnit.Callbacks, only: [on_exit: 1]
-
   alias Rescord.Ruby
 
   @doc "A text that has the shape of a key, and is none."
@@ -46,9 +44,7 @@ defmodule Rescord.RubyFixtures do
   """
   def secrets!(secret, previous \\ nil) do
     for module <- [Rescord.Vault, Rescord.Transfers.Keys] do
-      before = Application.fetch_env!(:rescord, module)
-      Application.put_env(:rescord, module, secret: secret, previous_secret: previous)
-      on_exit(fn -> Application.put_env(:rescord, module, before) end)
+      Shoddy.Tests.put_app_env(:rescord, module, secret: secret, previous_secret: previous)
     end
 
     :ok

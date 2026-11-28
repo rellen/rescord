@@ -17,13 +17,14 @@ defmodule RescordWeb.ExportController do
       when is_binary(on) do
     with %{} = user <- conn.assigns[:current_user],
          {:ok, organisation, _member} <- Accounts.organisation_for(user, short_name) do
-      result =
+      # Text that is not a date goes to the export as it is, which refuses it.
+      date =
         case Date.from_iso8601(on) do
-          {:ok, date} -> Rescord.Export.export(organisation, date, actor: user)
-          {:error, _not_a_date} -> {:error, "The date is not a date."}
+          {:ok, date} -> date
+          {:error, _not_a_date} -> on
         end
 
-      case result do
+      case Rescord.Export.export(organisation, date, actor: user) do
         {:ok, export} ->
           conn
           |> put_resp_header("cache-control", "private, no-store")
@@ -35,8 +36,8 @@ defmodule RescordWeb.ExportController do
         {:error, :forbidden} ->
           back(conn, organisation, "Your role cannot export the data.")
 
-        {:error, words} ->
-          back(conn, organisation, words)
+        {:error, error} ->
+          back(conn, organisation, error |> Accounts.error_messages() |> Enum.join(" "))
       end
     else
       _no -> not_found(conn)

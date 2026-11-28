@@ -91,6 +91,15 @@ defmodule Rescord.Release.FilesTest do
     )
   end
 
+  # Sends a transfer, and runs the job that copies its files (ADR 0100).
+  defp deliver!(context) do
+    {:ok, %{state: :sending} = transfer} = send_transfer(context)
+    assert %{success: 1} = Oban.drain_queue(queue: :transfers)
+    {:ok, transfer} = Transfers.transfer(transfer.id, actor: context.wattle_admin)
+    assert transfer.state == :sent
+    transfer
+  end
+
   # A store that takes each file but those whose key the test refuses.
   defmodule Refusing do
     @moduledoc false
@@ -115,8 +124,7 @@ defmodule Rescord.Release.FilesTest do
 
   defp refuse!(refuse) do
     Process.put(:refuse, refuse)
-    Application.put_env(:rescord, :storage, Refusing)
-    on_exit(fn -> Application.put_env(:rescord, :storage, Disk) end)
+    Shoddy.Tests.put_app_env(:rescord, :storage, Refusing)
   end
 
   describe "a file that no record names" do
@@ -153,7 +161,7 @@ defmodule Rescord.Release.FilesTest do
       assert report.missing == []
     end
 
-    test "stays when a file in the middle of a transfer fails", context do
+    test "is no leftover, or missing, when a file in the middle of a transfer fails", context do
       partners!(context)
       add_photo!(context)
       add_photo!(context, photo(width: 80))
@@ -164,18 +172,25 @@ defmodule Rescord.Release.FilesTest do
         key =~ "/transfers/" and Process.put(:puts, Process.get(:puts) + 1) >= 1
       end)
 
-      assert {:error, _error} = send_transfer(context)
+      # The job copies its files after the send (ADR 0100), and counts the
+      # first one. The transfer that is still sending names that one alone.
+      assert {:ok, %{state: :sending} = transfer} = send_transfer(context)
+      assert %{failure: 1} = Oban.drain_queue(queue: :transfers)
 
       report = compare!()
-      assert [key] = keys(report.leftover)
-      assert key =~ ~r"^#{context.banksia.id}/transfers/"
-      assert report.named.count == 4
+      assert report.leftover == []
       assert report.missing == []
+      assert report.named.count == 5
+      assert [{key, "transfer", id}] = Transfers.file_keys(context.banksia.id)
+      assert id == transfer.id
+      assert key =~ ~r"^#{context.banksia.id}/transfers/"
     end
 
     test "stays when the transaction of an upload does not commit", context do
-      assert {:error, :stopped} =
-               Repo.transaction(fn ->
+      # `Ash.transact/3`, so that Ash knows of the transaction and drops the
+      # notification of the photo that does not commit (ADR 0096).
+      assert {:error, %Ash.Error.Unknown.UnknownError{error: "unknown error: :stopped"}} =
+               Ash.transact(Rescord.Photos.Photo, fn ->
                  add_photo!(context)
                  Repo.rollback(:stopped)
                end)
@@ -268,12 +283,12 @@ defmodule Rescord.Release.FilesTest do
       partners!(context)
       add_photo!(context)
 
-      {:ok, sent} = send_transfer(context)
-      {:ok, accepted} = send_transfer(context)
+      sent = deliver!(context)
+      accepted = deliver!(context)
       {:ok, _accepted} = Transfers.accept_transfer(accepted, actor: context.banksia_admin)
-      {:ok, declined} = send_transfer(context)
+      declined = deliver!(context)
       {:ok, _declined} = Transfers.decline_transfer(declined, actor: context.banksia_admin)
-      {:ok, withdrawn} = send_transfer(context)
+      withdrawn = deliver!(context)
       {:ok, _withdrawn} = Transfers.withdraw_transfer(withdrawn, actor: context.wattle_admin)
 
       report = compare!()
@@ -315,7 +330,7 @@ defmodule Rescord.Release.FilesTest do
   describe "what stops the comparison" do
     test "is a store that cannot list its files", %{tmp_dir: tmp_dir} do
       missing = Path.join(tmp_dir, "none")
-      Application.put_env(:rescord, Disk, root: missing)
+      Shoddy.Tests.put_app_env(:rescord, Disk, root: missing)
       assert Files.compare() == {:error, {:list, {:enoent, missing}}}
     end
   end
