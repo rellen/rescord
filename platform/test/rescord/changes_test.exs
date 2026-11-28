@@ -195,6 +195,9 @@ defmodule Rescord.ChangesTest do
           Rescord.Accounts.User,
           Rescord.Accounts.Token,
           Rescord.Ruby.Provider,
+          # The usage counts of the server, which only a root user reads.
+          Rescord.Usage.Count,
+          Rescord.Usage.Settings,
           # The private keys of a refuge. No page waits for one.
           Rescord.Transfers.RefugeKey
         ]
