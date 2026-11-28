@@ -78,6 +78,8 @@ defmodule Rescord.Ruby do
     # A relationship and a signal listener are checked too (ADR 0066).
     check aliases: true
     deps [Rescord, Rescord.Accounts, Rescord.Residents, Rescord.Tasks, Rescord.Vault]
+    # The task of Mix that runs the evaluation set.
+    exports [Rescord.Ruby.Eval]
   end
 
   paper_trail do

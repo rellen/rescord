@@ -825,6 +825,19 @@ code does not have yet is what its phase lands.
   organisation. It is deleted for real: not temporal, no paper trail, no
   archive. Both are exceptions that ADR 0069 states.
 - No test calls a provider: a scripted model answers.
+- The evaluation set measures what a real model does with the tools and
+  the prompt. `mix rescord.ruby.eval` plants a rescue of made-up records
+  (`Rescord.Ruby.Eval.Seed`), asks each question of
+  `Rescord.Ruby.Eval.Cases` three times with the options of a reply, and
+  scores each answer by code (`Rescord.Ruby.Eval.Score`): the tools that
+  were called, each reference and each number against the tool results,
+  patterns for what the answer must and must not say, and its form. A
+  case passes when each run passes, and each group has a bar: 95% of the
+  reads, and each case of the groups where Ruby must say that the records
+  hold nothing, must not advise on the care of an animal, and must not
+  follow an instruction inside a record. Only a person runs it, because
+  it costs money and its result can change. The checks see words and not
+  meaning, so a person reads the answers that failed.
 
 ## The log, the metrics and the errors
 

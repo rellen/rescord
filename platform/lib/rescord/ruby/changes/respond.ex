@@ -380,19 +380,8 @@ defmodule Rescord.Ruby.Changes.Respond do
     )
   end
 
-  defp ending(acc, last) do
-    cond do
-      acc.stopped? -> {:stopped, nil}
-      acc.error == :too_long -> {:failed, :too_long}
-      acc.error != nil -> {:failed, Reason.of(acc.error)}
-      # The stream ended with no last event. The loop does not do that.
-      acc.result == nil -> {:failed, :unknown}
-      acc.result.status == :awaiting_approval -> {:awaiting, nil}
-      last && last.finish_reason == :content_filter -> {:failed, :refused}
-      last && last.finish_reason == :length -> {:complete, :cut}
-      true -> {:complete, nil}
-    end
-  end
+  defp ending(%{stopped?: true}, _last), do: {:stopped, nil}
+  defp ending(acc, last), do: Reason.ending(acc.error, acc.result, last)
 
   # The provider bills the tokens of an answer that ended early, and does
   # not report them: the report comes at the end of the stream. So the

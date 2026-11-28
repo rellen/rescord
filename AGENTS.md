@@ -635,6 +635,17 @@ hand (ADR 0073). Read it before you write a migration. In short:
     task, outside `mix test` and CI. `config/test.exs` names the scripted
     model under `:ruby_llm`. That line is a seam for the tests, and
     `Rescord.Ruby.LLM.Client` is its one reader: add no other.
+  - **The evaluation set measures a real model**, and only a person
+    starts it: `mix rescord.ruby.eval` asks a provider each question of
+    `Rescord.Ruby.Eval.Cases` three times, against the made-up rescue of
+    `Rescord.Ruby.Eval.Seed`, and `Rescord.Ruby.Eval.Score` checks each
+    answer by code. It costs money, so never run it for a check of your
+    own, and never add it to a workflow of a push. A change of the system
+    prompt, of a tool, of the description of a tool, of the effort or of
+    the default model goes with a run that a person makes. After a report
+    of a wrong answer, the question becomes a case first. The key of a
+    run is never a flag and never a variable of the environment: a row of
+    a provider, or the standard input.
   - **Never log the text of a conversation**, a prompt, the arguments of a
     tool or its result. Log the ids, the names, the counts and the reason
     of a failure as an atom, never an error struct of ReqLLM: it holds the
@@ -1036,7 +1047,8 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/lib/rescord/attention.ex` | what needs somebody now in an organisation, which each domain gives (ADR 0065) |
 | `platform/lib/rescord/export.ex`, `export/` | the export of the data of an organisation as CSV in a ZIP (ADR 0054) |
 | `platform/lib/rescord/vault.ex` | the vault of the settings: what encrypts a secret attribute, and the change of its secret (ADR 0068) |
-| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt and the job that writes a reply (ADR 0069) |
+| `platform/lib/rescord/ruby.ex`, `ruby/` | the assistant, Ruby: the providers and their keys, the one module that sends a request, the settings of an organisation, the conversations, the tools, the prompt, the job that writes a reply, and the evaluation set under `ruby/eval/` (ADR 0069) |
+| `platform/lib/mix/tasks/rescord.ruby.eval.ex` | the task that runs the evaluation set of Ruby against a real model. Only a person starts it |
 | `platform/lib/rescord_web/ruby_words.ex` | the words of the assistant: the services, the reasons of a failure, the amounts of money, and where Ruby stands for an organisation |
 | `platform/lib/rescord_web/live/` | page LiveViews |
 | `platform/lib/rescord_web/widgets/` | live widgets: state, hooks, render |
