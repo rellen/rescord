@@ -355,6 +355,59 @@ for Rescord.
     `role`. Pass the user as the actor and the organisation as the tenant
     of each call. Show a form or a button only when
     `Rescord.Accounts.role_can?/3` says so.
+- **Settings** (ADR 0068). A new setting is in the environment only when
+  Rescord needs it before the database, before the first sign-in, or when
+  it describes the machine. Each other setting is an Ash resource with a
+  page, and a new integration never gets a `RESCORD_*` variable or a line
+  of `config :rescord`. A secret of a resource is an attribute under
+  AshCloak in `Rescord.Vault`: the resource states `temporal?: false` and
+  `ignore_attributes [:encrypted_<name>]` in its paper trail, the secret
+  has an action of its own that refuses an empty value, and its name is in
+  `:filter_parameters`. Do not add the package `cloak`.
+- **The assistant, Ruby** (ADR 0069). It is built in phases, so a module
+  that a rule names may not exist yet.
+  - **Ruby acts as the member.** Each tool call passes the actor and the
+    tenant of the conversation. Make the actor with
+    `Rescord.Ruby.Actor.for/1` and nowhere else: it turns the root level
+    off. No tool call passes `authorize?: false`.
+  - **The loop cannot write.** `Rescord.Ruby.Gate` never answers `:ok` for
+    a write tool. Only `Rescord.Ruby.confirm_proposal/2`, in the request of
+    the member, runs an action that changes a record. Run it outside any
+    other transaction.
+  - **A tool is a line that a person wrote**, in `Rescord.Ruby.Catalogue`.
+    Never pass `tools: true`. No destroy action is a tool. An action whose
+    public inputs are wider than what Ruby may send gets a draft, or
+    nothing. The actions of ADR 0069 that never have a tool stay without
+    one, and the test of the catalogue fails for one.
+  - **A tool result names each record** with a `ref`, a `label` and a line
+    of `detail`, and puts the text of a person under a key that ends in
+    `_text`. It holds no name and no email address of a member.
+  - **The page draws what matters from data of the server**: a card, a
+    link, a step. Never from the words of the model. `RubyMarkdown` drops
+    each image and each link that is no record of this conversation.
+  - **Never send the event `{:tool_result, ...}` of the loop to a page**:
+    it holds raw records. Send the outline that code made.
+  - **No setting of Ruby is a variable of the environment or a line of
+    application config.** A provider is a row of `Rescord.Ruby.Provider`,
+    and its key is under AshCloak in `Rescord.Vault`. Only
+    `Rescord.Ruby.LLM.profile/1` decrypts a key. No page, no tool, no
+    version row and no line of the log holds one.
+  - **Each request goes through `Rescord.Ruby.LLM.Client`**, with the
+    options of `Rescord.Ruby.LLM.Profile`. The system prompt is one
+    constant text with no value in it. Inside a conversation the tools,
+    the prompt and the stored turns never change: the messages only grow.
+  - **No test calls a provider.** Use `Rescord.Ruby.ScriptedModel`, or
+    `Rescord.FakeAnthropic` on `127.0.0.1`. The evaluation run is a Mix
+    task, outside `mix test` and CI.
+  - **Never log the text of a conversation**, a prompt, the arguments of a
+    tool or its result. Log the ids, the names, the counts and the reason
+    of a failure as an atom, never an error struct of ReqLLM: it holds the
+    body of the request.
+  - **The resources of a conversation have no bypass for a root user**, and
+    are deleted for real: `temporal?: false`, `paper_trail?: false`,
+    `archive?: false`.
+  - **A new tool** takes a line in the catalogue, words in
+    `RescordWeb.RubyWords`, and a question in the evaluation set.
 - **Browser code.** Write a browser-side hook in TypeScript. Parse what the
   server sends to it with zod when its shape matters; zod is not a dependency
   yet, so ask before the first use (`docs/architecture.md`, "Code in the

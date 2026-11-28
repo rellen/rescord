@@ -486,7 +486,8 @@ What we take from the model (`ash_grant` 0.22):
 - A refusal wins over a grant.
 
 A root user is outside the grants: a root user can do anything in each
-organisation (`docs/domain.md`, section 5.1).
+organisation (`docs/domain.md`, section 5.1). The conversations of the
+assistant are the one exception (ADR 0069).
 
 A domain other than the accounts holds its own grants, in a module that the
 configuration names (ADR 0024): `reads/0` and `powers/0`. A domain that
@@ -528,6 +529,55 @@ limit and a total. The page reads again each minute, because the time
 alone makes a task overdue. A row is a link to the page of its record,
 where the person acts.
 
+### Settings
+
+**The environment starts Rescord, and a resource holds each other
+setting** (ADR 0068). A setting is in the environment only when Rescord
+needs it before it can reach its database, before the first person can
+sign in, or when it describes this machine. Each other setting is an Ash
+resource with a page: of the server, in the shared schema, set by a root
+user under `/root`; or of an organisation, in its schema, set by a member
+with the power `settings`. A setting has one source, never both.
+
+A secret of such a resource is encrypted with AshCloak in `Rescord.Vault`,
+a plain module over `:crypto` whose key comes from `RESCORD_KEY_SECRET`.
+A resource with a secret is not temporal, its paper trail leaves the
+encrypted attribute out, and a page never shows the secret again. One
+function of the domain decrypts it.
+
+The settings of today move in releases of their own. The store of the
+files is still in the environment.
+
+### The assistant
+
+**Ruby is an optional assistant that reads and drafts as the member**
+(ADR 0069). It is built in phases, and a part of this section that the
+code does not have yet is what its phase lands.
+
+- The domain `Rescord.Ruby` holds the conversations, their messages and
+  the proposals, in the schema of the organisation, and the code that
+  calls `ash_ai`. The web layer calls its code interface.
+- Each tool call passes the member as the actor and the organisation as
+  the tenant. `Rescord.Ruby.Actor.for/1` is the one place that makes the
+  actor, and it turns the root level off. No tool call passes
+  `authorize?: false`.
+- The loop of the model runs in a job of Oban, and cannot write.
+  `Rescord.Ruby.Gate` turns a write into a proposal, and
+  `Rescord.Ruby.confirm_proposal/2` runs it in the request of the member,
+  through the action of the domain that the form uses.
+- A tool is a line of `Rescord.Ruby.Catalogue`. A read that is a function
+  of a domain is a digest in `Rescord.Ruby.Digests`. A tool names each
+  record with a reference, and the page makes each link and each card
+  from the references, never from the words of the model.
+- A provider is a row of `Rescord.Ruby.Provider`, and the use of one
+  organisation is a row of `Rescord.Ruby.Settings`. Each request goes
+  through `Rescord.Ruby.LLM.Client`, which counts its tokens.
+- **The resources of the conversations have no bypass for a root user.**
+  A conversation is read by its member and by the administrators of its
+  organisation. It is deleted for real: not temporal, no paper trail, no
+  archive. Both are exceptions that ADR 0069 states.
+- No test calls a provider: a scripted model answers.
+
 ## Releases
 
 **A rescue runs Rescord on a server of its own** (ADR 0044). One `mix
@@ -535,8 +585,9 @@ release` goes out as a Docker image with a Compose file, a Nix package with
 a NixOS module, and a tarball with a systemd unit. `Rescord.Release`
 migrates the database and each schema of an organisation, and makes the
 first root user, with no Mix. Each package migrates before each start.
-Each setting comes from the environment, and `docs/self-hosting.md` lists
-them. `GET /health` says whether the database answers.
+The settings that start Rescord come from the environment, and
+`docs/self-hosting.md` lists them. Each other setting is a resource
+(ADR 0068). `GET /health` says whether the database answers.
 
 ## Libraries
 

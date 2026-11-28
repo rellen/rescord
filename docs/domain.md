@@ -35,6 +35,11 @@ and its supplies.
 | task | One piece of work that a member does for a resident, a group, or a location. |
 | item | A type of supply that the organisation keeps, for example one brand of dry food. |
 | lot | One delivery of an item. A lot can have an expiry date. |
+| assistant | A part of Rescord that answers the questions of a member in a conversation, and prepares records for the member to confirm. Its name on the pages is Ruby. An organisation can leave it off. |
+| conversation | The questions of one member to the assistant, and its answers, in order of time. |
+| tool | One function of Rescord that the assistant can use to read records, or to prepare a record. A person writes the list of the tools. |
+| proposal | A record that the assistant prepared and that Rescord has not written. Rescord writes it only when the member confirms it. |
+| provider | A service that runs the language model of the assistant. A root user records it. |
 | entity | An object that has an identity of its own, for example a resident. |
 | dimension | A list of permitted values that describes an entity. The species is an example. |
 | shared value | A value of a dimension that all organisations can use. |
@@ -93,7 +98,7 @@ These subjects are out of scope for now:
 | Which levels does a user have? | A user is a root user or is not. Root is a level of the user, and it is not a role of a member. |
 | Where does the first root user come from? | From a script that a person runs in IEx when Rescord is first deployed. |
 | Can an administrator make another member an administrator? | Yes. |
-| What can a root user do in an organisation? | Anything. A root user can read and change the data of each organisation. |
+| What can a root user do in an organisation? | Anything. A root user can read and change the data of each organisation. The conversations of the assistant are the one exception (ADR 0069). |
 | Which library does the sign-in use? | AshAuthentication (ADR 0018). |
 | Can the time of an answer show that an address has an account? | No. A request for a sign-in link runs in a task and answers at once, in each case (ADR 0019). |
 | Which roles does a member have at the start? | Administrator and member. The grants can hold more roles later. |
@@ -146,6 +151,13 @@ These subjects are out of scope for now:
 | How does a refuge know that a transfer file is true? | The refuge that sends it signs it, and encrypts it for the refuge that receives it. |
 | From whom can a refuge import a transfer file? | From a partner on another server that it recorded. |
 | Does a transfer file carry the photos and the PDFs? | Yes. The file is one archive with the copy and its files. |
+| Does Rescord have an assistant? | Yes, with the name Ruby (ADR 0069, 28 November 2026). It is off until a root user records a provider and an administrator of the organisation turns it on. Rescord is complete without it. |
+| With which rights does the assistant work? | With the rights of the member who asks, and never with the rights of a root user. |
+| Can the assistant write a record? | No. It prepares a proposal, and the member confirms it. Then the member wrote the record. |
+| Does the assistant give veterinary advice? | No. It says what the records hold. |
+| Who reads a conversation? | Its member, and the administrators of the organisation, who cannot change it. Rescord tells each member so. A root user who is not an administrator there does not read it. |
+| How long does Rescord keep a conversation? | For a number of days that the organisation sets, 90 at the start. Then Rescord deletes it. Its member can delete it before that. |
+| Where is a setting of Rescord? | In a resource, with a page, unless Rescord needs the setting before it can reach its database, before the first person can sign in, or the setting describes the machine (ADR 0068). A secret in a resource is encrypted. |
 
 ## 5. The root entities
 
@@ -479,6 +491,39 @@ the photos that they added. The power `remove_residents` removes each
 photo. A photo of the journal leaves the photos when a member takes it off
 its entry.
 
+### 5.11 The assistant
+
+Rescord has an assistant with the name Ruby (ADR 0069). It is optional. A
+root user records a provider, and an administrator turns the assistant on
+for the organisation. The page that turns it on says where the records go.
+
+A member asks a question in a conversation. The assistant uses tools to
+read the records of the organisation, with the rights of that member, and
+answers in a few sentences. Each fact in an answer comes from a tool, and
+the answer has a link to each record that a tool read. The assistant gives
+no veterinary advice.
+
+The assistant writes no record. When a member tells it a thing that
+happened, the assistant prepares a proposal. The page shows the proposal
+as a card, with the record as Rescord will write it. The member confirms
+the proposal, changes it, or discards it. A record from a confirmed
+proposal has the member as its author, and its paper trail says that the
+assistant prepared it. Some records never have a proposal: a member, a
+role, a setting, a removal, a departure, a transfer, a routine, a
+correction of the entry of another person, a prescription, a diagnosis, a
+procedure and a vaccination.
+
+The power `ruby` lets a member use the assistant. An organisation has an
+allowance for each month, and the assistant stops when the allowance is
+used.
+
+A conversation belongs to its member. The administrators of the
+organisation can read it and cannot change it, and the page of the
+assistant says so. A root user who is not an administrator of the
+organisation cannot read it. Rescord deletes a conversation after the
+number of days that the organisation sets, and when its member removes
+it. A conversation is not in the export of the data.
+
 ## 6. Design rules
 
 The maintainer asked for a design in 5NF and 6NF.
@@ -501,7 +546,9 @@ The maintainer asked for a design in 5NF and 6NF.
    (ADR 0013).
 8. A temporal resource keeps its paper trail on its own rows. Each version
    then says which action made it, and who did so.
-9. Rescord deletes no row that a member removes. It archives the row.
+9. Rescord deletes no row that a member removes. It archives the row. The
+   conversations of the assistant are the one exception: Rescord deletes
+   them (ADR 0069).
 10. A resource with a workflow, such as a task, is not a temporal resource.
     The compiler refuses a resource that is both. ADR 0012 gives the reason.
 
