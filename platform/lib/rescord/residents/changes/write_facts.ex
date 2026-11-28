@@ -66,7 +66,12 @@ defmodule Rescord.Residents.Changes.WriteFacts do
   end
 
   defp options(changeset, context) do
-    base = [actor: context.actor, tenant: changeset.tenant, authorize?: false]
+    base = [
+      actor: context.actor,
+      tenant: changeset.tenant,
+      context: Map.take(changeset.context, [:shared]),
+      authorize?: false
+    ]
 
     case changeset.as_of do
       %DateTime{} = instant -> [as_of: instant] ++ base

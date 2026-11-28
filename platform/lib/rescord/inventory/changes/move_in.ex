@@ -40,6 +40,7 @@ defmodule Rescord.Inventory.Changes.MoveIn do
           },
           actor: context.actor,
           tenant: changeset.tenant,
+          context: Map.take(changeset.context, [:shared]),
           authorize?: false
         )
         |> Ash.create()

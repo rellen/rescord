@@ -56,7 +56,11 @@ defmodule Rescord.Photos.Changes.AdoptAttachment do
   def change(changeset, _opts, _context), do: changeset
 
   defp options(changeset, actor) do
-    base = [actor: actor, tenant: changeset.tenant]
+    base = [
+      actor: actor,
+      tenant: changeset.tenant,
+      context: Map.take(changeset.context, [:shared])
+    ]
 
     case changeset.as_of do
       %DateTime{} = instant -> [as_of: instant] ++ base

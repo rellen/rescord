@@ -183,6 +183,7 @@ defmodule Rescord.Resource do
         mode :temporal_inline
         change_tracking_mode :previous_values
         store_action_name? true
+        operation_id_field :operation_id
         version_resource? true
         version_extensions authorizers: [Ash.Policy.Authorizer]
         mixin Rescord.Resource.VersionPolicies
@@ -195,6 +196,7 @@ defmodule Rescord.Resource do
       paper_trail do
         change_tracking_mode :changes_only
         store_action_name? true
+        operation_id_field :operation_id
         version_extensions authorizers: [Ash.Policy.Authorizer]
         mixin Rescord.Resource.VersionPolicies
       end

@@ -89,5 +89,10 @@ defmodule Rescord.Ruby.Changes.Say do
 
   # Rescord reads and touches the conversation itself, after the check of
   # the owner above: `touch` is in no grant.
-  defp options(changeset), do: [tenant: changeset.tenant, authorize?: false]
+  defp options(changeset),
+    do: [
+      tenant: changeset.tenant,
+      context: Map.take(changeset.context, [:shared]),
+      authorize?: false
+    ]
 end

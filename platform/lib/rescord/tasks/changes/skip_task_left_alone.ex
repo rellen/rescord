@@ -22,7 +22,11 @@ defmodule Rescord.Tasks.Changes.SkipTaskLeftAlone do
   @impl true
   def change(changeset, _opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, subject ->
-      internal = [tenant: changeset.tenant, authorize?: false]
+      internal = [
+        tenant: changeset.tenant,
+        context: Map.take(changeset.context, [:shared]),
+        authorize?: false
+      ]
 
       with {:ok, %Task{state: :due} = task} <-
              Task |> Ash.Query.filter(id == ^subject.task_id) |> Ash.read_one(internal),

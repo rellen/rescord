@@ -31,6 +31,7 @@ defmodule Rescord.Inventory.Changes.FirstStock do
         },
         actor: context.actor,
         tenant: changeset.tenant,
+        context: Map.take(changeset.context, [:shared]),
         authorize?: false
       )
       |> Ash.create()

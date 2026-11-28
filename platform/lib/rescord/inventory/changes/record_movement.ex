@@ -104,7 +104,12 @@ defmodule Rescord.Inventory.Changes.RecordMovement do
   defp set_quantity(%{valid?: false} = changeset, _direction), do: changeset
 
   defp set_quantity(changeset, direction) do
-    internal = [tenant: changeset.tenant, authorize?: false]
+    internal = [
+      tenant: changeset.tenant,
+      context: Map.take(changeset.context, [:shared]),
+      authorize?: false
+    ]
+
     lot_id = Changeset.get_attribute(changeset, :lot_id)
     location_id = Changeset.get_attribute(changeset, :location_id)
 

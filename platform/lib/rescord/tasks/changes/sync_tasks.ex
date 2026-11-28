@@ -53,7 +53,13 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
   def change(changeset, opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, routine ->
       now = Ash.Changeset.get_argument(changeset, :now) || DateTime.utc_now()
-      internal = [tenant: changeset.tenant, authorize?: false]
+
+      internal = [
+        tenant: changeset.tenant,
+        context: Map.take(changeset.context, [:shared]),
+        authorize?: false
+      ]
+
       # The schema, and not a record that a page read some time ago.
       organisation = Accounts.organisation_of(changeset.to_tenant)
 
