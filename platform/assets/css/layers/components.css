@@ -2270,6 +2270,10 @@ section[data-log] [data-rate] {
 }
 
 section[data-log] [data-rate] > span {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
 /* -------------------------------------------------------------- comments */
 
 /* The comments of a record (issue 29): a list of cards, oldest first. */
@@ -2732,6 +2736,8 @@ aside[data-ruby-panel] {
    message in the list when it is whole. */
 section[data-log] > article[data-from] {
   margin-block-end: 1.5rem;
+}
+
 ol[data-comments] > li > article > footer {
   display: flex;
   flex-wrap: wrap;
