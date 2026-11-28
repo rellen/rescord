@@ -16,6 +16,7 @@ defmodule Rescord.ResidentsTest do
   alias Rescord.Residents
 
   doctest Rescord.Residents.Census
+  doctest Rescord.Residents.Survival
 
   setup do
     root = root!()

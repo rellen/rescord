@@ -483,6 +483,13 @@ release (ADR 0047).
   time": the level at the end of each day of the last 90 days, the
   forecast to the day when it runs out, the reorder level, and the expiry
   of each lot with stock.
+- The eighth insight, "Lengths of stay" (issue 36, ADR 0124): for each way
+  of arrival with 10 residents or more, a step line of the share of its
+  residents still in care on each day after they arrived, which counts a
+  resident still in care up to today (the method of Kaplan and Meier), with
+  a line at a half. Tables give the day by which a quarter, a half and
+  three quarters of each way of arrival had left, and how the stays ended.
+  Each member can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A

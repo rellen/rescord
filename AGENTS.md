@@ -1024,6 +1024,10 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A forecast on a line chart is `ahead`, drawn dashed, and an instant
     such as an expiry is a `moment` (ADR 0123). The days that stock lasts
     are `Rescord.Inventory.days_left/2`, at the use of the last 30 days.
+  - How long residents stay is `Rescord.Residents.stay_curve/1` and
+    `stay_day_when/2` (Kaplan and Meier, ADR 0124), with exact fractions:
+    a stay that goes on counts up to today, never as ended. A group of
+    fewer than 10 stays gets no line.
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the

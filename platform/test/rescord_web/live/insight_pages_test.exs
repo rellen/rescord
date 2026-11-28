@@ -511,4 +511,50 @@ defmodule RescordWeb.InsightPagesTest do
       )
     end
   end
+
+  describe "lengths of stay (ADR 0124)" do
+    test "has a line for each way of arrival with 10 stays or more, and the tables", context do
+      for n <- 1..10 do
+        resident =
+          resident!(context.lists, context.options, %{
+            name: "R#{n}",
+            arrived_on: Date.add(context.today, -10)
+          })
+
+        if n <= 5 do
+          {:ok, _} =
+            Rescord.Residents.record_departure(
+              %{
+                resident_id: resident.id,
+                kind: :release,
+                departed_on: Date.add(context.today, -6)
+              },
+              context.options
+            )
+        end
+      end
+
+      resident!(context.lists, context.options, %{name: "Lone", arrival_kind: :stray})
+
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/lengths")
+      |> assert_has(heading("Lengths of stay", level: 1))
+      |> assert_has(region("Surrender by an owner"),
+        text: "10 residents, and 5 in care now. Half had left by day 4."
+      )
+      |> assert_has(region("Stray"), text: "1 resident: too few for a line.")
+      |> assert_has(table(~r/had left/) |> row(~r/^Surrender by an owner/),
+        text: "Surrender by an owner 10 5 Day 4 Day 4 Not yet"
+      )
+      |> assert_has(table(~r/by how they ended/) |> row(~r/^Surrender by an owner/),
+        text: "Surrender by an owner 0 5 0 5"
+      )
+    end
+
+    test "says when no resident has arrived", context do
+      context.conn
+      |> visit(~p"/o/#{context.organisation.short_name}/insights/lengths")
+      |> assert_has(main(), text: "No resident has arrived yet.")
+    end
+  end
 end

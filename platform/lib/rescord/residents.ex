@@ -323,6 +323,12 @@ defmodule Rescord.Residents do
   @doc "The arrivals and departures of each week of stays: `Rescord.Residents.Census.by_week/2`."
   defdelegate moves_by_week(stays, mondays), to: Rescord.Residents.Census, as: :by_week
 
+  @doc "The share of some stays still in care by day: `Rescord.Residents.Survival.curve/1`."
+  defdelegate stay_curve(stays), to: Rescord.Residents.Survival, as: :curve
+
+  @doc "The day by which a share of some stays had left: `Rescord.Residents.Survival.day_when/2`."
+  defdelegate stay_day_when(stays, share), to: Rescord.Residents.Survival, as: :day_when
+
   @doc """
   The stay of each resident that the actor of `opts` reads (ADR 0118): when
   it arrived and how, and when it left and how, or `nil` while it is in
