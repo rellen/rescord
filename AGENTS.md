@@ -16,6 +16,9 @@ This file covers conventions and commands. It does not repeat the design.
 - `docs/adr/` records each decision, one file each. Write a new ADR
   (`NNNN-title.md`: status, context, decision, consequences, a few lines each)
   for any decision you make that neither place covers.
+- `docs/migrations.md` says how to write a migration for a rescue that we
+  do not know, and what each release tells an operator about its
+  migrations. Read it before you change the database.
 - `platform/AGENTS.md` holds the usage rules of the dependencies: some
   inline, and a link to the rest (ADR 0008). Read the rules of a package
   before you use it, and search its documentation with
@@ -46,6 +49,7 @@ nix build .#rescord                        # the Nix package
 nix flake check                            # the package and a NixOS test of the module
 scripts/release-tarball.sh amd64 arm64     # the tarballs in dist/, with Docker buildx
 scripts/upgrade-test.sh OLD_IMAGE NEW_IMAGE  # an upgrade with its data, as the release runs it (ADR 0051)
+scripts/check-upgrade-notes.sh             # each new migration has its upgrade note (ADR 0073)
 ```
 
 After a change to `platform/mix.lock`, set the hash of `fetchMixDeps` in
@@ -107,12 +111,15 @@ for Rescord.
   Changed, Deprecated, Removed, Fixed or Security, and in "Upgrade notes",
   the first section, for what an operator must do or know at the upgrade.
   An entry is full sentences for a person who runs a server. It is not the
-  subject of the commit.
+  subject of the commit. A commit with a migration always adds a line to
+  "Upgrade notes": see "Migrations and upgrades".
 - **Release only when the maintainer asks.** On the newest commit of
   `main`, run `scripts/release.sh`. It finds the new version from the
   commits since the last tag, writes it in `platform/mix.exs`, which is its
   one home (the Nix package reads it there), gives the section "Unreleased"
-  its version and its date, and commits `chore(release): X.Y.Z`. Push the
+  its version and its date, and commits `chore(release): X.Y.Z`. It stops
+  when a new migration has no upgrade note. Before you run it, read the
+  upgrade notes as `docs/migrations.md`, "Before a release", says. Push the
   commit to `main`. Then run the workflow Release on `main` from the Actions
   page, which makes the tag such as `v0.2.0`, or push that tag.
   `release.yml` runs the checks of CI, the flake check and the test of an
@@ -123,6 +130,58 @@ for Rescord.
 - After a change to a workflow, such as a new version of an action, run
   Release with `dry_run`: it builds and checks each part, and publishes
   nothing.
+
+## Migrations and upgrades
+
+Rescord is open source, and a rescue that we do not know runs each
+migration at the first start of a new version, on its own data, with no
+developer near, and goes back only with a backup. `docs/migrations.md`
+holds the rules in full, with the form of an upgrade note and of a step by
+hand (ADR 0073). Read it before you write a migration. In short:
+
+- **Each migration has a line in `CHANGELOG.md`, in the same commit**,
+  under `### Upgrade notes` of `## [Unreleased]`, in the list of the entry
+  "**Migrations.**". The line holds the name of the file with no `.exs`,
+  where it runs ("in the database" or "in each organisation"), what it
+  does for a person who runs a server, and what it does to the rows that
+  are there ("It changes no row", or which rows and by which rule).
+  `scripts/check-upgrade-notes.sh` fails for a migration with no line: run
+  it before each push that adds a migration. CI runs it for each push, and
+  `scripts/release.sh` before a release.
+- **A migration of a release never changes**: no edit, no new name, no
+  removal. Put a fault right with a new migration.
+- **Read what `mix ash.codegen` wrote, in both directories**, as the
+  operator of a rescue with years of rows. A removal of a column, a new
+  name, and a new rule on a table with rows each need a decision.
+- **A migration runs by itself, and calls no code of Rescord**: only
+  `Ecto.Migration` and SQL in `execute/1`. No resource, no function of a
+  domain, no setting, no network. It works on empty tables and on many
+  rows, and it stays in its transaction.
+- **A new rule states what happens to an old row that breaks it**:
+  `null: false`, a unique index, a check, a foreign key, an exclusion. In
+  this order: the migration puts the rows right by a rule that loses
+  nothing; or the upgrade keeps the rows and Rescord asks a member in the
+  pages (ADR 0065); or, as the last choice, a step by hand. A migration
+  never fails on the rows of a rescue with only the error of PostgreSQL.
+- **A data migration is a file of its own**, in SQL, with a `WHERE` that
+  leaves out each row that is right already. It does not guess a value.
+  A table of a temporal resource has a row for each version: say in the
+  `@moduledoc` and in the upgrade note what the migration does to the
+  history.
+- **A step by hand is a breaking change** (`!`), and its steps are in the
+  upgrade notes in full, under "**Before the upgrade.**" or "**After the
+  upgrade.**": why, a query that finds the rows in each organisation, how
+  to put each right, how to know that the step is done, and what happens
+  without it. The migration checks first, and stops with a message that
+  names the step.
+- **Say what goes and what takes long.** The note of a migration that
+  removes a column, a table or rows says what a rescue loses. The note of
+  a migration that writes a large table again says that the first start
+  takes longer.
+- **A migration that changes or checks rows is tried on rows**: on a
+  database for development with records, `up`, `down` and `up` again; and
+  in `scripts/upgrade-test.sh`, with rows of that kind that the last
+  release makes.
 
 ## Conventions
 
@@ -365,7 +424,8 @@ for Rescord.
     a role into a policy, and do not add `ash_grant` as a dependency. A new
     power takes a key in `Rescord.Accounts.Grants.power_keys/0`, words in
     `RescordWeb.RoleWords`, and a migration that gives it to the role with
-    the key `:administrator`.
+    the key `:administrator`: a data migration, with its upgrade note
+    (`docs/migrations.md`).
   - No action takes as input an attribute that decides who can do what:
     `root?` of a user, the role and the user of a member, and the powers
     that a person gives (`Rescord.Accounts.Validations.WithinPowers`). Mark such an
@@ -645,6 +705,7 @@ for Rescord.
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
 | `scripts/release-tarball.sh` | the tarballs of the release |
 | `docs/self-hosting.md` | the guide for an operator |
+| `docs/migrations.md`, `scripts/check-upgrade-notes.sh` | the rules of a migration and of its upgrade note, and the check that each migration has one (ADR 0073) |
 | `.github/workflows/` | CI, the flake check, and the release (ADR 0047) |
 | `.gitleaks.toml`, `scripts/check-secrets.sh` | the scan for secrets and for what belongs to one deployment (ADR 0064) |
 | `CHANGELOG.md` | the changes of each release, which become its notes |

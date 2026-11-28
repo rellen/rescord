@@ -21,7 +21,9 @@
 # each check passed. Or push the tag vX.Y.Z, which starts the same workflow.
 #
 # It stops when the tree is not clean, when HEAD is not the newest commit of
-# main on origin, or when "Unreleased" has no entry.
+# main on origin, when "Unreleased" has no entry, or when a migration that
+# is new since the last release has no upgrade note
+# (scripts/check-upgrade-notes.sh, ADR 0073).
 set -euo pipefail
 
 stop() {
@@ -102,6 +104,11 @@ entries=$(awk '
   END { print count + 0 }
 ' CHANGELOG.md)
 [ "$entries" -gt 0 ] || stop "The section \"## [Unreleased]\" of CHANGELOG.md has no entry."
+
+# Each migration that is new since the last release has its upgrade note
+# (ADR 0073).
+scripts/check-upgrade-notes.sh --since "v$old" ||
+  stop "The release stops: write the upgrade notes of the migrations first."
 
 link_end="/compare/v$old...HEAD"
 grep -qF "$link_end" CHANGELOG.md ||

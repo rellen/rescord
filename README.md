@@ -36,6 +36,11 @@ Conventions are in [`AGENTS.md`](AGENTS.md), the design in
 [`docs/architecture.md`](docs/architecture.md), and each decision in
 [`docs/adr/`](docs/adr/).
 
+Others host Rescord, so a change to the database follows
+[`docs/migrations.md`](docs/migrations.md): how to write a migration for the
+data of a rescue that we do not know, and the upgrade note that each
+migration has in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Licence
 
 Rescord is under the MIT licence: see [`LICENSE`](LICENSE). The typeface

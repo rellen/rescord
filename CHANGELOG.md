@@ -6,16 +6,20 @@ under the release that has it. The format is
 versions follow [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html):
 ADR 0060 says what a major, a minor and a patch mean for Rescord. A release
 starts with "Upgrade notes" when an upgrade to it needs a step or a
-warning. The release workflow puts the section of a version in the notes of
-its GitHub release (ADR 0047).
+warning. They name each migration that the first start of the release
+runs, and say what it does to the data that is there (ADR 0073). The
+release workflow puts the section of a version in the notes of its GitHub
+release (ADR 0047).
 
 ## [Unreleased]
 
 ### Upgrade notes
 
-- The first start of this version runs a migration of each organisation,
-  which adds a column to the subjects of the tasks. Make a backup first,
-  as `docs/self-hosting.md` says. No new setting is needed.
+- **Migrations.** The first start of this version runs each of these by
+  itself. Make a backup first, as `docs/self-hosting.md` says.
+  - `20261127182144_archive_task_subjects`, in each organisation: adds a
+    column to the subjects of the tasks. It changes no row.
+- No new setting is needed.
 
 ### Added
 
@@ -41,6 +45,14 @@ its GitHub release (ADR 0047).
 
 ### Changed
 
+- The upgrade notes of a release now name each migration that the first
+  start runs: whether it runs in the database or in each organisation,
+  what it does to the rows that are there, and each step by hand in full,
+  with the query that finds the rows. A check fails for a migration with
+  no note, at each push and before a release (ADR 0073).
+  `docs/self-hosting.md`, "Upgrade", says how to read the notes, and
+  `docs/migrations.md` holds the rules for a person who changes the
+  database of Rescord.
 - The first page of an organisation now says what needs attention: the
   tasks that are overdue or due today, the items to count or to order and
   the stock that is past its expiry date or expires soon, the residents
@@ -84,9 +96,15 @@ its GitHub release (ADR 0047).
 
 ### Upgrade notes
 
-- The first start of this version runs a migration of the database, and a
-  migration of each organisation for the photos. Make a backup first, as
-  `docs/self-hosting.md` says.
+- **Migrations.** The first start of this version runs each of these by
+  itself. Make a backup first, as `docs/self-hosting.md` says. These
+  notes first said "a migration of the database": this release has none.
+  - `20261125120000_give_administrators_the_export`, in each
+    organisation: gives the role of the administrators the power
+    `export`, for the export of the data. No other row changes.
+  - `20261126230812_photos`, in each organisation: adds the tables of the
+    photos, the albums and the profile pictures, and a column for the
+    thumbnail of a file of the journal. It changes no row.
 - No new setting is needed. `RESCORD_PHOTO_SLOTS` and
   `RESCORD_BACKUP_KEEP_DAYS` are new, and each has a default.
 - To get the backups of each day: with Docker Compose, take the new

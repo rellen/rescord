@@ -414,7 +414,12 @@ them through a directory.
 
 1. Make a backup, as "Back up" says, and copy it from the server.
 2. Read the section "Upgrade notes" of each release after yours in
-   `CHANGELOG.md`, and do what each one says.
+   `CHANGELOG.md`, up to the one that you install, the oldest first, and
+   do what each one says. The notes name each migration that the start
+   will run, and say whether it runs in the database or in each
+   organisation and what it does to your data. A step that you do by
+   hand is there in full: "Before the upgrade" comes before step 3, and
+   "After the upgrade" comes after step 5.
 3. Take the new version.
    - With Docker Compose, put the new version in `RESCORD_IMAGE`, and run
      `docker compose pull` and `docker compose up -d`.
@@ -428,3 +433,19 @@ them through a directory.
 
 A migration changes the database for the new version, and the old version
 may not run on it. To go back, restore the backup of step 1.
+
+You can upgrade past several releases in one step: the start runs the
+migrations of each of them, in order. Stop at a release between only when
+its upgrade notes say so.
+
+When a migration fails, Rescord does not start. The last line of the log
+that starts with `== Running` gives the number and the module of the
+migration, such as
+`20261127182144 Rescord.Repo.TenantMigrations.ArchiveTaskSubjects`. The
+upgrade notes name each migration with that number first, such as
+`20261127182144_archive_task_subjects`: its line says what the migration
+does, and which step it needs. The migrations before it have run, so
+restore the backup of step 1 before you start the old version again. If
+the notes do not explain the failure, it is a fault of Rescord: please
+report it at <https://github.com/rellen/rescord/issues>, with the lines of
+the log and with no data of your rescue.

@@ -618,6 +618,9 @@ release` goes out as a Docker image with a Compose file, a Nix package with
 a NixOS module, and a tarball with a systemd unit. `Rescord.Release`
 migrates the database and each schema of an organisation, and makes the
 first root user, with no Mix. Each package migrates before each start.
+So a rescue that we do not know runs each migration on its own data:
+`docs/migrations.md` holds the rules of a migration, and each one has a
+line in the upgrade notes of its release, which a check holds (ADR 0073).
 The settings that start Rescord come from the environment, and
 `docs/self-hosting.md` lists them. Each other setting is a resource
 (ADR 0068). `GET /health` says whether the database answers.

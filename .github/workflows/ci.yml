@@ -2,7 +2,8 @@
 # run inside the devenv shell, so CI has the toolchain of devenv.lock, its
 # PostgreSQL 18, and the Playwright of nixpkgs for the browser tests. A push
 # also checks the messages of its commits (ADR 0060), and each run scans the
-# history for secrets (ADR 0064). A release runs these checks too, before it
+# history for secrets (ADR 0064) and checks that each new migration has its
+# upgrade note (ADR 0073). A release runs these checks too, before it
 # publishes anything.
 name: CI
 
@@ -39,6 +40,24 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
         run: scripts/check-commit-message.sh --range "$BEFORE..$GITHUB_SHA"
+
+  # Each migration that is new since the last release has its line in the
+  # upgrade notes of CHANGELOG.md, and no migration of that release changed
+  # (ADR 0073). A job of its own, so a missing note shows beside the tests.
+  notes:
+    name: The upgrade notes of the migrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # The whole history and the tags: the check compares with the last
+      # release.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Show that the check finds a migration with no note
+        run: scripts/check-upgrade-notes.sh --self-test
+      - name: Check each new migration
+        run: scripts/check-upgrade-notes.sh
 
   # The scan for secrets, and for what belongs to one deployment (ADR 0064).
   # A job of its own, so a finding shows in a minute, beside the tests.
