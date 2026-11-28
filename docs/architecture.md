@@ -749,6 +749,10 @@ first root user, with no Mix. Each package migrates before each start.
 So a rescue that we do not know runs each migration on its own data:
 `docs/migrations.md` holds the rules of a migration, and each one has a
 line in the upgrade notes of its release, which a check holds (ADR 0073).
+Before a start changes anything, it rehearses the upgrade: each pending
+migration, of the database and of each organisation, in one transaction
+that is taken back (`Rescord.Release.Rehearsal`, ADR 0081). A migration
+that fails there stops the start, and the old version still runs.
 The settings that start Rescord come from the environment, and
 `docs/self-hosting.md` lists them. Each other setting is a resource
 (ADR 0068). `GET /health` says whether the database answers.

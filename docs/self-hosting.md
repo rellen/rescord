@@ -121,8 +121,9 @@ agenix can make that file.
 The module installs `rescord-check`, which checks the server (see "Check
 the server" below), and `rescord-bootstrap-root`, which makes the first
 root user. It also installs `rescord-restore` (see "Restore"),
-`rescord-move-storage` (see "Move the files to another store") and
-`rescord-rotate-vault` (see "Change the secret of the keys"). Each runs
+`rescord-move-storage` (see "Move the files to another store"),
+`rescord-rotate-vault` (see "Change the secret of the keys") and
+`rescord-migrate` (see "The rehearsal of an upgrade"). Each runs
 with the environment of the service. Run them as root:
 
 ```sh
@@ -589,24 +590,82 @@ history of Rescord.
    - From the tarball, stop Rescord, and unpack the new tarball over
      `/opt/rescord`.
 4. Start Rescord. Each start runs the migrations that have not run, for the
-   database and for each organisation, and then the server starts.
+   database and for each organisation, and then the server starts. Before
+   it changes anything, the start rehearses the upgrade: see below.
 5. Run `bin/check`: its first line says the version that runs.
-
-A migration changes the database for the new version, and the old version
-may not run on it. To go back, restore the backup of step 1.
 
 You can upgrade past several releases in one step: the start runs the
 migrations of each of them, in order. Stop at a release between only when
 its upgrade notes say so.
 
-When a migration fails, Rescord does not start. The last line of the log
-that starts with `== Running` gives the number and the module of the
+### The rehearsal of an upgrade
+
+A start with migrations that have not run first rehearses them (ADR 0081).
+It runs each one, for the database and for each organisation, in a
+transaction that it takes back. So an upgrade runs each migration two
+times, and the first start of a new version takes longer than a start.
+
+When the rehearsal passes, the log says so, and the migrations run:
+
+```text
+The rehearsal of the upgrade passed: 1 migration of the database, and
+6 migrations in 2 organisations. Nothing is changed yet. Rescord runs the
+migrations now.
+```
+
+When a migration fails in the rehearsal, Rescord changes nothing and does
+not start. The log names the migration and the organisation, with the
+message of PostgreSQL:
+
+```text
+The rehearsal of the upgrade failed, and Rescord changed nothing.
+It tried 6 migrations in 2 organisations.
+
+20261128054817_add_ruby_conversations, in the organisation wattle-creek (org_...):
+  relation "ruby_messages" already exists
+```
+
+Then:
+
+1. Put the old version back, and start it: the database is as it was, so
+   you need no restore. With Docker Compose, the container of the new
+   version starts again and rehearses again until you do; each rehearsal
+   changes nothing.
+2. Find the name of the migration in the "Upgrade notes" of its release.
+   Its line says what the migration does, and which step it needs, such
+   as "Before the upgrade". Do the step, and upgrade again.
+3. If the notes do not explain the failure, it is a fault of Rescord:
+   please report it at <https://github.com/rellen/rescord/issues>, with
+   the lines of the log and with no data of your rescue. Stay on the old
+   version until a release puts it right.
+
+You can rehearse before the day of the upgrade. The command changes
+nothing, and exits with 1 when a migration fails. While it runs, the pages
+of an organisation wait for the tables that it holds, so choose a quiet
+hour:
+
+```sh
+docker compose run --rm rescord bin/migrate --rehearse   # Docker Compose, with the new version in RESCORD_IMAGE and after `docker compose pull`
+rescord-migrate --rehearse                               # NixOS, as root: the version that is installed
+/opt/rescord-new/bin/migrate --rehearse                  # the tarball of the new version, unpacked beside the old one, with the settings of the service
+```
+
+`bin/migrate --no-rehearsal` migrates with no rehearsal. Use it only when
+the upgrade notes of a release say so.
+
+### After the rehearsal
+
+The migrations that run after the rehearsal change the database for the
+new version, and the old version may not run on it. To go back, restore
+the backup of step 1.
+
+The rehearsal cannot see each fault: a server that stops in the middle of
+the migrations, or a disk that is full. When a migration fails after the
+rehearsal passed, Rescord does not start. The last line of the log that
+starts with `== Running` gives the number and the module of the
 migration, such as
 `20261127182144 Rescord.Repo.TenantMigrations.ArchiveTaskSubjects`. The
 upgrade notes name each migration with that number first, such as
-`20261127182144_archive_task_subjects`: its line says what the migration
-does, and which step it needs. The migrations before it have run, so
-restore the backup of step 1 before you start the old version again. If
-the notes do not explain the failure, it is a fault of Rescord: please
-report it at <https://github.com/rellen/rescord/issues>, with the lines of
-the log and with no data of your rescue.
+`20261127182144_archive_task_subjects`. The migrations before it have
+run, so restore the backup of step 1 before you start the old version
+again, and please report the failure.

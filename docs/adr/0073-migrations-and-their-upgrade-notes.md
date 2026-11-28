@@ -76,7 +76,8 @@ Several threads add migrations to `main` on the same day, and a commit on
 - The release tests an upgrade from the last release only, with little
   data (ADR 0051). A migration that changes or checks rows adds rows of
   that kind to `scripts/upgrade-test.sh`. A test of an upgrade with the
-  data of a large rescue, and a check of each migration before the first
-  one runs, are not built.
+  data of a large rescue is not built. A check of each migration before
+  the first one runs came after this ADR: the rehearsal of ADR 0081,
+  which also replaces what this ADR said about `@disable_ddl_transaction`.
 - The check needs the history and the tags of the repository. A clone
   with no tag stops it with a message, and does not pass it.

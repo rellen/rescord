@@ -48,6 +48,15 @@ release (ADR 0047).
     adds a column to the items of the inventory, for the strength of a
     medication. It is empty for each item that is there. It changes no
     row.
+- The first start of this version rehearses the migrations before it
+  changes anything, and each later upgrade does the same: it runs each
+  migration in a transaction that it takes back, and migrates only when
+  each one passed. So the migrations of an upgrade take about two times
+  as long as before. When one fails in the rehearsal, Rescord changes
+  nothing and does not start, the log names the migration and the
+  organisation, and the version that you had still runs on the database,
+  with no restore. `docs/self-hosting.md`, "Upgrade", has the steps. The
+  backup first stays step 1.
 - `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
   the database, such as the key of a provider of the assistant. It did so
   for the private keys of the transfers already, so the rule is the same:
@@ -83,6 +92,18 @@ release (ADR 0047).
 
 ### Added
 
+- A start rehearses an upgrade before it changes anything (ADR 0081).
+  Until now a migration that failed on the data of one organisation left
+  the server half migrated, and only a backup went back. Now each
+  migration that has not run, of the database and of each organisation,
+  first runs in a transaction that Rescord takes back. When each one
+  passed, the migrations run. When one failed, nothing is changed, and
+  the log says which migration failed in which organisation, with the
+  message of PostgreSQL and without the values of a row.
+  `bin/migrate --rehearse` rehearses and changes nothing, to try a new
+  version before the day of the upgrade, and `bin/migrate --no-rehearsal`
+  is for a release whose upgrade notes ask for it. The NixOS module
+  installs `rescord-migrate`.
 - A resident has a page "Measurements", which shows each kind of
   measurement over time: the newest value, its change from the one
   before, a chart, and each value in a table. A member chooses the last

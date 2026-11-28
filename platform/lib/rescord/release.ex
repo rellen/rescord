@@ -1,16 +1,22 @@
 defmodule Rescord.Release do
   @moduledoc """
   The tasks of a release, which has no Mix (ADR 0044). An operator runs
-  each with `bin/rescord eval`:
+  each with a script of `bin`, or with `bin/rescord eval`:
 
-      bin/rescord eval "Rescord.Release.migrate()"
+      bin/migrate
       bin/rescord eval 'Rescord.Release.bootstrap_root("you@example.org")'
 
-  `migrate/0` runs the migrations of the database and then the migrations
-  of the schema of each organisation (ADR 0011), as `mix ash.migrate` does
-  on a machine for development. The Docker image, the NixOS module and the
-  systemd unit of the tarball run it before each start, so an upgrade
-  migrates by itself. A migration that has run does not run again.
+  `migrate/1` runs the migrations of the database and then the migrations
+  of the schema of each organisation (ADR 0011). The Docker image, the
+  NixOS module and the systemd unit of the tarball run it before each
+  start, so an upgrade migrates by itself. A migration that has run does
+  not run again.
+
+  Before it changes anything, `migrate/1` rehearses the upgrade
+  (`Rescord.Release.Rehearsal`, ADR 0081): each migration runs in a
+  transaction that is taken back. When one fails there, `migrate/1`
+  changes nothing, says which and where, and the server does not start.
+  `rehearse/0` is the rehearsal alone.
 
   A setting that is missing or wrong stops each of these, and the server,
   before it does anything: `config/runtime.exs` reads each one
@@ -42,29 +48,83 @@ defmodule Rescord.Release do
       Rescord.Vault
     ]
 
+  alias Rescord.Release.Rehearsal
   alias Rescord.Storage.Move
 
   @app :rescord
 
-  @doc "Runs each migration of the database, then each tenant migration of each organisation."
-  @spec migrate() :: :ok
-  def migrate do
+  @doc """
+  Rehearses the upgrade, and then runs each migration of the database and
+  each tenant migration of each organisation. `:error` when the rehearsal
+  fails: then nothing is changed.
+
+  `rehearse: false` leaves the rehearsal out, for a migration that the
+  upgrade notes of its release say cannot be rehearsed.
+  """
+  @spec migrate(keyword) :: :ok | :error
+  def migrate(opts \\ []) do
     load_app()
 
-    for repo <- repos() do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    if Keyword.get(opts, :rehearse, true) do
+      case rehearsal() do
+        {:nothing, _plan} ->
+          run_migrations()
 
-      {:ok, _, _} =
-        Ecto.Migrator.with_repo(repo, fn repo ->
-          path = Ecto.Migrator.migrations_path(repo, "tenant_migrations")
+        {:passed, _plan} = result ->
+          IO.puts(Rehearsal.format(result) <> " Rescord runs the migrations now.")
+          run_migrations()
 
-          for tenant <- repo.all_tenants() do
-            Ecto.Migrator.run(repo, path, :up, all: true, prefix: tenant)
-          end
-        end)
+        {:failed, _plan, _faults} = result ->
+          IO.puts(Rehearsal.format(result))
+          :error
+      end
+    else
+      IO.puts("Rescord runs the migrations with no rehearsal.")
+      run_migrations()
     end
+  end
 
-    :ok
+  @doc """
+  Rehearses the upgrade, prints what it found, and changes nothing
+  (ADR 0081). `bin/migrate --rehearse` runs it.
+  """
+  @spec rehearse() :: :ok | :error
+  def rehearse do
+    load_app()
+    result = rehearsal()
+    IO.puts(Rehearsal.format(result))
+    if match?({:failed, _plan, _faults}, result), do: :error, else: :ok
+  end
+
+  defp rehearsal do
+    {:ok, result, _apps} = Ecto.Migrator.with_repo(Rescord.Repo, fn _repo -> Rehearsal.run() end)
+    result
+  end
+
+  defp run_migrations do
+    # Ecto compiles the file of a tenant migration one time for each
+    # organisation, and the compiler would warn each time after the first.
+    conflicts = Code.get_compiler_option(:ignore_module_conflict)
+    Code.put_compiler_option(:ignore_module_conflict, true)
+
+    try do
+      for repo <- repos() do
+        {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+
+        {:ok, _, _} =
+          Ecto.Migrator.with_repo(repo, fn repo ->
+            path = Ecto.Migrator.migrations_path(repo, "tenant_migrations")
+
+            for tenant <- repo.all_tenants() do
+              Ecto.Migrator.run(repo, path, :up, all: true, prefix: tenant)
+            end
+          end)
+      end
+
+      :ok
+    after
+      Code.put_compiler_option(:ignore_module_conflict, conflicts)
+    end
   end
 
   @doc "Takes the migrations of the database back to the version `version`."

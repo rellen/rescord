@@ -26,10 +26,14 @@ Rescord is open source, and a rescue runs it on a server of its own
 - **It can run a long time after we wrote it.** An upgrade from each older
   release is supported (ADR 0060). A rescue that jumps from 0.2.0 to 0.6.0
   runs the migrations of four releases in order, with the code of 0.6.0.
-- **The way back is a backup.** The old version may not run on a database
-  that a migration changed. When a migration of an upgrade fails, the
-  migrations before it, and the organisations before this one, have
-  changed already.
+- **A start rehearses the upgrade first** (ADR 0081). It runs each
+  migration that has not run, of the database and of each organisation,
+  in a transaction that it takes back. A migration that fails on the rows
+  of a rescue fails there: nothing is changed, the report names the
+  migration and the organisation, and the old version still runs. See
+  "The rehearsal".
+- **After the rehearsal, the way back is a backup.** The old version may
+  not run on a database that a migration changed.
 
 The operator has one source for all of this: the section "Upgrade notes"
 of each release in `CHANGELOG.md`, which the release workflow puts in the
@@ -73,10 +77,10 @@ notes of the GitHub release.
    and each new organisation run each migration on empty tables, before
    the code makes the first rows. A rescue runs it on its rows.
 6. **A migration stays in its transaction.** Ecto runs each migration in a
-   transaction, so a migration that fails leaves its own change undone.
-   Set `@disable_ddl_transaction true` only for a statement that PostgreSQL
-   refuses inside a transaction, in a migration that holds nothing else,
-   and say so in the upgrade note.
+   transaction, and the rehearsal runs them all in one. So no migration
+   sets `@disable_ddl_transaction` or `@disable_migration_lock`, and none
+   builds an index `CONCURRENTLY`: Rescord is down during an upgrade, and
+   has no use for it. `Rescord.Release.MigrationRulesTest` fails for one.
 7. **A migration has a `down`** that undoes it where that is possible. A
    developer uses it; an operator goes back with a backup, and never with
    `down`. When `down` cannot give back what `up` removed or changed, say
@@ -113,7 +117,9 @@ order of preference:
    rows first and stops with a message that an operator can act on.
 
 A migration that only fails with the error of PostgreSQL, such as
-`could not create unique index`, is a fault of the release.
+`could not create unique index`, is a fault of the release. The rehearsal
+stops such an upgrade before it changes anything, and the rescue then
+waits for a release that puts the fault right.
 
 ### A migration that removes
 
@@ -260,13 +266,16 @@ the source, an ADR or this guide. Give:
    that is possible, and with SQL only where no page can. Say what a
    person must decide.
 4. **How to know that the step is done**: the query finds no row.
-5. **What happens without the step**: the migration stops, with which
-   message, and the operator restores the backup of step 1 of the guide.
+5. **What happens without the step**: the rehearsal of the upgrade stops,
+   with which message, and nothing is changed.
 6. **Which release to stop at**, when the step needs the pages of a
    release that is between the two versions of a rescue that jumps.
 
 The migration that needs the step checks first, in a file of its own that
-comes before the change, and stops with a message that names the step:
+comes before the change, and stops with a message that names the step.
+The rehearsal prints the message and the hint for each organisation that
+the check stops, before anything changes. It does not print the detail of
+an error of PostgreSQL, so write no value of a row into the message:
 
 ```elixir
 defmodule Rescord.Repo.TenantMigrations.CheckThatEachClinicHasOneName do
@@ -292,7 +301,7 @@ defmodule Rescord.Repo.TenantMigrations.CheckThatEachClinicHasOneName do
 
       IF doubles > 0 THEN
         RAISE EXCEPTION 'Rescord cannot upgrade: % names of clinics are used more than one time in the schema %.', doubles, '#{prefix()}'
-          USING HINT = 'Restore the backup, start the old version, and do the step "Before the upgrade" of the upgrade notes of this release.';
+          USING HINT = 'Do the step "Before the upgrade" of the upgrade notes of this release.';
       END IF;
     END
     $$;
@@ -302,6 +311,37 @@ defmodule Rescord.Repo.TenantMigrations.CheckThatEachClinicHasOneName do
   def down, do: :ok
 end
 ```
+
+## The rehearsal
+
+`bin/migrate` runs before each start. When a migration has not run, it
+first rehearses (`Rescord.Release.Rehearsal`, ADR 0081):
+
+1. It opens one connection and one transaction.
+2. It runs each pending migration of the database.
+3. For each organisation, it sets a savepoint, runs each pending tenant
+   migration, and goes back to the savepoint.
+4. It takes the transaction back.
+
+When each migration passed, the real run follows. When one failed,
+`bin/migrate` prints the migration, the organisation, and the message and
+the hint of PostgreSQL, changes nothing, and exits with 1. A new
+installation is not rehearsed.
+
+What this means for a migration:
+
+- **Each migration runs two times in an upgrade.** Say in the upgrade
+  note when a migration takes long.
+- **The rehearsal is one transaction.** A migration cannot use what
+  PostgreSQL gives only after a commit: a new value of an enum type, for
+  example, cannot be used in the transaction that adds it. Rescord has no
+  enum type in its database: an attribute with a list of values is a text
+  column. Keep it so.
+- **A migration that cannot be rehearsed** needs `bin/migrate
+  --no-rehearsal`, which is a step by hand, and so the last choice.
+- `bin/migrate --rehearse` rehearses and changes nothing. On a machine
+  for development, `mix run --no-start -e "Rescord.Release.rehearse()"`
+  does the same for the database of development.
 
 ## Try a migration before the commit
 
@@ -315,13 +355,18 @@ end
   run the `down` and the `up` again: `mix ash_postgres.rollback -n 1` or
   `mix ash_postgres.rollback --tenants -n 1`, and the same `migrate`.
   Read the rows that the migration changed.
+- **Rehearse it.** Before the `migrate` above,
+  `mix run --no-start -e "Rescord.Release.rehearse()"` runs your migration
+  in each organisation of that database and takes it back. It must pass.
 - **`scripts/upgrade-test.sh OLD NEW`** is the test of an upgrade that the
   release runs (ADR 0051): the image of the last release makes data, and
   the new image takes it over. Its data is small. When your migration
   changes or checks rows, add rows of that kind to the script, with the
   functions of the last release, or with SQL for a row that only an older
   version could leave, and add an `expect` for them after the upgrade.
-  The workflow Release with `dry_run` runs it without a release.
+  The start of the new image rehearses first, and the script expects the
+  line of the rehearsal. The workflow Release with `dry_run` runs it
+  without a release.
 - **`scripts/check-upgrade-notes.sh`** says whether each new migration
   has its line. `--list` prints the migrations that are new since the
   last release.

@@ -57,6 +57,12 @@ self:
     assert "0 open with neither secret" in rotated, f"the command printed:\n{rotated}"
     machine.wait_until_succeeds("grep -rl 'Rescord can send mail' /var/spool/mail /var/lib/postfix 2>/dev/null", timeout=120)
 
+    # The rehearsal of an upgrade (ADR 0081): each migration has run, so
+    # there is none to rehearse. An option that it does not know is refused.
+    rehearsed = machine.succeed("rescord-migrate --rehearse")
+    assert "No upgrade to rehearse." in rehearsed, f"the command printed:\n{rehearsed}"
+    machine.fail("rescord-migrate --other")
+
     machine.succeed("echo 'a file of the store' > /var/lib/rescord/files/probe.txt")
     machine.succeed("systemctl start rescord-backup.service")
     machine.succeed("ls /var/lib/rescord-backup/database/rescord-*.dump")

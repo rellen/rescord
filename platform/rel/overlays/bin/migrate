@@ -1,7 +1,33 @@
 #!/bin/sh
 # Runs the migrations of the database, then those of each organisation
 # (ADR 0044). A migration that has run does not run again.
+#
+#   bin/migrate                 rehearses the upgrade, and then migrates
+#   bin/migrate --rehearse      rehearses the upgrade, and changes nothing
+#   bin/migrate --no-rehearsal  migrates with no rehearsal
+#
+# The rehearsal runs each migration that has not run in a transaction that
+# is taken back (ADR 0081). When a migration fails there, nothing is
+# changed, and this exits with 1.
 set -eu
 
+case "${1:-}" in
+  "") mode=upgrade ;;
+  --rehearse) mode=rehearse ;;
+  --no-rehearsal) mode=migrate ;;
+  *)
+    echo "Give no argument, --rehearse or --no-rehearsal." >&2
+    exit 2
+    ;;
+esac
+
 cd -P -- "$(dirname -- "$0")"
-exec ./rescord eval "Rescord.Release.migrate()"
+RESCORD_MIGRATE_MODE="$mode" exec ./rescord eval '
+  result =
+    case System.get_env("RESCORD_MIGRATE_MODE") do
+      "rehearse" -> Rescord.Release.rehearse()
+      "migrate" -> Rescord.Release.migrate(rehearse: false)
+      _upgrade -> Rescord.Release.migrate()
+    end
+
+  if result == :error, do: System.halt(1)'

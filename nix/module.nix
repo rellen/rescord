@@ -59,8 +59,10 @@ let
   # user, `rescord-check [you@example.org]` checks the server (ADR 0049),
   # `rescord-restore /var/lib/rescord-backup` puts a backup back (ADR 0050),
   # `rescord-move-storage disk s3` copies the files into the other store
-  # (ADR 0059), and `rescord-rotate-vault` encrypts again what the previous
-  # secret of the server encrypted (ADR 0068).
+  # (ADR 0059), `rescord-rotate-vault` encrypts again what the previous
+  # secret of the server encrypted (ADR 0068), and
+  # `rescord-migrate --rehearse` rehearses an upgrade and changes nothing
+  # (ADR 0081).
   releaseCommand =
     commandName: command:
     pkgs.writeShellScriptBin commandName ''
@@ -90,6 +92,7 @@ let
   restore = releaseCommand "rescord-restore" "restore";
   moveStorage = releaseCommand "rescord-move-storage" "move-storage";
   rotateVault = releaseCommand "rescord-rotate-vault" "rotate-vault";
+  migrate = releaseCommand "rescord-migrate" "migrate";
 in
 {
   options.services.rescord = {
@@ -210,6 +213,7 @@ in
       restore
       moveStorage
       rotateVault
+      migrate
     ];
 
     services.postgresql = mkIf cfg.database.createLocally {

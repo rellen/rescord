@@ -82,6 +82,10 @@ compose exec -T rescord bin/rescord eval '
 compose exec -T rescord sh -c 'echo "a file of the old version" > /var/lib/rescord/files/upgrade-probe.txt'
 schema=$(sql "select 'org_' || id from organisations where short_name = 'upgrade-refuge'")
 tables_before=$(sql "select count(*) from information_schema.tables where table_schema = '$schema'")
+# The number of the migrations that have run, in the database and in the
+# organisation.
+versions() { sql "select (select count(*) from schema_migrations) + (select count(*) from \"$schema\".schema_migrations)"; }
+versions_before=$(versions)
 echo "The old version made the organisation, with $tables_before tables in $schema."
 
 echo "== The new version: $new"
@@ -112,6 +116,16 @@ expect "the calendar power of the first roles" "$(sql "select count(*) from \"$s
 report=$(compose exec -T rescord bin/check 2>/dev/null || true)
 expect "the migrations" "$(printf '%s\n' "$report" | grep -c '^ok    migrations each migration has run' || true)" 1
 expect "the root user is kept" "$(compose exec -T rescord bin/bootstrap-root second@rescord.test 2>/dev/null | grep -c 'has a root user already' || true)" 1
+
+# The start of the new version rehearsed the upgrade before it changed
+# anything (ADR 0081). The tag `latest` can be the new version itself, in a
+# run after its release: then no migration is new, and no rehearsal runs.
+if [ "$(versions)" != "$versions_before" ]; then
+  expect "the rehearsal before the migrations" "$(compose logs rescord 2>/dev/null | grep -c 'The rehearsal of the upgrade passed' || true)" 1
+else
+  echo "note  no migration is new, so the start rehearsed nothing"
+fi
+expect "nothing more to rehearse" "$(compose exec -T rescord bin/migrate --rehearse 2>/dev/null | grep -c '^No upgrade to rehearse\.$' || true)" 1
 
 if [ "$failed" -ne 0 ]; then
   printf '%s\n' "$report" >&2

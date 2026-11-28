@@ -152,6 +152,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
   `scripts/check-upgrade-notes.sh` fails for a migration with no line: run
   it before each push that adds a migration. CI runs it for each push, and
   `scripts/release.sh` before a release.
+- **A start rehearses the upgrade before it changes anything**
+  (ADR 0081): `bin/migrate` runs each pending migration, of the database
+  and of each organisation, in one transaction that it takes back, and
+  migrates only when each one passed. So no migration sets
+  `@disable_ddl_transaction` or `@disable_migration_lock`, builds an
+  index `CONCURRENTLY`, or uses what PostgreSQL gives only after a
+  commit, such as a new value of an enum type. Try yours with
+  `mix run --no-start -e "Rescord.Release.rehearse()"`.
 - **A migration of a release never changes**: no edit, no new name, no
   removal. Put a fault right with a new migration.
 - **Read what `mix ash.codegen` wrote, in both directories**, as the
@@ -176,8 +184,9 @@ hand (ADR 0073). Read it before you write a migration. In short:
   upgrade notes in full, under "**Before the upgrade.**" or "**After the
   upgrade.**": why, a query that finds the rows in each organisation, how
   to put each right, how to know that the step is done, and what happens
-  without it. The migration checks first, and stops with a message that
-  names the step.
+  without it. The migration checks first, and stops with a message and a
+  hint that name the step, and that hold no value of a row: the rehearsal
+  prints them for each organisation, before anything changes.
 - **Say what goes and what takes long.** The note of a migration that
   removes a column, a table or rows says what a rescue loses. The note of
   a migration that writes a large table again says that the first start
@@ -836,7 +845,7 @@ hand (ADR 0073). Read it before you write a migration. In short:
 | `platform/priv/static/fonts/` | the font files that the application serves, with their licence |
 | `platform/AGENTS.md` | the usage rules of the dependencies, written by `mix usage_rules.sync` |
 | `devenv.nix`, `devenv.yaml`, `devenv.lock` | the toolchain (ADR 0001) |
-| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage` and `rotate-vault` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068) |
+| `platform/lib/rescord/release.ex`, `platform/rel/` | the tasks of a release, with the rehearsal of an upgrade in `release/rehearsal.ex` (ADR 0081), and its scripts in `bin`: `server`, `migrate`, `bootstrap-root`, `check`, `backup`, `restore`, `move-storage` and `rotate-vault` (ADR 0044, ADR 0049, ADR 0050, ADR 0059, ADR 0068) |
 | `platform/lib/rescord/storage.ex`, `storage/` | the stores of the files, a directory and a bucket of S3, and the move from one into the other (ADR 0038, ADR 0059) |
 | `platform/Dockerfile`, `deploy/` | the image, the Compose file, and the systemd unit |
 | `flake.nix`, `nix/` | the Nix package, the NixOS module and its test |
