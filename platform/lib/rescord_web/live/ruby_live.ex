@@ -45,6 +45,7 @@ defmodule RescordWeb.RubyLive do
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
      |> assign(problems: [], recent: [], asks: Enum.take(asks, @asks))
+     |> assign(refused: nil, allowance: nil, closed?: false, settings?: Ruby.sets?(scope(socket)))
      |> assign_form("")}
   end
 
@@ -68,7 +69,7 @@ defmodule RescordWeb.RubyLive do
      |> leave()
      |> assign(page_title: "Ruby", conversation: nil, messages: [], answer: nil, said: nil)
      |> assign(:known, MapSet.new())
-     |> assign(problems: [], recent: recent(socket))}
+     |> assign(problems: [], refused: nil, closed?: false, recent: recent(socket))}
   end
 
   @impl true
@@ -78,6 +79,7 @@ defmodule RescordWeb.RubyLive do
       flash={@flash}
       current_user={@current_user}
       organisation={@organisation}
+      inbox={@inbox}
       section={:ruby}
       data-ruby
       phx-disconnected={
@@ -113,7 +115,13 @@ defmodule RescordWeb.RubyLive do
       <section :if={@conversation} data-log aria-label="Conversation">
         <ol id="ruby-messages" data-chat>
           <li :for={message <- @messages} :key={message.id} id={"message-#{message.id}"}>
-            <RubyChatComponents.message message={message} organisation={@organisation} known={@known} />
+            <RubyChatComponents.message
+              message={message}
+              organisation={@organisation}
+              known={@known}
+              way_on?={is_nil(@answer) and is_nil(@refused) and message.id == List.last(@messages).id}
+              settings?={@settings?}
+            />
           </li>
         </ol>
 
@@ -125,9 +133,24 @@ defmodule RescordWeb.RubyLive do
       <%!-- In the page from the start, so that a screen reader hears its first change. --%>
       <p role="status" data-quiet>{@said}</p>
 
-      <.problems list={@problems} />
+      <div :if={@refused || @problems != []} data-problem>
+        <RubyChatComponents.problem
+          :if={@refused}
+          reason={@refused}
+          organisation={@organisation}
+          settings?={@settings?}
+          again={:form}
+          allowance={@allowance}
+        />
+        <.problems list={@problems} />
+      </div>
 
-      <RubyChatComponents.composer form={@form} answering?={@answer != nil} />
+      <RubyChatComponents.composer
+        form={@form}
+        answering?={@answer != nil}
+        closed?={@closed?}
+        organisation={@organisation}
+      />
     </Layouts.app>
     """
   end
@@ -144,6 +167,19 @@ defmodule RescordWeb.RubyLive do
 
   # Stop names the message of the member, so it works before the reply
   # has a row. The page changes when the topic says that the reply stopped.
+  # "Try again" sends the message of the member again: one of this
+  # conversation, by its id.
+  def handle_event("again", %{"id" => id}, %{assigns: %{messages: messages}} = socket)
+      when is_binary(id) do
+    with %{source: :ruby, response_to_id: ^id, reason: reason} <- List.last(messages),
+         true <- RubyWords.again?(reason),
+         %{text: text} <- Enum.find(messages, &(&1.id == id)) do
+      {:noreply, say(socket, text)}
+    else
+      _not_the_last_failure -> {:noreply, socket}
+    end
+  end
+
   def handle_event("stop", _params, %{assigns: %{answer: %{asked: id}}} = socket) do
     with {:ok, %{} = message} <- Ruby.message(id, scope(socket)) do
       Ruby.stop_reply(message, scope(socket))
@@ -207,7 +243,7 @@ defmodule RescordWeb.RubyLive do
       |> push_patch(to: conversation_path(socket, conversation.id))
       |> push_event("ruby:newest", %{})
     else
-      {:error, error} -> assign(socket, :problems, Ruby.problems(error))
+      {:error, error} -> refused(socket, error, text)
     end
   end
 
@@ -217,16 +253,36 @@ defmodule RescordWeb.RubyLive do
       {:ok, message} ->
         socket
         |> assign(messages: socket.assigns.messages ++ [message], answer: new_answer(message.id))
-        |> assign(said: RubyWords.said(:working), problems: [])
+        |> assign(said: RubyWords.said(:working), problems: [], refused: nil)
         |> assign_form("")
         |> push_event("ruby:newest", %{})
 
       {:error, error} ->
-        assign(socket, :problems, Ruby.problems(error))
+        refused(socket, error, text)
     end
   end
 
   defp say(socket, _text), do: socket
+
+  # A message that Ruby refused for a reason, such as the allowance, says
+  # so in the place of the answer, with its way on, and its words go back
+  # into the field, so that "Try again" sends them. Any other error is a
+  # problem of the form.
+  defp refused(socket, error, text) do
+    case Ruby.refusal(error) do
+      nil ->
+        assign(socket, problems: Ruby.problems(error), refused: nil)
+
+      reason ->
+        socket
+        |> assign(problems: [], refused: reason, allowance: allowance(socket, reason))
+        |> assign_form(text)
+    end
+  end
+
+  # The allowance of the month, for the words of a message past it.
+  defp allowance(socket, :allowance), do: Ruby.settings(socket.assigns.organisation).allowance
+  defp allowance(_socket, _reason), do: nil
 
   # A first message that Ruby refused, past the allowance for one, leaves
   # no empty conversation behind.
@@ -247,7 +303,7 @@ defmodule RescordWeb.RubyLive do
     socket = leave(socket)
     if connected?(socket), do: Ruby.subscribe(conversation.id, scope(socket))
 
-    socket = socket |> assign(conversation: conversation, problems: []) |> read()
+    socket = socket |> assign(conversation: conversation, problems: [], refused: nil) |> read()
 
     # A page that opens while Ruby answers says so once.
     said =
@@ -276,12 +332,21 @@ defmodule RescordWeb.RubyLive do
         conversation: conversation,
         page_title: RubyWords.title(conversation),
         messages: messages,
-        answer: answer
+        answer: answer,
+        closed?: Enum.any?(messages, &(&1.reason == :refused))
       )
+      |> forget_refusal()
     else
       _gone -> push_navigate(socket, to: start_path(socket))
     end
   end
+
+  # A refusal of the form is out of date once the conversation is closed:
+  # the form is gone.
+  defp forget_refusal(%{assigns: %{closed?: true}} = socket),
+    do: assign(socket, refused: nil, problems: [])
+
+  defp forget_refusal(socket), do: socket
 
   defp split(messages, assigns) do
     case List.last(messages) do

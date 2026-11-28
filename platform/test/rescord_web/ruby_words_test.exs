@@ -153,6 +153,58 @@ defmodule RescordWeb.RubyWordsTest do
     assert RubyWords.cents("100000000000") == :error
   end
 
+  describe "what goes wrong, for a member" do
+    @refuge %{name: "Wattle Creek"}
+
+    test "each reason has a sentence, and a new reason fails here until it has one" do
+      for reason <- Reason.all() do
+        sentence = RubyWords.problem(reason, @refuge, today: ~D[2026-11-28])
+        assert sentence =~ ~r/\.$/, "the sentence of #{reason} ends with a full stop"
+        refute sentence =~ "_"
+      end
+
+      assert_raise FunctionClauseError, fn -> RubyWords.problem(:a_new_reason, @refuge) end
+    end
+
+    test "says that nothing was recorded where a reply failed" do
+      for reason <- Reason.all() -- [:rate, :allowance, :cut, :too_many_steps, :too_long] do
+        assert RubyWords.problem(reason, @refuge) =~ "Nothing was recorded.", "#{reason}"
+      end
+    end
+
+    test "the allowance names the rescue, the month, and the day that Ruby answers again" do
+      assert RubyWords.problem(:allowance, @refuge, today: ~D[2026-11-28], allowance: 2000) ==
+               "Ruby has used the allowance of Wattle Creek for November 2026. " <>
+                 "It answers again on 1 December 2026, or when an administrator " <>
+                 "changes the allowance in the settings."
+
+      assert RubyWords.problem(:allowance, @refuge, today: ~D[2026-12-31]) =~ "on 1 January 2027"
+
+      # An allowance of nothing does not come back with a new month.
+      for none <- [0, nil] do
+        assert RubyWords.problem(:allowance, @refuge, allowance: none) ==
+                 "Ruby has no allowance for Wattle Creek. It answers when an administrator " <>
+                   "sets one in the settings."
+      end
+    end
+
+    test "Try again only where a second try can go better" do
+      assert Enum.filter(Reason.all(), &RubyWords.again?/1) ==
+               [:provider_busy, :provider_down, :rate, :unknown]
+
+      assert RubyWords.way_on(:cut) == :rest
+      assert RubyWords.way_on(:too_long) == :new
+      assert RubyWords.way_on(:allowance) == :settings
+
+      for reason <- [:key_refused, :provider_limit, :too_many_steps, :refused],
+          do: assert(RubyWords.way_on(reason) == nil)
+
+      refute RubyWords.keeps_words?(:refused)
+      assert RubyWords.keeps_words?(:provider_down)
+      assert RubyWords.keeps_words?(nil)
+    end
+  end
+
   describe "the steps of an answer" do
     test "each tool of the catalogue has words for its step, and never its name" do
       names = for %{name: name} <- Rescord.Ruby.Catalogue.entries(), do: Atom.to_string(name)

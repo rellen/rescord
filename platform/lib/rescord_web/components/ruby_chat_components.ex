@@ -74,6 +74,12 @@ defmodule RescordWeb.RubyChatComponents do
     default: [],
     doc: "the references that a tool returned in this conversation"
 
+  attr :way_on?, :boolean,
+    default: false,
+    doc: "the last reply, with no answer on its way: a problem shows its way on"
+
+  attr :settings?, :boolean, default: false, doc: "the person can change the settings of Ruby"
+
   def message(%{message: %{source: :user}} = assigns) do
     ~H"""
     <article data-from="member" aria-labelledby={"who-#{@message.id}"}>
@@ -94,12 +100,24 @@ defmodule RescordWeb.RubyChatComponents do
         <.at time={@message.inserted_at} organisation={@organisation} />
       </header>
 
-      <.prose text={@message.text} organisation={@organisation} known={@known} />
+      <.prose
+        :if={RubyWords.keeps_words?(@message.reason)}
+        text={@message.text}
+        organisation={@organisation}
+        known={@known}
+      />
 
       <p :if={@message.state == :stopped}>
         <small>You stopped this answer. Ruby recorded nothing.</small>
       </p>
-      <p :if={@message.state == :failed} role="alert">{RubyWords.problem(@message.reason)}</p>
+      <.problem
+        :if={@message.reason}
+        reason={@message.reason}
+        organisation={@organisation}
+        way_on?={@way_on?}
+        settings?={@settings?}
+        again={{:message, @message.response_to_id}}
+      />
 
       <.records
         :if={@message.state == :complete}
@@ -126,6 +144,63 @@ defmodule RescordWeb.RubyChatComponents do
   end
 
   defp records(_message, _organisation, _known), do: []
+
+  @doc """
+  What went wrong, in the place of the answer, and the way on: a reply
+  that ended with a reason, or a message that Ruby refused. A reply that
+  was cut is no failure: its words are there, and the line says so.
+  """
+  attr :reason, :atom, required: true
+  attr :organisation, :map, required: true
+  attr :way_on?, :boolean, default: true
+  attr :settings?, :boolean, default: false
+
+  attr :again, :any,
+    required: true,
+    doc: "what \"Try again\" sends: `{:message, id}`, the message of the member, or `:form`"
+
+  attr :allowance, :any,
+    default: :unknown,
+    doc:
+      "the allowance of the organisation in cents, for a message past it, when the page read it"
+
+  def problem(assigns) do
+    assigns =
+      assign(assigns,
+        way: assigns.way_on? && RubyWords.way_on(assigns.reason),
+        words: RubyWords.problem(assigns.reason, assigns.organisation, words_options(assigns))
+      )
+
+    ~H"""
+    <p :if={@reason == :cut}>{@words}</p>
+    <p :if={@reason != :cut} role="alert">{@words}</p>
+    <p :if={@way in [:again, :rest, :new] or (@way == :settings and @settings?)} data-way-on>
+      <button
+        :if={@way == :again and match?({:message, _id}, @again)}
+        type="button"
+        phx-click="again"
+        phx-value-id={elem(@again, 1)}
+      >
+        <.icon name="arrow-path" /> Try again
+      </button>
+      <button :if={@way == :again and @again == :form} type="submit" form="ruby-say">
+        <.icon name="arrow-path" /> Try again
+      </button>
+      <button :if={@way == :rest} type="button" phx-click="ask" phx-value-text={RubyWords.rest()}>
+        Ask for the rest
+      </button>
+      <.link :if={@way == :new} patch={~p"/o/#{@organisation.short_name}/ruby"}>
+        <.icon name="plus" /> New conversation
+      </.link>
+      <.link :if={@way == :settings} navigate={~p"/o/#{@organisation.short_name}/settings/ruby"}>
+        The settings of Ruby
+      </.link>
+    </p>
+    """
+  end
+
+  defp words_options(%{allowance: :unknown}), do: []
+  defp words_options(%{allowance: allowance}), do: [allowance: allowance]
 
   attr :time, DateTime, required: true
   attr :organisation, :map, required: true
@@ -279,6 +354,19 @@ defmodule RescordWeb.RubyChatComponents do
   """
   attr :form, Phoenix.HTML.Form, required: true
   attr :answering?, :boolean, required: true
+  attr :closed?, :boolean, default: false, doc: "the conversation takes no more messages"
+  attr :organisation, :map, required: true
+
+  def composer(%{closed?: true} = assigns) do
+    ~H"""
+    <section id="ruby-closed" data-composer aria-labelledby="ruby-closed-words">
+      <p id="ruby-closed-words">This conversation is closed.</p>
+      <.link patch={~p"/o/#{@organisation.short_name}/ruby"} data-variant="primary">
+        <.icon name="plus" /> New conversation
+      </.link>
+    </section>
+    """
+  end
 
   def composer(assigns) do
     ~H"""

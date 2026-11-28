@@ -181,6 +181,13 @@ defmodule RescordWeb.PagesFixtures do
     ])
 
     Oban.drain_queue(queue: :ruby, with_safety: false)
+
+    # A second conversation, which the provider refused: the problem, and
+    # the line that says it is closed in place of the form.
+    closed = Rescord.Ruby.start_conversation!(%{}, as_user)
+    Rescord.Ruby.say!(closed.id, "What is running low?", as_user)
+    Rescord.Ruby.ScriptedModel.script([{:refusal, "No."}])
+    Oban.drain_queue(queue: :ruby, with_safety: false)
     # Comments with each part of their Markdown, a person told, and so a
     # notification of the administrator (issue 29).
     {:ok, _} =
@@ -227,7 +234,7 @@ defmodule RescordWeb.PagesFixtures do
               residents/#{resident.id}/measurements groups groups/#{group.id}/measurements housing
               housing/#{shed.id} inventory inventory/#{hay.id} inventory/suppliers tools tools/dose
               reports lists members roles partners transfers settings settings/ruby export ruby
-              ruby/#{conversation.id}
+              ruby/#{conversation.id} ruby/#{closed.id}
               calendar expenses expenses/new expenses/#{expense.id} expenses/#{expense.id}/edit
               expenses/#{owed.id} tasks/#{task.id} notifications),
             &"#{home}/#{&1}"
