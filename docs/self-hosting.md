@@ -301,8 +301,12 @@ The checks of the server:
 | `cron` | each hour | An hourly job has not ended well for 2 hours |
 | `migrations` | each hour | A schema has a migration that has not run, while the server runs |
 | `clock` | each hour | The clocks of the server and of the database differ by more than 30 seconds (a note from 2) |
+| `store_files` | each week, in a job of its own | A record names a file that the store does not have, or whose size differs (a note for files that no record names) |
+| `backups` | each day | The newest dump in `RESCORD_BACKUP_DIR` is missing, empty or older than 26 hours (a note for a partial dump a day old); nothing without that setting |
+| `transfers` | each day | A transfer failed and was sent more than 7 days ago, or copied more files than it has (a note for one that waits 14 days for an answer) |
+| `usage_sends` | each hour | In the mode `send`, the usage counts of yesterday did not go 3 hours into the day (UTC) |
 
-The checks of the care, for each organisation:
+The checks of each organisation:
 
 | Check | How often | What a fault means |
 |---|---|---|
@@ -311,10 +315,16 @@ The checks of the care, for each organisation:
 | `dose_tasks` | each hour | A medication task that is due names a prescription or a journal entry that is gone (a note for one more than 12 hours late) |
 | `ruby_replies` | each hour | A reply of Ruby has written nothing for 2 hours, or a message has had no reply for 2 hours |
 | `ruby_retention` | each day | A conversation is kept after the days of the settings of the assistant |
+| `departed_in_care` | each day | A resident who left still has a placement, a routine or a task that is due, or was accepted by another refuge 7 days ago and has no departure here |
+| `duplicate_tasks` | each day | A routine has two tasks for one time |
+| `notifications` | each day | A notification did not leave 2 hours after it came, or is older than Rescord keeps one |
+| `old_journal_photos` | each day | A note: journal photos of Rescord 0.1.0 that still carry their metadata, until the job of the images cleans them |
+| `file_keys` | each day | A record names a file under the key of another organisation |
+| `version_ids` | each day | A note: a version of the history of the last day has no ids of its work (ADR 0101) |
 
-The first three also show on the first page of the organisation, in the
-part "Routines and doses to put right", to the people who can put them
-right. The job of the assistant ends a reply of Ruby that stopped, and
+The first three and `departed_in_care` also show on the first page of the
+organisation, in the part "Care to put right", to the people who can put
+them right. The job of the assistant ends a reply of Ruby that stopped, and
 deletes an old conversation, each hour, so the two checks of the
 assistant find a fault only when that job stopped or fails.
 
@@ -364,6 +374,7 @@ take, stop the start with the name of the setting.
 | `RESCORD_METRICS_ADDRESS` | no | `127.0.0.1` | The address that the metrics listen on (see "The metrics"): this machine alone by default, `0.0.0.0` for a collector in the network of a Compose file, `::` or a private address for a collector on another machine. It is not the address of the pages. |
 | `POOL_SIZE` | no | `10` | The number of connections to the database. |
 | `RESCORD_BACKUP_KEEP_DAYS` | no | `14` | The number of days that a backup keeps a dump of the database (see "Back up"). |
+| `RESCORD_BACKUP_DIR` | no | none | The directory that `bin/backup` writes to, where the server can read it: the sanity check `backups` then says when the newest dump is old (see "The sanity checks"). Leave it out when the backups are on another machine. |
 | `ECTO_IPV6` | no | `false` | `true` to reach the database over IPv6. |
 
 `GET /health` answers `ok` while Rescord and its database work, and the

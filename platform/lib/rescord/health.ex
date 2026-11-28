@@ -39,13 +39,23 @@ defmodule Rescord.Health do
     deps [
       Rescord,
       Rescord.Accounts,
+      Rescord.Expenses,
+      Rescord.Journal,
       Rescord.Notifications,
+      Rescord.Photos,
+      Rescord.Privacy,
+      Rescord.Residents,
       Rescord.Tasks,
       Rescord.Transfers,
       Rescord.Vault
     ]
 
-    exports [Checks, Rescord.Health.Workers.Run, Rescord.Health.Workers.Alert]
+    exports [
+      Checks,
+      Rescord.Health.Workers.Run,
+      Rescord.Health.Workers.Alert,
+      Rescord.Health.Workers.Check
+    ]
   end
 
   resources do
@@ -62,28 +72,46 @@ defmodule Rescord.Health do
   @doc """
   Runs each check that is due at `now`: a check that has no result yet, or
   whose last run is older than its period. Gives the results that it
-  wrote.
+  wrote. A due check with a job of its own (`own_job?/0`) gets that job,
+  and writes its results when the job runs.
   """
   @spec run_due(DateTime.t()) :: [Result.t()]
   def run_due(now \\ DateTime.utc_now()) do
     forget_old_checks()
     last = last_runs()
 
-    for check <- Checks.all(), due?(check, last, now), result <- run_check(check, now) do
-      result
-    end
+    {alone, inline} =
+      Checks.all() |> Enum.filter(&due?(&1, last, now)) |> Enum.split_with(&own_job?/1)
+
+    start_jobs(alone)
+
+    for check <- inline, result <- run_check(check, now), do: result
+  end
+
+  @doc "Whether a check runs in a job of its own (`c:Rescord.Health.Check.own_job?/0`)."
+  @spec own_job?(module) :: boolean
+  def own_job?(check),
+    do:
+      Code.ensure_loaded?(check) and function_exported?(check, :own_job?, 0) and check.own_job?()
+
+  defp start_jobs(checks) do
+    checks
+    |> Enum.map(&Rescord.Health.Workers.Check.new(%{check: Atom.to_string(&1.name())}))
+    |> Oban.insert_all()
   end
 
   @doc """
   What the checks of the care find in an organisation now, for its first
   page (ADR 0065): the routines whose tasks run out, the routines that
-  outlive their prescription, and the medication tasks that cannot be done.
+  outlive their prescription, the medication tasks that cannot be done,
+  and the residents who left and are still in care.
   It runs those checks now, read-only, so a row goes as soon as a person
   puts it right, and then reads each record as the actor: the policies
   decide what the person sees.
 
   A routine row is there for a role that can revise a routine, and a task
-  row for a role that can skip a task. The option `:limit` caps the rows,
+  row for a role that can skip a task, and a resident row for a role that
+  can record a departure. The option `:limit` caps the rows,
   and the total counts each one.
   """
   @spec attention(atom | nil, keyword) :: {:ok, %{rows: [map], total: non_neg_integer}}
@@ -97,7 +125,9 @@ defmodule Rescord.Health do
       {:routine_behind, Checks.RoutinesBehind, Rescord.Tasks.role_can_routine?(role, :revise)},
       {:routine_after_prescription, Checks.RoutineAfterPrescription,
        Rescord.Tasks.role_can_routine?(role, :revise)},
-      {:dose_task_blocked, Checks.DoseTasks, Rescord.Tasks.role_can?(role, :skip)}
+      {:dose_task_blocked, Checks.DoseTasks, Rescord.Tasks.role_can?(role, :skip)},
+      {:departed_in_care, Checks.DepartedInCare,
+       Rescord.Residents.role_can?(role, :departure, :record)}
     ]
 
     found =
@@ -117,6 +147,12 @@ defmodule Rescord.Health do
        total: found |> Enum.map(&elem(&1, 1)) |> Enum.sum()
      }}
   end
+
+  defp records(:departed_in_care, ids, opts),
+    do:
+      Rescord.Residents.residents!(
+        [query: [filter: [id: [in: ids]], load: [:name], sort: [id: :asc]]] ++ opts
+      )
 
   defp records(:dose_task_blocked, ids, opts),
     do: Rescord.Tasks.tasks!([query: [filter: [id: [in: ids]], sort: [due_at: :asc]]] ++ opts)
@@ -153,14 +189,17 @@ defmodule Rescord.Health do
 
   @doc """
   Runs each check now, due or not, at the wish of a root user: the button
-  of `/root/health`. Refuses each other actor.
+  of `/root/health`. A check with a job of its own gets that job. Refuses
+  each other actor.
   """
   @spec run_now(keyword) :: :ok | {:error, :forbidden}
   def run_now(opts) do
     case Keyword.get(opts, :actor) do
       %{root?: true} ->
         now = DateTime.utc_now()
-        Enum.each(Checks.all(), &run_check(&1, now))
+        {alone, inline} = Enum.split_with(Checks.all(), &own_job?/1)
+        start_jobs(alone)
+        Enum.each(inline, &run_check(&1, now))
         Rescord.Health.Alerts.send_due(now)
         :ok
 
@@ -217,7 +256,11 @@ defmodule Rescord.Health do
           {:ok, Rescord.Health.Check.finding(), non_neg_integer} | {:unknown, non_neg_integer}
   def run(check, context) do
     started = System.monotonic_time(:millisecond)
-    timeout = if function_exported?(check, :timeout, 0), do: check.timeout(), else: 10_000
+
+    timeout =
+      if Code.ensure_loaded?(check) and function_exported?(check, :timeout, 0),
+        do: check.timeout(),
+        else: 10_000
 
     outcome =
       try do

@@ -234,6 +234,8 @@ release (ADR 0047).
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
+  To have them read the backups of `bin/backup`, set `RESCORD_BACKUP_DIR`
+  to its directory where the server can read it.
 - After the upgrade, the job of each hour deletes the conversations with
   Ruby whose newest message is older than the days that the settings of
   the assistant keep (90 when an organisation saved none), and those of a
@@ -485,7 +487,7 @@ release (ADR 0047).
   run out, or that outlive their prescription, medication tasks whose
   prescription is gone or that are more than 12 hours late, replies of
   Ruby that stopped, and conversations kept after their days. The first
-  page of an organisation has a part "Routines and doses to put right",
+  page of an organisation has a part "Care to put right",
   which runs the checks of the routines and of the doses when it opens,
   for the people who can put them right.
   A root user can ask at `/root/health` for an alert by Web Push or ntfy
@@ -493,6 +495,13 @@ release (ADR 0047).
   An alert says only that a check found a fault, with a link to
   `/root/health`, when a check starts to fail and again each day that it
   still fails.
+  More checks look for files that are missing, differ in size or have no
+  record (each week), keys of another organisation, journal photos that
+  still carry their metadata, residents who left and are still in care
+  (also on the first page), two tasks of a routine for one time, history
+  with no ids of its work, usage counts that did not go, notifications
+  that did not leave or stay too long, stuck transfers, and old or
+  missing backups where `RESCORD_BACKUP_DIR` names their directory.
 - A virus scan of the PDFs, with clamd, which a root user turns on at
   `/root/scan` with the address of clamd: `host:port` or the path of a
   Unix socket. Then each PDF of a journal entry or of an expense goes to

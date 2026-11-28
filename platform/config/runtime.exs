@@ -249,6 +249,11 @@ if config_env() == :prod do
       config :rescord, RescordWeb.Telemetry, port: port, ip: metrics_address
   end
 
+  # The directory of `bin/backup`, where the server can read it: the check
+  # `backups` of the sanity checks reads its dumps (ADR 0114, issue 38). A
+  # setting of the machine (ADR 0068).
+  config :rescord, :backup_dir, Shoddy.Env.string("RESCORD_BACKUP_DIR", default: nil)
+
   config :rescord, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :rescord, RescordWeb.Endpoint,

@@ -352,7 +352,7 @@ defmodule RescordWeb.AttentionPagesTest do
       })
 
     session = open(context, context.administrator)
-    care = "Routines and doses to put right"
+    care = "Care to put right"
     assert rows(session, care) == ["Hay and pellets", "Medicate Biscuit"]
 
     hay = thing(care, "Hay and pellets")

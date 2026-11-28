@@ -31,7 +31,7 @@ defmodule RescordWeb.AttentionComponents do
     housing: {"Housing", "The whole housing"},
     transfers: {"Transfers and partners", "All the transfers"},
     privacy: {"Requests to erase data", "All the requests"},
-    care: {"Routines and doses to put right", "All the routines"}
+    care: {"Care to put right", "All the routines"}
   ]
 
   @doc "The parts that have words, for the test that holds them."
@@ -111,6 +111,7 @@ defmodule RescordWeb.AttentionComponents do
   defp care_state(:routine_behind), do: "Its tasks run out"
   defp care_state(:routine_after_prescription), do: "Its prescription has ended"
   defp care_state(:dose_task_blocked), do: "Its prescription is gone"
+  defp care_state(:departed_in_care), do: "Left, and still in care"
 
   defp care_hint(:routine_behind),
     do: "Some times of this routine have no task. Save the routine again, and look at the tasks."
@@ -121,6 +122,11 @@ defmodule RescordWeb.AttentionComponents do
   defp care_hint(:dose_task_blocked),
     do:
       "Done is refused, since the task has no prescription now. Skip it, and look at its routine."
+
+  defp care_hint(:departed_in_care),
+    do:
+      "The resident left, and still has a place, a routine or a task, or went to another " <>
+        "refuge and has no departure here. Open the resident."
 
   defp summary(1), do: "1 thing needs attention now."
   defp summary(total), do: "#{total} things need attention now."
@@ -150,6 +156,18 @@ defmodule RescordWeb.AttentionComponents do
     <li id={"attention-#{@row.kind}-#{@row.record.id}"}>
       <.link navigate={~p"/o/#{@organisation.short_name}/routines/#{@row.record.id}/edit"}>
         {@row.record.title}
+      </.link>
+      <.state kind="alert">{care_state(@row.kind)}</.state>
+      <small>{care_hint(@row.kind)}</small>
+    </li>
+    """
+  end
+
+  defp row(%{row: %{kind: :departed_in_care}} = assigns) do
+    ~H"""
+    <li id={"attention-departed-in-care-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@row.record.id}"}>
+        {@row.record.name}
       </.link>
       <.state kind="alert">{care_state(@row.kind)}</.state>
       <small>{care_hint(@row.kind)}</small>

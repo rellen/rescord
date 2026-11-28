@@ -46,7 +46,7 @@ sign: a routine whose tasks ran out, a reply of the assistant that stays
    a line of `bin/check` (a fault when a check fails, or when the newest
    run is older than 3 hours, so a stopped runner is seen), and the gauge
 . **The checks of the care also show where people work.** The first
-   page of an organisation has a part "Routines and doses to put right"
+   page of an organisation has a part "Care to put right"
    (ADR 0065). It runs the checks of the routines and of the doses at
    once, read-only, when the page reads its parts, and does not read the
    stored results: a row goes as soon as a person puts it right. It then
@@ -76,6 +76,19 @@ sign: a routine whose tasks ran out, a reply of the assistant that stays
    `/root/health`, with no check, organisation or count. With nobody who
    watches, nothing is marked, so the first person who asks hears of a
    fault at the next run.
+10. **The second build** (C13 to C23). The comparison of the store
+   (`store_files`, with the sizes of C15) runs each week in a job of its
+   own (`Rescord.Health.Workers.Check`, `own_job?/0`), with a limit of 15
+   minutes for a statement. Issue 38 counts a leftover when two runs in a
+   row see it; the check reads the records a second time in the same run
+   instead, which keeps no list of keys between runs and still lets an
+   upload that ends between the list and the read go. A size that differs
+   is asked of the store again, since the job of the images writes a
+   clean photo and then its size. `version_ids` is a note, as only a
+   change to the code puts it right. `backups` reads `RESCORD_BACKUP_DIR`,
+   a setting of the machine (ADR 0068), and finds nothing without it.
+   `departed_in_care` also shows on the first page, for a role that
+   records a departure, in the part that is now "Care to put right".
 
 ## Consequences
 
