@@ -374,7 +374,7 @@ defmodule RescordWeb.ResidentLive do
             navigate={~p"/o/#{@organisation.short_name}/expenses?resident=#{@resident.id}"}
             data-variant="secondary"
           >
-            <.icon name="receipt" /> Expenses
+            <.icon name={Icons.section(:expenses)} /> Expenses
           </.link>
           <.link
             :if={can?(@role, :resident, :revise)}

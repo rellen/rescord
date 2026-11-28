@@ -124,7 +124,7 @@ defmodule RescordWeb.ReportsLive do
             required
           />
           <input type="hidden" name="paper" value={@paper_value} />
-          <button type="submit">Make the register</button>
+          <footer><button type="submit">Make the register</button></footer>
         </form>
       </section>
 
@@ -154,7 +154,7 @@ defmodule RescordWeb.ReportsLive do
             required
           />
           <input type="hidden" name="paper" value={@paper_value} />
-          <button type="submit">Make the report</button>
+          <footer><button type="submit">Make the report</button></footer>
         </form>
         <ul id="movements-periods">
           <li :for={{words, from, to} <- @periods}>
@@ -173,7 +173,7 @@ defmodule RescordWeb.ReportsLive do
         <form id="task-sheet" action={~p"/o/#{@organisation.short_name}/reports/tasks.pdf"}>
           <.input id="task-sheet-on" name="on" type="date" label="Day" value={@today} required />
           <input type="hidden" name="paper" value={@paper_value} />
-          <button type="submit">Make the sheet</button>
+          <footer><button type="submit">Make the sheet</button></footer>
         </form>
       </section>
 
@@ -224,7 +224,7 @@ defmodule RescordWeb.ReportsLive do
           />
           <.input id="expenses-to" name="to" type="date" label="To" value={@today} required />
           <input type="hidden" name="paper" value={@paper_value} />
-          <button type="submit">Make the report</button>
+          <footer><button type="submit">Make the report</button></footer>
         </form>
         <ul id="expenses-periods">
           <li :for={{words, from, to} <- @periods}>

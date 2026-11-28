@@ -296,7 +296,7 @@ defmodule RescordWeb.Widgets.Comments do
                     required
                     hint={"A change tells nobody again. The comment then says \"changed\", and Rescord keeps no copy of the old words."}
                   />
-                  <button type="submit">Save the change</button>
+                  <footer><button type="submit">Save the change</button></footer>
                 </form>
               </details>
               <.confirm

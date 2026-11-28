@@ -959,7 +959,9 @@ release (ADR 0047).
   a member or a feed. The problems of a form show beside the form that
   was sent, once. Each write that works says so in a message at the top of
   the page. The form for a new record is right below the header, also on
-  the members page.
+  the members page. Each form ends with its button in the same place, and
+  the form of a provider of the assistant has a Cancel when it changes
+  one too.
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is

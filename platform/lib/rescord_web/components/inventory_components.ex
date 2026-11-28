@@ -872,7 +872,7 @@ defmodule RescordWeb.InventoryComponents do
           value={@supplier.note}
           maxlength="1000"
         />
-        <.button type="submit">Save the supplier</.button>
+        <footer><.button type="submit">Save the supplier</.button></footer>
       </form>
     </details>
     """

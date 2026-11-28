@@ -158,9 +158,11 @@ defmodule RescordWeb.GroupComponents do
           label={"When #{@member.resident.name || "the resident with no name"} left the group, if not now"}
           value=""
         />
-        <.button type="submit">
-          Take {@member.resident.name || "the resident with no name"} out of the group
-        </.button>
+        <footer>
+          <.button type="submit">
+            Take {@member.resident.name || "the resident with no name"} out of the group
+          </.button>
+        </footer>
       </form>
     </details>
     """

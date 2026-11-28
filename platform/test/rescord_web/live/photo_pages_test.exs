@@ -398,7 +398,7 @@ defmodule RescordWeb.PhotoPagesTest do
     conn
     |> visit("#{context.path}?album=#{album.id}")
     |> refute_has(main() |> button("Rename"))
-    |> refute_has(main() |> button("Remove the album"))
+    |> refute_has(main() |> button("Remove the album Home"))
     # A sent event is refused by the policy too.
     |> unwrap(&render_click(&1, "make_profile", %{"ref" => "photo-#{photo.id}"}))
 

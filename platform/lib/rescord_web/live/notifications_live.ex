@@ -250,7 +250,7 @@ defmodule RescordWeb.NotificationsLive do
             </label>
           </fieldset>
           <p><small>Each notification is on this page in any case.</small></p>
-          <button type="submit">Save</button>
+          <footer><button type="submit">Save</button></footer>
         </form>
       </section>
     </Layouts.app>

@@ -189,11 +189,12 @@ defmodule RescordWeb.ToolComponents do
       </p>
 
       <.problems list={@problems[:calculation] || []} />
-      <p :if={refused?(@problems)} role="alert">
-        There is no result yet. See the words below each marked field.
-      </p>
+      <.problems
+        :if={refused?(@problems)}
+        list={["There is no result yet. See the words below each marked field."]}
+      />
 
-      <button type="submit">Calculate</button>
+      <footer><button type="submit">Calculate</button></footer>
     </.form>
     """
   end

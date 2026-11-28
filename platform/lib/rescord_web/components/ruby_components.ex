@@ -303,7 +303,7 @@ defmodule RescordWeb.RubyComponents do
         <.button type="submit" phx-disable-with="Saving">
           {if @provider, do: "Save", else: "Add the provider"}
         </.button>
-        <.button :if={!@provider} navigate={~p"/root/ruby"}>Cancel</.button>
+        <.button navigate={~p"/root/ruby"}>Cancel</.button>
       </footer>
     </.form>
     """

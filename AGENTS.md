@@ -906,6 +906,14 @@ hand (ADR 0073). Read it before you write a migration. In short:
     participle, a full stop.
   - **"New"** is the first part below the header and its problems, above
     the table or list of the page.
+  - **A form ends with a `<footer>`** that holds its submit button first,
+    with words that name the verb and the thing ("Save the supplier"). A
+    form on a page of its own has a Cancel after it,
+    `<.button navigate={...}>Cancel</.button>`, back to where the person
+    came from. LiveView disables the buttons of a form while it sends, so
+    no `phx-disable-with` is needed against a second send. A confirm step
+    ends with its danger button, and a form of one field in a row of a
+    table needs no footer.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
