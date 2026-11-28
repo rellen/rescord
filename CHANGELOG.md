@@ -219,6 +219,7 @@ release (ADR 0047).
   HTTP) or as a plain JSON document, or are not counted at all. The page
   shows the exact document before anything is sent, and has "Send a
   test". The metrics endpoint has the counter `rescord_usage_count` too.
+  `bin/check` says what the server does with them.
 - A kind of measurement, such as the weight, can have a standard unit,
   which an administrator chooses on the page Lists. Rescord then shows
   each measurement of that kind in that unit: in the charts and their

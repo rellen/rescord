@@ -218,6 +218,7 @@ ok    store      the directory /var/lib/rescord/files takes, gives back and dele
 ok    mail       smtp.example.org:587 takes the connection with STARTTLS, and the user rescord
 ok    vault      each of the 3 encrypted values opens with the secret of this server
 note  assistant  no provider yet. A root user adds one at /root/ruby
+ok    usage      kept on this server, and sent nowhere
 ok    email      sent to you@example.org: look for it in that inbox, and in its spam
 
 Rescord is ready.
@@ -240,6 +241,9 @@ Rescord is ready.
   assistant, Ruby"): where the records go, whether it has its key, and
   what its last test found. This check reads the database. It sends no
   request to a provider, and costs nothing.
+- **usage**: what the server does with its usage counts (see "Usage
+  counts"): a note when they are off, and a fault when the last send
+  failed. The line names no address, and the check sends nothing.
 - **email**: with an address, Rescord sends a short email to it. When the
   email does not arrive, ask the provider of the SMTP server, and check
   the SPF and DKIM records of the domain of `RESCORD_MAIL_FROM`.

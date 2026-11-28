@@ -11,6 +11,8 @@ defmodule Rescord.Release.Check do
       (ADR 0068);
     * each provider of the assistant has what a request needs (ADR 0069).
       This check reads the database, sends no request and decrypts no key;
+    * what the server does with its usage counts, and what the last send
+      found (ADR 0098). It sends nothing;
     * with an address, a short email reaches that address.
 
   `Rescord.Release.check/1` runs the checks and prints them, and
@@ -22,7 +24,7 @@ defmodule Rescord.Release.Check do
   start before a check could name it.
   """
 
-  alias Rescord.{Mailer, Repo, Ruby, Storage, Transfers, Vault}
+  alias Rescord.{Mailer, Repo, Ruby, Storage, Transfers, Usage, Vault}
 
   @typedoc """
   The result of a check: `:ok`, `:note` for something to know that is not a
@@ -42,10 +44,12 @@ defmodule Rescord.Release.Check do
 
     migrations = migrations()
 
-    # The two checks that read tables wait for the migrations of a new
-    # version: the next start runs them.
+    # The checks that read tables wait for the migrations of a new version:
+    # the next start runs them.
     of_the_database =
-      if match?({:ok, _name, _words}, migrations), do: [vault() | assistant()], else: []
+      if match?({:ok, _name, _words}, migrations),
+        do: [vault() | assistant()] ++ [usage()],
+        else: []
 
     [database(), migrations, store(), smtp()] ++
       of_the_database ++
@@ -230,6 +234,35 @@ defmodule Rescord.Release.Check do
 
   defp each(1), do: "the one encrypted value"
   defp each(total), do: "each of the #{total} encrypted values"
+
+  @doc """
+  What the server does with its usage counts: nothing, keep them, or also
+  send them. With the sending on, a last send that failed is a fault. The
+  line names no address: an address can hold a secret in its path. It
+  reads the row, and sends nothing.
+  """
+  @spec usage() :: result
+  def usage do
+    case Usage.settings(authorize?: false) do
+      %{mode: :off} ->
+        {:note, "usage", "the counts are off. A root user turns them on at /root/usage"}
+
+      %{mode: :local} ->
+        {:ok, "usage", "kept on this server, and sent nowhere"}
+
+      %{mode: :send, last_result: result} when result not in [nil, :ok] ->
+        {:fail, "usage", "sent each day, and the last send failed (#{result}). See /root/usage"}
+
+      %{mode: :send, last_sent_day: nil} ->
+        {:ok, "usage", "sent each day to the address of /root/usage. No day is sent yet"}
+
+      %{mode: :send, last_sent_day: day} ->
+        {:ok, "usage",
+         "sent each day to the address of /root/usage. Each day up to #{Date.to_iso8601(day)} is done"}
+    end
+  rescue
+    _error -> {:fail, "usage", "cannot read the settings of the usage counts"}
+  end
 
   @doc """
   A line for each provider of the assistant: where the records go, whether
