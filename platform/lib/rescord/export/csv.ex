@@ -48,6 +48,10 @@ defmodule Rescord.Export.CSV do
 
       iex> Rescord.Export.CSV.cell(Decimal.new("-5"))
       "-5"
+
+      iex> {:ok, strength} = Rescord.Units.Quantity.parse("1.5 mg/mL")
+      iex> Rescord.Export.CSV.cell(strength)
+      "1.5 mg/mL"
   """
   @spec cell(term) :: String.t()
   def cell(value) do
@@ -72,6 +76,8 @@ defmodule Rescord.Export.CSV do
   defp text(%Date{} = value), do: Date.to_iso8601(value)
   defp text(%Time{} = value), do: Time.to_iso8601(value)
   defp text(%Ash.CiString{} = value), do: value |> to_string() |> safe()
+  # A quantity is its number and its unit, `1.5 mg/mL`, as the types read it.
+  defp text(%Rescord.Units.Quantity{} = value), do: value |> to_string() |> safe()
   defp text(values) when is_list(values), do: Enum.map_join(values, "; ", &text/1)
   defp text(value) when is_map(value), do: value |> plain() |> Jason.encode!() |> safe()
   defp text(value), do: safe(inspect(value))

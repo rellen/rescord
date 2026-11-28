@@ -453,6 +453,10 @@ particular. A lot expires soon in the days before its expiry date that the
 category of its item gives, or in 30 days. Stock that is past its expiry date does not count
 against a reorder level.
 
+An item that is a medication can have a strength (ADR 0072): the mass of
+the medication in each millilitre or in each tablet, from the label. The
+dose calculator of the tools can use it (section 5.12).
+
 ### 5.9 Transfers between refuges
 
 A refuge sends a resident to a partner refuge as a copy that does not
@@ -548,6 +552,11 @@ A member can take the weight from the journal of a resident. The
 calculator then shows the date of that measurement and its age in days.
 When the journal has more than one measurement that can be a body weight,
 the member chooses one.
+
+A member can also take the strength from an item of the inventory that
+has one. The calculator names the item, and tells the member to check the
+strength against the label. It says when the records have no stock of the
+item that is in date.
 
 The calculator knows no medication. It gives no dose rate, and it does not
 say that a dose is safe. The dose rate and the strength come from a vet or

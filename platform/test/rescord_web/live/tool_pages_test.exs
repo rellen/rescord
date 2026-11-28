@@ -14,7 +14,7 @@ defmodule RescordWeb.ToolPagesTest do
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
-  alias Rescord.{Accounts, Journal, Lists, Residents}
+  alias Rescord.{Accounts, Inventory, Journal, Lists, Locations, Residents}
   alias RescordWeb.{ResidentWords, ToolWords}
 
   setup do
@@ -662,6 +662,181 @@ defmodule RescordWeb.ToolPagesTest do
                ~s(a[href="#{context.dose}?resident=#{context.biscuit.id}"]),
                "Calculate a dose"
              )
+    end
+  end
+
+  describe "the strength of an item in the dose calculator" do
+    setup context do
+      options = [actor: context.root, tenant: context.organisation]
+      place = Locations.add_location!(%{name: "Clinic room"}, options)
+
+      meloxicam =
+        Inventory.add_item!(%{name: "Meloxicam suspension", strength: "1.5 mg/mL"}, options)
+
+      tablets =
+        Inventory.add_item!(%{name: "Carprofen tablets", strength: "50 mg/tablet"}, options)
+
+      Inventory.add_item!(%{name: "Meadow hay"}, options)
+
+      {:ok, options: options, place: place, meloxicam: meloxicam, tablets: tablets}
+    end
+
+    defp lot!(context, item, facts) do
+      %{item_id: item.id, quantity: 2, location_id: context.place.id, code: "B-1"}
+      |> Map.merge(facts)
+      |> Inventory.receive_lot!(context.options)
+    end
+
+    test "is in the form when the address names the item, with where it came from", context do
+      lot!(context, context.meloxicam, %{
+        expires_on: Date.add(Accounts.today(context.organisation), 30)
+      })
+
+      view = open(context, "#{context.dose}?item=#{context.meloxicam.id}")
+
+      assert has_element?(view, ~s(input#dose_strength[value="1.5"]))
+      assert has_element?(view, ~s(select#dose_strength_unit option[value="mg"][selected]))
+      assert has_element?(view, ~s(select#dose_strength_per option[value="mL"][selected]))
+
+      assert has_element?(
+               view,
+               "#dose_strength-hint",
+               "From the item Meloxicam suspension of the inventory. Check it against the label."
+             )
+
+      # The item has stock that is in date.
+      refute has_element?(view, "#dose-no-stock")
+
+      # The choice has the items with a strength, and no other.
+      assert has_element?(view, "select#dose_item option", "Carprofen tablets")
+      refute has_element?(view, "select#dose_item option", "Meadow hay")
+
+      calculate(view, %{
+        "weight" => "1095",
+        "weight_unit" => "g",
+        "rate" => "0.2",
+        "strength" => "1.5",
+        "item" => context.meloxicam.id
+      })
+
+      assert has_element?(view, "#dose-amount", "0.146 mL")
+      assert has_element?(view, "#dose-strength-from", "From the item Meloxicam suspension")
+    end
+
+    test "comes with the choice of an item in the form, which the address follows", context do
+      view = open(context, context.dose)
+
+      view |> form("#dose", dose: fields(%{"item" => context.tablets.id})) |> render_change()
+
+      assert_patch(view, "#{context.dose}?item=#{context.tablets.id}")
+      assert has_element?(view, ~s(input#dose_strength[value="50"]))
+      assert has_element?(view, ~s(select#dose_strength_per option[value="tablet"][selected]))
+
+      # The records have no lot of the tablets, and the page says so.
+      assert has_element?(view, "#dose-no-stock", "no stock of Carprofen tablets that is in date")
+
+      # Another item: its strength, and never the one of the item before.
+      sent = %{"strength" => "50", "strength_per" => "tablet", "item" => context.meloxicam.id}
+      view |> form("#dose", dose: fields(sent)) |> render_change()
+
+      assert_patch(view, "#{context.dose}?item=#{context.meloxicam.id}")
+      assert has_element?(view, ~s(input#dose_strength[value="1.5"]))
+      assert has_element?(view, ~s(select#dose_strength_per option[value="mL"][selected]))
+
+      # No item again: the strength of the item goes with it.
+      view |> form("#dose", dose: fields(%{"strength" => "1.5", "item" => ""})) |> render_change()
+
+      assert_patch(view, context.dose)
+      assert has_element?(view, ~s(input#dose_strength[value=""]))
+    end
+
+    test "says when each lot of the item is past its date, or empty", context do
+      today = Accounts.today(context.organisation)
+      lot!(context, context.meloxicam, %{expires_on: Date.add(today, -1)})
+
+      view = open(context, "#{context.dose}?item=#{context.meloxicam.id}")
+
+      assert has_element?(
+               view,
+               "#dose-no-stock",
+               "no stock of Meloxicam suspension that is in date"
+             )
+
+      # The page still calculates: it says what the records hold, and no more.
+      assert has_element?(view, ~s(input#dose_strength[value="1.5"]))
+
+      lot!(context, context.meloxicam, %{code: "B-2", expires_on: Date.add(today, 90)})
+      view = open(context, "#{context.dose}?item=#{context.meloxicam.id}")
+      refute has_element?(view, "#dose-no-stock")
+    end
+
+    test "is a typed strength after the person changes it, and the result says so", context do
+      view = open(context, "#{context.dose}?item=#{context.meloxicam.id}")
+
+      sent = %{
+        "weight" => "3",
+        "rate" => "0.2",
+        "strength" => "0.5",
+        "item" => context.meloxicam.id
+      }
+
+      view |> form("#dose", dose: fields(sent)) |> render_change()
+
+      assert has_element?(view, "#dose_strength-hint", "From the label.")
+      calculate(view, sent)
+      assert has_element?(view, "#dose-amount", "1.2 mL")
+
+      assert has_element?(
+               view,
+               "#dose-strength-from",
+               "Typed, and not from the item Meloxicam suspension."
+             )
+    end
+
+    test "comes with the weight of a resident in one address", context do
+      lists = lists!(context.organisation, context.root)
+      biscuit = resident!(lists, context.options)
+
+      Journal.write_entry!(
+        %{
+          resident_id: biscuit.id,
+          kind: :measurement,
+          measure_kind_id: lists.measure_kind.weight,
+          value: "1095",
+          unit_id: lists.unit.g
+        },
+        context.options
+      )
+
+      view = open(context, "#{context.dose}?resident=#{biscuit.id}&item=#{context.meloxicam.id}")
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+      assert has_element?(view, ~s(input#dose_strength[value="1.5"]))
+
+      # A change of the item keeps the resident in the address.
+      sent = %{
+        "weight" => "1095",
+        "weight_unit" => "g",
+        "strength" => "1.5",
+        "resident" => biscuit.id,
+        "item" => context.tablets.id
+      }
+
+      view |> form("#dose", dose: fields(sent)) |> render_change()
+      assert_patch(view, "#{context.dose}?item=#{context.tablets.id}&resident=#{biscuit.id}")
+      assert has_element?(view, ~s(input#dose_weight[value="1095"]))
+      assert has_element?(view, "#dose_weight-hint", "From the journal of Biscuit")
+      assert has_element?(view, ~s(input#dose_strength[value="50"]))
+    end
+
+    test "has no item for an address that names none of the list", context do
+      hay = Enum.find(Inventory.items!(context.options), &(&1.name == "Meadow hay"))
+
+      for id <- [hay.id, Ecto.UUID.generate(), "no-id", ""] do
+        view = open(context, "#{context.dose}?item=#{id}")
+        assert has_element?(view, "h1", "Dose calculator")
+        assert has_element?(view, ~s(input#dose_strength[value=""]))
+        refute has_element?(view, "#dose-no-stock")
+      end
     end
   end
 end

@@ -11,6 +11,11 @@ defmodule Rescord.Inventory.Item do
   `reorder_level` is the quantity in the whole organisation below which the
   organisation orders more. `Rescord.Inventory.ReorderLevel` holds the same
   for one location.
+
+  `strength` is for a medication: the mass of the medication in each mL or
+  in each tablet, as the label says it, such as `1.5 mg/mL` (ADR 0072). It
+  is a fact of the product. The dose calculator of the tools can fill it in,
+  and Rescord draws no other conclusion from it.
   """
 
   use Rescord.Resource,
@@ -29,11 +34,11 @@ defmodule Rescord.Inventory.Item do
     defaults [:read]
 
     create :add do
-      accept [:name, :category_id, :unit_id, :reorder_level, :note]
+      accept [:name, :category_id, :unit_id, :reorder_level, :strength, :note]
     end
 
     update :revise do
-      accept [:name, :category_id, :unit_id, :reorder_level, :note]
+      accept [:name, :category_id, :unit_id, :reorder_level, :strength, :note]
     end
 
     destroy :remove do
@@ -65,6 +70,13 @@ defmodule Rescord.Inventory.Item do
       constraints min: 0
 
       description "The quantity in the whole organisation below which the organisation orders more"
+    end
+
+    attribute :strength, Rescord.Units.Types.Quantity do
+      public? true
+      constraints dimension: [{:mass, :volume}, {:mass, :tablet}], positive?: true
+
+      description "For a medication: the mass of the medication in each mL or in each tablet, from the label"
     end
 
     attribute :note, :string do

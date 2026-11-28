@@ -10,13 +10,16 @@ defmodule RescordWeb.InventoryComponents do
 
   use RescordWeb, :html
 
-  alias Rescord.Accounts
-  alias RescordWeb.{InventoryWords, ResidentWords, TaskWords}
+  import RescordWeb.ToolComponents, only: [strength_controls: 1]
+
+  alias Rescord.{Accounts, Dosage}
+  alias RescordWeb.{InventoryWords, ResidentWords, TaskWords, ToolWords}
 
   @doc "The stock of an item: its level, its state, and each lot in each place."
   attr :stock, :map, required: true
   attr :item, :map, required: true
   attr :place_names, :map, required: true
+  attr :organisation, :map, required: true
 
   def item_stock(assigns) do
     ~H"""
@@ -32,8 +35,21 @@ defmodule RescordWeb.InventoryComponents do
         <:item :if={@item.reorder_level} title="Order more when the stock is below">
           {InventoryWords.quantity(@item.reorder_level, @item)}
         </:item>
+        <:item :if={@item.strength} title="Strength">
+          <span id="item-strength">{ToolWords.strength(@item.strength)}</span>
+        </:item>
         <:item :if={@item.note} title="Note">{@item.note}</:item>
       </.list>
+
+      <%!-- The dose calculator of the tools, with the strength of this item (ADR 0072). --%>
+      <p :if={Dosage.strength?(@item.strength)}>
+        <.link
+          navigate={~p"/o/#{@organisation.short_name}/tools/dose?#{[item: @item.id]}"}
+          data-variant="secondary"
+        >
+          Calculate a dose with this strength
+        </.link>
+      </p>
 
       <ul :if={@stock.below_zero != []} id="below-zero">
         <li :for={{lot, place, level} <- @stock.below_zero}>
@@ -516,6 +532,7 @@ defmodule RescordWeb.InventoryComponents do
           min="0"
           step="any"
         />
+        <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
         <footer><.button type="submit">Save the item</.button></footer>
       </.form>
@@ -721,11 +738,59 @@ defmodule RescordWeb.InventoryComponents do
           min="0"
           step="any"
         />
+        <.item_strength form={@form} />
         <.input field={@form[:note]} type="text" label="Note" maxlength="1000" />
         <footer><.button type="submit">Add the item</.button></footer>
       </.form>
     </details>
     """
+  end
+
+  # The strength of a medication, in the form of an item: the same controls
+  # as the dose calculator of the tools, which can fill it in (ADR 0072).
+  attr :form, :any, required: true
+
+  defp item_strength(assigns) do
+    ~H"""
+    <fieldset>
+      <legend>Strength, for a medication</legend>
+      <.strength_controls
+        form={@form}
+        hint="From the label: 1.5 mg in each mL. Leave it empty for each other item."
+      />
+    </fieldset>
+    """
+  end
+
+  @doc """
+  The fields of the strength of an item, for its form: the number, the unit
+  of the mass, and what it is in each of. An item with no strength, or with
+  one that the form cannot show, has none.
+  """
+  @spec strength_fields(map) :: map
+  def strength_fields(item) do
+    if Dosage.strength?(item.strength) do
+      %{
+        "strength" => Rescord.Units.Quantity.plain(item.strength),
+        "strength_unit" => item.strength.unit.numerator.code,
+        "strength_per" => item.strength.unit.denominator.code
+      }
+    else
+      %{}
+    end
+  end
+
+  @doc """
+  Reads the strength that a form of an item sent, with the guards of the
+  dose calculator: `{:ok, strength}`, `{:ok, nil}` for an empty field, or
+  the words of what was refused.
+  """
+  @spec read_strength(map) :: {:ok, Rescord.Units.Quantity.t() | nil} | {:error, String.t()}
+  def read_strength(fields) do
+    case Dosage.strength(fields["strength"], fields["strength_unit"], fields["strength_per"]) do
+      {:ok, strength} -> {:ok, strength}
+      {:error, reason} -> {:error, "The strength: " <> ToolWords.problem({:strength, reason})}
+    end
   end
 
   def item_path(organisation, item), do: ~p"/o/#{organisation.short_name}/inventory/#{item.id}"

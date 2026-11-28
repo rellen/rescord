@@ -109,13 +109,17 @@ defmodule RescordWeb.ItemLive do
     item = socket.assigns.item
 
     start = %{
-      item: %{
-        "name" => item.name,
-        "category_id" => item.category_id,
-        "unit_id" => item.unit_id,
-        "reorder_level" => item.reorder_level && InventoryWords.plain(item.reorder_level),
-        "note" => item.note
-      }
+      item:
+        Map.merge(
+          %{
+            "name" => item.name,
+            "category_id" => item.category_id,
+            "unit_id" => item.unit_id,
+            "reorder_level" => item.reorder_level && InventoryWords.plain(item.reorder_level),
+            "note" => item.note
+          },
+          strength_fields(item)
+        )
     }
 
     Enum.reduce(@forms, socket, fn {name, key}, socket ->
@@ -222,18 +226,25 @@ defmodule RescordWeb.ItemLive do
   end
 
   def handle_event("revise", %{"item" => fields}, socket) when is_map(fields) do
+    item = socket.assigns.item
+
+    attributes = %{
+      name: non_blank(fields["name"]),
+      category_id: non_blank(fields["category_id"]),
+      unit_id: non_blank(fields["unit_id"]),
+      reorder_level: non_blank(fields["reorder_level"]),
+      note: non_blank(fields["note"])
+    }
+
     write(socket, :item, fields, fn _instant, options ->
-      Inventory.revise_item(
-        socket.assigns.item,
-        %{
-          name: non_blank(fields["name"]),
-          category_id: non_blank(fields["category_id"]),
-          unit_id: non_blank(fields["unit_id"]),
-          reorder_level: non_blank(fields["reorder_level"]),
-          note: non_blank(fields["note"])
-        },
-        options
-      )
+      with {:ok, strength} <- read_strength(fields) do
+        # A strength that the form cannot show stays when the form sends
+        # none: the person did not see it, so the person did not remove it.
+        kept? = is_nil(strength) and item.strength != nil and strength_fields(item) == %{}
+        attributes = if kept?, do: attributes, else: Map.put(attributes, :strength, strength)
+
+        Inventory.revise_item(item, attributes, options)
+      end
     end)
   end
 
@@ -335,7 +346,12 @@ defmodule RescordWeb.ItemLive do
 
       <.problems :if={is_nil(@refused)} list={@problems} />
 
-      <.item_stock stock={@stock} item={@item} place_names={@place_names} />
+      <.item_stock
+        stock={@stock}
+        item={@item}
+        place_names={@place_names}
+        organisation={@organisation}
+      />
 
       <.record_stock
         :if={@can_record?}

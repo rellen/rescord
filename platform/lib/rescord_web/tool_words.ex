@@ -122,6 +122,10 @@ defmodule RescordWeb.ToolWords do
     "From the journal of #{resident}: #{kind}, #{when_measured(on, days)}."
   end
 
+  @doc "Where the strength of the form came from: `From the item Metacam of the inventory.`"
+  @spec from_item(map) :: String.t()
+  def from_item(%{name: name}), do: "From the item #{name} of the inventory."
+
   # The date of a measurement and how old it is. The calculator gives no
   # limit for an old weight: a young animal changes in days.
   defp when_measured(%Date{} = on, days),

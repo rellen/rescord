@@ -56,9 +56,13 @@ defmodule RescordWeb.InventoryLive do
       note: non_blank(fields["note"])
     }
 
-    case Inventory.add_item(attributes, options(socket)) do
-      {:ok, item} ->
-        {:noreply, push_navigate(socket, to: item_path(socket.assigns.organisation, item))}
+    with {:ok, strength} <- read_strength(fields),
+         {:ok, item} <-
+           Inventory.add_item(Map.put(attributes, :strength, strength), options(socket)) do
+      {:noreply, push_navigate(socket, to: item_path(socket.assigns.organisation, item))}
+    else
+      {:error, words} when is_binary(words) ->
+        {:noreply, assign(socket, problems: [words], form: typed_form(fields, as: :item))}
 
       {:error, error} ->
         {:noreply,

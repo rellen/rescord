@@ -74,14 +74,18 @@ defmodule RescordWeb.ToolComponents do
   attr :resident, :map, default: nil, doc: "the resident that the person chose"
   attr :weights, :list, default: [], doc: "the measurements of that resident that fit"
   attr :source, :map, default: nil, doc: "the measurement that the weight came from"
+  attr :items, :list, default: [], doc: "the items of the inventory that have a strength"
+  attr :item, :map, default: nil, doc: "the item that the person chose"
+
+  attr :from_item?, :boolean,
+    default: false,
+    doc: "the strength of the form is the one of the item"
 
   def dose_form(assigns) do
     assigns =
       assign(assigns,
         weight_units: options(Dosage.weight_units()),
-        dose_units: options(Dosage.dose_units()),
-        strength_units: options(Dosage.strength_units()),
-        strength_per: options(Dosage.strength_per())
+        dose_units: options(Dosage.dose_units())
       )
 
     ~H"""
@@ -157,28 +161,26 @@ defmodule RescordWeb.ToolComponents do
 
       <fieldset :if={!@volume?} id="dose-strength-part">
         <legend>Strength of the product</legend>
-        <div data-quantity>
-          <.number
-            field={@form[:strength]}
-            label="Amount"
-            errors={@problems[:strength]}
-            hint="From the label. Leave it empty for the dose alone."
-          />
-          <.input
-            field={@form[:strength_unit]}
-            type="select"
-            label="Unit"
-            aria-label="Unit of the strength"
-            options={@strength_units}
-          />
-          <.input
-            field={@form[:strength_per]}
-            type="select"
-            label="In each"
-            aria-label="The strength is in each"
-            options={@strength_per}
-          />
-        </div>
+        <.input
+          :if={@items != []}
+          field={@form[:item]}
+          type="select"
+          label="From an item of the inventory (optional)"
+          prompt="No item"
+          options={Enum.map(@items, &{&1.name, &1.id})}
+        />
+        <p :if={@item && !@item.in_date?} id="dose-no-stock">
+          The records have no stock of {@item.name} that is in date.
+        </p>
+        <.strength_controls
+          form={@form}
+          errors={@problems[:strength]}
+          hint={
+            if @item && @from_item?,
+              do: ToolWords.from_item(@item) <> " Check it against the label.",
+              else: "From the label. Leave it empty for the dose alone."
+          }
+        />
       </fieldset>
 
       <p :if={@volume?} id="dose-no-strength">
@@ -196,6 +198,46 @@ defmodule RescordWeb.ToolComponents do
   end
 
   defp refused?(problems), do: Enum.any?([:weight, :rate, :strength], &Map.has_key?(problems, &1))
+
+  @doc """
+  The controls of a strength: its number, the unit of its mass, and what it
+  is in each of, a millilitre or a tablet. The form of the dose calculator
+  and the forms of an item of the inventory share them, so an item holds
+  only a strength that the calculator takes.
+
+  The form has the fields `strength`, `strength_unit` and `strength_per`.
+  """
+  attr :form, Phoenix.HTML.Form, required: true
+  attr :errors, :list, default: nil, doc: "the problems of the strength, in words"
+  attr :hint, :string, default: nil
+
+  def strength_controls(assigns) do
+    assigns =
+      assign(assigns,
+        strength_units: options(Dosage.strength_units()),
+        strength_per: options(Dosage.strength_per())
+      )
+
+    ~H"""
+    <div data-quantity>
+      <.number field={@form[:strength]} label="Amount" errors={@errors} hint={@hint} />
+      <.input
+        field={@form[:strength_unit]}
+        type="select"
+        label="Unit"
+        aria-label="Unit of the strength"
+        options={@strength_units}
+      />
+      <.input
+        field={@form[:strength_per]}
+        type="select"
+        label="In each"
+        aria-label="The strength is in each"
+        options={@strength_per}
+      />
+    </div>
+    """
+  end
 
   defp options(units), do: Enum.map(units, &{&1.symbol, &1.code})
 
@@ -252,6 +294,8 @@ defmodule RescordWeb.ToolComponents do
   attr :result, Dosage.Result, default: nil
   attr :resident, :map, default: nil, doc: "the resident that the person chose"
   attr :source, :map, default: nil, doc: "the measurement that the weight came from"
+  attr :item, :map, default: nil, doc: "the item that the person chose"
+  attr :from_item?, :boolean, default: false, doc: "the strength is the one of the item"
 
   def dose_result(assigns) do
     ~H"""
@@ -269,7 +313,14 @@ defmodule RescordWeb.ToolComponents do
         <span :if={@result && !@result.amount}>is the dose</span>
       </output>
 
-      <.dose_working :if={@result} result={@result} resident={@resident} source={@source} />
+      <.dose_working
+        :if={@result}
+        result={@result}
+        resident={@resident}
+        source={@source}
+        item={@item}
+        from_item?={@from_item?}
+      />
     </section>
     """
   end
@@ -279,6 +330,8 @@ defmodule RescordWeb.ToolComponents do
   attr :result, Dosage.Result, required: true
   attr :resident, :map, default: nil
   attr :source, :map, default: nil
+  attr :item, :map, default: nil
+  attr :from_item?, :boolean, default: false
 
   defp dose_working(assigns) do
     ~H"""
@@ -299,6 +352,12 @@ defmodule RescordWeb.ToolComponents do
       <:item title="Dose rate">{ToolWords.rate(@result.rate)}</:item>
       <:item :if={@result.strength} title="Strength">
         {ToolWords.strength(@result.strength)}
+        <small :if={@item && @from_item?} id="dose-strength-from">
+          {ToolWords.from_item(@item)}
+        </small>
+        <small :if={@item && !@from_item?} id="dose-strength-from">
+          Typed, and not from the item {@item.name}.
+        </small>
       </:item>
     </.list>
 

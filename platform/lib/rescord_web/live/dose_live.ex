@@ -21,6 +21,11 @@ defmodule RescordWeb.DoseLive do
   what it read and how old that is. A weight that the person then changes
   is a typed weight, and the page says so.
 
+  A member can take the strength from an item of the inventory that has
+  one: with a choice in the form, or from the page of the item, which
+  opens this one with `?item=<id>`. The page says which item it read, and
+  says when the records have no stock of it that is in date.
+
   The page reads only the fields that it knows from what the browser
   sends, and makes no atom from it.
   """
@@ -29,7 +34,7 @@ defmodule RescordWeb.DoseLive do
 
   import RescordWeb.ToolComponents
 
-  alias Rescord.{Accounts, Dosage, Journal, Residents}
+  alias Rescord.{Accounts, Dosage, Inventory, Journal, Residents}
   alias Rescord.Units.Quantity
   alias RescordWeb.ToolWords
 
@@ -45,9 +50,12 @@ defmodule RescordWeb.DoseLive do
     {"strength_per", :strength_per}
   ]
 
-  # The names of the form: the fields of the calculation, and the choice of
-  # a resident.
-  @names ["resident" | Enum.map(@fields, &elem(&1, 0))]
+  # The names of the form: the fields of the calculation, and the choices of
+  # a resident and of an item.
+  @names ["resident", "item" | Enum.map(@fields, &elem(&1, 0))]
+
+  @weight_names ["weight", "weight_unit"]
+  @strength_names ["strength", "strength_unit", "strength_per"]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -68,14 +76,31 @@ defmodule RescordWeb.DoseLive do
          |> Enum.sort(),
        resident: nil,
        weights: [],
-       source: nil
+       source: nil,
+       items: items(socket),
+       item: nil,
+       from_item?: false
      )
      |> assign_fields(start())}
   end
 
+  # The items of the inventory with a strength that the calculator takes,
+  # by name, read as the member.
+  defp items(socket) do
+    case Inventory.items(options(socket)) do
+      {:ok, items} ->
+        for item <- Enum.sort_by(items, &{&1.name, &1.id}), Dosage.strength?(item.strength) do
+          %{id: item.id, name: item.name, strength: item.strength}
+        end
+
+      {:error, _refused} ->
+        []
+    end
+  end
+
   @impl true
   def handle_params(params, _uri, socket) do
-    {:noreply, choose_resident(socket, params["resident"])}
+    {:noreply, socket |> choose_resident(params["resident"]) |> choose_item(params["item"])}
   end
 
   defp options(socket) do
@@ -146,6 +171,59 @@ defmodule RescordWeb.DoseLive do
     |> assign_fields(Map.put(socket.assigns.fields, "weight", ""))
   end
 
+  # The item of the address, when it is one of the list. Each other value
+  # is no item. The strength of the item goes into the form.
+  defp choose_item(socket, id) do
+    item = Enum.find(socket.assigns.items, &(&1.id == id))
+
+    if (item && item.id) == (socket.assigns.item && socket.assigns.item.id) do
+      socket
+    else
+      socket
+      |> assign(item: item && Map.put(item, :in_date?, in_date?(socket, item)))
+      |> without_strength_of_a_record()
+      |> then(&assign_fields(&1, Map.put(&1.assigns.fields, "item", (item && item.id) || "")))
+      |> use_strength()
+    end
+  end
+
+  # Whether the records have stock of the item that is not past its expiry
+  # date. The page says when there is none, and still calculates.
+  defp in_date?(socket, item) do
+    case Inventory.item_stock(item.id, options(socket)) do
+      {:ok, %{lots: lots}} ->
+        Enum.any?(lots, &(Decimal.positive?(&1.level) and &1.expiry != :expired))
+
+      _none ->
+        false
+    end
+  end
+
+  # The strength of one item is not the strength of the next, or of no
+  # item: the field is empty again, and a result of it goes.
+  defp without_strength_of_a_record(%{assigns: %{from_item?: false}} = socket), do: socket
+
+  defp without_strength_of_a_record(socket) do
+    socket
+    |> assign(from_item?: false, result: nil, problems: %{})
+    |> assign_fields(Map.put(socket.assigns.fields, "strength", ""))
+  end
+
+  defp use_strength(%{assigns: %{item: nil}} = socket), do: socket
+
+  defp use_strength(%{assigns: %{item: %{strength: strength}}} = socket) do
+    fields =
+      Map.merge(socket.assigns.fields, %{
+        "strength" => Quantity.plain(strength),
+        "strength_unit" => strength.unit.numerator.code,
+        "strength_per" => strength.unit.denominator.code
+      })
+
+    socket
+    |> assign(from_item?: true, result: nil, problems: %{})
+    |> assign_fields(fields)
+  end
+
   # One measurement that can be a body weight is the weight. With more, the
   # person says which one.
   defp use_the_one_weight(%{assigns: %{weights: [weight]}} = socket),
@@ -176,7 +254,9 @@ defmodule RescordWeb.DoseLive do
       "rate_unit" => first.(Dosage.dose_units()),
       "strength" => "",
       "strength_unit" => first.(Dosage.strength_units()),
-      "strength_per" => first.(Dosage.strength_per())
+      "strength_per" => first.(Dosage.strength_per()),
+      "resident" => "",
+      "item" => ""
     }
   end
 
@@ -205,42 +285,53 @@ defmodule RescordWeb.DoseLive do
   # Takes what the browser sent into the page. What the page shows is for
   # the fields as they are: after a change, a result of other numbers goes,
   # and so do the words about them. A weight that the person changed is no
-  # more the weight of the journal.
+  # more the weight of the journal, and a strength that the person changed
+  # is no more the strength of the item.
   defp take(socket, sent) do
     before = socket.assigns.fields
     fields = merged(socket, sent)
+    same? = fn names -> Map.take(fields, names) == Map.take(before, names) end
 
-    cond do
-      fields == before ->
-        socket
-
-      Map.take(fields, ["weight", "weight_unit"]) == Map.take(before, ["weight", "weight_unit"]) ->
-        socket |> assign(result: nil, problems: %{}) |> assign_fields(fields)
-
-      true ->
-        socket |> assign(result: nil, problems: %{}, source: nil) |> assign_fields(fields)
+    if fields == before do
+      socket
+    else
+      socket
+      |> assign(
+        result: nil,
+        problems: %{},
+        source: if(same?.(@weight_names), do: socket.assigns.source),
+        from_item?: socket.assigns.from_item? and same?.(@strength_names)
+      )
+      |> assign_fields(fields)
     end
   end
 
-  # The address of the page with the resident that the form names. The
-  # page of that address reads the weights (`handle_params/3`).
-  defp follow_resident(socket) do
-    chosen = socket.assigns.fields["resident"]
-    current = (socket.assigns.resident && socket.assigns.resident.id) || ""
+  # The address of the page with the resident and the item that the form
+  # names. The page of that address reads the weights and the strength
+  # (`handle_params/3`).
+  defp follow_choices(socket) do
+    %{fields: fields, resident: resident, item: item} = socket.assigns
 
-    if chosen == current,
-      do: socket,
-      else: push_patch(socket, to: address(socket, chosen))
+    if fields["resident"] == ((resident && resident.id) || "") and
+         fields["item"] == ((item && item.id) || "") do
+      socket
+    else
+      push_patch(socket, to: address(socket.assigns.organisation, fields))
+    end
   end
 
-  defp address(socket, ""), do: ~p"/o/#{socket.assigns.organisation.short_name}/tools/dose"
-
-  defp address(socket, resident),
-    do: ~p"/o/#{socket.assigns.organisation.short_name}/tools/dose?#{[resident: resident]}"
+  defp address(organisation, fields) do
+    case for {key, name} <- [resident: "resident", item: "item"],
+             fields[name] != "",
+             do: {key, fields[name]} do
+      [] -> ~p"/o/#{organisation.short_name}/tools/dose"
+      choices -> ~p"/o/#{organisation.short_name}/tools/dose?#{choices}"
+    end
+  end
 
   @impl true
   def handle_event("change", %{"dose" => sent}, socket) when is_map(sent) do
-    {:noreply, socket |> take(sent) |> follow_resident()}
+    {:noreply, socket |> take(sent) |> follow_choices()}
   end
 
   # The person chose one of the weights of the journal. The page finds it
@@ -304,9 +395,18 @@ defmodule RescordWeb.DoseLive do
         resident={@resident}
         weights={@weights}
         source={@source}
+        items={@items}
+        item={@item}
+        from_item?={@from_item?}
       />
 
-      <.dose_result result={@result} resident={@resident} source={@source} />
+      <.dose_result
+        result={@result}
+        resident={@resident}
+        source={@source}
+        item={@item}
+        from_item?={@from_item?}
+      />
     </Layouts.app>
     """
   end

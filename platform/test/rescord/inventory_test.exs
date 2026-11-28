@@ -93,6 +93,39 @@ defmodule Rescord.InventoryTest do
       assert {:error, %Ash.Error.Invalid{}} = Inventory.add_item(%{}, context.admin)
     end
 
+    test "can have the strength of a medication, a mass in each mL or in each tablet", context do
+      {:ok, strength} = Rescord.Units.Quantity.parse("1.5 mg/mL")
+
+      meloxicam =
+        Inventory.add_item!(%{name: "Meloxicam suspension", strength: strength}, context.admin)
+
+      {:ok, %{item: read}} = Inventory.item_stock(meloxicam.id, context.options)
+      assert to_string(read.strength) == "1.5 mg/mL"
+
+      # A text and a map are read as a form sends them.
+      assert {:ok, %{strength: tablets}} =
+               Inventory.revise_item(meloxicam, %{strength: "50 mg/tablet"}, context.admin)
+
+      assert to_string(tablets.unit) == "mg/tablet"
+
+      # The history has the strength of each time.
+      {:ok, history} = Inventory.history(meloxicam.id, context.options)
+      assert is_list(history)
+
+      assert {:ok, %{strength: nil}} =
+               Inventory.revise_item(meloxicam, %{strength: nil}, context.admin)
+
+      # A strength is no dose rate, no plain mass, and above zero.
+      for wrong <- ["5 mg/kg", "5 mg", "1 mL", "0 mg/mL", "-1 mg/mL", "5 bags/mL", "five"] do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Inventory.revise_item(meloxicam, %{strength: wrong}, context.admin),
+               wrong
+      end
+
+      # An item with no strength is as before.
+      assert context.hay.strength == nil
+    end
+
     test "is in the order of the names, and is not there after an administrator removes it",
          context do
       Inventory.add_item!(%{name: "Aspen bedding"}, context.admin)

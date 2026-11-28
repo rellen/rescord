@@ -44,6 +44,10 @@ release (ADR 0047).
     organisation has it on" to the role with the key `administrator`,
     which is the role Administrator that each organisation starts with.
     No other row changes. The power does nothing in this version.
+  - `20261128055107_add_the_strength_of_an_item`, in each organisation:
+    adds a column to the items of the inventory, for the strength of a
+    medication. It is empty for each item that is there. It changes no
+    row.
 - `RESCORD_KEY_SECRET` now encrypts also the secrets of the settings in
   the database, such as the key of a provider of the assistant. It did so
   for the private keys of the transfers already, so the rule is the same:
@@ -141,6 +145,13 @@ release (ADR 0047).
   presses "Calculate a dose" on the page of the resident, and the
   calculator says the date of that measurement and how many days ago it
   was.
+- An item of the inventory can have the strength of a medication, such as
+  1.5 mg in each mL or 50 mg in each tablet. An administrator writes it in
+  the form of the item, from the label. The dose calculator offers the
+  items that have a strength and fills it in, says which item it read, and
+  says when the records have no stock of that item that is in date. The
+  page of such an item has the link "Calculate a dose with this strength".
+  The export of the data has the strength in the file of the items.
 - Calendar feeds. A member makes a feed on the new page "Calendar feeds",
   and subscribes to it in a calendar app such as Apple Calendar, Google
   Calendar or Outlook. The feed holds the tasks that the member chooses:

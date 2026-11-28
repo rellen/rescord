@@ -133,6 +133,83 @@ defmodule RescordWeb.InventoryPagesTest do
       assert has_element?(view, "#short li", "wants 5 kg or more")
     end
 
+    test "gets a medication with its strength, which the page of the item shows", context do
+      {view, _html} = open(context.admin_conn, context.path)
+
+      # The guards of the dose calculator read the number.
+      view
+      |> form("#item", item: %{name: "Meloxicam suspension", strength: "1,5"})
+      |> render_submit()
+
+      assert has_element?(
+               view,
+               "main p[role=alert]",
+               "The strength: Write the number with digits"
+             )
+
+      assert has_element?(view, "#item_name[value='Meloxicam suspension']")
+      assert has_element?(view, "#item_strength[value='1,5']")
+
+      {view, _html} =
+        submit(view, context.admin_conn, "#item",
+          item: %{
+            name: "Meloxicam suspension",
+            category_id: context.lists.item_category.medication,
+            strength: "1.5",
+            strength_unit: "mg",
+            strength_per: "mL"
+          }
+        )
+
+      assert has_element?(view, "#item-strength", "1.5 mg in each mL")
+
+      assert has_element?(
+               view,
+               "a[href*='/tools/dose?item=']",
+               "Calculate a dose with this strength"
+             )
+
+      # The form of the item has the strength, and an empty field removes it.
+      assert has_element?(view, "#item_strength[value='1.5']")
+      assert has_element?(view, "#item_strength_unit option[selected]", "mg")
+      assert has_element?(view, "#item_strength_per option[selected]", "mL")
+
+      {view, _html} =
+        submit(view, context.admin_conn, "#item-form",
+          item: %{strength: "50", strength_unit: "mg", strength_per: "tablet"}
+        )
+
+      assert has_element?(view, "#item-strength", "50 mg in each tablet")
+
+      view |> form("#item-form", item: %{strength: "0"}) |> render_submit()
+
+      assert has_element?(
+               view,
+               "main p[role=alert]",
+               "The strength: The strength must be above zero."
+             )
+
+      {view, _html} = submit(view, context.admin_conn, "#item-form", item: %{strength: ""})
+      refute has_element?(view, "#item-strength")
+      refute has_element?(view, "a", "Calculate a dose with this strength")
+    end
+
+    test "has no strength and no link to the calculator for an item that is no medication",
+         context do
+      {view, _html} = open(context.admin_conn, context.item_path)
+
+      refute has_element?(view, "#item-strength")
+      refute has_element?(view, "a", "Calculate a dose with this strength")
+      assert has_element?(view, "#item_strength:not([value])")
+
+      # A form with no strength leaves the item with none.
+      {_view, _html} =
+        submit(view, context.admin_conn, "#item-form", item: %{name: "Timothy hay"})
+
+      assert {:ok, %{item: %{strength: nil, name: "Timothy hay"}}} =
+               Inventory.item_stock(context.hay.id, context.options)
+    end
+
     test "does not take an item from a member who sends the event", context do
       {view, _html} = open(context.conn, context.path)
 

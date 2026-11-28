@@ -82,6 +82,21 @@ work and is no record.
   in days and an adult in months, and the member sees the date. A weight
   that the member then changes is a typed weight, and the result says
   so. The weight of one resident never stays in the form for the next.
+- **The strength can come from an item of the inventory.** An item has an
+  optional `strength`, a quantity (`Rescord.Units.Types.Quantity`) that is
+  a mass in each volume or in each tablet. An administrator writes it in
+  the form of the item, with the same three controls and the same guards
+  as the calculator, so an item holds a strength that the calculator
+  takes. The two actions of an item that exist accept it, so no policy
+  changes. The calculator offers the items with a strength that it takes,
+  fills the strength in, and says which item it read and to check it
+  against the label: the bottle in the hand can be another product. It
+  says when the records have no stock of the item that is in date, and
+  still calculates. The page of such an item links to the calculator
+  (`?item=<id>`). A strength that the member then changes is a typed
+  strength, and the result says so. The strength is a fact of a product
+  that the organisation wrote from a label. It is no formulary: Rescord
+  still offers no dose rate.
 - **A result has three figures on the page**, rounded half up, with the
   word "about" before a number that was rounded. The working has six. The
   arithmetic keeps each digit (`Decimal`, and 28 digits for a division).

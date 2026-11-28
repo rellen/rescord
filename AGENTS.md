@@ -631,6 +631,11 @@ hand (ADR 0073). Read it before you write a migration. In short:
     times.
   - A new problem or note of `Rescord.Dosage` takes words in
     `RescordWeb.ToolWords`.
+  - What the calculator takes from a record, the weight of a resident or
+    the strength of an item, it names with its source, and drops when the
+    person changes the field or chooses another record. A form that
+    writes a strength uses `RescordWeb.ToolComponents.strength_controls/1`
+    and `Rescord.Dosage.strength/3`.
 - **Reports** (ADR 0076). A report is a PDF that a generic action of
   `Rescord.Reports.Report` returns, through `Rescord.Reports.Render`.
   - A new report takes: a module of facts below `Rescord.Reports.Facts`
