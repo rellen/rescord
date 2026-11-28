@@ -30,9 +30,10 @@ defmodule Rescord.Transfers.Snapshot do
       journal entry is the file of its entry, and the copy holds it once.
 
   `build/3` also returns the source of each file: its id, its key in the
-  store, and its type. The source of a thumbnail holds its bytes too,
-  because the copy states the size of each file, and no record holds the
-  size of a thumbnail. The copy names no key.
+  store, and its type. A thumbnail is a source by its key too: `build/3`
+  reads it, because the copy states the size of each file and no record
+  holds the size of a thumbnail, and the job of a transfer reads it again
+  (ADR 0100). The copy names no key.
 
   `clean/1` rebuilds a copy that came from another server, with the keys
   and the types of values above alone, so a page that shows it meets
@@ -288,8 +289,8 @@ defmodule Rescord.Transfers.Snapshot do
               "size" => file.size,
               "thumbnail" =>
                 case thumbnails[file.id] do
-                  {id, type, bytes} ->
-                    %{"id" => id, "content_type" => type, "size" => byte_size(bytes)}
+                  {id, type, size, _key} ->
+                    %{"id" => id, "content_type" => type, "size" => size}
 
                   nil ->
                     nil
@@ -313,8 +314,8 @@ defmodule Rescord.Transfers.Snapshot do
 
       sources =
         Enum.map(files, &%{"id" => &1.id, "key" => &1.key, "content_type" => &1.content_type}) ++
-          for {_photo_id, {id, type, bytes}} <- thumbnails do
-            %{"id" => id, "content_type" => type, "bytes" => bytes}
+          for {_photo_id, {id, type, _size, key}} <- thumbnails do
+            %{"id" => id, "key" => key, "content_type" => type}
           end
 
       {copy, sources}
@@ -331,13 +332,16 @@ defmodule Rescord.Transfers.Snapshot do
     Map.take(photo, [:id, :key, :thumbnail_key, :content_type, :size])
   end
 
-  # The thumbnail of a photo, with an id of its own in the copy, or `nil`
-  # for an old photo of the journal that has none, and for one that the
-  # store does not give: the page of the copy then shows the photo.
+  # The thumbnail of a photo, with an id of its own in the copy, its type,
+  # its size and its key, or `nil` for an old photo of the journal that has
+  # none, and for one that the store does not give: the page of the copy
+  # then shows the photo. The copy states the size of each file, so the
+  # thumbnail is read here; the job of the transfer reads it again by its
+  # key (ADR 0100).
   defp thumbnail(key) when is_binary(key) do
     with {:ok, bytes} <- Storage.get(key),
          "image/" <> _ = type <- Journal.file_type(bytes) do
-      {Ecto.UUID.generate(), type, bytes}
+      {Ecto.UUID.generate(), type, byte_size(bytes), key}
     else
       _no_thumbnail -> nil
     end

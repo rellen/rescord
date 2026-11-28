@@ -115,3 +115,7 @@ config :phoenix_test,
 # A request of the assistant goes to a scripted model (ADR 0069). This is a
 # seam for the tests and no setting: no test reaches a provider.
 config :rescord, :ruby_llm, Rescord.Ruby.ScriptedModel
+
+# The job of a transfer writes its count after each file, so a test sees
+# where a copy stopped (ADR 0100).
+config :rescord, Rescord.Transfers.Actions.CopyFiles, progress_every: 0

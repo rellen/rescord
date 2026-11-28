@@ -11,6 +11,11 @@ defmodule RescordWeb.TransfersLive do
   the organisation sent. Each member reads a copy that the organisation
   accepted.
 
+  The files of a transfer to a partner on this server go in a job after
+  the send (ADR 0100). While they do, the list of the sent transfers says
+  "Sending", with how many files are there. A transfer whose files did not
+  arrive says "Not sent" and why, with "Send again" and "Withdraw".
+
   With a partner on another server (ADR 0043), the person with the power
   writes a transfer file through `RescordWeb.TransferFileController`, and
   imports a file from such a partner here: it waits for an answer, as a
@@ -44,6 +49,7 @@ defmodule RescordWeb.TransfersLive do
        can_send?: Transfers.role_can?(role, :transfer, :send),
        can_answer?: Transfers.role_can?(role, :transfer, :accept),
        can_withdraw?: Transfers.role_can?(role, :transfer, :withdraw),
+       can_send_again?: Transfers.role_can?(role, :transfer, :send_again),
        can_export?: Transfers.role_can?(role, :transfer, :export),
        can_import?: Transfers.role_can?(role, :transfer, :import)
      )
@@ -155,10 +161,10 @@ defmodule RescordWeb.TransfersLive do
     }
 
     case Transfers.send_transfer(facts, actor: socket.assigns.current_user) do
-      {:ok, _transfer} ->
+      {:ok, transfer} ->
         {:noreply,
          socket
-         |> put_flash(:info, "The copy is with the partner refuge.")
+         |> put_flash(:info, sent_words(transfer))
          |> push_navigate(to: path(socket))}
 
       {:error, error} ->
@@ -200,12 +206,13 @@ defmodule RescordWeb.TransfersLive do
   end
 
   def handle_event(event, %{"id" => id}, socket)
-      when event in ["accept", "decline", "withdraw"] and is_binary(id) do
+      when event in ["accept", "decline", "withdraw", "send_again"] and is_binary(id) do
     action =
       case event do
         "accept" -> &Transfers.accept_transfer/2
         "decline" -> &Transfers.decline_transfer/2
         "withdraw" -> &Transfers.withdraw_transfer/2
+        "send_again" -> &Transfers.send_transfer_again/2
       end
 
     with %{} = transfer <-
@@ -226,6 +233,13 @@ defmodule RescordWeb.TransfersLive do
 
   @impl true
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  # A transfer with files is on its way: a job copies them after the send
+  # (ADR 0100), and this page hears when it is there.
+  defp sent_words(%{state: :sending}),
+    do: "The copy is on its way. The partner refuge sees it when each file is there."
+
+  defp sent_words(_sent), do: "The copy is with the partner refuge."
 
   # The id of an option that the page offered, or `nil`, which the action
   # refuses.
@@ -278,6 +292,7 @@ defmodule RescordWeb.TransfersLive do
         organisation={@organisation}
         can_answer?={false}
         can_withdraw?={@can_withdraw?}
+        can_send_again?={@can_send_again?}
       />
 
       <.send_form

@@ -1,6 +1,8 @@
 # ADR 0042: Transfers between partner refuges
 
 Status: accepted (the answers are from the maintainer, 18 November 2026).
+ADR 0100 adds the states `sending` and `failed`, while a job copies the
+files of a transfer to a partner on this server.
 
 ## Context
 

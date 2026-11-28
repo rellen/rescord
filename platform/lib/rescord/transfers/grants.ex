@@ -5,7 +5,8 @@ defmodule Rescord.Transfers.Grants do
 
   The power `:transfers` asks a refuge to be a partner, answers such a
   question, ends a partnership, sends a resident to a partner, and accepts,
-  declines or withdraws a transfer. With a partner on another server, it
+  declines or withdraws a transfer, and sends one whose files did not
+  arrive again (ADR 0100). With a partner on another server, it
   records the partner card, ends the partnership, and exports and imports
   a transfer file (ADR 0043). The administrators have it at first.
 
@@ -27,7 +28,7 @@ defmodule Rescord.Transfers.Grants do
       transfers:
         for(action <- [:ask, :accept, :decline, :end], do: {Partnership, action, :all}) ++
           for(
-            action <- [:send, :accept, :decline, :withdraw, :export, :import],
+            action <- [:send, :send_again, :accept, :decline, :withdraw, :export, :import],
             do: {Transfer, action, :all}
           ) ++
           for(action <- [:record, :end], do: {RemotePartner, action, :all})

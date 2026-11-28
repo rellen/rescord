@@ -31,11 +31,41 @@ defmodule RescordWeb.TransferWords do
 
   def part_of(_other), do: :error
 
+  @doc """
+  How far the files of a transfer that is sending got, such as
+  `"120 of 300 files"` (ADR 0100).
+
+      iex> RescordWeb.TransferWords.files_copied(%{files_copied: 1, files_total: 3})
+      "1 of 3 files"
+      iex> RescordWeb.TransferWords.files_copied(%{files_copied: 0, files_total: 1})
+      "0 of 1 file"
+  """
+  def files_copied(%{files_copied: copied, files_total: 1}), do: "#{copied} of 1 file"
+  def files_copied(%{files_copied: copied, files_total: total}), do: "#{copied} of #{total} files"
+
+  @doc """
+  Why the files of a transfer did not arrive, in words for the refuge that
+  sent it (ADR 0100).
+  """
+  def failure(:file_missing),
+    do:
+      "A photo or a file of the resident is no longer in the store of this refuge. " <>
+        "Withdraw the transfer, and send the resident again."
+
+  def failure(:store_refused),
+    do:
+      "The store of the files did not answer, and Rescord stopped trying. " <>
+        "Send it again, or withdraw it."
+
+  def failure(_other), do: "The files did not arrive."
+
   @doc "The state of a partnership or a transfer, in words, and its kind for a badge."
   def state(:asked), do: {"Asked", "info"}
   def state(:accepted), do: {"Accepted", "ok"}
   def state(:declined), do: {"Declined", "none"}
   def state(:ended), do: {"Ended", "none"}
+  def state(:sending), do: {"Sending", "info"}
+  def state(:failed), do: {"Not sent", "alert"}
   def state(:sent), do: {"Waits for an answer", "info"}
   def state(:withdrawn), do: {"Withdrawn", "none"}
   def state(:exported), do: {"Exported to a file", "ok"}

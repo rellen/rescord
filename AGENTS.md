@@ -433,6 +433,16 @@ hand (ADR 0073). Read it before you write a migration. In short:
       default. Work that reaches outside the database, such as an email,
       runs in a job: `delivery: {AshOban.Signals, queue: :default}`. Such a
       job has no actor.
+    - When the action of a job writes its record in several steps, the
+      nested writes pass `context: %{signal_path: input.context[:signal_path]}`,
+      so their own `signal_in` policy holds, and each one filters on the
+      state that the job expects, so a person who changed the record in
+      the meantime wins (ADR 0100, `Rescord.Transfers.Actions.CopyFiles`).
+      A count of the work is written at most once each 2 seconds, since
+      each write makes the open pages read again (ADR 0096).
+    - `emit ... where:` is evaluated before the hooks of the action, so it
+      cannot see a value that a change sets. Emit with `dynamic?: true`
+      and `Ash.Signals.emit/5` in an `after_action` then (ADR 0100).
     - A test that reads the email of an invitation calls
       `send_invitations/0` of `Rescord.AccountsFixtures` first. Oban runs
       no job by itself in a test.

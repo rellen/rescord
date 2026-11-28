@@ -138,7 +138,8 @@ Three facts make a comparison simple:
 - When a transfer copies its files in a job (issue 16), a transfer that
   is still on its way names files that are not in the store yet. That
   work must leave such a transfer out of `Rescord.Transfers.file_keys/1`
-  until its files are there.
+  until its files are there. ADR 0100 did: a transfer with sources names
+  only the files that the job copied.
 - The tests run the command against the directory and against
   `Rescord.FakeS3`, with records that real actions made: each of the four
   faults above, a removed attachment and receipt, the versions of a

@@ -38,8 +38,10 @@ config :rescord, Oban,
   notifier: Oban.Notifiers.Postgres,
   # The replies of the assistant have a queue of their own, so that a busy
   # hour of Ruby cannot fill the others (ADR 0069). A reply holds its place
-  # for as long as the model writes.
-  queues: [default: 10, workflow: 10, ruby: 5],
+  # for as long as the model writes. The files of the transfers have one
+  # too, with two jobs at one time, so that a large transfer cannot take
+  # the queue of the emails (ADR 0100).
+  queues: [default: 10, workflow: 10, ruby: 5, transfers: 2],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: Rescord.Repo,

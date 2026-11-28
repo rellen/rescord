@@ -117,6 +117,14 @@ release (ADR 0047).
     of the usage counts, the table of their settings and the table of the
     history of the settings. All three are empty until Rescord counts. It
     changes no row.
+  - `20261128091339_transfer_files_in_a_job`, in the database: adds four
+    columns to the transfers, for the files that a job copies after the
+    send: their sources, how many there are, how many are copied, and why
+    a transfer was not sent. It changes no row: each transfer keeps its
+    state, and counts 0 files.
+- Before you go back to an earlier version after this upgrade, withdraw
+  each transfer that is "Sending" or "Not sent" on the page Transfers of
+  its refuge. An earlier version does not know these two states.
 - After the upgrade, Rescord counts how often each feature is used on the
   server, and keeps the counts in its database for its root users, at
   `/root/usage`. It sends them nowhere. A root user can turn the counting
@@ -210,6 +218,12 @@ release (ADR 0047).
 
 ### Added
 
+- A transfer of a resident with photos or PDFs to a partner on this
+  server shows "Sending" and how many files are there, such as "120 of
+  300 files", while its files go to the partner. When a file does not
+  arrive, it shows "Not sent" and why, with the new button "Send again"
+  beside "Withdraw". A transfer that is sending or not sent can be
+  withdrawn too (ADR 0100).
 - Usage counts (ADR 0098): Rescord counts, for each day, how often each
   feature of the server is used: the pages that open, the actions that
   people run and the files that it sends, with no person, organisation or
@@ -485,6 +499,13 @@ release (ADR 0047).
 
 ### Changed
 
+- The send of a transfer to a partner on this server no longer copies
+  the photos and the PDFs of the copy: it returns at once, and a
+  background job copies them, one at a time, in the new queue of Oban
+  `transfers`. The partner sees the transfer when each file is there. A
+  fault of the store no longer takes back the whole send: the job tries
+  again from where it stopped, 10 times in about 20 minutes, and then the
+  transfer is "Not sent" (ADR 0100, issue 16).
 - A failure of Rescord itself, such as a time after now in a form, a
   file that is not a photo or an email of an invitation that the mail
   server refused, is now an error with a name and a reason, and no

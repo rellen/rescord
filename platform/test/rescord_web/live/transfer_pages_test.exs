@@ -311,4 +311,107 @@ defmodule RescordWeb.TransferPagesTest do
       assert has_element?(here, "[data-state=ok]", "Accepted")
     end
   end
+
+  describe "the files of a transfer, which a job copies (ADR 0100)" do
+    @describetag :tmp_dir
+
+    setup %{tmp_dir: tmp_dir} = context do
+      Rescord.StorageFixtures.disk_store!(tmp_dir)
+
+      Rescord.Photos.add_photo!(
+        %{resident_id: context.biscuit.id, content: Rescord.StorageFixtures.photo()},
+        actor: context.wattle_admin,
+        tenant: context.wattle
+      )
+
+      partners!(context)
+      :ok
+    end
+
+    defp send_photos!(context) do
+      Transfers.send_transfer!(
+        %{
+          organisation_id: context.wattle.id,
+          partner_id: context.banksia.id,
+          resident_id: context.biscuit.id,
+          parts: [:photos]
+        },
+        actor: context.wattle_admin
+      )
+    end
+
+    test "show the count while it sends, and the other refuge after", context do
+      {_conn, here, _html} =
+        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+
+      {_conn, there, _html} =
+        open(context.banksia_admin, ~p"/o/#{context.banksia.short_name}/transfers")
+
+      send_photos!(context)
+
+      assert has_element?(here, "#sent [data-state=info]", "Sending")
+      assert has_element?(here, "#sent td small", "0 of 2 files")
+      assert has_element?(here, "#sent button", "Withdraw")
+      refute render(there) =~ "Biscuit"
+
+      assert %{success: 1} = Oban.drain_queue(queue: :transfers)
+
+      assert has_element?(here, "#sent [data-state=info]", "Waits for an answer")
+      refute has_element?(here, "#sent td small")
+      assert render(there) =~ "Biscuit"
+      assert has_element?(there, "button", "Accept")
+    end
+
+    test "that did not arrive say why, and go again with one click", context do
+      Shoddy.Tests.put_app_env(:rescord, :storage, __MODULE__.Refusing)
+      transfer = send_photos!(context)
+
+      ExUnit.CaptureLog.capture_log(fn ->
+        for _try <- 1..10, do: Oban.drain_queue(queue: :transfers, with_scheduled: true)
+      end)
+
+      {conn, view, _html} =
+        open(context.wattle_admin, ~p"/o/#{context.wattle.short_name}/transfers")
+
+      assert has_element?(view, "#sent [data-state=alert]", "Not sent")
+      assert has_element?(view, "#sent td small", "did not answer")
+
+      # A member reads it, and has no button.
+      {_conn, member_view, _html} =
+        open(context.wattle_member, ~p"/o/#{context.wattle.short_name}/transfers")
+
+      assert has_element?(member_view, "#sent [data-state=alert]", "Not sent")
+      refute has_element?(member_view, "#sent button")
+
+      Shoddy.Tests.put_app_env(:rescord, :storage, Rescord.Storage.Disk)
+
+      {:ok, view, _html} =
+        view |> render_click("send_again", %{"id" => transfer.id}) |> follow_redirect(conn)
+
+      assert has_element?(view, "#sent [data-state=info]", "Sending")
+      refute has_element?(view, "#sent button", "Send again")
+    end
+  end
+
+  # A store that refuses each file of a transfer.
+  defmodule Refusing do
+    @moduledoc false
+    @behaviour Rescord.Storage
+
+    alias Rescord.Storage.Disk
+
+    @impl true
+    def put(key, bytes, type) do
+      if key =~ "/transfers/", do: {:error, :refused}, else: Disk.put(key, bytes, type)
+    end
+
+    @impl true
+    defdelegate get(key), to: Disk
+    @impl true
+    defdelegate delete(key), to: Disk
+    @impl true
+    defdelegate list, to: Disk
+    @impl true
+    defdelegate files, to: Disk
+  end
 end
