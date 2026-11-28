@@ -42,6 +42,7 @@ defmodule Rescord.SignalsTest do
      administrator: administrator,
      admin: admin,
      lists: lists,
+     shed: shed,
      fern: fern,
      sage: sage}
   end
@@ -62,16 +63,23 @@ defmodule Rescord.SignalsTest do
     |> Enum.sort()
   end
 
-  defp plan!(context, resident_ids) do
+  defp plan!(context, resident_ids, more \\ %{}) do
     Tasks.plan_task!(
-      %{
-        title: "Weigh",
-        due_at: DateTime.add(DateTime.utc_now(), 1, :hour),
-        resident_ids: resident_ids
-      },
+      Map.merge(
+        %{
+          title: "Weigh",
+          due_at: DateTime.add(DateTime.utc_now(), 1, :hour),
+          resident_ids: resident_ids
+        },
+        more
+      ),
       context.admin
     )
   end
+
+  # A task as the database holds it, with no policy.
+  defp task!(context, task),
+    do: Ash.get!(Tasks.Task, task.id, tenant: context.organisation, authorize?: false)
 
   defp start!(context, resident_ids) do
     time = Time.truncate(Time.add(Time.utc_now(), 6, :hour), :second)
@@ -117,19 +125,63 @@ defmodule Rescord.SignalsTest do
       refute context.fern.id in placed(context, as_of: DateTime.add(later, 1, :day))
     end
 
-    test "takes the resident out of each task, and the task stays", context do
+    test "takes the resident out of each task, and a task with another subject stays due",
+         context do
       both = plan!(context, [context.fern.id, context.sage.id])
-      alone = plan!(context, [context.fern.id])
+      housed = plan!(context, [context.fern.id], %{location_ids: [context.shed.id]})
 
       assert :ok = Residents.remove_resident(context.fern, context.admin)
 
       assert subjects(context, both) == [context.sage.id]
+      # The subject that stays is the location, which names no resident.
+      assert subjects(context, housed) == [nil]
+
+      for task <- [both, housed] do
+        assert %{state: :due, skip_reason: nil, finished_at: nil} = task!(context, task)
+      end
+    end
+
+    test "skips a task that named only the resident, with the reason", context do
+      alone = plan!(context, [context.fern.id])
+      administrator_id = context.administrator.id
+
+      assert :ok = Residents.remove_resident(context.fern, context.admin)
+
       assert subjects(context, alone) == []
 
-      # The two tasks are due as before, and a page reads them.
-      {:ok, tasks} = Tasks.tasks(context.admin)
-      assert Enum.sort(Enum.map(tasks, & &1.id)) == Enum.sort([both.id, alone.id])
-      assert Enum.all?(tasks, &(&1.state == :due))
+      assert %{
+               state: :skipped,
+               skip_reason: "The resident was removed",
+               finished_by_id: ^administrator_id,
+               finished_at: %DateTime{}
+             } = task!(context, alone)
+
+      # A page reads the task, and a member opens it again.
+      {:ok, [task]} = Tasks.tasks(context.admin)
+      assert {:ok, opened} = Tasks.reopen_task(task, context.admin)
+      assert %{state: :due, skip_reason: nil, finished_at: nil} = opened
+    end
+
+    test "skips the task when its last resident goes, and not before", context do
+      task = plan!(context, [context.fern.id, context.sage.id])
+
+      assert :ok = Residents.remove_resident(context.fern, context.admin)
+      assert %{state: :due} = task!(context, task)
+
+      assert :ok = Residents.remove_resident(context.sage, context.admin)
+      assert %{state: :skipped, skip_reason: "The resident was removed"} = task!(context, task)
+    end
+
+    test "leaves a task that is done as it is", context do
+      task = plan!(context, [context.fern.id])
+      {:ok, done} = Tasks.complete_task(task, %{}, context.admin)
+
+      assert :ok = Residents.remove_resident(context.fern, context.admin)
+
+      assert subjects(context, task) == []
+      kept = task!(context, task)
+      assert %{state: :done, skip_reason: nil} = kept
+      assert kept.finished_at == done.finished_at
     end
 
     test "takes the resident out of each routine, and out of the tasks that it made",
@@ -150,6 +202,23 @@ defmodule Rescord.SignalsTest do
         |> Ash.read!(tenant: context.organisation, authorize?: false)
 
       assert made == []
+    end
+
+    test "skips the tasks of a routine that named only the resident", context do
+      routine = start!(context, [context.fern.id])
+
+      assert :ok = Residents.remove_resident(context.fern, context.admin)
+
+      tasks =
+        Tasks.Task
+        |> Ash.Query.filter(routine_id == ^routine.id)
+        |> Ash.read!(tenant: context.organisation, authorize?: false)
+
+      assert tasks != []
+
+      for task <- tasks do
+        assert %{state: :skipped, skip_reason: "The resident was removed"} = task
+      end
     end
 
     test "needs no grant for the placements, the tasks or the routines", context do
@@ -174,10 +243,32 @@ defmodule Rescord.SignalsTest do
       assert placed(context) == [context.sage.id]
       assert subjects(context, task) == []
       assert {:ok, %Routine{resident_ids: []}} = Tasks.routine(routine.id, context.admin)
+
+      # The task named only the resident. The role cannot skip a task, and
+      # the removal skips this one in the name of the person.
+      registrar_id = registrar.id
+      assert %{state: :skipped, finished_by_id: ^registrar_id} = task!(context, task)
     end
   end
 
   describe "an action that only a listener runs" do
+    test "does not skip a task that a member finished a moment before", context do
+      stale = plan!(context, [context.fern.id])
+      {:ok, _done} = Tasks.complete_task(stale, %{}, context.admin)
+
+      # `Rescord.Tasks.Changes.SkipTaskLeftAlone` reads this error as "the
+      # task stays". The record in hand says `due`, and the database `done`.
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               stale
+               |> Ash.Changeset.for_update(:skip_left_alone, %{},
+                 tenant: context.organisation,
+                 authorize?: false
+               )
+               |> Ash.update()
+
+      assert %{state: :done} = task!(context, stale)
+    end
+
     test "is refused for a person, an administrator too", context do
       task = plan!(context, [context.fern.id])
       routine = start!(context, [context.fern.id])
@@ -199,7 +290,13 @@ defmodule Rescord.SignalsTest do
                )
                |> Ash.update()
 
+      assert {:error, %Ash.Error.Forbidden{}} =
+               task
+               |> Ash.Changeset.for_update(:skip_left_alone, %{}, context.admin)
+               |> Ash.update()
+
       assert subjects(context, task) == [context.fern.id]
+      assert %{state: :due} = task!(context, task)
     end
   end
 end

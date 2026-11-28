@@ -235,7 +235,7 @@ listens (ADR 0067). There are two signals:
 
 | Signal | Emitted by | Listeners |
 | --- | --- | --- |
-| `:resident_removed` of `Rescord.Residents.Signals` | `Resident.remove` | `Placement` finishes the placement, `TaskSubject` archives the subjects, and `Routine` takes the resident out. They run in the transaction of the removal. |
+| `:resident_removed` of `Rescord.Residents.Signals` | `Resident.remove` | `Placement` finishes the placement, `TaskSubject` archives the subjects and skips a due task that has none left, and `Routine` takes the resident out. They run in the transaction of the removal. |
 | `:member_invited` of `Rescord.Accounts.Signals` | the two invite actions of `Member` | `Member` sends the email in a job of Oban, which runs after the commit, and again after a fault of the mail server. |
 
 A listener action has the line `authorize_if signal_in(Module, :signal)` in

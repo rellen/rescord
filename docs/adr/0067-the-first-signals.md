@@ -3,7 +3,9 @@
 Status: accepted (the maintainer chose proposals S1 and S3 of ADR 0062 on
 28 November 2026). It adds to ADR 0036 (what a removal reaches), to
 ADR 0032 and ADR 0033 (the tasks and the routines), and to ADR 0010 (Oban).
-It changes how ADR 0022 sent the email of an invitation.
+It changes how ADR 0022 sent the email of an invitation. Changed on
+28 November 2026: a task that named only the removed resident is skipped.
+The first text said that it stays due, and the maintainer chose otherwise.
 
 ## Context
 
@@ -39,18 +41,34 @@ inside the residents.
 | Listener | What it does |
 | --- | --- |
 | `Rescord.Locations.Placement` | Finishes the placement of the resident, with the action `:finish` that a person uses. |
-| `Rescord.Tasks.TaskSubject` | Archives each subject that names the resident, with the new action `:drop`. |
+| `Rescord.Tasks.TaskSubject` | Archives each subject that names the resident, with the new action `:drop`. Then it skips a task that is due and has no subject left. |
 | `Rescord.Tasks.Routine` | Takes the resident out of `resident_ids` of each routine that names it, with the new action `:forget_resident`. |
 
 - The listeners run **in the transaction of the removal**, and at the same
   `as_of`. A fault in a listener undoes the removal. A removal with a date
   ends the placement as of that date.
-- **A task stays.** A task that named the removed resident and another one
-  keeps the other one. A task that named only the removed resident stays
-  due, with no subject. A routine goes on for its other residents, or for
-  none. This is the smallest change that leaves no record with a resident
-  that is not there. The maintainer can ask for more, such as the
-  cancellation of a task with no subject left.
+- **A task with another subject stays due.** A task that named the removed
+  resident and another resident, a group or a location keeps the others.
+- **A task that named only the removed resident is skipped**, when it is
+  due. The maintainer chose this on 28 November 2026, in place of a task
+  that stays due with no subject, which somebody must clear by hand.
+  - The change `SkipTaskLeftAlone` of `:drop` runs the action
+    `:skip_left_alone` of `Task`, in the transaction of the removal. No
+    role has a grant for that action.
+  - The reason is the text "The resident was removed". The person who
+    removed the resident is the person who finished the task.
+  - `skipped` is a state that a task has already, so there is no
+    migration, and a member can open the task again. It is then due, with
+    no subject.
+  - A task that is done or skipped stays as it is. A task that another
+    member finishes at the same moment stays as that member left it.
+  - The skip does not make the next tasks of a routine, as the skip of a
+    person does (ADR 0039): the routine loses the resident in the same
+    removal, and the job of each hour makes its tasks.
+- **A routine goes on** for its other residents, or for none. A routine
+  that named only the removed resident makes its next tasks with no
+  subject. The maintainer has not decided whether such a routine should
+  pause.
 - `TaskSubject` now archives (ADR 0012). It had no destroy action before,
   and a row that is deleted would break the key of its versions. A
   migration of each organisation adds the column `archived_at`.
@@ -126,9 +144,9 @@ end
    the struct as the type. `ash_boundary` exports each type that a public
    resource names, and `boundary` does not know a struct that a signal
    module generates (ADR 0066).
-7. **An update listener whose change is not atomic needs a read action
-   with `pagination keyset?: true, required?: false`**, named as
-   `read_action`. Ash reads the records in pages. Without it the listener
+7. **An update or a destroy listener whose change is not atomic needs a
+   read action with `pagination keyset?: true, required?: false`**, named
+   as `read_action`. Ash reads the records in pages. Without it the listener
    fails with `NoMatchingBulkStrategy`.
 
 ## Consequences
