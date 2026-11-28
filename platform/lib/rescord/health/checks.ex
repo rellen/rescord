@@ -12,14 +12,29 @@ defmodule Rescord.Health.Checks do
   @spec all() :: [module]
   def all do
     [
+      Checks.RoutinesBehind,
+      Checks.RoutineAfterPrescription,
+      Checks.DoseTasks,
+      Checks.RubyReplies,
+      Checks.RubyRetention,
       Checks.Vault,
       Checks.SecretsSet,
       Checks.Managers,
       Checks.RootUsers,
       Checks.Jobs,
       Checks.Cron,
+      Checks.DepartedInCare,
+      Checks.DuplicateTasks,
+      Checks.Notifications,
+      Checks.OldJournalPhotos,
+      Checks.FileKeys,
+      Checks.VersionIds,
       Checks.Migrations,
-      Checks.Clock
+      Checks.Clock,
+      Checks.StoreFiles,
+      Checks.Backups,
+      Checks.Transfers,
+      Checks.UsageSends
     ]
   end
 
@@ -27,14 +42,29 @@ defmodule Rescord.Health.Checks do
   @spec names() :: [atom]
   def names do
     [
+      :routines_behind,
+      :routine_after_prescription,
+      :dose_tasks,
+      :ruby_replies,
+      :ruby_retention,
       :vault,
       :secrets_set,
       :managers,
       :root_users,
       :jobs,
       :cron,
+      :departed_in_care,
+      :duplicate_tasks,
+      :notifications,
+      :old_journal_photos,
+      :file_keys,
+      :version_ids,
       :migrations,
-      :clock
+      :clock,
+      :store_files,
+      :backups,
+      :transfers,
+      :usage_sends
     ]
   end
 

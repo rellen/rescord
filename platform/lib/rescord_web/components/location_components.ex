@@ -174,7 +174,9 @@ defmodule RescordWeb.LocationComponents do
             <.icon name={Icons.section(:groups)} /> {Residents.group_name(group)}
           </.link>
           <span>
-            (here: {length(members)} of the {length(group.members)} in the group)
+            (here: {RescordWeb.Locale.number(length(members))} of the {RescordWeb.Locale.number(
+              length(group.members)
+            )} in the group)
           </span>
           <.confirm
             :if={can?(@role, :placement, :finish)}

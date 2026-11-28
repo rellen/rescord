@@ -110,7 +110,7 @@ defmodule RescordWeb.InventoryComponents do
       </div>
 
       <details :if={empty(@stock) != []} id="empty-lots">
-        <summary>Lots with nothing left ({length(empty(@stock))})</summary>
+        <summary>Lots with nothing left ({RescordWeb.Locale.number(length(empty(@stock)))})</summary>
         <ul>
           <li :for={lot_stock <- empty(@stock)}>{lot_words(lot_stock.lot)}</li>
         </ul>
@@ -574,7 +574,10 @@ defmodule RescordWeb.InventoryComponents do
   def reorder_form(assigns) do
     ~H"""
     <details id="reorder">
-      <summary><.icon name="flag" /> Reorder levels in a location ({length(@wanted)})</summary>
+      <summary>
+        <.icon name="flag" />
+        Reorder levels in a location ({RescordWeb.Locale.number(length(@wanted))})
+      </summary>
       <.problems :if={@refused == :reorder} list={@problems} />
       <ul :if={@wanted != []} id="wanted">
         <li :for={level <- @wanted}>
@@ -872,7 +875,7 @@ defmodule RescordWeb.InventoryComponents do
           value={@supplier.note}
           maxlength="1000"
         />
-        <.button type="submit">Save the supplier</.button>
+        <footer><.button type="submit">Save the supplier</.button></footer>
       </form>
     </details>
     """

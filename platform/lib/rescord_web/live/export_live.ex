@@ -84,7 +84,9 @@ defmodule RescordWeb.ExportLive do
             max={@today}
             required
           />
-          <button type="submit"><.icon name="arrow-down-tray" /> Download the export</button>
+          <footer>
+            <button type="submit"><.icon name="arrow-down-tray" /> Download the export</button>
+          </footer>
         </.form>
       </section>
 

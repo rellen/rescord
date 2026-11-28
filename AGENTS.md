@@ -906,6 +906,17 @@ hand (ADR 0073). Read it before you write a migration. In short:
     participle, a full stop.
   - **"New"** is the first part below the header and its problems, above
     the table or list of the page.
+  - **A form ends with a `<footer>`** that holds its submit button first,
+    with words that name the verb and the thing ("Save the supplier"). A
+    form on a page of its own has a Cancel after it,
+    `<.button navigate={...}>Cancel</.button>`, back to where the person
+    came from. LiveView disables the buttons of a form while it sends, so
+    no `phx-disable-with` is needed against a second send. A confirm step
+    ends with its danger button, and a form of one field in a row of a
+    table needs no footer.
+  - **A count on a page** is `Locale.count(n, "photo", "photos")` or
+    `Locale.number(n)` of `RescordWeb.Locale`, never a bare `length/1`, so
+    1,200 reads as the language of the organisation writes it.
 - **Quantities and units** (ADR 0071). A number with a unit is a
   `Rescord.Units.Quantity`, and `Rescord.Units` converts and calculates:
   `convert/3`, `multiply/2`, `divide/2`. Never write a factor such as
@@ -986,6 +997,8 @@ hand (ADR 0073). Read it before you write a migration. In short:
   - A time line is `timeline/1` (ADR 0121): a list with a link and a note
     in words for each row, and bars that are decoration, placed with
     `Chart.span/4` on a scale of days.
+    A row can have `marks`, a tick or a ring, and the line `now`
+    (ADR 0122): shapes, never the colour of a state.
   - A line that holds its value to the next day is `line_chart/1` with
     `step`, a value to compare with is a `rules` line, and two counts of
     one column are `updown_bars/1`: the first above the middle line, the

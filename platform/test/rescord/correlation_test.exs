@@ -283,6 +283,9 @@ defmodule Rescord.CorrelationTest do
     "lib/rescord/privacy/changes/for_member.ex" => :read,
     # It reads the snapshot of a resident, and writes nothing.
     "lib/rescord/transfers/changes/send_transfer.ex" => :read,
+    # It reads the units of a measure kind to convert its range, and writes
+    # nothing.
+    "lib/rescord/lists/changes/range_follows_standard_unit.ex" => :read,
     # It runs in a job, and the resources of a conversation keep no paper
     # trail (ADR 0069).
     "lib/rescord/ruby/changes/respond.ex" => :no_trail,

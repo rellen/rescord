@@ -1,10 +1,15 @@
 defmodule Rescord.Accounts.Validations.NotTheLastManager do
   @moduledoc """
   Refuses to remove the last member whose role has the power `:members`
-  (ADR 0105).
+  (ADR 0105), or to give that member a role without it (issue 38, F3).
 
   Without such a member nobody in the organisation can invite a person,
   change a role or remove a member, and only a root user could put it right.
+  It reads and then acts, so two changes at the same moment can still pass
+  it both: the sanity check `managers` (ADR 0114) finds that.
+
+  An action that changes the role runs it after the change that sets the
+  new role.
   """
 
   use Ash.Resource.Validation
@@ -17,9 +22,13 @@ defmodule Rescord.Accounts.Validations.NotTheLastManager do
   def validate(changeset, _opts, _context) do
     member = changeset.data
     managers = managers(changeset.tenant)
+    new_role = Ash.Changeset.get_attribute(changeset, :role_id)
 
     cond do
       member.role_id not in managers ->
+        :ok
+
+      changeset.action_type == :update and new_role in managers ->
         :ok
 
       other_manager?(member, managers, changeset.tenant) ->

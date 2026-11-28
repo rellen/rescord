@@ -331,7 +331,7 @@ defmodule RescordWeb.PhotosLive do
         </:crumb>
         {@page_title}
         <:subtitle>
-          {length(@items)} {if length(@items) == 1, do: "photo", else: "photos"}
+          {RescordWeb.Locale.count(length(@items), "photo", "photos")}
         </:subtitle>
       </.header>
 

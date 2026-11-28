@@ -114,12 +114,22 @@ defmodule Rescord.HealthTest do
     test "run_due/1 runs a check once in its period" do
       now = DateTime.utc_now()
       ran = Health.run_due(now) |> Enum.map(& &1.check) |> Enum.uniq()
-      server_checks = for check <- Checks.all(), check.scope() == :server, do: check.name()
+      # A check with a job of its own writes its result when the job runs.
+      server_checks =
+        for check <- Checks.all(),
+            check.scope() == :server and not Health.own_job?(check),
+            do: check.name()
+
       assert Enum.sort(server_checks) == Enum.sort(ran -- [:managers])
 
       assert Health.run_due(DateTime.add(now, 60, :second)) == []
 
-      hourly = for check <- Checks.all(), check.cadence() == :hourly, do: check.name()
+      # With no organisation, a check of each organisation has no scope.
+      hourly =
+        for check <- Checks.all(),
+            check.cadence() == :hourly and check.scope() == :server,
+            do: check.name()
+
       again = Health.run_due(DateTime.add(now, 3_600, :second)) |> Enum.map(& &1.check)
       assert Enum.sort(Enum.uniq(again)) == Enum.sort(hourly)
     end

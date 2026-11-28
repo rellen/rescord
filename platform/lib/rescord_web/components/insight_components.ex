@@ -53,6 +53,15 @@ defmodule RescordWeb.InsightComponents do
         </small>
       </li>
       <li>
+        <.link navigate={~p"/o/#{@organisation.short_name}/insights/medication"}>
+          Medication courses
+        </.link>
+        <small>
+          Who is on what now, and were the doses given? The courses of three weeks around today,
+          with each dose given and each dose missed.
+        </small>
+      </li>
+      <li>
         <.link navigate={~p"/o/#{@organisation.short_name}/insights/hours"}>
           When the care is done
         </.link>

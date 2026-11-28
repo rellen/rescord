@@ -95,6 +95,23 @@ defmodule Rescord.Ruby.Message do
     action :say, limit: 6, per: :timer.minutes(1), key: &__MODULE__.minute_key/2
   end
 
+  # What was wrong is the member's own, until they send the answer to the
+  # administrators (ADR 0069). The grant that reads each conversation does
+  # not read it.
+  field_policies do
+    field_policy_bypass :*, AshOban.Checks.AshObanInteraction do
+      authorize_if always()
+    end
+
+    field_policy :rating_note do
+      authorize_if expr(owner_id == ^actor(:id) or not is_nil(reported_at))
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
   actions do
     defaults [:read]
 
@@ -169,9 +186,40 @@ defmodule Rescord.Ruby.Message do
     end
 
     update :rate do
-      description "The member says whether a reply helped"
-      accept [:rating, :rating_note]
+      description "The member says whether a whole reply was right: Yes or No"
+      accept [:rating]
+      require_atomic? false
       validate attribute_equals(:source, :ruby), message: "only a reply has a rating"
+      validate attribute_equals(:state, :complete), message: "only a whole answer has a rating"
+      # What was wrong, and its report, belong to a No.
+      change set_attribute(:rating_note, nil), where: [attribute_does_not_equal(:rating, :down)]
+      change set_attribute(:reported_at, nil), where: [attribute_does_not_equal(:rating, :down)]
+    end
+
+    update :report do
+      description "After a No, the member says what was wrong, and may send the answer to the administrators"
+      accept [:rating_note]
+      require_atomic? false
+
+      argument :send, :boolean do
+        allow_nil? false
+        default false
+
+        description "Send this question and its answer, and what Ruby read for it, to the administrators. Left out, it is false and takes a report back"
+      end
+
+      validate attribute_equals(:rating, :down),
+        message: "say first that the answer was not right"
+
+      # A Yes of another tab between the read and the write: the row is
+      # not written, and the press shows that the answer is gone.
+      change filter(expr(rating == :down))
+
+      # A report keeps the time it was first sent.
+      change set_attribute(:reported_at, &DateTime.utc_now/0),
+        where: [argument_equals(:send, true), attribute_equals(:reported_at, nil)]
+
+      change set_attribute(:reported_at, nil), where: [argument_equals(:send, false)]
     end
 
     update :stop do
@@ -302,6 +350,12 @@ defmodule Rescord.Ruby.Message do
       public? true
       sensitive? true
       constraints max_length: 500
+    end
+
+    attribute :reported_at, :utc_datetime_usec do
+      public? true
+
+      description "For a reply that the member said was not right: when they sent it to the administrators, or nil"
     end
 
     create_timestamp :inserted_at

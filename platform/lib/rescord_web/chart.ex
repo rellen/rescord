@@ -272,6 +272,21 @@ defmodule RescordWeb.Chart do
   def day_x(%Date{} = date, %Date{} = first, %Date{} = last),
     do: Float.round(Date.diff(date, first) / days_of(first, last) * 100, 2)
 
+  @doc """
+  The place of a local instant on a scale of the days from `first` to
+  `last`, both in, in percent (ADR 0122): its day, and the part of the day
+  that has passed.
+
+      iex> RescordWeb.Chart.instant_x(~N[2026-01-03 12:00:00], ~D[2026-01-01], ~D[2026-01-04])
+      62.5
+  """
+  @spec instant_x(NaiveDateTime.t() | DateTime.t(), Date.t(), Date.t()) :: float
+  def instant_x(local, %Date{} = first, %Date{} = last) do
+    {seconds, _} = local |> NaiveDateTime.to_time() |> Time.to_seconds_after_midnight()
+    days = Date.diff(NaiveDateTime.to_date(local), first) + seconds / 86_400
+    Float.round(days / days_of(first, last) * 100, 2)
+  end
+
   defp days_of(first, last), do: Date.diff(last, first) + 1
 
   @doc """

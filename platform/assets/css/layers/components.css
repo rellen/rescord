@@ -1322,6 +1322,25 @@ figure[data-timeline] > ol > li > svg rect[data-open] {
   stroke-dasharray: 4 3;
 }
 
+/* A dose given is a tick across its bar, a dose due and not given a ring,
+   and now a dotted line (ADR 0122): shapes, never a colour alone. */
+figure[data-timeline] > ol > li > svg line[data-given] {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+figure[data-timeline] > ol > li > svg circle[data-missed] {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+figure[data-timeline] > ol > li > svg line[data-now] {
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 3;
+}
+
 @media (min-width: 40rem) {
   figure[data-timeline] {
     --name: 16.5rem;
@@ -1725,6 +1744,20 @@ p[data-key] [data-swatch="down"] {
 p[data-key] [data-swatch="open"] {
   background: var(--heat-2);
   border: 1.5px dashed var(--accent);
+}
+
+/* A dose given and a dose missed (ADR 0122). */
+p[data-key] [data-swatch="given"] {
+  inline-size: 0;
+  border: 0;
+  border-inline-start: 2px solid var(--text);
+  border-radius: 0;
+}
+
+p[data-key] [data-swatch="missed"] {
+  background: var(--surface);
+  border: 1.5px solid var(--text);
+  border-radius: 50%;
 }
 
 /* The day that the person chose, below the key. */
@@ -2828,6 +2861,23 @@ section[data-log] [data-rate] {
 section[data-log] [data-rate] > span {
   font-size: 0.875rem;
   color: var(--muted);
+}
+
+/* After No: what was wrong, and the box that sends the answer. */
+section[data-log] [data-rating] {
+  display: grid;
+  gap: 0.75rem;
+  margin-block-start: 0.75rem;
+}
+
+section[data-log] [data-rating] > form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+section[data-log] [data-rating] > p {
+  margin: 0;
+  font-size: 0.875rem;
 }
 
 /* -------------------------------------------------------------- comments */

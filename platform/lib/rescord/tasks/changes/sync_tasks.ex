@@ -111,6 +111,8 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
 
   # Returns the instant up to which the tasks exist now.
   defp make(%{paused: false} = routine, from, {organisation, now}, true, internal, actor) do
+    routine = end_with_prescription(routine, internal)
+
     # No task is for a time before now: not after a pause, and not after a
     # time when the job did not run.
     from = if last_done?(routine), do: now, else: Enum.max([from, now], DateTime)
@@ -148,6 +150,23 @@ defmodule Rescord.Tasks.Changes.SyncTasks do
   end
 
   defp make(_routine, from, _time, _make?, _internal, _actor), do: {:ok, from}
+
+  # No task after the last day of the prescription of the routine, though
+  # that day moved earlier after the routine started (issue 38, F4).
+  defp end_with_prescription(%{prescription_id: id} = routine, internal) when is_binary(id) do
+    case Rescord.Journal.prescription_ends_on(id, internal[:tenant]) do
+      {:ok, %Date{} = last} when is_nil(routine.ends_on) ->
+        %{routine | ends_on: last}
+
+      {:ok, %Date{} = last} ->
+        %{routine | ends_on: Enum.min([routine.ends_on, last], Date)}
+
+      _no_end ->
+        routine
+    end
+  end
+
+  defp end_with_prescription(routine, _internal), do: routine
 
   defp split({times, rest}), do: {times, rest != []}
 

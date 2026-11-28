@@ -39,7 +39,7 @@ defmodule RescordWeb.Features.SignInTest do
   # the test waits for the tasks first.
   defp link_in_email(address) do
     wait_for_sign_in_tasks()
-    assert_receive {:email, %Swoosh.Email{to: [{_name, ^address}]} = email}, 1_000
+    assert_receive {:email, %Swoosh.Email{to: [{_name, ^address}]} = email}
 
     [link] = Regex.run(~r{http\S+/sign-in/link\?token=\S+}, email.text_body)
     link

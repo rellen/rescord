@@ -204,6 +204,27 @@ defmodule Rescord.NotificationsTest do
       assert Notifications.devices(actor: context.kim) == []
     end
 
+    test "keeps a device whose secret the server cannot open now (issue 38, F6)", context do
+      settings = channels_on!(context, %{ntfy_on: false})
+      device = device!(context, context.kim)
+
+      # As after a change of the secret of the keys: the value is there,
+      # and it does not open.
+      Rescord.Repo.query!(
+        "update push_subscriptions set encrypted_auth = $1 where id = $2",
+        [:crypto.strong_rand_bytes(48), Ecto.UUID.dump!(device.id)]
+      )
+
+      message = Rescord.Health.Alerts.message()
+
+      assert {:retry, :sealed} =
+               Rescord.Notifications.Channels.WebPush.deliver(message, context.kim.id, settings)
+
+      assert [%{id: id}] = Notifications.devices(actor: context.kim)
+      assert id == device.id
+      refute_received {:sent, _host, _path, _headers, _body}
+    end
+
     test "tries again later when the push service is busy", context do
       channels_on!(context, %{ntfy_on: false})
       device!(context, context.kim)

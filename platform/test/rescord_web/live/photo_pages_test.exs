@@ -304,7 +304,7 @@ defmodule RescordWeb.PhotoPagesTest do
     |> fill_in("New name of the album", with: "After surgery")
     |> click_button("Rename")
     |> assert_has(main() |> region("After surgery"))
-    |> click(button("Remove the album"))
+    |> click(button("Remove the album After surgery"))
     |> assert_has(region("Albums"), text: "No album yet.")
   end
 
@@ -398,7 +398,7 @@ defmodule RescordWeb.PhotoPagesTest do
     conn
     |> visit("#{context.path}?album=#{album.id}")
     |> refute_has(main() |> button("Rename"))
-    |> refute_has(main() |> button("Remove the album"))
+    |> refute_has(main() |> button("Remove the album Home"))
     # A sent event is refused by the policy too.
     |> unwrap(&render_click(&1, "make_profile", %{"ref" => "photo-#{photo.id}"}))
 

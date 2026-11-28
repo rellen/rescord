@@ -303,7 +303,7 @@ defmodule RescordWeb.RubyComponents do
         <.button type="submit" phx-disable-with="Saving">
           {if @provider, do: "Save", else: "Add the provider"}
         </.button>
-        <.button :if={!@provider} navigate={~p"/root/ruby"}>Cancel</.button>
+        <.button navigate={~p"/root/ruby"}>Cancel</.button>
       </footer>
     </.form>
     """
@@ -648,6 +648,51 @@ defmodule RescordWeb.RubyComponents do
           </tbody>
         </table>
       </div>
+    </section>
+    """
+  end
+
+  @doc """
+  What the members said of the answers of the month, as counts with no
+  word, and the answers that a member sent to the administrators: each
+  with its question, its words, what was wrong and what Ruby read for it.
+  An answer that nobody sent shows no word here.
+  """
+  attr :answers, :map, required: true, doc: "from `Rescord.Ruby.answers_of_month/2`"
+  attr :month, Date, required: true
+  attr :reports, :list, required: true, doc: "from `Rescord.Ruby.reported_answers/2`"
+  attr :people, :map, required: true
+  attr :organisation, :map, required: true
+
+  def answers(assigns) do
+    ~H"""
+    <section id="ruby-answers" aria-labelledby="answers-heading">
+      <h2 id="answers-heading">Was each answer right?</h2>
+      <p>{RubyWords.answers(@answers, @month)}</p>
+      <article
+        :for={report <- @reports}
+        :key={report.id}
+        id={"reported-#{report.id}"}
+        aria-labelledby={"reported-heading-#{report.id}"}
+      >
+        <h3 id={"reported-heading-#{report.id}"}>
+          Sent by {person(@people, report.owner_id)}, {RubyWords.moment(
+            report.reported_at,
+            @organisation
+          )}
+        </h3>
+        <p :if={report.response_to}><strong>The question:</strong> {report.response_to.text}</p>
+        <RescordWeb.RubyChatComponents.prose
+          text={report.text || ""}
+          organisation={@organisation}
+          known={Ruby.refs([report])}
+        />
+        <p :if={report.rating_note}><strong>What was wrong:</strong> {report.rating_note}</p>
+        <RescordWeb.RubyChatComponents.steps_done
+          id={"reported-steps-#{report.id}"}
+          steps={report.steps || []}
+        />
+      </article>
     </section>
     """
   end

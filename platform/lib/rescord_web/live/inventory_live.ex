@@ -142,7 +142,7 @@ defmodule RescordWeb.InventoryLive do
             navigate={~p"/o/#{@organisation.short_name}/inventory/suppliers"}
             data-variant="secondary"
           >
-            <.icon name="truck" /> Suppliers
+            <.icon name={Icons.section(:suppliers)} /> Suppliers
           </.link>
           <RescordWeb.ReportComponents.report_link
             id="stock-report"

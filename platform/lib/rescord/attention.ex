@@ -17,6 +17,9 @@ defmodule Rescord.Attention do
     * `Rescord.Locations.attention/2` - the locations over their capacity;
     * `Rescord.Transfers.attention/3` - the transfers and the partner
       requests that wait for an answer;
+    * `Rescord.Health.attention/2` - the routines whose tasks run out or
+      outlive their prescription, and the medication tasks that cannot be
+      done (ADR 0114);
     * `Rescord.Privacy.attention/2` - the requests to erase data that wait
       (ADR 0105).
 
@@ -39,7 +42,8 @@ defmodule Rescord.Attention do
       Rescord.Residents,
       Rescord.Locations,
       Rescord.Transfers,
-      Rescord.Privacy
+      Rescord.Privacy,
+      Rescord.Health
     ]
 
   alias Rescord.{Inventory, Locations, Privacy, Residents, Tasks, Transfers}
@@ -62,7 +66,7 @@ defmodule Rescord.Attention do
   at most `limit/0` of them, and the number of all such things in it.
   """
   @type part :: %{
-          part: :tasks | :inventory | :residents | :housing | :transfers | :privacy,
+          part: :tasks | :inventory | :residents | :housing | :transfers | :privacy | :care,
           rows: [row, ...],
           total: pos_integer
         }
@@ -105,7 +109,8 @@ defmodule Rescord.Attention do
           residents: fn -> Residents.attention(role, scoped) end,
           housing: fn -> Locations.attention(role, scoped) end,
           transfers: fn -> Transfers.attention(role, organisation, scoped) end,
-          privacy: fn -> Privacy.attention(role, scoped) end
+          privacy: fn -> Privacy.attention(role, scoped) end,
+          care: fn -> Rescord.Health.attention(role, scoped) end
         ],
         # A read that fails is a fault of Rescord, and not an empty part.
         {:ok, found} = read.(),

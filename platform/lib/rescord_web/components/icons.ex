@@ -241,6 +241,7 @@ defmodule RescordWeb.Icons do
   def section(:root), do: "shield"
   def section(:privacy), do: "lock"
   def section(:health), do: "pulse"
+  def section(:care), do: "exclamation-triangle"
   def section(:notifications), do: "bell"
   def section(:journal), do: "book-open"
   def section(:measurements), do: "chart-line"

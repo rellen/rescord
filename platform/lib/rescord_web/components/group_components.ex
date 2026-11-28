@@ -35,7 +35,7 @@ defmodule RescordWeb.GroupComponents do
               {Residents.words(group) || "No relation is recorded"}
             </td>
             <td data-label="Kind">{if group.kind, do: group.kind.label, else: "Not recorded"}</td>
-            <td data-label="Residents">{length(group.members)}</td>
+            <td data-label="Residents">{RescordWeb.Locale.number(length(group.members))}</td>
           </tr>
         </tbody>
       </table>
@@ -158,9 +158,11 @@ defmodule RescordWeb.GroupComponents do
           label={"When #{@member.resident.name || "the resident with no name"} left the group, if not now"}
           value=""
         />
-        <.button type="submit">
-          Take {@member.resident.name || "the resident with no name"} out of the group
-        </.button>
+        <footer>
+          <.button type="submit">
+            Take {@member.resident.name || "the resident with no name"} out of the group
+          </.button>
+        </footer>
       </form>
     </details>
     """

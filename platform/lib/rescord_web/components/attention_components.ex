@@ -30,7 +30,8 @@ defmodule RescordWeb.AttentionComponents do
     residents: {"Residents", "All the residents"},
     housing: {"Housing", "The whole housing"},
     transfers: {"Transfers and partners", "All the transfers"},
-    privacy: {"Requests to erase data", "All the requests"}
+    privacy: {"Requests to erase data", "All the requests"},
+    care: {"Care to put right", "All the routines"}
   ]
 
   @doc "The parts that have words, for the test that holds them."
@@ -94,7 +95,9 @@ defmodule RescordWeb.AttentionComponents do
         </ul>
         <p>
           <span :if={part.total > length(part.rows)}>
-            These are the first {length(part.rows)} of {part.total}.
+            These are the first {RescordWeb.Locale.number(length(part.rows))} of {RescordWeb.Locale.number(
+              part.total
+            )}.
           </span>
           <.link navigate={part_path(@organisation, part.part)}>
             {link_words(part.part)} <.icon name="chevron-right" />
@@ -104,6 +107,26 @@ defmodule RescordWeb.AttentionComponents do
     </section>
     """
   end
+
+  defp care_state(:routine_behind), do: "Its tasks run out"
+  defp care_state(:routine_after_prescription), do: "Its prescription has ended"
+  defp care_state(:dose_task_blocked), do: "Its prescription is gone"
+  defp care_state(:departed_in_care), do: "Left, and still in care"
+
+  defp care_hint(:routine_behind),
+    do: "Some times of this routine have no task. Save the routine again, and look at the tasks."
+
+  defp care_hint(:routine_after_prescription),
+    do: "End the routine on the last day of the prescription, and skip the tasks after it."
+
+  defp care_hint(:dose_task_blocked),
+    do:
+      "Done is refused, since the task has no prescription now. Skip it, and look at its routine."
+
+  defp care_hint(:departed_in_care),
+    do:
+      "The resident left, and still has a place, a routine or a task, or went to another " <>
+        "refuge and has no departure here. Open the resident."
 
   defp summary(1), do: "1 thing needs attention now."
   defp summary(total), do: "#{total} things need attention now."
@@ -117,6 +140,7 @@ defmodule RescordWeb.AttentionComponents do
   defp part_path(organisation, :housing), do: ~p"/o/#{organisation.short_name}/housing"
   defp part_path(organisation, :transfers), do: ~p"/o/#{organisation.short_name}/transfers"
   defp part_path(organisation, :privacy), do: ~p"/o/#{organisation.short_name}/privacy"
+  defp part_path(organisation, :care), do: ~p"/o/#{organisation.short_name}/routines"
 
   attr :row, :map, required: true
   attr :organisation, :map, required: true
@@ -125,6 +149,44 @@ defmodule RescordWeb.AttentionComponents do
   attr :user, :map, required: true
 
   # One thing that needs somebody. The kind of the row says which one.
+  # What a sanity check of the care found (ADR 0114).
+  defp row(%{row: %{kind: kind}} = assigns)
+       when kind in [:routine_behind, :routine_after_prescription] do
+    ~H"""
+    <li id={"attention-#{@row.kind}-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/routines/#{@row.record.id}/edit"}>
+        {@row.record.title}
+      </.link>
+      <.state kind="alert">{care_state(@row.kind)}</.state>
+      <small>{care_hint(@row.kind)}</small>
+    </li>
+    """
+  end
+
+  defp row(%{row: %{kind: :departed_in_care}} = assigns) do
+    ~H"""
+    <li id={"attention-departed-in-care-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/residents/#{@row.record.id}"}>
+        {@row.record.name}
+      </.link>
+      <.state kind="alert">{care_state(@row.kind)}</.state>
+      <small>{care_hint(@row.kind)}</small>
+    </li>
+    """
+  end
+
+  defp row(%{row: %{kind: :dose_task_blocked}} = assigns) do
+    ~H"""
+    <li id={"attention-dose-task-blocked-#{@row.record.id}"}>
+      <.link navigate={~p"/o/#{@organisation.short_name}/tasks#task-#{@row.record.id}"}>
+        {@row.record.title}
+      </.link>
+      <.state kind="alert">{care_state(@row.kind)}</.state>
+      <small>{care_hint(@row.kind)}</small>
+    </li>
+    """
+  end
+
   defp row(%{row: %{kind: :task}} = assigns) do
     ~H"""
     <li id={"attention-task-#{@row.record.id}"}>

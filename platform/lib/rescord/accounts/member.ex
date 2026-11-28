@@ -134,6 +134,7 @@ defmodule Rescord.Accounts.Member do
       require_atomic? false
       change {Rescord.Accounts.Changes.SetRole, key: nil}
       validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
+      validate Rescord.Accounts.Validations.NotTheLastManager
     end
 
     update :make_administrator do
@@ -142,6 +143,7 @@ defmodule Rescord.Accounts.Member do
       require_atomic? false
       change {Rescord.Accounts.Changes.SetRole, key: :administrator}
       validate Rescord.Accounts.Validations.WithinPowers, before_action?: true
+      validate Rescord.Accounts.Validations.NotTheLastManager
     end
 
     update :make_member do
@@ -149,6 +151,7 @@ defmodule Rescord.Accounts.Member do
       accept []
       require_atomic? false
       change {Rescord.Accounts.Changes.SetRole, key: :member}
+      validate Rescord.Accounts.Validations.NotTheLastManager
     end
 
     destroy :remove do

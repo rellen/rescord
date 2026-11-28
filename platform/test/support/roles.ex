@@ -62,6 +62,7 @@ defmodule RescordWeb.Roles do
     field: "input:not([type=hidden]), select, textarea",
     table: "table",
     form: "form",
+    group: "fieldset",
     figure: "figure",
     details: "details",
     definition: "dd",
@@ -104,6 +105,12 @@ defmodule RescordWeb.Roles do
   any form, as in `region("Stock") |> form(nil)`.
   """
   def form(scope \\ nil, name), do: locate(scope, :form, name)
+
+  @doc """
+  A group of fields (`fieldset`), by the words of its `legend`, as in
+  `group("When somebody tells me") |> field("On ntfy")`.
+  """
+  def group(scope \\ nil, name), do: locate(scope, :group, name)
 
   @doc "A table, by its name."
   def table(scope \\ nil, name), do: locate(scope, :table, name)
@@ -615,6 +622,9 @@ defmodule RescordWeb.Roles do
         |> LazyHTML.child_nodes()
         |> LazyHTML.filter("dt")
         |> visible_text()
+
+      role == :group ->
+        node |> LazyHTML.child_nodes() |> LazyHTML.filter("legend") |> visible_text()
 
       role == :figure ->
         node |> LazyHTML.query("figcaption") |> visible_text()

@@ -205,6 +205,10 @@ release (ADR 0047).
     table of what each sanity check found at its last run (ADR 0114). It
     is empty until the first run, an hour or less after the start. It
     changes no row.
+  - `20261128142606_add_the_health_watchers`, in the database: adds the
+    table of the root users who asked for an alert when a sanity check
+    fails (ADR 0114). It stays empty until a root user asks at
+    `/root/health`. It changes no row.
   - `20261128134238_add_the_settings_of_the_scan`, in the database: adds
     the table of the settings of the virus scan of the PDFs, with its
     history (issue 37). Both stay empty until a root user saves the
@@ -227,9 +231,36 @@ release (ADR 0047).
     adds an empty column to the settings of Ruby, for the share of one
     member for a month (ADR 0117). Empty means no share, as before the
     upgrade. It changes no row.
+  - `20261128145856_add_ruby_reported_at`, in each organisation: adds an
+    empty column to the messages of Ruby, for the time at which a member
+    sent an answer that was not right to the administrators. It changes
+    no row.
 - After the upgrade, the sanity checks run by themselves each hour
   (issue 38, ADR 0114). Their first run can find faults that were there
   before the upgrade: read them at `/root/health`.
+  To have them read the backups of `bin/backup`, set `RESCORD_BACKUP_DIR`
+  to its directory where the server can read it.
+- After the upgrade, the job of each hour deletes the conversations with
+  Ruby whose newest message is older than the days that the settings of
+  the assistant keep (90 when an organisation saved none), and those of a
+  person who is no member any more (ADR 0069). Before, nothing deleted
+  them. To see which go at the first run, run this in each schema of an
+  organisation (`org_` and the id) before the upgrade: `SELECT id, last_message_at FROM ruby_conversations WHERE
+  last_message_at < now() - interval '90 days';`, with the days of the
+  organisation in place of 90.
+- After the upgrade, a role of administrator must keep both the power
+  "Define the roles, and what each one may do" and the power "Invite a
+  person, give a member a role, and remove a member" (issue 38, F3).
+  An organisation whose administrator role lacks the second keeps it
+  until a person next saves that role: tick the second power then.
+  The check `managers` at `/root/health` names each organisation where
+  nobody can change the members.
+- After the upgrade, a routine of a prescription makes no task after the
+  last day of the prescription, though the routine says no end (issue
+  38, F4). A routine from before the upgrade keeps its own last day in
+  the record; the check `routine_after_prescription` lists each one, and
+  the first page of the organisation shows them to the people who can
+  revise a routine.
 - After the upgrade, a member with the power "Work on the requests to
   erase data" can erase a member who asked, which takes their email
   address out of the records of the organisation (ADR 0105). An erasure
@@ -439,6 +470,12 @@ release (ADR 0047).
   as a link and how the stay began, its days and how it ended. A species
   narrows it, and the rows come in the order of the arrivals or of the
   lengths. Each member can open it.
+- The sixth insight, "Medication courses" (issue 36, ADR 0122): a bar for
+  each course of medication that runs in the two weeks before today and
+  the week after, with a tick for each dose given, a ring for each dose
+  that a task asked for and that was skipped or is overdue, and a line at
+  now. Each course links to its prescription in the journal. Each member
+  can open it.
 - Sanity checks (issue 38, ADR 0114): a job runs checks of the data and of
   the server each hour, in transactions that cannot write, and keeps what
   each found: a level, a count and some ids, never a value of a row. A
@@ -450,6 +487,25 @@ release (ADR 0047).
   with no root user, stuck and failed jobs, hourly jobs that stopped,
   migrations that have not run, and the clock of the server against the
   clock of the database.
+  The checks of the care run in each organisation: routines whose tasks
+  run out, or that outlive their prescription, medication tasks whose
+  prescription is gone or that are more than 12 hours late, replies of
+  Ruby that stopped, and conversations kept after their days. The first
+  page of an organisation has a part "Care to put right",
+  which runs the checks of the routines and of the doses when it opens,
+  for the people who can put them right.
+  A root user can ask at `/root/health` for an alert by Web Push or ntfy
+  when a check fails, and sets up a device or a topic on the same page.
+  An alert says only that a check found a fault, with a link to
+  `/root/health`, when a check starts to fail and again each day that it
+  still fails.
+  More checks look for files that are missing, differ in size or have no
+  record (each week), keys of another organisation, journal photos that
+  still carry their metadata, residents who left and are still in care
+  (also on the first page), two tasks of a routine for one time, history
+  with no ids of its work, usage counts that did not go, notifications
+  that did not leave or stay too long, stuck transfers, and old or
+  missing backups where `RESCORD_BACKUP_DIR` names their directory.
 - A virus scan of the PDFs, with clamd, which a root user turns on at
   `/root/scan` with the address of clamd: `host:port` or the path of a
   Unix socket. Then each PDF of a journal entry or of an expense goes to
@@ -709,6 +765,13 @@ release (ADR 0047).
   word of any conversation, and a member who left stays in them. The
   events of ReqLLM now hold no request and no answer by configuration
   (`config :req_llm, telemetry: [payloads: :none]`), as before by default.
+- Below each whole answer of Ruby, "Was this answer right?" with "Yes"
+  and "No". After "No" the member may say what was wrong, and may send
+  that one question and its answer, and what Ruby read for it, to the
+  administrators; until then what was wrong is theirs alone. The
+  settings of Ruby count what the members said this month, and show the
+  words only of the answers that a member sent. A "Yes" takes a report
+  back, and a removed conversation takes its reports with it.
 - `bin/rotate-vault` (`rescord-rotate-vault` on NixOS) encrypts again each
   value that `RESCORD_KEY_SECRET` guards, after you change the secret:
   the secrets of the settings and the private keys of the transfers.
@@ -874,6 +937,11 @@ release (ADR 0047).
 
 ### Changed
 
+- The administrator role keeps both the power to define the roles and the
+  power to change the members, and the last member who can change the
+  members keeps a role with that power through each change of role: an
+  organisation can no longer end with nobody who manages its members
+  (issue 38, F3).
 - A form that Rescord refuses now marks each field with a problem and
   says the problem under it, and that field gets the focus. Before, the
   problems were only in a list at the top of the page, which can be out
@@ -911,7 +979,9 @@ release (ADR 0047).
   a member or a feed. The problems of a form show beside the form that
   was sent, once. Each write that works says so in a message at the top of
   the page. The form for a new record is right below the header, also on
-  the members page.
+  the members page. Each form ends with its button in the same place, and
+  the form of a provider of the assistant has a Cancel when it changes
+  one too.
 - The removal of a member takes them out of each task that is due and
   each routine. A task that was for them alone is for anybody. Their
   calendar feeds are revoked, and an invitation of theirs that waits is
@@ -1121,6 +1191,19 @@ release (ADR 0047).
   organisation itself (ADR 0108).
 
 ### Fixed
+
+- `bin/backup` no longer leaves a partial dump in the directory of the
+  backups when pg_dump fails or the backup stops, and deletes one that a
+  crash left a day ago or more (issue 38, F5).
+- Web Push no longer forgets a device when the server cannot open its
+  secret, as after a change of `RESCORD_KEY_SECRET` without
+  `bin/rotate-vault`: the device stays, the message tries again, and the
+  check `vault` at `/root/health` names the fault (issue 38, F6).
+
+- A routine of a prescription now ends with the prescription: it takes
+  the last day of the prescription when it starts or changes, and makes
+  no task after that day, though the prescription ended earlier after the
+  routine started (issue 38, F4).
 
 - The warning of an expiry on the lists page said "1 days" for a value of
   one day, and a location with room for one resident said "1 of 1

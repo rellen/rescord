@@ -300,6 +300,7 @@ config :rescord, :sign_in_page_url, {RescordWeb.SignInLink, :page}
 # The same, for the address of the page of notifications of an
 # organisation, which a notification on a device opens (issue 29).
 config :rescord, :notifications_page_url, {RescordWeb.NotificationLink, :page}
+config :rescord, :health_page_url, {RescordWeb.NotificationLink, :health}
 
 # The sender of each email. A release sets its own in config/runtime.exs.
 config :rescord, :mail_from, {"Rescord", "rescord@localhost"}

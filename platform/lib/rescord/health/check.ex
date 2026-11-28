@@ -49,7 +49,14 @@ defmodule Rescord.Health.Check do
   """
   @callback timeout() :: pos_integer
 
-  @optional_callbacks timeout: 0
+  @doc """
+  Whether the check runs in a job of its own (`Rescord.Health.Workers.Check`),
+  and not in the run of each hour: a check that takes minutes, such as the
+  comparison of the store. No by default.
+  """
+  @callback own_job?() :: boolean
+
+  @optional_callbacks timeout: 0, own_job?: 0
 
   @ids 20
 

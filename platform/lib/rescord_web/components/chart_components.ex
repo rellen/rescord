@@ -262,8 +262,10 @@ defmodule RescordWeb.ChartComponents do
 
   A row is a map with `id`, `name`, `href`, `note` and `bars`, each bar a
   map with `x` and `width`, and `open` for a span that goes on, which is
-  dashed. A tick is `%{x: percent, label: words}`, such as the start of a
-  month. A tick with `minor: true` shows its label only on a wider screen.
+  dashed. A row can have `marks` too, each `%{x: percent, kind: "given"}`,
+  a tick, or `kind: "missed"`, a ring (ADR 0122). A tick is `%{x: percent,
+  label: words}`, such as the start of a month, and `now` is the place of
+  the line of now, or `nil`. A tick with `minor: true` shows its label only on a wider screen.
 
   ## Examples
 
@@ -280,6 +282,7 @@ defmodule RescordWeb.ChartComponents do
   attr :summary, :string, required: true, doc: "what the time line shows, in a sentence or two"
   attr :ticks, :list, default: []
   attr :rows, :list, required: true
+  attr :now, :any, default: nil, doc: "the place of now, in percent"
 
   def timeline(assigns) do
     ~H"""
@@ -306,6 +309,18 @@ defmodule RescordWeb.ChartComponents do
               rx="3"
               data-open={bar[:open]}
             />
+            <line :if={@now} data-now x1={"#{@now}%"} x2={"#{@now}%"} y1="0" y2="100%" />
+            <g :for={mark <- row[:marks] || []}>
+              <line
+                :if={mark.kind == "given"}
+                data-given
+                x1={"#{mark.x}%"}
+                x2={"#{mark.x}%"}
+                y1="12%"
+                y2="88%"
+              />
+              <circle :if={mark.kind == "missed"} data-missed cx={"#{mark.x}%"} cy="50%" r="4" />
+            </g>
           </svg>
         </li>
       </ol>

@@ -178,7 +178,7 @@ defmodule RescordWeb.ResidentComponents do
             label="When it came back, if not now"
             value=""
           />
-          <.button type="submit"><.icon name="door-in" /> Mark as back</.button>
+          <footer><.button type="submit"><.icon name="door-in" /> Mark as back</.button></footer>
         </form>
       </div>
 

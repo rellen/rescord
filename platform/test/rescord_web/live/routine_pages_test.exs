@@ -3,15 +3,17 @@ defmodule RescordWeb.RoutinePagesTest do
   Holds the page of the routines: what an administrator and a member read
   of a routine, the form
   of a new routine and of a change, the pause and the end of a routine, a
-  routine for the doses of a prescription, and the words of a pattern.
+  routine for the doses of a prescription, and the words of a pattern. The page tests find what a person
+  finds (ADR 0107).
 
   Each test creates an organisation, so the tests do not run beside others
   (see `Rescord.Accounts.OrganisationTest`).
   """
 
   use RescordWeb.ConnCase, async: false
+  use RescordWeb.Roles
 
-  import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest, only: [render_async: 1, render_click: 3, render_submit: 3]
   import Rescord.AccountsFixtures
   import Rescord.ResidentsFixtures
 
@@ -42,22 +44,11 @@ defmodule RescordWeb.RoutinePagesTest do
      conn: sign_in(context.conn, administrator)}
   end
 
-  defp open(conn, path) do
-    {:ok, view, _html} = live(conn, path)
-    {view, render_async(view)}
-  end
+  defp routines, do: main() |> region("The routines")
+  defp routine(title), do: routines() |> row(~r/^#{title}\b/)
+  defp new_routine, do: main() |> details("New routine")
 
-  defp submit(view, conn, selector, fields) do
-    {:ok, view, _html} =
-      view |> form(selector, fields) |> render_submit() |> follow_redirect(conn)
-
-    {view, render_async(view)}
-  end
-
-  defp press(view, conn, event, id) do
-    {:ok, view, _html} = view |> render_click(event, %{"id" => id}) |> follow_redirect(conn)
-    {view, render_async(view)}
-  end
+  defp visit_as(user, path), do: build_conn() |> sign_in(user) |> visit(path)
 
   defp start!(context, facts \\ %{}) do
     %{
@@ -74,10 +65,8 @@ defmodule RescordWeb.RoutinePagesTest do
     other = organisation!(context.root, "Other")
     {_, outsider} = member!(other, :administrator, context.root)
 
-    assert {:error, {:redirect, %{to: "/"}}} =
-             build_conn() |> sign_in(outsider) |> live(context.path)
-
-    assert {:error, {:redirect, %{to: "/"}}} = live(build_conn(), context.path)
+    outsider |> visit_as(context.path) |> assert_path("/")
+    build_conn() |> visit(context.path) |> assert_path("/")
   end
 
   describe "the routines" do
@@ -89,40 +78,33 @@ defmodule RescordWeb.RoutinePagesTest do
         note: "Two scoops"
       })
 
-      {view, html} = open(context.conn, context.path)
-
-      assert html =~ "Rescord makes the tasks of a routine 14 days ahead."
-      assert has_element?(view, "tbody td", "Hay and pellets")
-      assert has_element?(view, "tbody td small", "Feed")
-      assert has_element?(view, "tbody td small", "Two scoops")
-      assert has_element?(view, "tbody td", "Each day, at 8:00 am and 6:00 pm")
-      assert has_element?(view, "tbody td", "Biscuit")
-
-      assert has_element?(
-               view,
-               "tbody td",
-               "#{context.member.email}, #{context.administrator.email}"
-             )
-
-      assert has_element?(view, "[data-state=ok]", "Active")
-      assert has_element?(view, "tbody td small", "Next:")
+      context.conn
+      |> visit(context.path)
+      |> assert_has(main(), text: "Rescord makes the tasks of a routine 14 days ahead.")
+      |> assert_has(routine("Hay and pellets"), text: "Hay and pellets Feed Two scoops")
+      |> assert_has(routine("Hay and pellets"), text: "Each day, at 8:00 am and 6:00 pm")
+      |> assert_has(routine("Hay and pellets"), text: "Biscuit")
+      |> assert_has(routine("Hay and pellets"),
+        text: "#{context.member.email}, #{context.administrator.email}"
+      )
+      |> assert_has(routine("Hay and pellets"), state: "ok", text: "Active")
+      |> assert_has(routine("Hay and pellets"), text: "Next:")
     end
 
     test "are on the page of a member, who changes none of them", context do
       start!(context)
-      conn = build_conn() |> sign_in(context.member)
-      {view, _html} = open(conn, context.path)
 
-      assert has_element?(view, "tbody td", "Hay and pellets")
-      refute has_element?(view, "#new-routine")
-      refute has_element?(view, "tbody a", "Change")
-      refute has_element?(view, "tbody button")
-      refute has_element?(view, "tbody details")
+      context.member
+      |> visit_as(context.path)
+      |> assert_has(routine("Hay and pellets"))
+      |> refute_has(new_routine())
+      |> refute_has(routines() |> link("Change the routine Hay and pellets"))
+      |> refute_has(routines() |> button(~r/./))
+      |> refute_has(routines() |> details(~r/./))
     end
 
     test "say so when there is none", context do
-      {_view, html} = open(context.conn, context.path)
-      assert html =~ "No routine yet."
+      context.conn |> visit(context.path) |> assert_has(routines(), text: "No routine yet.")
     end
 
     test "say when one has not started, and when one is finished", context do
@@ -135,30 +117,25 @@ defmodule RescordWeb.RoutinePagesTest do
         ends_on: Date.add(context.today, -1)
       })
 
-      {view, _html} = open(context.conn, context.path)
-
-      assert has_element?(view, "[data-state=info]", "Not started")
-      assert has_element?(view, "[data-state=none]", "Finished")
+      context.conn
+      |> visit(context.path)
+      |> assert_has(routine("Later"), state: "info", text: "Not started")
+      |> assert_has(routine("Short"), state: "none", text: "Finished")
     end
   end
 
   describe "a new routine" do
     test "starts with the facts of the form, and has its tasks", context do
-      {view, _html} = open(context.conn, context.path)
-
-      {view, _html} =
-        submit(view, context.conn, "#routine",
-          routine: %{
-            title: "Clean the water bottles",
-            kind_id: context.lists.task_kind.clean,
-            time_1: "07:30",
-            time_2: "17:00",
-            starts_on: Date.to_iso8601(context.tomorrow),
-            resident_id: context.biscuit.id
-          }
-        )
-
-      assert has_element?(view, "tbody td", "Each day, at 7:30 am and 5:00 pm")
+      context.conn
+      |> visit(context.path)
+      |> fill_in("What to do", with: "Clean the water bottles")
+      |> select("Kind", option: "Clean")
+      |> fill_in("Time", with: "07:30")
+      |> fill_in("A second time, if there is one", with: "17:00")
+      |> fill_in("First day", with: Date.to_iso8601(context.tomorrow))
+      |> select("For a resident", option: "Biscuit")
+      |> click(button("Start the routine"))
+      |> assert_has(routine("Clean the water bottles"), text: "Each day, at 7:30 am and 5:00 pm")
 
       {:ok, tasks} = Tasks.day(context.tomorrow, context.options)
       assert Enum.map(tasks, & &1.title) == List.duplicate("Clean the water bottles", 2)
@@ -166,43 +143,37 @@ defmodule RescordWeb.RoutinePagesTest do
     end
 
     test "asks for the days of the week, or for a number, when the pattern needs one", context do
-      {view, _html} = open(context.conn, context.path)
+      session = visit(context.conn, context.path)
+      refute has?(session, new_routine() |> field("Monday"))
+      refute has?(session, new_routine() |> field("Every how many days"))
 
-      refute has_element?(view, "#routine-weekdays")
-      refute has_element?(view, "#routine_every")
+      session = select(session, "How it repeats", option: "On given days of the week")
+      assert has?(session, new_routine() |> field("Monday"))
+      assert has?(session, new_routine() |> field("Sunday"))
+      refute has?(session, new_routine() |> field("Every how many days"))
 
-      view |> form("#routine", routine: %{pattern: "weekly"}) |> render_change()
-      assert has_element?(view, "#routine-weekdays legend", "Days of the week")
-      assert has_element?(view, "#routine-weekdays input[type=checkbox]")
-      refute has_element?(view, "#routine_every")
+      session = select(session, "How it repeats", option: "Every number of days")
+      refute has?(session, new_routine() |> field("Monday"))
+      assert has?(session, new_routine() |> field("Every how many days"))
 
-      view |> form("#routine", routine: %{pattern: "interval"}) |> render_change()
-      refute has_element?(view, "#routine-weekdays")
-      assert has_element?(view, "label", "Every how many days")
-
-      view |> form("#routine", routine: %{pattern: "monthly"}) |> render_change()
-      assert has_element?(view, "label", "Every how many months")
+      session = select(session, "How it repeats", option: "Every number of months")
+      assert has?(session, new_routine() |> field("Every how many months"))
     end
 
     test "counts from the last task, and is for the members that the form ticks", context do
-      {view, _html} = open(context.conn, context.path)
+      session = visit(context.conn, context.path)
+      refute has?(session, new_routine() |> field("Count the days from"))
 
-      refute has_element?(view, "#routine_count_from")
-      view |> form("#routine", routine: %{pattern: "interval"}) |> render_change()
-      assert has_element?(view, "label", "Count the days from")
-
-      {view, _html} =
-        submit(view, context.conn, "#routine",
-          routine: %{
-            title: "Weigh",
-            pattern: "interval",
-            every: "7",
-            count_from: "last_done",
-            assignee_ids: [context.member.id, context.administrator.id]
-          }
-        )
-
-      assert has_element?(view, "tbody td", "7 days after the last task is done")
+      session
+      |> fill_in("What to do", with: "Weigh")
+      |> select("How it repeats", option: "Every number of days")
+      |> fill_in("Every how many days", with: "7")
+      |> select("Count the days from", option: "The day when a member last finishes a task")
+      |> check(to_string(context.member.email))
+      |> check(to_string(context.administrator.email))
+      |> fill_in("Time", with: "09:00")
+      |> click(button("Start the routine"))
+      |> assert_has(routine("Weigh"), text: "7 days after the last task is done")
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert routine.count_from == :last_done
@@ -212,68 +183,67 @@ defmodule RescordWeb.RoutinePagesTest do
     end
 
     test "is on given days of the week", context do
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#routine", routine: %{pattern: "weekly"}) |> render_change()
-
-      {view, _html} =
-        submit(view, context.conn, "#routine",
-          routine: %{title: "Weigh each resident", weekdays: ["1", "4"], time_1: "09:00"}
-        )
-
-      assert has_element?(view, "tbody td", "Each Monday and Thursday, at 9:00 am")
+      context.conn
+      |> visit(context.path)
+      |> select("How it repeats", option: "On given days of the week")
+      |> fill_in("What to do", with: "Weigh each resident")
+      |> check("Monday")
+      |> check("Thursday")
+      |> fill_in("Time", with: "09:00")
+      |> click(button("Start the routine"))
+      |> assert_has(routine("Weigh each resident"), text: "Each Monday and Thursday, at 9:00 am")
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert %{pattern: :weekly, weekdays: [1, 4], times: [~T[09:00:00]]} = routine
     end
 
     test "is every number of months, a year ahead", context do
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#routine", routine: %{pattern: "monthly"}) |> render_change()
-
-      {view, _html} =
-        submit(view, context.conn, "#routine",
-          routine: %{title: "Yearly check", every: "12", time_1: "10:00", days_ahead: "400"}
-        )
-
-      assert has_element?(view, "tbody td", "Every 12 months, at 10:00 am")
+      context.conn
+      |> visit(context.path)
+      |> select("How it repeats", option: "Every number of months")
+      |> fill_in("What to do", with: "Yearly check")
+      |> fill_in("Every how many months", with: "12")
+      |> fill_in("Time", with: "10:00")
+      |> fill_in("Days ahead", with: "400")
+      |> click(button("Start the routine"))
+      |> assert_has(routine("Yearly check"), text: "Every 12 months, at 10:00 am")
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert %{pattern: :monthly, every: 12, days_ahead: 400} = routine
     end
 
     test "says what is wrong, and keeps what the member typed", context do
-      {view, _html} = open(context.conn, context.path)
-      view |> form("#routine", routine: %{pattern: "weekly"}) |> render_change()
+      session =
+        context.conn
+        |> visit(context.path)
+        |> select("How it repeats", option: "On given days of the week")
+        |> fill_in("What to do", with: "Weigh each resident")
+        |> fill_in("Time", with: "09:00")
+        |> click(button("Start the routine"))
+        |> assert_has(new_routine() |> alert(),
+          text: "Weekdays needs one day of the week or more"
+        )
 
-      html =
-        view
-        |> form("#routine", routine: %{title: "Weigh each resident", time_1: "09:00"})
-        |> render_submit()
-
-      assert has_element?(
-               view,
-               "#routine p[role=alert]",
-               "Weekdays needs one day of the week or more"
-             )
-
-      assert html =~ ~s(value="Weigh each resident")
-      assert has_element?(view, "#routine-weekdays")
+      assert value(session, new_routine() |> field("What to do")) == "Weigh each resident"
+      assert has?(session, new_routine() |> field("Monday"))
       assert {:ok, []} = Tasks.routines(context.options)
     end
 
     test "does not take a pattern that the page did not offer", context do
-      {view, _html} = open(context.conn, context.path)
+      context.conn
+      |> visit(context.path)
+      |> unwrap(
+        &render_submit(&1, "save", %{
+          "routine" => %{
+            "title" => "X",
+            "pattern" => "hourly",
+            "time_1" => "09:00",
+            "starts_on" => Date.to_iso8601(context.today)
+          }
+        })
+      )
+      |> assert_has(main() |> alert())
 
-      render_submit(view, "save", %{
-        "routine" => %{
-          "title" => "X",
-          "pattern" => "hourly",
-          "time_1" => "09:00",
-          "starts_on" => Date.to_iso8601(context.today)
-        }
-      })
-
-      assert has_element?(view, "main p[role=alert]")
       assert {:ok, []} = Tasks.routines(context.options)
     end
   end
@@ -281,78 +251,92 @@ defmodule RescordWeb.RoutinePagesTest do
   describe "a routine on the page" do
     test "is changed on its own page, which has its facts", context do
       routine = start!(context, %{resident_ids: [context.biscuit.id], note: "Two scoops"})
-      {view, html} = open(context.conn, context.path <> "/#{routine.id}/edit")
+      change = main() |> region("Change the routine Hay and pellets")
 
-      assert html =~ "Change the routine Hay and pellets"
-      assert has_element?(view, "#routine_title[value='Hay and pellets']")
-      assert has_element?(view, "#routine_time_1[value='08:00']")
-      assert has_element?(view, "#routine_time_2[value='18:00']")
-      assert has_element?(view, "#routine_resident_id option[selected]", "Biscuit")
+      session =
+        context.conn
+        |> visit(context.path)
+        |> click(routine("Hay and pellets") |> link("Change the routine Hay and pellets"))
+        |> assert_path(context.path <> "/#{routine.id}/edit")
+
+      assert value(session, change |> field("What to do")) == "Hay and pellets"
+      assert value(session, change |> field("Time")) == "08:00"
+      assert value(session, change |> field("A second time, if there is one")) == "18:00"
+      assert value(session, change |> field("For a resident")) == "Biscuit"
+
       # The list and the form of a new routine are not on this page.
-      refute has_element?(view, "#new-routine")
-      refute has_element?(view, "table")
-
-      {view, _html} =
-        submit(view, context.conn, "#routine", routine: %{title: "Hay only", time_2: ""})
-
-      assert has_element?(view, "tbody td", "Hay only")
-      assert has_element?(view, "tbody td", "Each day, at 8:00 am")
+      session
+      |> refute_has(new_routine())
+      |> refute_has(routines())
+      |> fill_in("What to do", with: "Hay only")
+      |> fill_in("A second time, if there is one", with: "")
+      |> click(button("Save the routine"))
+      |> assert_has(routine("Hay only"), text: "Each day, at 8:00 am From")
 
       {:ok, tasks} = Tasks.day(context.tomorrow, context.options)
       assert Enum.map(tasks, & &1.title) == ["Hay only"]
     end
 
     test "goes to the list when the routine of the address is not there", context do
-      assert {:error, {:live_redirect, %{to: to}}} =
-               live(context.conn, context.path <> "/#{Ash.UUID.generate()}/edit")
-
-      assert to == context.path
+      context.conn
+      |> visit(context.path <> "/#{Ash.UUID.generate()}/edit")
+      |> assert_path(context.path)
     end
 
     test "stops for a time, and starts again", context do
-      routine = start!(context)
-      {view, _html} = open(context.conn, context.path)
+      start!(context)
 
-      {view, _html} = press(view, context.conn, "pause", routine.id)
-      assert has_element?(view, "[data-state=none]", "Paused")
-      refute has_element?(view, "button[phx-click=pause]")
+      session =
+        context.conn
+        |> visit(context.path)
+        |> click(routine("Hay and pellets") |> button("Pause the routine Hay and pellets"))
+        |> assert_has(routine("Hay and pellets"), state: "none", text: "Paused")
+        |> refute_has(routine("Hay and pellets") |> button("Pause the routine Hay and pellets"))
+
       assert {:ok, []} = Tasks.day(context.tomorrow, context.options)
 
-      {view, _html} = press(view, context.conn, "resume", routine.id)
-      assert has_element?(view, "[data-state=ok]", "Active")
+      session
+      |> click(routine("Hay and pellets") |> button("Start again the routine Hay and pellets"))
+      |> assert_has(routine("Hay and pellets"), state: "ok", text: "Active")
+
       assert {:ok, [_morning, _evening]} = Tasks.day(context.tomorrow, context.options)
     end
 
     test "ends, with its tasks that come", context do
-      routine = start!(context)
-      {view, _html} = open(context.conn, context.path)
+      start!(context)
 
-      {_view, html} = submit(view, context.conn, "#end-#{routine.id}", %{})
+      context.conn
+      |> visit(context.path)
+      |> click(
+        routine("Hay and pellets")
+        |> details("End the routine Hay and pellets")
+        |> button("End the routine Hay and pellets")
+      )
+      |> assert_has(routines(), text: "No routine yet.")
 
-      assert html =~ "No routine yet."
       assert {:ok, []} = Tasks.day(context.tomorrow, context.options)
     end
 
     test "does nothing for a routine that is not on the page", context do
       start!(context)
-      {view, _html} = open(context.conn, context.path)
 
-      render_click(view, "pause", %{"id" => Ash.UUID.generate()})
-      refute has_element?(view, "main p[role=alert]")
-      assert has_element?(view, "[data-state=ok]", "Active")
+      context.conn
+      |> visit(context.path)
+      |> unwrap(&render_click(&1, "pause", %{"id" => Ash.UUID.generate()}))
+      |> refute_has(main() |> alert())
+      |> assert_has(routine("Hay and pellets"), state: "ok", text: "Active")
     end
 
     test "is on the tasks page, which says that a task is from a routine", context do
       start!(context)
 
-      {view, _html} =
-        open(
-          context.conn,
-          ~p"/o/#{context.organisation.short_name}/tasks?day=#{Date.to_iso8601(context.tomorrow)}"
-        )
-
-      assert has_element?(view, "tbody td small", "From a routine")
-      assert has_element?(view, "a", "Routines")
+      context.conn
+      |> visit(
+        ~p"/o/#{context.organisation.short_name}/tasks?day=#{Date.to_iso8601(context.tomorrow)}"
+      )
+      |> unwrap(&render_async/1)
+      |> assert_has(main() |> row(~r/Hay and pellets/), text: "From a routine")
+      |> assert_has(main() |> link("Routines"))
     end
   end
 
@@ -370,43 +354,46 @@ defmodule RescordWeb.RoutinePagesTest do
         )
 
       {:ok, %{prescription: prescription}} = Journal.entry_with_facts(entry.id, context.options)
-      {:ok, prescription: prescription, entry: entry}
+
+      {:ok,
+       prescription: prescription,
+       entry: entry,
+       journal: ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}/journal"}
     end
 
     test "is not offered on the journal of a member", context do
-      journal = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}/journal"
-      {view, _html} = open(build_conn() |> sign_in(context.member), journal)
-
-      assert has_element?(view, "#dose-details-#{context.entry.id}")
-
-      refute has_element?(
-               view,
-               "#dose-details-#{context.entry.id} a",
-               "Plan the doses as a routine"
-             )
+      context.member
+      |> visit_as(context.journal)
+      |> unwrap(&render_async/1)
+      |> assert_has(main() |> details("Plan a dose"))
+      |> refute_has(main() |> details("Plan a dose") |> link("Plan the doses as a routine"))
     end
 
     test "starts from the journal, with the resident and a title", context do
-      journal = ~p"/o/#{context.organisation.short_name}/residents/#{context.biscuit.id}/journal"
-      {view, _html} = open(context.conn, journal)
-
-      {:ok, view, html} =
-        view
-        |> element("#dose-details-#{context.entry.id} a", "Plan the doses as a routine")
-        |> render_click()
-        |> follow_redirect(context.conn)
-
-      assert html =~ "Each task of this routine writes a dose of A sample antibiotic"
-      assert has_element?(view, "#new-routine[open]")
-      assert has_element?(view, "#routine_title[value='Medicate: A sample antibiotic']")
-      assert has_element?(view, "#routine_resident_id option[selected]", "Biscuit")
-
-      {view, _html} =
-        submit(view, context.conn, "#routine",
-          routine: %{time_1: "08:00", time_2: "20:00", ends_on: Date.to_iso8601(context.tomorrow)}
+      session =
+        context.conn
+        |> visit(context.journal)
+        |> unwrap(&render_async/1)
+        |> click(main() |> details("Plan a dose") |> link("Plan the doses as a routine"))
+        |> assert_has(new_routine(),
+          text: "Each task of this routine writes a dose of A sample antibiotic"
         )
 
-      assert has_element?(view, "tbody td small", "Writes a dose to the journal")
+      assert open?(session, new_routine())
+
+      assert value(session, new_routine() |> field("What to do")) ==
+               "Medicate: A sample antibiotic"
+
+      assert value(session, new_routine() |> field("For a resident")) == "Biscuit"
+
+      session
+      |> fill_in("Time", with: "08:00")
+      |> fill_in("A second time, if there is one", with: "20:00")
+      |> fill_in("Last day, if there is one", with: Date.to_iso8601(context.tomorrow))
+      |> click(button("Start the routine"))
+      |> assert_has(routine("Medicate: A sample antibiotic"),
+        text: "Writes a dose to the journal"
+      )
 
       {:ok, [routine]} = Tasks.routines(context.options)
       assert routine.prescription_id == context.prescription.id
@@ -417,10 +404,12 @@ defmodule RescordWeb.RoutinePagesTest do
 
     test "is a plain routine when the prescription of the address is not there", context do
       for id <- [Ash.UUID.generate(), "not-an-id"] do
-        {view, html} = open(context.conn, context.path <> "?prescription=#{id}")
+        session =
+          context.conn
+          |> visit(context.path <> "?prescription=#{id}")
+          |> refute_has(main(), text: "writes a dose")
 
-        refute html =~ "writes a dose"
-        refute has_element?(view, "#new-routine[open]")
+        refute open?(session, new_routine())
       end
     end
   end

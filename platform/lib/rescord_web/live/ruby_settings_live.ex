@@ -67,13 +67,26 @@ defmodule RescordWeb.RubySettingsLive do
   # The use of this month, read as the person, and the labels of the
   # members in it. A month with no use has no table.
   defp read_use(socket) do
-    case Ruby.use_of_month(options(socket)) do
-      {:ok, %{members: [_ | _]} = use} ->
-        assign(socket, use: use, people: Accounts.people(options(socket)))
+    use =
+      case Ruby.use_of_month(options(socket)) do
+        {:ok, %{members: [_ | _]} = use} -> use
+        _none -> nil
+      end
 
-      _none ->
-        assign(socket, use: nil, people: %{})
-    end
+    # What the members said of the answers, and the answers that they
+    # sent. A month with no rating and no answer sent has no section.
+    answers = Ruby.answers_of_month(options(socket))
+    reports = Ruby.reported_answers(options(socket))
+    rated? = answers.right + answers.wrong > 0 or reports != []
+    people = if use || reports != [], do: Accounts.people(options(socket)), else: %{}
+
+    assign(socket,
+      use: use,
+      answers: if(rated?, do: answers),
+      reports: reports,
+      people: people,
+      month: Date.beginning_of_month(Date.utc_today())
+    )
   end
 
   # The fields of the form, as text. The provider is the one of the
@@ -255,6 +268,14 @@ defmodule RescordWeb.RubySettingsLive do
           share?={@settings.member_allowance != nil}
         />
         <.use_of_month :if={@use} use={@use} allowance={@settings.allowance} people={@people} />
+        <.answers
+          :if={@answers}
+          answers={@answers}
+          month={@month}
+          reports={@reports}
+          people={@people}
+          organisation={@organisation}
+        />
       <% end %>
     </Layouts.app>
     """

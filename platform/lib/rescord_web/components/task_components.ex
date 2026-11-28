@@ -207,7 +207,7 @@ defmodule RescordWeb.TaskComponents do
           maxlength="200"
           required
         />
-        <.button type="submit">Skip the task</.button>
+        <footer><.button type="submit">Skip the task</.button></footer>
       </form>
     </details>
     """

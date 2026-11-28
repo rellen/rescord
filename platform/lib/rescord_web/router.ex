@@ -162,6 +162,7 @@ defmodule RescordWeb.Router do
       live "/o/:organisation/insights/conditions", ConditionsInsightsLive
       live "/o/:organisation/insights/hours", HoursInsightsLive
       live "/o/:organisation/insights/stays", StaysInsightsLive
+      live "/o/:organisation/insights/medication", MedicationInsightsLive
       live "/o/:organisation/expenses", ExpensesLive
       live "/o/:organisation/expenses/new", ExpenseFormLive, :new
       live "/o/:organisation/expenses/:id", ExpenseLive

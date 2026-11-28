@@ -112,7 +112,7 @@ defmodule RescordWeb.RubyConversationsLive do
         </:actions>
       </.header>
 
-      <p :for={problem <- @problems} role="alert">{problem}</p>
+      <.problems list={@problems} />
 
       <section id="conversations" aria-label="Your conversations">
         <Cinder.collection
